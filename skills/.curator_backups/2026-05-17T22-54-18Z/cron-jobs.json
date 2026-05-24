@@ -1,0 +1,116 @@
+{
+  "jobs": [
+    {
+      "id": "f5eb3bfaf65e",
+      "name": "obsidian-vault-bisync-nightly",
+      "prompt": "[SYSTEM: You are running as a scheduled cron job. DELIVERY: Your final response will be automatically delivered to the user \u2014 do NOT use send_message or try to deliver the output yourself. Just produce your report/output as your final response and the system handles the rest. SILENT: If there is genuinely nothing new to report, respond with exactly \"[SILENT]\" (nothing else) to suppress delivery. Never combine [SILENT] with content \u2014 either report your findings normally, or say [SILENT] and nothing more.]\n\nF\u00fchre einen **echten** rclone bisync von gdrive: nach ~/obsidian-vault durch, **explizit OHNE --dry-run**. Verwende genau: rclone bisync gdrive: ~/obsidian-vault --drive-root-folder-id 1aY8QQ6Sw8ljGhvEV0rayQpxRgCQw9Vj4 -v --progress --resync-permission always --exclude \"*.conflict*\" --exclude \"*conflict*\" --exclude \".DS_Store\". Logge den **vollst\u00e4ndigen** rclone Output (auch wenn lang), fasse am Ende zusammen: Checks/Transfers/Errors, Gr\u00f6\u00dfe, Dauer. Ignoriere Duplikate/Conflicts. Best\u00e4tige mit \"Echter Bisync abgeschlossen um [UTC-Zeit].\"\n\nFalls Fehler: Vollst\u00e4ndig loggen und Status \"FEHLER\" melden.",
+      "skills": [],
+      "skill": null,
+      "model": null,
+      "provider": null,
+      "base_url": null,
+      "script": null,
+      "schedule": {
+        "kind": "cron",
+        "expr": "0 2 * * *",
+        "display": "0 2 * * *"
+      },
+      "schedule_display": "0 2 * * *",
+      "repeat": {
+        "times": null,
+        "completed": 25
+      },
+      "enabled": true,
+      "state": "scheduled",
+      "paused_at": null,
+      "paused_reason": null,
+      "created_at": "2026-04-21T23:30:01.012140+02:00",
+      "next_run_at": "2026-05-18T02:00:00+02:00",
+      "last_run_at": "2026-05-17T02:01:53.390450+02:00",
+      "last_status": "ok",
+      "last_error": null,
+      "last_delivery_error": null,
+      "deliver": "local",
+      "origin": null
+    },
+    {
+      "id": "eec953aecbd8",
+      "name": "gateway-watchdog",
+      "prompt": "",
+      "skills": [],
+      "skill": null,
+      "model": null,
+      "provider": null,
+      "base_url": null,
+      "script": "gateway-watchdog.py",
+      "no_agent": true,
+      "context_from": null,
+      "schedule": {
+        "kind": "interval",
+        "minutes": 30,
+        "display": "every 30m"
+      },
+      "schedule_display": "every 30m",
+      "repeat": {
+        "times": null,
+        "completed": 311
+      },
+      "enabled": true,
+      "state": "scheduled",
+      "paused_at": null,
+      "paused_reason": null,
+      "created_at": "2026-05-11T13:12:20.006963+02:00",
+      "next_run_at": "2026-05-18T01:22:18.824939+02:00",
+      "last_run_at": "2026-05-18T00:52:18.824939+02:00",
+      "last_status": "ok",
+      "last_error": null,
+      "last_delivery_error": null,
+      "deliver": "local",
+      "origin": null,
+      "enabled_toolsets": null,
+      "workdir": null
+    },
+    {
+      "id": "53f222b00811",
+      "name": "vault-insights-daily",
+      "prompt": "Du hast Zugriff auf den Obsidian Vault unter /root/obsidian-vault/. Der naechtliche GDrive-Sync war um 02:00 \u2014 neue Dateien sind jetzt lokal.\n\nDeine Aufgaben parallel:\n\n**A \u2014 EINSORTIEREN (Wiki pflegen)**\nFuer Trading-relevante neue Dateien (boerse/, Trading/, Geldverdienen/Trading-Teil, hermes/Trading-Teil):\n- Neue Erkenntnisse in bestehende Wiki-Seiten einarbeiten (wiki/concepts/, wiki/entities/, wiki/sources/)\n- Bei neuen Konzepten: neue Wiki-Seite anlegen\n- Wikilinks zwischen Wiki und Rohdaten pflegen\n\n**B \u2014 INTENTION WEITERDENKEN**\nFuer ALLE neuen Dateien in: Geldverdienen/, boerse/, hermes/, Trading/, Clippings/, raw/ (ausser Projekte/Buecher):\n- Kernidee des Artikels verstehen (1 Satz)\n- Was ist die unausgesprochene Intention? (\"Autor will sagen: mach X, weil Y\")\n- WAS BEDEUTET DAS FUER MARTIN? Konkrete Uebersetzung auf seine Infrastruktur:\n  - Hat er schon ein Profil/Skill/Cron dafuer?\n  - Was fehlt? (Neuer Cron? Skill? Config?)\n  - Soll ich es umsetzen? (Aufwandschaetzung)\n\n**C \u2014 PROAKTIVE VORSCHLAEGE (max 3)**\nJeder Vorschlag muss enden mit: konkretem nachsten Schritt + Aufwand + \"Soll ich das jetzt umsetzen?\"\nNicht theoretisch bleiben.\n\nLiefere strukturiert:\n- **Wiki-Updates:** Was wurde geaendert/neu angelegt\n- **Neue Artikel erkannt:** Liste mit Kernidee\n- **Weitergedacht:** Konkrete Uebersetzung pro Artikel\n- **Vorschlaege:** Max 3 mit Aufwand + \"Soll ich?\"",
+      "skills": [],
+      "skill": null,
+      "model": null,
+      "provider": null,
+      "base_url": null,
+      "script": null,
+      "no_agent": false,
+      "context_from": null,
+      "schedule": {
+        "kind": "cron",
+        "expr": "45 2 * * *",
+        "display": "45 2 * * *"
+      },
+      "schedule_display": "45 2 * * *",
+      "repeat": {
+        "times": null,
+        "completed": 6
+      },
+      "enabled": true,
+      "state": "scheduled",
+      "paused_at": null,
+      "paused_reason": null,
+      "created_at": "2026-05-11T15:27:25.229495+02:00",
+      "next_run_at": "2026-05-18T02:45:00+02:00",
+      "last_run_at": "2026-05-17T02:49:01.119753+02:00",
+      "last_status": "ok",
+      "last_error": null,
+      "last_delivery_error": null,
+      "deliver": "telegram",
+      "origin": null,
+      "enabled_toolsets": [
+        "file",
+        "terminal",
+        "web"
+      ],
+      "workdir": null
+    }
+  ],
+  "updated_at": "2026-05-18T00:52:18.825282+02:00"
+}

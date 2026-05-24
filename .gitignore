@@ -1,0 +1,20 @@
+# Secrets
+.env
+.env.*
+**/.env
+**/venv/
+**/__pycache__/
+*.pyc
+
+# Large/binary
+*.db
+*.sqlite
+*.tar.gz
+*.zip
+*.so
+logs/
+data/
+
+# Temp
+.cache/
+cron/output/
