@@ -306,7 +306,7 @@ echo "=== JOB FEHLER ==="
 exit 1
 ```
 
-#### Concrete example: Obsidian vault bisync
+#### Concrete example 1: Obsidian vault bisync
 
 The nightly bisync (`obsidian-vault-bisync-nightly`, job `f5eb3bfaf65e`) was converted from LLM-driven to no_agent:
 
@@ -323,6 +323,18 @@ The nightly bisync (`obsidian-vault-bisync-nightly`, job `f5eb3bfaf65e`) was con
 - **Exit code matters**. Even with empty stdout, exit non-zero triggers an error alert. Use `exit 0` explicitly after success.
 - **Cache naming is path-dependent**. rclone bisync caches listing files named after the path strings. `gdrive:` and `gdrive:hermes-obsidian-vault/` produce different cache filenames. Stick with one path pattern.
 - **Python over shell quoting**. For long prompts with German Sonderzeichen, use Python json.dump (see pitfall #13 below). For no_agent scripts, raw bash is fine since there's no prompt to corrupt.
+
+#### Concrete example 2: Hermes state GitHub backup
+
+The state backup (`hermes-state-github-sync`, job `736b150caef2`) was rebuilt from scratch after the old rsync+git approach died:
+
+- **Script**: `~/.hermes/scripts/hermes-state-sync.sh`
+- **Approach**: Git directly (no rsync middleman). Copies skills, filtered profiles, config files, and identity files into a local git clone → commits → pushes to GitHub.
+- **no_agent**: Runs nightly at 03:00 via Hermes cron, no LLM involved.
+- **Silent on success**: Only notifies if git push fails (network, auth, secrets blocked).
+- **Secret scanning**: GitHub push protection blocks commits with `ghp_` tokens. Script auto-redacts, but source skill files need to be cleaned first. See `hermes-state-github-sync` skill for full documentation.
+
+**Key lesson**: The old approach (LLM-driven + rsync + system crontab) had three failure points (LLM cost, rsync cache, system crontab env). The new approach has one (git push). When migrating any cron to no_agent, ask: "what's the simplest thing that can work and has the fewest moving parts?"
 
 ### Truncation Diagnosis for Profile Cron Jobs
 
