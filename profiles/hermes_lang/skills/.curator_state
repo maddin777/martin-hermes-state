@@ -1,0 +1,9 @@
+{
+  "last_report_path": "/root/.hermes/profiles/hermes_lang/logs/curator/20260520-205148",
+  "last_run_at": "2026-05-20T20:51:48.931440+00:00",
+  "last_run_duration_seconds": 295.766402,
+  "last_run_summary": "auto: no changes; llm: I have completed the first consolidation pass.\n\n### Consolidation Summary\n\nI identified and processed a cluster in the `language-learning` domain. The narrow, session-specific skill `polish-learning-workflow` was consolidated into a new, cl…\narchived 1 skill(s):\n  • polish-learning-workflow — pruned (stale)\nfull report: hermes curator status",
+  "last_run_summary_shown_at": null,
+  "paused": false,
+  "run_count": 1
+}

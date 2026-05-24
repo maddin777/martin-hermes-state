@@ -18,3 +18,6 @@ data/
 # Temp
 .cache/
 cron/output/
+sessions/
+state.db*
+bin/

@@ -1,0 +1,40 @@
+{
+  "jobs": [
+    {
+      "id": "834083078a48",
+      "name": "polnisch-disss-context-daily",
+      "prompt": "Erstelle eine taegliche Polnisch-Lektion (DiSSS Functional Context) und sende sie als Nachricht. Verwende das Skill polnisch-disss-context fuer die genaue Formatvorgabe: 10 Woerter aus Top 500, n+1 Sentence Mining, Aspekt-Paare bei Verben/Kasus bei Nomen, 10 Lueckentext-Quiz, Aufloesung mit allen Loesungen am Ende. Layout: **fett** fuer Polnisch, `monospace` fuer Deutsch. Schliesse mit 'Lektion #X abgeschlossen.' Speichere Fortschritt in ~/obsidian-vault/Lernen/Polnisch/04-Tagebuch.md (naechste Lektionsnummer ermitteln, nicht immer 1). Waehle NIE die gleichen Woerter wie in vorherigen Lektionen.",
+      "skills": [
+        "polnisch-disss-context"
+      ],
+      "skill": "polnisch-disss-context",
+      "model": null,
+      "provider": null,
+      "base_url": null,
+      "script": null,
+      "schedule": {
+        "kind": "cron",
+        "expr": "0 21 * * *",
+        "display": "0 21 * * *"
+      },
+      "schedule_display": "0 21 * * *",
+      "repeat": {
+        "times": null,
+        "completed": 24
+      },
+      "enabled": true,
+      "state": "scheduled",
+      "paused_at": null,
+      "paused_reason": null,
+      "created_at": "2026-04-23T23:32:55.511544+02:00",
+      "next_run_at": "2026-05-21T21:00:00+02:00",
+      "last_run_at": "2026-05-20T21:01:48.463891+02:00",
+      "last_status": "ok",
+      "last_error": null,
+      "last_delivery_error": null,
+      "deliver": "telegram:-1003933492757",
+      "origin": null
+    }
+  ],
+  "updated_at": "2026-05-20T21:01:48.464956+02:00"
+}

@@ -1,0 +1,383 @@
+{
+  "rss_feeds": [
+    {
+      "name": "Seeking Alpha",
+      "url": "https://seekingalpha.com/feed.xml",
+      "enabled": true,
+      "weight": 1.0,
+      "language": "en"
+    },
+    {
+      "name": "Boerse Online",
+      "url": "https://www.boerse-online.de/rss/nachrichten.rss",
+      "enabled": true,
+      "weight": 1.2,
+      "language": "de"
+    },
+    {
+      "name": "Finanzen.net",
+      "url": "https://www.finanzen.net/rss/analysen",
+      "enabled": true,
+      "weight": 1.0,
+      "language": "de"
+    },
+    {
+      "name": "Der Aktionär",
+      "url": "https://www.deraktionaer.de/rss.xml",
+      "enabled": true,
+      "weight": 1.1,
+      "language": "de"
+    },
+    {
+      "name": "Bloomberg Markets",
+      "url": "https://feeds.bloomberg.com/markets/news.rss",
+      "enabled": true,
+      "weight": 1.5,
+      "language": "en"
+    },
+    {
+      "name": "Reuters Business",
+      "url": "https://feeds.reuters.com/reuters/businessNews",
+      "enabled": true,
+      "weight": 1.5,
+      "language": "en"
+    },
+    {
+      "name": "MarketWatch",
+      "url": "https://feeds.marketwatch.com/marketwatch/topstories/",
+      "enabled": true,
+      "weight": 1.2,
+      "language": "en"
+    },
+    {
+      "name": "Handelsblatt Finanzen",
+      "url": "https://www.handelsblatt.com/contentexport/feed/finanzen",
+      "enabled": true,
+      "weight": 1.3,
+      "language": "de"
+    },
+    {
+      "name": "FAZ Finanzen",
+      "url": "https://www.faz.net/rss/aktuell/finanzen/",
+      "enabled": true,
+      "weight": 1.3,
+      "language": "de"
+    },
+    {
+      "name": "Motley Fool",
+      "url": "https://www.fool.com/feeds/index.aspx",
+      "enabled": true,
+      "weight": 1.0,
+      "language": "en"
+    }
+  ],
+  "twitter_accounts": [
+    {
+      "handle": "elonmusk",
+      "name": "Elon Musk",
+      "enabled": false,
+      "weight": 0.8,
+      "category": "tech_ceo"
+    },
+    {
+      "handle": "chamath",
+      "name": "Chamath Palihapitiya",
+      "enabled": true,
+      "weight": 1.2,
+      "category": "investor"
+    },
+    {
+      "handle": "BillAckman",
+      "name": "Bill Ackman",
+      "enabled": true,
+      "weight": 1.5,
+      "category": "hedge_fund"
+    },
+    {
+      "handle": "ReinhardtFutures",
+      "name": "Reinhardt Futures",
+      "enabled": true,
+      "weight": 1.0,
+      "category": "trader"
+    },
+    {
+      "handle": "markets",
+      "name": "Bloomberg Markets",
+      "enabled": true,
+      "weight": 1.3,
+      "category": "news"
+    },
+    {
+      "handle": "ReutersBiz",
+      "name": "Reuters Business",
+      "enabled": true,
+      "weight": 1.0,
+      "category": "news"
+    },
+    {
+      "handle": "GoldmanSachs",
+      "name": "Goldman Sachs",
+      "enabled": true,
+      "weight": 1.3,
+      "category": "institutional"
+    },
+    {
+      "handle": "federalreserve",
+      "name": "Federal Reserve",
+      "enabled": true,
+      "weight": 1.5,
+      "category": "central_bank"
+    },
+    {
+      "handle": "KochWallStreet",
+      "name": "Markus Koch",
+      "category": "analyst",
+      "weight": 1.3,
+      "enabled": true
+    },
+    {
+      "handle": "MarketWatch",
+      "name": "Market Watch",
+      "category": "news",
+      "weight": 1.0,
+      "enabled": true
+    },
+    {
+      "handle": "DeItaone",
+      "name": "Walter Bloomberg",
+      "category": "analyst",
+      "weight": 1.3,
+      "enabled": true
+    },
+    {
+      "handle": "KobeissiLetter",
+      "name": "Kobeissi Letter",
+      "category": "news",
+      "weight": 1.0,
+      "enabled": true
+    },
+    {
+      "handle": "StockMKTNewz",
+      "name": "Stock-Market-News",
+      "category": "news",
+      "weight": 1.0,
+      "enabled": true
+    },
+    {
+      "handle": "YahooFinance",
+      "name": "YahooFinance",
+      "category": "news",
+      "weight": 1.0,
+      "enabled": true
+    },
+    {
+      "handle": "elerianm",
+      "name": "Mohamed A. El-Erian",
+      "category": "analyst",
+      "weight": 1.0,
+      "enabled": true
+    },
+    {
+      "handle": "LizAnnSonders",
+      "name": "Liz Ann Sonders",
+      "category": "investor",
+      "weight": 1.0,
+      "enabled": true
+    },
+    {
+      "handle": "PeterLBrandt",
+      "name": "The Factor Report",
+      "category": "analyst",
+      "weight": 1.0,
+      "enabled": true
+    },
+    {
+      "handle": "ripster47",
+      "name": "Ripster",
+      "category": "investor",
+      "weight": 1.2,
+      "enabled": true
+    },
+    {
+      "handle": "alphatrends",
+      "name": "Brian Shannon, CMT",
+      "category": "investor",
+      "weight": 1.2,
+      "enabled": true
+    },
+    {
+      "handle": "Mr_Derivatives",
+      "name": "Heisenberg",
+      "category": "investor",
+      "weight": 1.2,
+      "enabled": true
+    },
+    {
+      "handle": "HofiHood",
+      "name": "HofiHood",
+      "category": "investor",
+      "weight": 1.2,
+      "enabled": true
+    },
+    {
+      "handle": "QuiverQuant",
+      "name": "Quiver Quantitative",
+      "category": "investor",
+      "weight": 1.2,
+      "enabled": true
+    },
+    {
+      "handle": "burrytracker",
+      "name": "Michael Burry Stock Tracker",
+      "category": "investor",
+      "weight": 1.2,
+      "enabled": true
+    },
+    {
+      "handle": "Techaktien1",
+      "name": "Techaktien",
+      "category": "investor",
+      "weight": 1.3,
+      "enabled": true
+    },
+    {
+      "handle": "GREYxCAPITAL",
+      "name": "GREY CAPITAL",
+      "category": "investor",
+      "weight": 1.3,
+      "enabled": true
+    },
+    {
+      "handle": "_FlorianKoenig",
+      "name": "Florian König",
+      "category": "investor",
+      "weight": 1.3,
+      "enabled": true
+    },
+    {
+      "handle": "aktienfinder",
+      "name": "aktienfinder",
+      "category": "investor",
+      "weight": 1.3,
+      "enabled": true
+    },
+    {
+      "handle": "aktien_max",
+      "name": "MAX RAHN",
+      "category": "investor",
+      "weight": 1.3,
+      "enabled": true
+    },
+    {
+      "handle": "asklivermore",
+      "name": "AskLivermore",
+      "category": "investor",
+      "weight": 1.0,
+      "enabled": true
+    },
+    {
+      "handle": "TenbaggerAktien",
+      "name": "Arbeiterkind Aktienmillionär",
+      "category": "investor",
+      "weight": 1.2,
+      "enabled": true
+    },
+    {
+      "handle": "Uberrenditen",
+      "name": "Uberrenditen",
+      "category": "investor",
+      "weight": 1.0,
+      "enabled": true
+    },
+    {
+      "handle": "Speculator_io",
+      "name": "Lin",
+      "category": "investor",
+      "weight": 1.0,
+      "enabled": true
+    },
+    {
+      "handle": "thestockwhale",
+      "name": "StockWhale",
+      "category": "investor",
+      "weight": 1.2,
+      "enabled": true
+    },
+    {
+      "handle": "InTheAssembly",
+      "name": "The Assembly",
+      "category": "investor",
+      "weight": 1.2,
+      "enabled": true
+    },
+    {
+      "handle": "aifinancelabs",
+      "name": "AI Finance Labs",
+      "category": "investor",
+      "weight": 1.2,
+      "enabled": true
+    },
+    {
+      "handle": "Smart_Money",
+      "name": "Smart Money Crypto",
+      "category": "investor",
+      "weight": 1.2,
+      "enabled": true
+    },
+    {
+      "handle": "itsmichaelluu",
+      "name": "Michael | Hypermarkets",
+      "category": "investor",
+      "weight": 1.2,
+      "enabled": true
+    },
+    {
+      "handle": "morganhousel",
+      "name": "morganhousel",
+      "category": "investor",
+      "weight": 1.3,
+      "enabled": true
+    },
+    {
+      "handle": "AswathDamodaran",
+      "name": "AswathDamodaran",
+      "category": "investor",
+      "weight": 1.2,
+      "enabled": true
+    }
+  ],
+  "fred_indicators": [
+    {
+      "id": "T10Y2Y",
+      "name": "Yield Curve 10Y-2Y Spread",
+      "enabled": true,
+      "bearish_below": 0,
+      "description": "Inversion = Rezessionssignal"
+    },
+    {
+      "id": "FEDFUNDS",
+      "name": "Fed Funds Rate",
+      "enabled": true,
+      "description": "Leitzins der Fed"
+    },
+    {
+      "id": "CPIAUCSL",
+      "name": "CPI Inflation",
+      "enabled": true,
+      "description": "Verbraucherpreisindex USA"
+    },
+    {
+      "id": "UNRATE",
+      "name": "Arbeitslosenquote USA",
+      "enabled": true,
+      "description": "Monatliche Arbeitslosenrate"
+    },
+    {
+      "id": "VIXCLS",
+      "name": "VIX Volatilitaetsindex",
+      "enabled": true,
+      "bearish_above": 25,
+      "description": "Angst-Index, >25 = erhöhte Volatilität"
+    }
+  ]
+}
