@@ -1,0 +1,45 @@
+# Tagesnachrichten 2026-05-09
+
+[[Politics]]
+
+- **Archiv - Inhalte vom 9. Mai 2026 - tagesschau.de** (Quelle: Tagesschau – [https://news.google.com/rss/articles/CBMiR0FVX3lxTE9QaGJyMUNLQ0kwVXNXU09ndTEzQk10Q0tCS184SDR6SGZ2SkU2R3g3NXdSOGRvLU5Rd3h6QXR3b3Y4VnNmZ0tj?oc=5](https://news.google.com/rss/articles/CBMiR0FVX3lxTE9QaGJyMUNLQ0kwVXNXU09ndTEzQk10Q0tCS184SDR6SGZ2SkU2R3g3NXdSOGRvLU5Rd3h6QXR3b3Y4VnNmZ0tj?oc=5))
+  - Archiv - Inhalte vom 9. Mai 2026  tagesschau.de
+  - 2026-05-09 03:43 UTC
+- **Orban geht, Magyar kommt - Ungarn startet in die Systemwende - FAZ** (Quelle: FAZ – [https://news.google.com/rss/articles/CBMiswFBVV95cUxQUEFwLXZqMmM1ZWU4cGJ4MFZqbDA3V2FfZmEyeVpyY1JjdFhyYkVVaEF1Y1liR3Z4VFpVQ2Z0ZDlXY1V3SHE1MFljM1lOOEV6Zzd3YzJBT25uV3NIWVMxMDFtQVFtMkEtcDFnZXM3eW1NajdrLVFzckVjMUotcTdkSk9jVjdzWEpNcS15OWo4b2pxdTc1YUZXZzhGMHB5T01WNHVNNFk2UEpHLTRsVGhXNHRSMA?oc=5](https://news.google.com/rss/articles/CBMiswFBVV95cUxQUEFwLXZqMmM1ZWU4cGJ4MFZqbDA3V2FfZmEyeVpyY1JjdFhyYkVVaEF1Y1liR3Z4VFpVQ2Z0ZDlXY1V3SHE1MFljM1lOOEV6Zzd3YzJBT25uV3NIWVMxMDFtQVFtMkEtcDFnZXM3eW1NajdrLVFzckVjMUotcTdkSk9jVjdzWEpNcS15OWo4b2pxdTc1YUZXZzhGMHB5T01WNHVNNFk2UEpHLTRsVGhXNHRSMA?oc=5))
+  - Orban geht, Magyar kommt - Ungarn startet in die Systemwende  FAZ
+  - 2026-05-09 02:01 UTC
+
+[[Economy]]
+
+- **OpenAI News: Aktuelle Nachrichten von heute zum KI-Unternehmen - Handelsblatt** (Quelle: Handelsblatt – [https://news.google.com/rss/articles/CBMiVEFVX3lxTE1GUjlOUXA1SUpJb1RlMnJmUEstRGhBSEtCWVRvV2MzdHZUWVBqZ21tb0ZPTXZsTGVYQ20wbU9WZTh4NGxpV09YRE1GWlZCdTN3ZDk0Sw?oc=5](https://news.google.com/rss/articles/CBMiVEFVX3lxTE1GUjlOUXA1SUpJb1RlMnJmUEstRGhBSEtCWVRvV2MzdHZUWVBqZ21tb0ZPTXZsTGVYQ20wbU9WZTh4NGxpV09YRE1GWlZCdTN3ZDk0Sw?oc=5))
+  - OpenAI News: Aktuelle Nachrichten von heute zum KI-Unternehmen  Handelsblatt
+  - 2026-05-09 04:50 UTC
+- **Nach Kommunalwahl in Großbritannien: Das Ende von Labour? - tagesschau.de** (Quelle: Tagesschau – [https://news.google.com/rss/articles/CBMijgFBVV95cUxOajRTTWdpVVVBYUNnblJ0dkw2YWw3bi1kZkM5ZEl6R0RCbDUwRTRMb3dxM0xIS3J1TjA3eGhlZzdTaHpwYnp4M1dSdDNfbnBPSUp6NWIxTGtFcENMdnBJT0Fib0pJaTJKU2dYQW9OZWM1anpFQ3JITGFxcFFHREo2akZoUTRKSHZiTjFsYXFR?oc=5](https://news.google.com/rss/articles/CBMijgFBVV95cUxOajRTTWdpVVVBYUNnblJ0dkw2YWw3bi1kZkM5ZEl6R0RCbDUwRTRMb3dxM0xIS3J1TjA3eGhlZzdTaHpwYnp4M1dSdDNfbnBPSUp6NWIxTGtFcENMdnBJT0Fib0pJaTJKU2dYQW9OZWM1anpFQ3JITGFxcFFHREo2akZoUTRKSHZiTjFsYXFR?oc=5))
+  - Nach Kommunalwahl in Großbritannien: Das Ende von Labour? tagesschau.de
+  - 2026-05-09 04:41 UTC
+- **Die Lage im Überblick: Putin feiert Militärparade im Schutz von Trumps Waffenruhe - Handelsblatt** (Quelle: Handelsblatt – [https://news.google.com/rss/articles/CBMi4gFBVV95cUxPWEprQTNWUjluYTc5Q2cxNUJmeHg3aXZoYjhhQms3VlJ0UmJqQUFyUTY4T1g1TkhDNGZmVXdTVGJUZUFiZkFtTlBSVmRNU1Vkak9tUzd1OXJFLWpfMEZ2ZTA0ZGdlOFZJNGVKV1pUcHpSRzI1cEhvVGM1NUZ5NzZsNEwtMUUxTmNxa2pKTkwxX0NDNDdnSlVJMWVMQVdXc2JBbXBFNl9uZ0ZzS1ZQTEJrOXQ4NzJ1Z1hYM05fWkVERi1abjJyYkhheEtLdUpYdkdkbEdzTV9iZkZfc2Vzcm1yVEdn?oc=5](https://news.google.com/rss/articles/CBMi4gFBVV95cUxPWEprQTNWUjluYTc5Q2cxNUJmeHg3aXZoYjhhQms3VlJ0UmJqQUFyUTY4T1g1TkhDNGZmVXdTVGJUZUFiZkFtTlBSVmRNU1Vkak9tUzd1OXJFLWpfMEZ2ZTA0ZGdlOFZJNGVKV1pUcHpSRzI1cEhvVGM1NUZ5NzZsNEwtMUUxTmNxa2pKTkwxX0NDNDdnSlVJMWVMQVdXc2JBbXBFNl9uZ0ZzS1ZQTEJrOXQ4NzJ1Z1hYM05fWkVERi1abjJyYkhheEtLdUpYdkdkbEdzTV9iZkZfc2Vzcm1yVEdn?oc=5))
+  - Die Lage im Überblick: Putin feiert Militärparade im Schutz von Trumps Waffenruhe  Handelsblatt
+  - 2026-05-09 04:23 UTC
+- **Nordrhein-Westfalen: Kraftwerk Scholven: Uniper lässt Kühltürme in Gelsenkirchen sprengen - tagesschau.de** (Quelle: Tagesschau – [https://news.google.com/rss/articles/CBMi3AFBVV95cUxQcmRNZTN6emdhbzh6TUw0QW1BeHdlRGhQdjVHUFNoTzI0c1hxSHBzbHdLcFFJTmVCRlU2cG5sTkQ0NlpBWWFBaXVVbWE4OTd0QUNoN2JORXpudEw3WGxwUWhKTTlWY0FwRlhhNkN6NF9pNnBtTzZHRGFjQ1NCYm1CSHRMMGNaSWtTNzJWaDFKek5oV0lTaUlMX004UzZ0YlRxZFdrUWU5akpKdXVRY0xCYndrNkpaaFIxbkJjRHRrejBFOURjWjJLZkJ4N0tnQmFvQS14VUdmMnJMM2x6?oc=5](https://news.google.com/rss/articles/CBMi3AFBVV95cUxQcmRNZTN6emdhbzh6TUw0QW1BeHdlRGhQdjVHUFNoTzI0c1hxSHBzbHdLcFFJTmVCRlU2cG5sTkQ0NlpBWWFBaXVVbWE4OTd0QUNoN2JORXpudEw3WGxwUWhKTTlWY0FwRlhhNkN6NF9pNnBtTzZHRGFjQ1NCYm1CSHRMMGNaSWtTNzJWaDFKek5oV0lTaUlMX004UzZ0YlRxZFdrUWU5akpKdXVRY0xCYndrNkpaaFIxbkJjRHRrejBFOURjWjJLZkJ4N0tnQmFvQS14VUdmMnJMM2x6?oc=5))
+  - Nordrhein-Westfalen: Kraftwerk Scholven: Uniper lässt Kühltürme in Gelsenkirchen sprengen  tagesschau.de
+  - 2026-05-09 04:04 UTC
+- **Umfrage: Altersvorsorge mit Wertpapieren? Viele bleiben skeptisch - Handelsblatt** (Quelle: Handelsblatt – [https://news.google.com/rss/articles/CBMixgFBVV95cUxOeXdTSFF6TUFUQVhWa2NaSk9Jei1CSl9yQkFUQVIyd1pydGItZXpSUTlPR01RVkdPTVFxUjhrVU9WODBIRGp5WHhydU85LXV1MFpEM1llMjVoTFlRN1NYbExXN1hkVjBZSjZOazExT25ZZnBDRm9zOVNyVE9PcmFhLUJMNEhrbThURU5EMVk4dThtQ2lXdXB6RnhYalNaM2VJaDlBeTAzUWFiM1lSOUYtQjhfdmNoNmNXdW9ZaFFKZ0p3NUVCcmc?oc=5](https://news.google.com/rss/articles/CBMixgFBVV95cUxOeXdTSFF6TUFUQVhWa2NaSk9Jei1CSl9yQkFUQVIyd1pydGItZXpSUTlPR01RVkdPTVFxUjhrVU9WODBIRGp5WHhydU85LXV1MFpEM1llMjVoTFlRN1NYbExXN1hkVjBZSjZOazExT25ZZnBDRm9zOVNyVE9PcmFhLUJMNEhrbThURU5EMVk4dThtQ2lXdXB6RnhYalNaM2VJaDlBeTAzUWFiM1lSOUYtQjhfdmNoNmNXdW9ZaFFKZ0p3NUVCcmc?oc=5))
+  - Umfrage: Altersvorsorge mit Wertpapieren? Viele bleiben skeptisch  Handelsblatt
+  - 2026-05-09 04:00 UTC
+- **Abwehrkrieg gegen Russland: Die Ukraine schöpft Zuversicht - tagesschau.de** (Quelle: Tagesschau – [https://news.google.com/rss/articles/CBMifkFVX3lxTE1PZEdPYTBnQlY1UW1vSHNHQjJpMzhKUGhNUnZQSHVpXzdGX2gtTk90UUJaRkVHQUZyZTNiR1lIS19QaXF6TEpEcUg4R01RMXVUaEowaTB2YmRGSHN4MU1kNmU1R2x4RGd0VzFDN2tLN3gzQU5KOUxQMnhnOV9udw?oc=5](https://news.google.com/rss/articles/CBMifkFVX3lxTE1PZEdPYTBnQlY1UW1vSHNHQjJpMzhKUGhNUnZQSHVpXzdGX2gtTk90UUJaRkVHQUZyZTNiR1lIS19QaXF6TEpEcUg4R01RMXVUaEowaTB2YmRGSHN4MU1kNmU1R2x4RGd0VzFDN2tLN3gzQU5KOUxQMnhnOV9udw?oc=5))
+  - Abwehrkrieg gegen Russland: Die Ukraine schöpft Zuversicht  tagesschau.de
+  - 2026-05-09 03:43 UTC
+- **Baden-Württemberg: Grüne und CDU stimmen sich auf Neustart der Koalition ein - tagesschau.de** (Quelle: Tagesschau – [https://news.google.com/rss/articles/CBMiywFBVV95cUxNWkpUbU90eUhIQ2xqbWRtTU13NS00anI3X3QtUGhMTFNaRG8wQk5aV3FPOVlIeXN3ZThzMzdQUkRPUkdBa2NNWWdkV3Q3SjRMNE5ENFVFMHpmZmFQNVZMUXhISXlkYllYR3Fna3BxR1VlUzlEQ1pVeG1nbHBEbnBSX2RtLXVjdTVBYnI1Tlg5bGE2azZxMHBrOHcxQnlJRXNiNzZBVjF6VWdSV09vcHJNT2E5bnFodnBqUXJ0dHBXQ2xYWDlNWW1JWTB4bw?oc=5](https://news.google.com/rss/articles/CBMiywFBVV95cUxNWkpUbU90eUhIQ2xqbWRtTU13NS00anI3X3QtUGhMTFNaRG8wQk5aV3FPOVlIeXN3ZThzMzdQUkRPUkdBa2NNWWdkV3Q3SjRMNE5ENFVFMHpmZmFQNVZMUXhISXlkYllYR3Fna3BxR1VlUzlEQ1pVeG1nbHBEbnBSX2RtLXVjdTVBYnI1Tlg5bGE2azZxMHBrOHcxQnlJRXNiNzZBVjF6VWdSV09vcHJNT2E5bnFodnBqUXJ0dHBXQ2xYWDlNWW1JWTB4bw?oc=5))
+  - Baden-Württemberg: Grüne und CDU stimmen sich auf Neustart der Koalition ein  tagesschau.de
+  - 2026-05-09 03:42 UTC
+- **Lage im Überblick: Trump wartet: Wie reagiert der Iran auf den US-Vorschlag? - Handelsblatt** (Quelle: Handelsblatt – [https://news.google.com/rss/articles/CBMi1wFBVV95cUxNU3BOcmItdV9OZlNlMkdZWUFDbV9rRFlSUDdtSng2U0xEcXp1WEVwTUVpenliY1VUWmJQVnpJMHBRZFlVQjJQWVkwS0I5Zl9ibGQtMXJhbGtYUkZ0YUZTS0V4R1JCMDZ2X043WV8zSnNpSmxkbklDbTJoUkwyb2VEQ0dCeHRpRm1sRjc5NGVSY3VLRHVIQXl0NTVRc2RNRmx6VUxXUEU4RFpCMWZXaEFyemxxamRuY2VGVzlQdkhDbW5IVmdHY0RsMWotRGV3eDVsRzlyQmM4Yw?oc=5](https://news.google.com/rss/articles/CBMi1wFBVV95cUxNU3BOcmItdV9OZlNlMkdZWUFDbV9rRFlSUDdtSng2U0xEcXp1WEVwTUVpenliY1VUWmJQVnpJMHBRZFlVQjJQWVkwS0I5Zl9ibGQtMXJhbGtYUkZ0YUZTS0V4R1JCMDZ2X043WV8zSnNpSmxkbklDbTJoUkwyb2VEQ0dCeHRpRm1sRjc5NGVSY3VLRHVIQXl0NTVRc2RNRmx6VUxXUEU4RFpCMWZXaEFyemxxamRuY2VGVzlQdkhDbW5IVmdHY0RsMWotRGV3eDVsRzlyQmM4Yw?oc=5))
+  - Lage im Überblick: Trump wartet: Wie reagiert der Iran auf den US-Vorschlag? Handelsblatt
+  - 2026-05-09 03:33 UTC
+- **DER SPIEGEL | Online-Nachrichten - Spiegel** (Quelle: Spiegel – [https://news.google.com/rss/articles/CBMiO0FVX3lxTFBCM1BOQVp4bUpiaEZ0cWROX09xWVFYX1FLQWg3WW40QnlVVVljTlUwQll1a00weDZCcTFz?oc=5](https://news.google.com/rss/articles/CBMiO0FVX3lxTFBCM1BOQVp4bUpiaEZ0cWROX09xWVFYX1FLQWg3WW40QnlVVVljTlUwQll1a00weDZCcTFz?oc=5))
+  - DER SPIEGEL | Online-Nachrichten  Spiegel
+  - 2026-05-09 03:30 UTC
+- **Koalition: Prämie oder Großreform? Koalition sucht Wege zur Entlastung - Handelsblatt** (Quelle: Handelsblatt – [https://news.google.com/rss/articles/CBMizwFBVV95cUxPOGVIM3k5dmYyaTVlVXhkaGUzanQtVlJXWktjZm1qUVNTYmVDV0hsVk1YYUpvRWIxNWcwRnp2VTh4MzdIZ0c0enAtbXBLRFozT1RXY3VoUndIVjFhX0pqc2hraEh1Q2w4WGtDY05EUUNyeThIVlA4Tk9kUXBJUExJQTlTWE95cHY3QjQ5UzU3ZHk3WU1xZzNfLVpncVNHblp2UnBreE1rRXNZTHJ3NjJlNlZtbzdOeGl5enpELWI5S1dNQWxwbDM3ZzMyUUZGbWc?oc=5](https://news.google.com/rss/articles/CBMizwFBVV95cUxPOGVIM3k5dmYyaTVlVXhkaGUzanQtVlJXWktjZm1qUVNTYmVDV0hsVk1YYUpvRWIxNWcwRnp2VTh4MzdIZ0c0enAtbXBLRFozT1RXY3VoUndIVjFhX0pqc2hraEh1Q2w4WGtDY05EUUNyeThIVlA4Tk9kUXBJUExJQTlTWE95cHY3QjQ5UzU3ZHk3WU1xZzNfLVpncVNHblp2UnBreE1rRXNZTHJ3NjJlNlZtbzdOeGl5enpELWI5S1dNQWxwbDM3ZzMyUUZGbWc?oc=5))
+  - Koalition: Prämie oder Großreform? Koalition sucht Wege zur Entlastung  Handelsblatt
+  - 2026-05-09 03:30 UTC
+
+[[Events]]

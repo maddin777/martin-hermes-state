@@ -1,0 +1,1 @@
+User prefers responses in German.

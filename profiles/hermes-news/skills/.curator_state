@@ -1,0 +1,9 @@
+{
+  "last_report_path": "/root/.hermes/profiles/hermes-news/logs/curator/20260518-124116",
+  "last_run_at": "2026-05-18T12:41:16.927787+00:00",
+  "last_run_duration_seconds": 0.950132,
+  "last_run_summary": "auto: no changes; llm: skipped (no candidates)",
+  "last_run_summary_shown_at": null,
+  "paused": false,
+  "run_count": 1
+}

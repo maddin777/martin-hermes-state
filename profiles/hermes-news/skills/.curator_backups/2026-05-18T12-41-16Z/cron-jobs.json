@@ -1,0 +1,38 @@
+{
+  "jobs": [
+    {
+      "id": "999fe77b345a",
+      "name": "daily-news-briefing",
+      "prompt": "Gib mir die max. 8 wichtigsten Nachrichten aus Politik/Wirtschaft (international, Europa-Fokus) der letzten 12h. ALLES AUF DEUTSCH \u2014 1 Satz pro News. Quellenlinks original. Prioritaet: Reuters/AP/DW/Tagesschau/FAZ. Gesamtlaenge unter 2000 Zeichen.",
+      "skills": [],
+      "skill": null,
+      "model": "openrouter/owl-alpha",
+      "provider": "openrouter",
+      "base_url": null,
+      "script": null,
+      "schedule": {
+        "kind": "cron",
+        "expr": "0 6 * * *",
+        "display": "0 6 * * *"
+      },
+      "schedule_display": "0 6 * * *",
+      "repeat": {
+        "times": null,
+        "completed": 48
+      },
+      "enabled": true,
+      "state": "scheduled",
+      "paused_at": null,
+      "paused_reason": null,
+      "created_at": "2026-04-22T11:01:16.073546+02:00",
+      "next_run_at": "2026-05-19T06:00:00+02:00",
+      "last_run_at": "2026-05-18T06:04:14.803382+02:00",
+      "last_status": "ok",
+      "last_error": null,
+      "last_delivery_error": null,
+      "deliver": "telegram",
+      "origin": null
+    }
+  ],
+  "updated_at": "2026-05-18T06:04:14.804419+02:00"
+}
