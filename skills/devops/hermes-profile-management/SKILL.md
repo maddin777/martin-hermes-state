@@ -396,6 +396,126 @@ See `devops/gateway-watchdog` skill for automatic recovery.
 **Profile gateway conflicts**
 Profile gateways sharing the same Telegram bot token — only ONE can run at a time.
 
+## 3. Gateway Watchdog — Proactive Monitoring
+
+Set up two-tier gateway protection: systemd restart limits + a cron-based watchdog for intelligent recovery.
+
+### Architecture
+
+**Tier 1 — systemd restart limits (dumb protection)**
+- `Restart=on-failure` instead of `always`
+- `StartLimitBurst=3` / `StartLimitIntervalSec=600` — max 3 restarts in 10min
+- Prevents infinite restart loops on permanent failures
+
+**Tier 2 — Cron Watchdog (intelligent recovery)**
+- Every 30min via `no_agent=True` cron
+- Script: `~/.hermes/scripts/gateway-watchdog.py`
+- Checks: Is the service active? Does the Telegram API respond (`getMe`)?
+- Both OK → silent exit (no log, no message)
+- Failure → service restart + log entry
+- Same error >2x in 60min → CRITICAL (no restart, manual intervention required)
+
+### Setting Up the Watchdog
+
+```bash
+# 1. systemd Drop-In for restart limits
+mkdir -p /etc/systemd/system/hermes-gateway.service.d
+cat > /etc/systemd/system/hermes-gateway.service.d/99-restart-limit.conf << 'CONF'
+[Service]
+Restart=on-failure
+StartLimitBurst=3
+StartLimitIntervalSec=600
+CONF
+systemctl daemon-reload
+systemctl restart hermes-gateway.service
+```
+
+2. Write the watchdog script at `~/.hermes/scripts/gateway-watchdog.py`
+3. Create the cron job (`no_agent=True`, every 30min, deliver: local)
+4. Log file: `/root/.hermes/logs/gateway-watchdog.log`
+
+### Escalation Procedure
+
+When the log shows **CRITICAL** (same error >2x in 60min):
+
+```bash
+systemctl status hermes-gateway.service
+cat ~/.hermes/logs/gateway-watchdog.log | tail -10
+cat ~/.hermes/logs/gateway.log | tail -20
+```
+
+After fixing the root cause, reset tracking:
+```bash
+rm -f /tmp/hermes-gateway-watchdog-track
+systemctl reset-failed hermes-gateway.service
+systemctl restart hermes-gateway.service
+```
+
+### Telegram Fallback IP Timeout
+
+If `gateway.log` shows `telegram connect timed out after 30s` but `api.telegram.org` is reachable, the `TelegramFallbackTransport` is failing on the seed IP.
+
+Fix:
+```bash
+echo "HERMES_TELEGRAM_DISABLE_FALLBACK_IPS=true" >> ~/.hermes/profiles/<profile>/.env
+```
+This must be set in **every** profile `.env` that runs a Telegram gateway — it does NOT cascade from the main profile.
+Then `systemctl reset-failed && systemctl restart hermes-gateway-<profile>`.
+
+### Systemd Drain Timeout Mismatch
+
+When `systemctl restart` of the gateway causes the service to hang in **"deactivating"**:
+
+**Symptom:**
+```
+WARNING gateway.run: Stale systemd unit detected: ...
+has TimeoutStopSec=60s but drain_timeout=60s
+(expected >=90s). systemd may SIGKILL the gateway mid-drain.
+Run `hermes gateway service install --replace` to regenerate the unit.
+```
+
+**Fix:**
+```bash
+systemctl kill hermes-gateway-{profil}.service
+systemctl reset-failed hermes-gateway-{profil}.service
+hermes --profile {profil} gateway service install --replace
+systemctl start hermes-gateway-{profil}.service
+```
+
+The regenerated unit has correct `TimeoutStopSec`.
+
+### Post-Reboot Health Check
+
+After LXC/VM restart, verify all gateway services started:
+
+```bash
+# 1. List all gateway services
+systemctl list-units --type=service --all | grep hermes-gateway
+
+# 2. Enable + start disabled ones
+systemctl start hermes-gateway-{profil}.service
+systemctl enable hermes-gateway-{profil}.service
+
+# 3. Check cron health
+hermes cron list
+```
+
+### Cron-Integration — Two-Tier System
+
+Hermes has two independent cron systems:
+- **Global scheduler** (`~/.hermes/cron/jobs.json`) — default profile
+- **Profile scheduler** (`{profile}/cron/jobs.json`) — per gateway profile
+
+A profile cron job runs ONLY when the associated gateway is active. Gateway down → no ticks → jobs pile up.
+
+**Diagnosis for "crons stopped since date X":**
+1. `hermes profile list` → gateway running?
+2. `systemctl status hermes-gateway-{profil}.service` → systemd alive?
+3. `journalctl -u hermes-gateway-{profil}.service -n 50` → cause of death?
+4. `cat {profile}/cron/jobs.json` → check `next_run_at` in the past?
+
+Full diagnosis recipes in `references/gateway-watchdog-diagnosis.md`.
+
 ### Quick Health Check
 
 ```bash
@@ -415,3 +535,90 @@ journalctl -u hermes-gateway.service --no-pager -n 20
 - Don't remove `gateway_state.json` unless necessary — it tracks cron state.
 - After 6 failed starts, systemd enters rate-limit — must `reset-failed` before retrying.
 - Stale `gateway.pid` files (both `~/.hermes/gateway.pid` and profile-specific) are the #1 cause of PID file race errors.
+
+---
+
+
+## 4. State Backup to GitHub
+
+Create a durable, token-efficient backup of Hermes state (skills, profiles, config, identity files) using the no_agent cron pattern described in §1.
+
+### Architecture
+
+```
+LLM-driven (deprecated)     →    no_agent script (current)
+rsync → local git → push    →    git directly (no rsync)
+system crontab              →    Hermes cron
+always "success" message    →    silent on success, alert on failure
+```
+
+### What Gets Synced
+
+| Source | Destination | Exclusions |
+|--------|------------|------------|
+| `~/.hermes/skills/` | `skills/` | `.cache/`, `cron/output/` |
+| `~/.hermes/profiles/hermes-*/` | `profiles/hermes-*/` | `.env`, `venv/`, `logs/`, `data/`, `cron/output/`, `sessions/` |
+| `~/.hermes/config.yaml` | `config/config.yaml` | — |
+| `~/.hermes/cron/jobs.json` | `config/jobs.json` | — |
+| `~/obsidian-vault/SOUL.md` | `identity/SOUL.md` | — |
+| `~/obsidian-vault/MEMORY.md` | `identity/MEMORY.md` | — |
+| `~/obsidian-vault/USER.md` | `identity/USER.md` | — |
+
+All in a flat repo with `.gitignore` excluding secrets, binaries, and caches.
+
+### Initial Setup
+
+```bash
+gh repo create <user>/<repo> --public --description "Hermes Skills/Memory/State Backup"
+cd /root && git clone https://github.com/<user>/<repo>.git
+```
+
+### Sync Script Pattern
+
+Location: `~/.hermes/scripts/hermes-state-sync.sh`
+
+The script (see `references/state-backup-script.md`):
+1. Copies the selected source directories into the local git clone
+2. Runs `git add -A && git commit -m "..."`
+3. Pushes to GitHub
+4. **Silent on success** (empty stdout + exit 0)
+5. **Error output on failure**
+
+### Cron Setup
+
+```bash
+hermes cron create \
+  --name "hermes-state-github-sync" \
+  --schedule "0 3 * * *" \
+  --script hermes-state-sync.sh \
+  --no-agent \
+  --deliver local
+```
+
+### Pitfalls
+
+**GitHub Push Protection (Secret Scanning):**
+GitHub blocks pushes containing `ghp_` tokens. If the initial sync fails with "GH013: Push cannot contain secrets":
+```bash
+grep -rn 'ghp_' /path/to/local/clone/ --include='*.md'
+```
+Redact the PAT in both the synced copy AND the source skill file under `~/.hermes/skills/`.
+
+**No changes → silent exit:**
+If nothing changed since last sync, the script exits 0 without committing. No empty commits.
+
+**Large files bloating the repo:**
+Exclude binaries in `.gitignore`. If something slipped through:
+```bash
+echo "*.db" >> .gitignore
+git rm --cached *.db
+git commit -m "Remove DB files from repo"
+git push origin main
+```
+
+**Repair after server rebuild:**
+```bash
+cd /root && git clone https://github.com/<user>/<repo>.git
+cp -r <repo>/skills/* ~/.hermes/skills/
+cp <repo>/config/* ~/.hermes/
+```

@@ -106,3 +106,55 @@ hermes -p hermes_lang cron run [JOB_ID]
 ```
 
 Pruefe ob Lektion auf Ch_hermster_lang ankommt.
+
+---
+
+## Polish Implementation — Daily DiSSS Lessons
+
+For the `hermes_lang` profile, the DiSSS method is applied to Polish with a daily lesson format delivered via Telegram. This section documents the Polish-specific lesson structure.
+
+### Lesson Format (5 sections)
+
+Each daily lesson follows this exact structure:
+
+#### 1. Selection (Top 500)
+Choose **10 high-frequency Polish words/phrases** from the top 500. Draw from the full spectrum. Build on previously covered words.
+
+#### 2. Sentence Mining (n+1)
+For each word, give one ultra-short n+1 sentence:
+- Subject + Verb + Object (max 6 words)
+- Max 1 unknown word per sentence
+- Format: **Word** `Translation` + Sentence (Translation)
+
+#### 3. The Grammar Hook
+- **For verbs:** Aspect pair (imperfective/perfective), e.g. `robic / zrobic`
+- **For nouns:** Explain case ending change (which case)
+- Max 2 sentences
+
+#### 4. Interactive Quiz
+10 fill-in-the-blank exercises: `______ ...` (base form – solution)
+
+#### 5. Answer Key
+After the quiz: all 10 solutions as a numbered list.
+- Format: `1. Solution` – short hint (1 sentence), why this form is correct
+
+### Layout (Telegram)
+- **Bold** for Polish, `monospace` for German
+- Separator `---` between blocks
+- Max 2 sentences per explanation
+
+### After Each Lesson
+- Obsidian log: `~/obsidian-vault/Lernen/Polnisch/04-Tagebuch.md`
+- Increment lesson number
+- TTS with 5 sentences (optional)
+
+### Polish-Specific Pitfalls
+| Issue | Cause | Fix |
+|-------|-------|-----|
+| **Obsidian diary overwritten on vault refresh** | `04-Tagebuch.md` is on GDrive. `rclone sync` overwrites local entries | Recreate diary entry manually after vault refresh |
+| **Gateway must be running** | Cron only ticks when `hermes_lang` gateway is active | `hermes profile list` check; `systemctl reset-failed hermes-gateway-hermes_lang && systemctl start ...` |
+| **Skill reference in cron can lose jobs** | Cron jobs with `skills:` field vanish after git pull + scheduler restart | Embed format instructions inline in prompt (as done here) — the `skills:` field is redundant |
+| **Profilename is `hermes_lang`** (underscore) | Wrong profile name breaks paths | Always use `hermes_lang`, not `hermes-lang` |
+| **Never repeat yesterday's words** | No deduplication built in | Track last 50 words in the Obsidian diary; skip any word used in the last 2 lessons |
+| **Max 1 new word per sentence** | Too many unknowns makes mining useless | Enforce n+1 strictly |
+| **Always explain in German** | Learner needs L1 translations | All explanations in German, not Polish
