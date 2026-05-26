@@ -424,3 +424,65 @@ Lektion #6 abgeschlossen.
 10. **jesz**
 
 Lektion #7 abgeschlossen.
+
+
+### 📚 Polnisch Lektion #8
+
+#### 1. Słownictwo (Top 500)
+- **książka** `Buch`
+- **o** `über`
+- **robić** `machen`
+- **praca** `Arbeit`
+- **dziecko** `Kind`
+- **woda** `Wasser`
+- **rozumieć** `verstehen`
+- **móc** `können`
+- **dla** `für`
+- **czas** `Zeit`
+
+#### 2. Sentence Mining (n+1)
+- **Ta **książka** jest ciekawa.** `Dieses Buch ist interessant.`
+- **On **robi** dużo pracy.** `Er macht viel Arbeit.`
+- **Czy możesz to **zrozumieć**?** `Kannst du das verstehen?`
+- **Daj mi **wodę**, proszę.** `Gib mir bitte Wasser.`
+- **Nie **mogę** teraz iść.** `Ich kann jetzt nicht gehen.`
+- **To jest **dla** ciebie.** `Das ist für dich.`
+- **Ile masz **czasu**?** `Wie viel Zeit hast du?`
+- **On **mówił** mi prawdę.** `Er sagte mir die Wahrheit.`
+- **Muszę **kupić** chleb.** `Ich muss Brot kaufen.`
+- **Widzę tę **kobietę**.** `Ich sehe diese Frau.`
+
+#### 3. Gramatyka: Aspekt & Przypadki
+**Aspekt (Verben):**
+- mówić (imperf.) $\rightarrow$ **powiedzieć** (perf.)
+- kupować (imperf.) $\rightarrow$ **kupić** (perf.)
+
+**Przypadki (Nomen/Präpositionen):**
+- szkoła $\rightarrow$ **ze szkoły**
+- kobieta $\rightarrow$ **widzę kobietę**
+
+#### 4. Quiz: Lueckentext
+1. To jest moja ________.
+2. Nie ________ ja teraz.
+3. Piję ________.
+4. To jest ________ ciebie.
+5. Ile masz ________?
+6. Czy to jest Twoja ________?
+7. On ________ prawdę.
+8. Muszę ________ chleb.
+9. Widzę tę ________.
+10. Idę ________ szkoły.
+
+#### 5. Rozwiązania
+1. książka
+2. mogę
+3. wodę
+4. dla
+5. czasu
+6. praca
+7. powiedział
+8. kupić
+9. kobietę
+10. ze
+
+Lektion #8 abgeschlossen.

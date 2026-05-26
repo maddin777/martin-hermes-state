@@ -1,0 +1,59 @@
+{
+  "llm_models": {
+    "theme_discovery": "google/gemini-2.0-flash-001",
+    "thesis_monitor": "google/gemini-2.0-flash-001",
+    "beneficiary_a": "grok-lite",
+    "beneficiary_b": "google/gemini-2.0-flash-001",
+    "beneficiary_c": "meta-llama/llama-3.3-70b-instruct",
+    "pm_classifier": "google/gemini-2.0-flash-001"
+  },
+  "embedding": {
+    "provider": "openrouter",
+    "model": "openai/text-embedding-3-small",
+    "fallback_provider": "sentence-transformers",
+    "fallback_model": "all-MiniLM-L6-v2"
+  },
+  "thresholds": {
+    "min_market_cap_eur": 500000000,
+    "min_avg_volume_eur": 500000,
+    "max_open_positions": 8,
+    "max_themes_in_portfolio": 3,
+    "max_portfolio_allocation": 0.70,
+    "min_eur_allocation": 0.40,
+    "min_hold_days": 21,
+    "thesis_weakening_days_to_alert": 3,
+    "drawdown_soft_warning_pct": 0.10,
+    "drawdown_hard_restriction_pct": 0.15,
+    "drawdown_auto_pause_pct": 0.20,
+    "reactivation_cooling_off_hours": 72,
+    "trailing_stop_normal_pct": 0.25,
+    "trailing_stop_hard_mode_pct": 0.15,
+    "atr_emergency_stop_multiplier": 2.0,
+    "theme_merge_auto_similarity": 0.88,
+    "theme_merge_review_similarity": 0.75,
+    "news_volltext_ttl_days": 30,
+    "pm_min_total_volume_usd": 100000,
+    "pm_min_24h_volume_usd": 5000,
+    "pm_significant_move_delta_7d": 0.10
+  },
+  "factor_weights": {
+    "momentum": 0.30,
+    "quality": 0.25,
+    "value": 0.20,
+    "revision": 0.15,
+    "lowvol": 0.10
+  },
+  "conviction_weights": {
+    "llm_consensus": 0.30,
+    "factor_composite": 0.25,
+    "timing": 0.20,
+    "theme_momentum": 0.15,
+    "asymmetry_bonus": 0.10
+  },
+  "pm_conviction_multipliers": {
+    "supporting": 1.10,
+    "mixed": 1.0,
+    "contradicting": 0.85,
+    "no_data": 1.0
+  }
+}

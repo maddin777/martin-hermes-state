@@ -7,9 +7,9 @@ providers: {}
 fallback_providers: []
 credential_pool_strategies: {}
 toolsets:
-  - hermes-cli
-  - vision
-  - web
+- hermes-cli
+- vision
+- web
 agent:
   max_turns: 90
   gateway_timeout: 1800
@@ -217,6 +217,11 @@ display:
   compact: false
   personality: ''
   resume_display: full
+  resume_exchanges: 10
+  resume_max_user_chars: 300
+  resume_max_assistant_chars: 200
+  resume_max_assistant_lines: 3
+  resume_skip_tool_only: true
   busy_input_mode: interrupt
   tui_auto_resume_recent: false
   bell_on_complete: false
@@ -244,9 +249,9 @@ display:
   runtime_footer:
     enabled: false
     fields:
-      - model
-      - context_pct
-      - cwd
+    - model
+    - context_pct
+    - cwd
   copy_shortcut: auto
   background_process_notifications: all
   tool_progress: all
@@ -326,9 +331,9 @@ delegation:
   orchestrator_enabled: true
   subagent_auto_approve: false
   default_toolsets:
-    - terminal
-    - file
-    - web
+  - terminal
+  - file
+  - web
 prefill_messages_file: ''
 goals:
   max_turns: 20
@@ -390,19 +395,19 @@ approvals:
   mcp_reload_confirm: true
   destructive_slash_confirm: false
 command_allowlist:
-  - stop/restart hermes gateway (kills running agents)
-  - shell command via -c/-lc flag
-  - recursive chown to root
-  - stop/restart system service
-  - pipe remote content to shell
-  - overwrite system config
-  - script execution via -e/-c flag
-  - overwrite project env/config via redirection
-  - delete in root path
-  - kill hermes/gateway process (self-termination)
-  - overwrite system file via redirection
-  - script execution via heredoc
-  - in-place edit of system config
+- stop/restart hermes gateway (kills running agents)
+- shell command via -c/-lc flag
+- recursive chown to root
+- stop/restart system service
+- pipe remote content to shell
+- overwrite system config
+- script execution via -e/-c flag
+- overwrite project env/config via redirection
+- delete in root path
+- kill hermes/gateway process (self-termination)
+- overwrite system file via redirection
+- script execution via heredoc
+- in-place edit of system config
 quick_commands: {}
 hooks: {}
 hooks_auto_accept: false
@@ -422,7 +427,7 @@ security:
   allow_lazy_installs: true
 cron:
   wrap_response: true
-  max_parallel_jobs:
+  max_parallel_jobs: null
 kanban:
   dispatch_in_gateway: true
   dispatch_interval_seconds: 60
@@ -452,6 +457,10 @@ model_catalog:
   providers: {}
 network:
   force_ipv4: false
+gateway:
+  media_delivery_allow_dirs: []
+  trust_recent_files: true
+  trust_recent_files_seconds: 600
 sessions:
   auto_prune: false
   retention_days: 90
@@ -475,43 +484,54 @@ x_search:
   model: grok-4.20-reasoning
   timeout_seconds: 180
   retries: 2
-_config_version: 23
+secrets:
+  bitwarden:
+    enabled: false
+    access_token_env: BWS_ACCESS_TOKEN
+    project_id: ''
+    cache_ttl_seconds: 300
+    override_existing: true
+    auto_install: true
+    server_url: ''
+paste_collapse_threshold: 5
+paste_collapse_threshold_fallback: 0
+_config_version: 24
 group_sessions_per_user: true
 platform_toolsets:
   cli:
-    - browser
-    - clarify
-    - code_execution
-    - cronjob
-    - delegation
-    - file
-    - image_gen
-    - kanban
-    - memory
-    - messaging
-    - session_search
-    - skills
-    - spotify
-    - terminal
-    - todo
-    - tts
-    - vision
-    - web
-    - x_search
+  - browser
+  - clarify
+  - code_execution
+  - cronjob
+  - delegation
+  - file
+  - image_gen
+  - kanban
+  - memory
+  - messaging
+  - session_search
+  - skills
+  - spotify
+  - terminal
+  - todo
+  - tts
+  - vision
+  - web
+  - x_search
   discord:
-    - hermes-discord
+  - hermes-discord
   homeassistant:
-    - hermes-homeassistant
+  - hermes-homeassistant
   qqbot:
-    - hermes-qqbot
+  - hermes-qqbot
   signal:
-    - hermes-signal
+  - hermes-signal
   slack:
-    - hermes-slack
+  - hermes-slack
   telegram:
-    - hermes-telegram
+  - hermes-telegram
   whatsapp:
-    - hermes-whatsapp
+  - hermes-whatsapp
 plugins:
   hermes-memory-store:
     auto_extract: 'true'
@@ -526,7 +546,7 @@ streaming:
   enabled: false
 known_plugin_toolsets:
   cli:
-    - spotify
+  - spotify
 
 # ── Fallback Model ────────────────────────────────────────────────────
 # Automatic provider failover when primary is unavailable.

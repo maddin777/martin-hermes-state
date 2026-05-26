@@ -1,0 +1,18 @@
+{
+  "queries": [
+    "market moving news today financial",
+    "sector rotation institutional flows",
+    "emerging investment theme structural",
+    "geopolitical risk market impact"
+  ],
+  "premium_domains": [
+    "bloomberg.com",
+    "wsj.com",
+    "reuters.com",
+    "ft.com",
+    "semafor.com"
+  ],
+  "search_depth": "basic",
+  "max_results_per_query": 8,
+  "tavily_free_tier_limit": 800
+}

@@ -1,9 +1,14 @@
-"""Trading Dashboard v4.0 - Mit Sources Admin Interface"""
-import sqlite3, json, os, subprocess, html, re
+"""Trading Dashboard v4.1 - Mit Thematic Investing Interface"""
+import sqlite3, json, os, subprocess, html, re, sys
 from collections import deque
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from urllib.parse import parse_qs, urlparse
 from datetime import datetime
+
+# Pfad fuer thematic-Import
+THEMATIC_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "thematic")
+if THEMATIC_DIR not in sys.path:
+    sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 DB_PATH      = "/root/.hermes/profiles/hermes_trading/skills/trading/data/trading.db"
 CONFIG_PATH  = "/root/.hermes/profiles/hermes_trading/skills/trading/data/strategy_config.json"
@@ -845,6 +850,7 @@ def build_html(data):
     <button class="tab-btn" onclick="showTab('sources')">📡 Quellen</button>
     <button class="tab-btn" onclick="showTab('quality')">📊 Qualität</button>
     <button class="tab-btn" onclick="showTab('cron')">⏰ Cron & Logs</button>
+    <button class="tab-btn" onclick="showTab('thematic')" style="color:#ffd740">🎓 Thematic</button>
 </div>
 
 <!-- Tab: Portfolio -->
@@ -923,25 +929,39 @@ def build_html(data):
     <table style="background:#05050a;">{log_rows}</table>
 </div>
 
-<div class="footer">Auto-Refresh alle 60s | {datetime.now().strftime('%d.%m.%Y %H:%M:%S')} | Hermes Trading v3.2</div>
+<!-- Tab: Thematic -->
+<div id="tab-thematic" class="tab-content">
+    {build_thematic_section()}
+</div>
+
+<div class="footer">Auto-Refresh alle 60s | {datetime.now().strftime('%d.%m.%Y %H:%M:%S')} | Hermes Trading v4.1</div>
 
 <script>
 function showTab(name) {{
     document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-    document.getElementById('tab-' + name).classList.add('active');
-    event.target.classList.add('active');
-    // Tab in URL speichern
+    var el = document.getElementById('tab-' + name);
+    if (el) el.classList.add('active');
+    if (event && event.target) event.target.classList.add('active');
     history.replaceState(null, '', '?tab=' + name);
 }}
 // Tab aus URL laden
-const urlTab = new URLSearchParams(window.location.search).get('tab');
+var urlTab = new URLSearchParams(window.location.search).get('tab');
 if (urlTab) {{
-    const btn = document.querySelector(`[onclick="showTab('${{urlTab}}')"]`);
+    var btn = document.querySelector('[onclick="showTab(\\'' + urlTab.replace(/'/g, "\\'") + '\\')"]');
     if (btn) btn.click();
 }}
 </script>
 </body></html>"""
+
+
+def build_thematic_section():
+    try:
+        from dashboard_thematic import get_thematic_data, build_thematic_html
+        data = get_thematic_data()
+        return build_thematic_html(data)
+    except Exception as e:
+        return f'<div style="color:#ff5252;padding:20px">Thematic-Dashboard nicht verfügbar: {e}</div>'
 
 
 # ─── HTTP Handler ─────────────────────────────────────────────────────────────
@@ -1062,6 +1082,50 @@ class Handler(BaseHTTPRequestHandler):
 
         except Exception as e:
             msg = f"Fehler: {e}"
+
+        # ── Thematic Routes ─────────────────────────────────────────
+        try:
+            if path == "/thematic/config/save":
+                from dashboard_thematic import load_thematic_config, save_thematic_config
+                cfg = load_thematic_config()
+                for key, val in params.items():
+                    if key.startswith("llm_"):
+                        cfg.setdefault("llm_models", {})[key[4:]] = val
+                    elif key.startswith("thresh_"):
+                        cfg.setdefault("thresholds", {})[key[4:]] = float(val)
+                save_thematic_config(cfg)
+                msg = "LLM-Konfiguration gespeichert"; success = True
+
+            elif path == "/thematic/merge/decide":
+                queue_id = int(params.get("queue_id", 0))
+                decision = params.get("decision", "")
+                if queue_id > 0 and decision:
+                    con = sqlite3.connect(DB_PATH)
+                    if decision == "merge":
+                        from dashboard_thematic import db_connect
+                        con2 = db_connect()
+                        row = con2.execute(
+                            "SELECT * FROM theme_merge_queue WHERE id = ?", (queue_id,)
+                        ).fetchone()
+                        if row:
+                            con2.execute(
+                                "UPDATE theme_merge_queue SET status='merged', decided_at=datetime('now'), decided_by='human' WHERE id=?",
+                                (queue_id,)
+                            )
+                            con2.commit()
+                        con2.close()
+                    else:
+                        from dashboard_thematic import db_connect
+                        con2 = db_connect()
+                        con2.execute(
+                            "UPDATE theme_merge_queue SET status='kept_separate', decided_at=datetime('now'), decided_by='human' WHERE id=?",
+                            (queue_id,)
+                        )
+                        con2.commit()
+                        con2.close()
+                    msg = f"Merge-Entscheidung: {decision}"; success = True
+        except Exception as e:
+            msg = f"Thematic-Fehler: {e}"
 
         # Redirect zurück mit Tab
         redirect_url = "/?tab=sources"

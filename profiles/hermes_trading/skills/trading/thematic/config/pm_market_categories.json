@@ -1,0 +1,32 @@
+[
+  {
+    "id": "israel-iran-ceasefire-2026",
+    "weight": 0.25,
+    "direction": "negative"
+  },
+  {
+    "id": "russia-nato-direct-confrontation-2026",
+    "weight": 0.20,
+    "direction": "positive"
+  },
+  {
+    "id": "taiwan-china-crisis-2026",
+    "weight": 0.20,
+    "direction": "positive"
+  },
+  {
+    "id": "us-tariffs-china-40pct-2026",
+    "weight": 0.15,
+    "direction": "positive"
+  },
+  {
+    "id": "north-korea-nuclear-test-2026",
+    "weight": 0.10,
+    "direction": "positive"
+  },
+  {
+    "id": "middle-east-major-escalation-2026",
+    "weight": 0.10,
+    "direction": "positive"
+  }
+]

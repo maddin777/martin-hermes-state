@@ -8,6 +8,7 @@ Watchlist Manager
 import sqlite3
 import json
 import os
+import re
 import math
 import yfinance as yf
 import pandas_ta as ta
@@ -202,6 +203,178 @@ def get_technical_score(ticker):
     except Exception as e:
         return None, None
 
+# ── Normalisierung (Alias-Tabelle + Legal-Suffix-Regex) ──────────────────────
+NORMALIZE_ALIASES = {
+    # LLM-Tippfehler → Canonical
+    "palantier": "Palantir", "palanteer": "Palantir",
+    "reinmetall": "Rheinmetall", "reimmetall": "Rheinmetall",
+    "corweef": "CoreWeave", "core weave": "CoreWeave",
+    "nebiuz": "Nebius",
+    "enhropic": "Anthropic", "entropic": "Anthropic", "anropic": "Anthropic",
+    "tüssenkrup": "ThyssenKrupp", "tüssengrup": "ThyssenKrupp",
+    "morgen stanley": "Morgan Stanley",
+    "rocketlab": "Rocket Lab",
+    "soundhoundai": "SoundHound AI", "soundhound": "SoundHound AI",
+    "solar edge": "SolarEdge",
+    "johnson und johnson": "Johnson & Johnson",
+    "albe male": "Alphabet",  # LLM-Halluzination
+    "poo gold": "Poo Gold",  # Nischen-Aktie
+    # Bekannte Name-Varianten → Canonical
+    "meta platforms": "Meta", "meta platforms inc.": "Meta",
+    "nvidia corporation": "NVIDIA", "nvidia corp.": "NVIDIA",
+    "alphabet inc.": "Alphabet", "alphabet inc. (google)": "Alphabet",
+    "micron technology": "Micron",
+    "advanced micro devices": "Advanced Micro Devices",
+    "intel corporation": "Intel",
+    "cerebras systems": "Cerebras", "cerebras systems inc.": "Cerebras",
+    "take two interactive": "Take-Two Interactive",
+    "d-wave systems": "D-Wave Quantum", "d-wave systems inc.": "D-Wave Quantum",
+    "d-wave quantum inc.": "D-Wave Quantum",
+    "d w v quantum": "D-Wave Quantum",
+    "jp morgan": "JPMorgan", "jp morgan chase": "JPMorgan",
+    "jpmorgan chase": "JPMorgan",
+    "goldman sachs group": "Goldman Sachs",
+    "berkshire hathaway inc.": "Berkshire Hathaway",
+    "costco wholesale": "Costco", "costco wholesale corporation": "Costco",
+    "amazon.com": "Amazon", "amazon.com inc.": "Amazon",
+    "apple inc.": "Apple",
+    "microsoft corporation": "Microsoft",
+    "meta platforms inc.": "Meta",
+    "salesforce inc.": "Salesforce",
+    "netflix inc.": "Netflix",
+    "intuit inc.": "Intuit",
+    "paypal holdings": "PayPal",
+    "snowflake inc.": "Snowflake",
+    "walmart inc.": "Walmart",
+    "mcdonald's corporation": "McDonald's",
+    "pepsico inc.": "PepsiCo",
+    "coca-cola co.": "Coca-Cola",
+    "palo alto networks": "Palo Alto",
+    "sk hynix inc.": "SK Hynix",
+    "softbank group": "SoftBank", "softbank group corp.": "SoftBank",
+    "mara holdings": "MARA",
+    "marathon digital holdings": "MARA", "marathon digital holdings inc.": "MARA",
+    "rheinmetall ag": "Rheinmetall",
+    "infineon technologies": "Infineon", "infineon technologies ag": "Infineon",
+    "siemens ag": "Siemens", "siemens aktiengesellschaft": "Siemens",
+    "basf se": "BASF",
+    "bayer ag": "Bayer",
+    "mercedes-benz group": "Mercedes-Benz",
+    "adidas ag": "Adidas",
+    "zaland se": "Zalando", "zalandos e": "Zalando",
+    "commerzbank ag": "Commerzbank",
+    "deutsche bank ag": "Deutsche Bank",
+    "delivery hero se": "Delivery Hero",
+    "dws group gmbh & co. kgaa": "DWS",
+    "henkel ag & co. kgaa": "Henkel",
+    "cts eventim ag & co. kgaa": "CTS Eventim",
+    "stroer se & co. kgaa": "Ströer",
+    "kws saat se & co. kgaa": "KWS SAAT",
+    "ottobock se & co. kgaa": "Ottobock",
+    "münchener rück": "Münchner Rück", "munich re": "Münchner Rück",
+    "hannover rück": "Hannover Rück",
+    "united health": "UnitedHealth",
+    "mercado libre": "MercadoLibre",
+    "alibaba group": "Alibaba",
+    "uber technologies": "Uber",
+    "cisco systems": "Cisco",
+    "mastercard inc.": "Mastercard",
+    "visa inc.": "Visa",
+    "the trade desk": "Trade Desk",
+    "booking holdings": "Booking Holdings",
+    "by company": "BYD",
+    "taiwan semiconductor": "TSMC",
+    "taiwan semiconductor manufacturing company": "TSMC",
+    "taiwan semiconductor manufacturing company limited": "TSMC",
+    "semiconductor manufacturing international corporation": "SMIC",
+    "johnson & johnson (jnj)": "Johnson & Johnson",
+    "linde plc": "Linde",
+    "arm holdings plc": "ARM",
+    "standard chartered plc": "Standard Chartered",
+    "nextracker inc.": "Nextracker",
+    "palantir technologies": "Palantir",
+    "microstrategy incorporated": "MicroStrategy",
+    "intuitive surgical": "Intuitive Surgical",
+    "marvell technology": "Marvell",
+    "marvell technology, inc.": "Marvell",
+    "on holding": "On",
+    "viking holdings ltd": "Viking Holdings",
+    "schneider electric se": "Schneider Electric",
+    "upstart holdings, inc. (upst)": "Upstart",
+    # Spezialfälle zusätzlich
+    "lvmh moët hennessy louis vuitton": "LVMH",
+    "lvmh moet hennessy louis vuitton": "LVMH",
+    "alphabet inc. (google)": "Alphabet",  # doppelt gemoppelt
+    "john deere": "Deere & Company",
+    "scalable capital": "Scalable Capital",  # nicht börsennotiert, aber keep
+    "delta airlines": "Delta Air Lines",
+    "itaú": "Itaú Unibanco",
+    "merck kgaa": "Merck",
+    "jabil inc.": "Jabil",
+    "united rentals": "United Rentals",
+    "royal caribbean cruises ltd.": "Royal Caribbean",
+    "mastercard inc.": "Mastercard",
+    # Case-Varianten (LLM liefert gemischt)
+    "nvidia": "NVIDIA",
+    "amd": "AMD",
+    "ibm": "IBM",
+    "cisco": "Cisco",
+    "intc": "Intel",
+    "msft": "Microsoft",
+    "googl": "Alphabet",
+    "meta": "Meta",  # falls mal "Meta" groß in der DB
+}
+
+LEGAL_SUFFIX_RE = re.compile(
+    r"(?:\s*[,/]\s*)?"
+    r"(?:"
+    r"AG(?:\s+&?\s*Co\.?\s*(?:KGaA|KG|OHG))?"
+    r"|SE|GmbH(?:\s*&\s*Co\.?\s*(?:KG|KGaA|OHG))?"
+    r"|PLC|plc|Inc\.|Inc|Corporation|Corp\.?|Corp"
+    r"|Ltd\.?|Limited|LLC|LLP|LP|NV|N\.V\.|SA|S\.A\.|AB|OY"
+    r"|S\.p\.A\.|Sp\.? z\.?o\.?o\.?|JSC|PJSC|OJSC"
+    r"|Holdings?|Group|Co\.|Company"
+    r"|Class\s+[ABCDE]|Common\s+Stock"
+    r")(?:\.|\s)*$",
+    re.IGNORECASE
+)
+
+BRACKET_NOTE_RE = re.compile(
+    r"\s*\((?:nicht\s+börsennotiert|Marke\s+von[^)]*|privat[^)]*|Teil\s+von[^)]*)\)\s*$",
+    re.IGNORECASE
+)
+
+
+def normalize_company_name(name):
+    """Normalisiert Unternehmensnamen zum Abgleich von Duplikaten.
+
+    1. Strip Klammer-Notizen: '(nicht börsennotiert)', '(Marke von ...)'
+    2. Strip Legal-Suffixe: 'AG', 'Inc.', 'Corporation', 'Ltd', 'PLC', 'SE', 'GmbH & Co. KGaA' usw.
+    3. Strip 'The '-Präfix (optional)
+    4. Alias-Resolution via NORMALIZE_ALIASES
+    5. Trim whitespace
+    """
+    n = name.strip()
+    # Klammer-Notizen entfernen
+    n = BRACKET_NOTE_RE.sub("", n)
+    # 'bei Do?' u.ä. aus Klammern im Namen
+    n = re.sub(r"\s*\([^)]*[?][^)]*\)\s*$", " ", n)
+    # Legal-Suffixe entfernen (iterativ für verschachtelte: "DWS Group GmbH & Co. KGaA")
+    prev = None
+    while prev != n:
+        prev = n
+        n = LEGAL_SUFFIX_RE.sub("", n).strip()
+    # 'The '-Präfix entfernen
+    n = re.sub(r"^The\s+", "", n)
+    # Whitespace normalisieren
+    n = re.sub(r"\s+", " ", n).strip()
+    # Alias-Resolution (lowercase-Key)
+    lower = n.lower()
+    if lower in NORMALIZE_ALIASES:
+        return NORMALIZE_ALIASES[lower]
+    return n
+
+
 def resolve_ticker(name):
     """Einfache Ticker-Auflösung via yfinance Search."""
     KNOWN = {
@@ -227,10 +400,16 @@ def resolve_ticker(name):
         "synopsys": "SNPS", "autodesk": "ADSK",
         "texas instruments": "TXN", "ibm": "IBM",
         "sandisk": "SNDK", "qualcomm": "QCOM",
+        "take-two interactive": "TTWO", "d-wave quantum": "QBTS",
+        "lvmh": "MC.PA", "linde": "LIN",
     }
     key = name.lower().strip()
     if key in KNOWN:
         return KNOWN[key]
+    # Auch nach Normalisierung prüfen
+    norm = normalize_company_name(name).lower().strip()
+    if norm != key and norm in KNOWN:
+        return KNOWN[norm]
     try:
         results = yf.Search(name, max_results=3)
         quotes  = results.quotes
@@ -269,6 +448,83 @@ def get_sector(ticker):
     except:
         pass
     return "Other"
+
+
+def normalize_mentions(con):
+    """Dedupliziert watchlist_mentions.name via normalize_company_name().
+
+    Findet Duplikate wie 'Meta'/'Meta Platforms'/'Meta Platforms Inc.',
+    merged sie auf den kürzesten/gebräuchlichsten Namen durch UPDATE.
+    """
+    import re as _re  # shadow import für re innerhalb der Funktion
+
+    rows = con.execute(
+        "SELECT DISTINCT name FROM watchlist_mentions ORDER BY name"
+    ).fetchall()
+    names = [r["name"] for r in rows]
+    print(f"  🔍 Normalisiere {len(names)} unique Namen...", flush=True)
+
+    # Gruppiere nach normalisiertem Namen
+    groups = {}  # normalized -> [original_names]
+    for n in names:
+        norm = normalize_company_name(n)
+        groups.setdefault(norm, []).append(n)
+
+    # Merge: canonical = kürzester Name pro Gruppe
+    merged = 0
+    for norm, originals in groups.items():
+        if len(originals) <= 1:
+            continue
+        # Canonical = kürzester, außer originals enthält den norm-Wortlaut
+        canonical = min(originals, key=len)
+        for norm_n in originals:
+            if norm_n.lower() == norm.lower():
+                canonical = norm_n
+                break
+        # Gibt es einen der auf "Technologies/Systems/Interactive" endet? Den bevorzugen
+        for n in originals:
+            for kw in ["Technologies", "Systems", "Interactive", "Group"]:
+                if n.lower().endswith(kw.lower()) and len(n) < len(canonical):
+                    canonical = n
+        canonical = min(originals, key=len)  # reset: nimm kürzesten
+        # Aber bevorzuge den norm-Wortlaut falls vorhanden
+        cand = [n for n in originals if n.lower() == norm.lower()]
+        if cand:
+            canonical = cand[0]
+
+        # UPDATE alle Duplikate auf canonical name
+        for orig in originals:
+            if orig == canonical:
+                continue
+            try:
+                con.execute(
+                    "UPDATE watchlist_mentions SET name=? WHERE name=?",
+                    (canonical, orig)
+                )
+                merged += 1
+            except sqlite3.IntegrityError:
+                # UNIQUE-Konflikt: (name, video_id) existiert bereits für canonical
+                # -> orig ist ein Duplikat aus demselben Video -> löschen
+                deleted = con.execute(
+                    "DELETE FROM watchlist_mentions WHERE name=? AND "
+                    "name != ? AND EXISTS (SELECT 1 FROM watchlist_mentions AS w2 "
+                    "WHERE w2.name=? AND w2.video_id=watchlist_mentions.video_id)",
+                    (orig, canonical, canonical)
+                ).rowcount
+                if deleted:
+                    merged += 1
+            except Exception as e:
+                print(f"  ⚠ Merge-Fehler '{orig}' → '{canonical}': {e}", flush=True)
+
+        print(f"  🔗 {len(originals)} → '{canonical}'  "
+              f"(zusammengeführt: {', '.join(originals)})", flush=True)
+
+    con.commit()
+    if merged:
+        print(f"  ✓ {merged} Mentions auf kanonische Namen aktualisiert", flush=True)
+    else:
+        print(f"  ✓ Keine Duplikate gefunden", flush=True)
+    return merged
 
 
 def main():
@@ -365,6 +621,9 @@ def main():
 
     con.commit()
     print(f"  ✓ {new_mentions} neue Mentions gespeichert", flush=True)
+
+    # 4b. Mention-Deduplizierung (vor Aggregation)
+    normalize_mentions(con)
 
     # 5. Watchlist aggregieren
     mentions = con.execute("""
@@ -475,7 +734,26 @@ def main():
               f"Conv:{w['conviction_score']:.2f}  "
               f"Bear:{w['conviction_score_bear']:.2f}  "
               f"Tech:{w['tech_score'] or '–'}  "
-              f"{w['tech_direction'] or '–'}")
+              f"{w['tech_direction'] or '-'}")
+
+    # 8. '?' Flagging: Unresolved Ticker reportieren
+    unresolved = con.execute("""
+        SELECT name, mention_count, conviction_score
+        FROM watchlist
+        WHERE status='watching' AND ticker IS NULL
+        ORDER BY mention_count DESC
+    """).fetchall()
+
+    if unresolved:
+        print(f"\n❓ UNRESOLVED TICKER ({len(unresolved)} Eintrage ohne Ticker):")
+        print(f"  {'Name':30} {'Mentions':8} {'Conv':6}")
+        print("  " + "-" * 48)
+        for u in unresolved[:15]:  # Top 15
+            print(f"  {u['name']:30} {u['mention_count']:4}x  "
+                  f"Conv:{u['conviction_score']:.2f}")
+        if len(unresolved) > 15:
+            print(f"  ... und {len(unresolved) - 15} weitere (insg. {len(unresolved)})")
+        print()
 
     con.close()
     print("\n✅ Watchlist Manager abgeschlossen", flush=True)
