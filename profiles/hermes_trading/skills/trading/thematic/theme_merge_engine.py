@@ -38,7 +38,13 @@ def auto_merge_theme(con, new_data: dict, existing_id: int):
         new_srcs = json.loads(new_sources_raw) if isinstance(new_sources_raw, str) else new_sources_raw
     except (json.JSONDecodeError, TypeError):
         new_srcs = []
-    merged_sources = list(set(old_sources + new_srcs))
+    import json
+    try:
+        old_list = json.loads(old_sources) if isinstance(old_sources, str) else (old_sources or [])
+    except Exception:
+        old_list = []
+    new_list = new_srcs if isinstance(new_srcs, list) else []
+    merged_sources = list(set([s for s in old_list + new_list if isinstance(s, str)]))
 
     # Gewichtetes Mittel Underreported-Score
     old_score = float(existing["underreported_score"] or 0.5)

@@ -14,7 +14,8 @@ DB_PATH      = "/root/.hermes/profiles/hermes_trading/skills/trading/data/tradin
 CONFIG_PATH  = "/root/.hermes/profiles/hermes_trading/skills/trading/data/strategy_config.json"
 SOURCES_PATH = "/root/.hermes/profiles/hermes_trading/skills/trading/config/sources.json"
 YT_MONITOR   = "/root/.hermes/profiles/hermes_trading/skills/trading/scripts/yt_channel_monitor.py"
-LOG_PATH     = "/root/.hermes/profiles/hermes_trading/skills/trading/data/cron.log"
+LOG_PATH          = "/root/.hermes/profiles/hermes_trading/skills/trading/data/cron.log"
+THEMATIC_LOG_PATH = "/root/.hermes/profiles/hermes_trading/skills/trading/data/thematic.log"
 
 # ─── Config ──────────────────────────────────────────────────────────────────
 
@@ -206,6 +207,15 @@ def get_log_lines():
         return list(lines)
     except: return ["Log nicht verfügbar"]
 
+def get_thematic_log_lines():
+    try:
+        lines = deque(maxlen=100)
+        with open(THEMATIC_LOG_PATH, 'r', encoding='utf-8') as f:
+            for line in f:
+                if line.strip(): lines.append(line.rstrip('\n'))
+        return list(lines)
+    except: return ["Thematic Log nicht verfügbar — noch kein Run heute"]
+
 # ─── Data ────────────────────────────────────────────────────────────────────
 
 def get_data():
@@ -293,7 +303,7 @@ def get_data():
         "regime": regime_row,
         "watchlist": watchlist, "open_pos": [dict(p) for p in open_pos],
         "closed": [dict(p) for p in closed], "cfg": cfg,
-        "cron_jobs": get_cron_jobs(), "log_lines": get_log_lines(),
+        "cron_jobs": get_cron_jobs(), "log_lines": get_log_lines(), "thematic_log_lines": get_thematic_log_lines(),
         "sources": load_sources(), "yt_channels": get_yt_channels(),
         "channel_stats": channel_stats,
         "benchmark": benchmark_latest,
@@ -759,6 +769,19 @@ def build_html(data):
     for line in data["log_lines"]:
         style = "color:#00e676;font-weight:bold" if "===" in line else "color:#2196f3;font-weight:bold" if "---" in line else ""
         log_rows += f'<tr><td style="font-family:monospace;padding:5px 10px;font-size:0.82em;{style}">{html.escape(line)}</td></tr>'
+    thematic_log_rows = ""
+    for line in data.get("thematic_log_lines", []):
+        if "DONE" in line or "✅" in line:
+            style = "color:#00e676;font-weight:bold"
+        elif "ERROR" in line or "✗" in line or "Fehler" in line:
+            style = "color:#ff5252;font-weight:bold"
+        elif "===" in line or "---" in line or "START" in line:
+            style = "color:#ffd740;font-weight:bold"
+        elif "⚠" in line:
+            style = "color:#ff9800"
+        else:
+            style = ""
+        thematic_log_rows += f'<tr><td style="font-family:monospace;padding:5px 10px;font-size:0.82em;{style}">{html.escape(line)}</td></tr>'
 
     rc = "color:#00e676" if s["total_return"]>=0 else "color:#ff5252"
 
@@ -925,8 +948,10 @@ def build_html(data):
         <th>Beschreibung</th><th>Letzter Run</th><th>Status</th></tr>
         {cron_rows}
     </table>
-    <h2>📜 System-Logs (letzte 50 Einträge)</h2>
+    <h2>📜 System-Logs — Klassischer Bot (letzte 50 Einträge)</h2>
     <table style="background:#05050a;">{log_rows}</table>
+    <h2 style="margin-top:30px">🎯 Thematic Bot Logs (letzte 100 Einträge)</h2>
+    <table style="background:#05050a;">{thematic_log_rows}</table>
 </div>
 
 <!-- Tab: Thematic -->

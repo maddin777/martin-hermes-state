@@ -393,6 +393,20 @@
       "category": "technical",
       "weight": 1.2,
       "enabled": true
+    },
+    {
+      "handle": "Smart_Money",
+      "name": "Smart Money Crypto",
+      "category": "investor",
+      "weight": 1.2,
+      "enabled": true
+    },
+    {
+      "handle": "asklivermore",
+      "name": "asklivermore",
+      "category": "investor",
+      "weight": 1.2,
+      "enabled": true
     }
   ],
   "fred_indicators": [

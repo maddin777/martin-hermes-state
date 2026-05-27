@@ -1,14 +1,17 @@
 ---
 name: name-normalization-dedup
 description: >-
-  Normalize entity names (company names, person names, product names) in SQLite
-  for deduplication. Regex strips legal suffixes and annotation brackets;
-  alias map resolves LLM typos and canonical-form variants; SQL merge handles
-  UNIQUE-constraint conflicts gracefully.
+  Normalize entity names AND resolve stock ticker symbols in SQLite. Three-layer
+  approach: alias map fixes LLM typos, regex strips legal suffixes, SQL merge
+  handles UNIQUE conflicts. Extended by yfinance Search for bulk ticker lookup
+  of unknown companies. Covers private-company detection, subsidiary→parent mapping,
+  and LLM hallucination cleanup.
 trigger:
   - "User says 'deduplicate', 'normalize names', 'clean up duplicates'"
+  - "User says 'resolve tickers', '? ticker', 'abräumen', 'fix tickers'"
   - "Database has variant names for same entity (e.g. 'Meta'/'Meta Platforms'/'Meta Platforms Inc.')"
-  - "LLM output contains typos or inconsistent name formatting"
+  - "Database has entries with NULL or '?' ticker symbols"
+  - "LLM output contains typos, inconsistent name formatting, or hallucinated companies"
   - "Working with company names, stock tickers, or entity identifiers"
 ---
 
@@ -126,3 +129,25 @@ Pattern:
 # case normalization
 "nvidia": "NVIDIA",
 ```
+
+## Ticker Resolution
+
+After names are normalized, bulk-resolve ticker symbols using the three-layer approach documented in `references/ticker-resolution.md`:
+
+1. **Hard Map** → known typos, private companies, indices, subsidiaries
+2. **yfinance Search** → fuzzy lookup for unknown companies
+3. **Drop** → unresolvable entries (hallucinations)
+
+### Mention Date Handling
+
+When writing resolved tickers to a signal/mention tracking pipeline, use the **processing date** (datetime.now()), NOT the original publication date. This ensures daily reports show what was processed today:
+
+```python
+# BAD: uses original publication date
+mention_date = source.get("date", datetime.now().strftime("%Y%m%d"))
+
+# GOOD: always uses processing date
+mention_date = datetime.now().strftime("%Y-%m-%d")
+```
+
+The publication-date approach causes daily reports to show 0 new companies when all processed content was published on prior days. The signal-pipeline report typically runs at 05:00 and compares today vs yesterday — it needs the processing date to show meaningful results.

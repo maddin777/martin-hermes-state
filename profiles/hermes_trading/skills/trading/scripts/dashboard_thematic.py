@@ -18,7 +18,7 @@ CONFIG_PATH = os.path.join(THEMATIC_DIR, "config", "thematic_config.json")
 TEMPLATE_DIR = os.path.join(os.path.dirname(__file__), "templates", "thematic")
 
 DB_PATH_ABS = os.path.join(
-    os.path.dirname(os.path.abspath(__file__)), "data", "trading.db"
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "trading.db"
 )
 
 
@@ -95,8 +95,11 @@ def get_thematic_data():
         SELECT tsl.*, p.name as position_name
         FROM thesis_status_log tsl
         LEFT JOIN positions p ON tsl.position_id = p.id
+        WHERE tsl.id IN (
+            SELECT MAX(id) FROM thesis_status_log
+            GROUP BY ticker
+        )
         ORDER BY tsl.check_date DESC, tsl.ticker
-        LIMIT 40
     """).fetchall()]
 
     # Prediction Markets

@@ -76,7 +76,7 @@ def main():
         ).fetchall()
     )
     open_pnl = sum(
-        p.get("pnl_eur") or 0 for p in con.execute(
+        p["pnl_eur"] or 0 for p in con.execute(
             "SELECT pnl_eur FROM positions WHERE status = 'open'"
         ).fetchall()
     )

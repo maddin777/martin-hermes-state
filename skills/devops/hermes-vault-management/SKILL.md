@@ -130,6 +130,20 @@ Scan newly synced files in trading-relevant directories: `boerse/`, `Trading/`, 
 - Create new wiki pages for new concepts
 - Maintain wikilinks
 
+#### Trading Data Quality
+
+When the Watchlist shows a spike in unresolved "?" tickers in its data-quality section, use `references/ticker-resolution-protocol.md` to bulk-resolve them: extract from `trading.db`, categorize (typo / private / hallucination / real), resolve via hard-coded map + yfinance Search, update the database, and register new aliases in `watchlist_manager.py NORMALIZE_ALIASES` to prevent recurrence.
+
+#### Derived Page Auto-Refresh
+
+When creating a wiki page derived from a source file (e.g., `wiki/concepts/Exit Management.md` from `Projekte/Hermes_Trading_Skill_Erklaerung.md`):
+
+1. **Always update the nightly cron prompt** to include a timestamp comparison check on subsequent runs:
+   - Compare `mtime` of source file vs wiki page
+   - If source is newer, reload and update the wiki page
+2. **Update `trading-index.md`** to add a wikilink to the new page
+3. **Track the check in the nightly report** output
+
 ### B — Out-of-the-Box Thinking (Weiterdenken)
 
 Scan ALL new files across: `Geldverdienen/`, `boerse/`, `hermes/`, `Trading/`, `Clippings/`, `raw/`
@@ -183,7 +197,72 @@ When an article brings new insights AND needs new wiki entries — do BOTH. Not 
 └── raw/                  # Raw data
 ```
 
+### D — Trading Pipeline Diagnostics
+
+The vault-insights pipeline overlaps with the trading cron pipeline (02:00–05:00). When the nightly report shows `0` for Signal-Pipeline or other anomalies, consult `references/trading-pipeline-diagnostics.md`:
+- Date semantics (publication date vs processing date — most common reason for "0")
+- Reading cron.log for script failures (DB lock, crashes)
+- Pipeline recovery steps
+
+---
+
+## Cross-Session Context Recovery
+
+When the user references proposals or suggestions from prior sessions (e.g., "mach Vorschlag 2 und 3"), the nightly cron resets mean you have zero direct context. Use this protocol:
+
+1. **Search session history first** — `session_search(query="Vorschlag [keyword]")` to find the original session
+2. **Read session summaries** — The summaries contain the proposals and their status (implemented/pending)
+3. **If ambiguous, probe deeper** — `session_search` on specific phrases from the summary ("Exit Management", "Auto-Refresh")
+4. **Verify current state** — Check if the proposal was already implemented by inspecting files/db/cron
+5. **Execute** — Implement pending proposals against current state, not the state at proposal time
+
+### Common Cross-Session Patterns
+
+| Pattern | How to handle |
+|---------|--------------|
+| "Vorschlag X kam durch" (was implemented) | Verify implementation is still intact, move on |
+| "Vorschlag Y und Z bitte umsetzen" | Locate original proposals in prior session summaries, implement now |
+| "Das hatte ich doch schonmal vorgeschlagen" | Search by topic, check if any implementation exists, report findings |
+
 ### Pitfalls
+
+- Don't trust session numbers alone (Vorschlag 1/2/3) — read the summaries to confirm what each was
+- Cron-session proposals often end with "Soll ich das jetzt umsetzen?" — if unanswered, treat as pending
+- State may have changed since proposal time — re-evaluate before implementing
+
+---
+
+## Daily Cron Health Monitoring
+
+Since 2026-05-26, a daily health check runs at **08:00** via Hermes Cron (`cron-health-daily`, b0b06693e8f9, Telegram delivery).
+
+### Script
+
+`/root/.hermes/scripts/cron_health.py` — parses the trading system's `cron.log` for today's jobs:
+
+1. **Phase 1 — Tages-Crons:** Scannt das cron.log nach `=== <Datum> === <job> START ===`-Markern von heute. Liest den Block bis zum nächsten START, prüft auf ✅/❌/Traceback.
+2. **Phase 2 — Pipeline-interne Jobs:** Innerhalb des `trading_pipeline`-Blocks werden Sub-Jobs (YouTube Scan, KI Analyse, etc.) via ihre `=== HH:MM:SS job START/DONE/ERROR ===`-Marker erfasst.
+3. **Output:** Telegram-Report mit "Heute: X Jobs | ✅ Y | ❌ Z"
+
+### How it parses
+
+The script matches these log patterns:
+
+```
+=== Tue May 26 02:00:01 CEST 2026 === fundamental_data START ===  (outer cron)
+=== 04:00:02 YouTube Scan START ===                                (pipeline internal)
+=== 04:19:57 Technical Analysis ERROR (exit 1) ===                  (pipeline crash)
+```
+
+It does NOT count Hermes cron jobs (they have their own status tracking).
+
+### Adding to this
+
+If trading system scripts are added/removed from the crontab, `cron_health.py` should autodetect them because it scans for all START markers — no hardcoded list needed.
+
+---
+
+## Operation-Specific Pitfalls
 
 - **Sync check before pipeline**: The bisync runs via cron (global scheduler), not via `sync.sh`. Don't falsely report sync broken because `sync.sh` has a different path.
 - **X Bookmarks (paused)**: SuperGrok is integrated as a news-agent provider, but X Bookmarks access is still unresolved. Skip until further notice.

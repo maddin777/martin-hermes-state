@@ -87,3 +87,24 @@ def search_markets(query: str, min_volume: float = 50_000) -> list:
             })
     return result
 
+
+def fetch_top_movers(min_delta_7d: float = 0.10, limit: int = 10) -> list:
+    """Märkte mit größter 7-Tage-Preisbewegung."""
+    markets = fetch_trending_markets(limit=200, min_volume=100_000)
+    relevant = [m for m in markets if m['category'] not in ('other', 'sport')]
+    # delta_7d berechnen via History
+    result = []
+    for m in relevant[:50]:
+        try:
+            history = fetch_market_history(m['market_id'], interval='1w')
+            if len(history) >= 2:
+                old_price = float(history[-2]['p']) if history[-2]['p'] else 0
+                new_price = m['current_yes_price']
+                delta = abs(new_price - old_price)
+                if delta >= min_delta_7d:
+                    m['delta_7d'] = round(new_price - old_price, 3)
+                    result.append(m)
+        except Exception:
+            pass
+    result.sort(key=lambda x: abs(x.get('delta_7d', 0)), reverse=True)
+    return result[:limit]

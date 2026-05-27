@@ -13,7 +13,8 @@ GUTE Themen-Beispiele:
 SCHLECHTE Themen (nicht aufnehmen):
 - "NVIDIA Earnings beat" (Einzelaktie, kein Thema)
 - "Markets up today" (zu vage)
-- "Fed rate decision" (kurzfristig, kein strukturelles Thema)
+- "Fed cut rates today" (Einzelereignis, kein strukturelles Thema)
+- "Markets up today" (zu vage, kein investierbares Thema)
 
 Fuer jedes Thema bewerte:
 - momentum: accelerating | steady | decelerating
