@@ -7,6 +7,9 @@ Aktiver Exit-Check (2x täglich 10:00 + 15:30)
 """
 import sqlite3
 import os
+import sys
+sys.path.insert(0, "/root/.hermes/profiles/hermes_trading/skills/trading")
+import env_loader  # noqa: F401  (side-effect: laedt .env)
 import math
 import requests
 import yfinance as yf

@@ -486,3 +486,64 @@ Lektion #7 abgeschlossen.
 10. ze
 
 Lektion #8 abgeschlossen.
+## Lektion #9
+
+#### 1. Słownictwo (Top 500)
+- **kawa** `Kaffee`
+- **mieć** `haben`
+- **szkoła** `Schule`
+- **duży** `groß`
+- **widzieć** `sehen`
+- **robić** `machen`
+- **pić** `trinken`
+- **dobry** `gut`
+- **nowy** `neu`
+- **jeść** `essen`
+
+#### 2. Sentence Mining (n+1)
+- Piję czarną **kawę** `Ich trinke schwarzen Kaffee`.
+- On musi **mieć** `Er muss haben` więcej czasu.
+- Ta **szkoła** `Diese Schule` jest bardzo duża.
+- Widzę **duży** `Ich sehe ein großes` okno.
+- **Widzieć** `Sehen` cię to radość.
+- Co będziesz **robić** `Was wirst du machen`?
+- Chcę **pić** `Ich möchte trinken` zimną wodę.
+- To jest **dobry** `Das ist ein guter` pomysł.
+- Mam **nowy** `Ich habe einen neuen` samochód.
+- Muszę **jeść** `Ich muss essen` śniadanie.
+
+#### 3. Aspekt & Kasus
+**Aspekt-Paare (Verben):**
+- **pić** (impf.) / **wypić** (perf.) `trinken / austrinken`
+- **robić** (impf.) / **zrobić** (perf.) `machen / machen`
+- **widzieć** (impf.) / **zobaczyć** (perf.) `sehen / sehen`
+
+**Kasus (Nomen):**
+- **kawa** (Nom.) / **kawę** (Akk.) `Kaffee`
+- **szkoła** (Nom.) / **szkoły** (Gen.) `Schule`
+
+#### 4. Lueckentext-Quiz
+1. Piję gorącą ____ `Kaffee`.
+2. Ja ____ `haben` psa.
+3. To jest ____ `Schule`.
+4. To jest ____ `groß` dom.
+5. Czy możesz mnie ____ `sehen`?
+6. On ____ `machen` obiad.
+7. Chcę ____ `trinken` herbatę.
+8. To jest ____ `gut` film.
+9. On kupił ____ `neu` telefon.
+10. Muszę ____ `essen` obiad.
+
+#### 4. Auflösung
+1. **kawę**
+2. **mam**
+3. **szkoła**
+4. **duży**
+5. **widzieć**
+6. **robi**
+7. **pić**
+8. **dobry**
+9. **nowy**
+10. **jeść**
+
+Lektion #9 abgeschlossen.

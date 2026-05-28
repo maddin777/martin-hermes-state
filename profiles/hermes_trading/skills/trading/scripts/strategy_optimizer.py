@@ -6,6 +6,9 @@ wenn Verbesserung > 10%
 import sqlite3
 import json
 import os
+import sys
+sys.path.insert(0, "/root/.hermes/profiles/hermes_trading/skills/trading")
+import env_loader  # noqa: F401  (side-effect: laedt .env)
 import math
 import yfinance as yf
 import pandas_ta as ta

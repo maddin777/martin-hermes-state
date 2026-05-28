@@ -5,6 +5,9 @@ Läuft sonntags 06:00 (Wochenaggregat vor strategy_optimizer)
 NEU: Sortino Ratio, Calmar Ratio, R-Multiple, Exposure (LONG/SHORT)
 """
 import sqlite3, json, os, requests, math
+import sys
+sys.path.insert(0, "/root/.hermes/profiles/hermes_trading/skills/trading")
+import env_loader  # noqa: F401  (side-effect: laedt .env)
 from datetime import datetime, timedelta
 
 DB_PATH    = "/root/.hermes/profiles/hermes_trading/skills/trading/data/trading.db"
@@ -24,6 +27,19 @@ def send_telegram(msg):
     except: pass
 
 def calc_signal_metrics(con, today, yesterday):
+    # FIX: Use the latest two mention_dates in the DB instead of datetime.now()
+    # because watchlist_manager stores video upload dates, not pipeline run dates.
+    last_dates = con.execute(
+        "SELECT DISTINCT mention_date FROM watchlist_mentions ORDER BY mention_date DESC LIMIT 2"
+    ).fetchall()
+    if len(last_dates) >= 2:
+        today = last_dates[0][0]
+        yesterday = last_dates[1][0]
+    elif len(last_dates) == 1:
+        today = last_dates[0][0]
+        yesterday = (datetime.strptime(today, "%Y-%m-%d") - timedelta(days=1)).strftime("%Y-%m-%d")
+    else:
+        return {"new_companies": 0, "confirmed": 0, "contradicted": 0, "avg_conviction": 0, "signals_bought": 0}
     today_names = set(r[0] for r in con.execute(
         "SELECT DISTINCT name FROM watchlist_mentions WHERE mention_date=?", (today,)
     ).fetchall())

@@ -3,27 +3,27 @@
     "archived_at": null,
     "created_at": "2026-05-13T04:07:38.406194+00:00",
     "created_by": null,
-    "last_patched_at": "2026-05-26T04:02:36.704330+00:00",
-    "last_used_at": "2026-05-26T04:02:08.837475+00:00",
-    "last_viewed_at": "2026-05-26T04:02:08.833485+00:00",
-    "patch_count": 12,
+    "last_patched_at": "2026-05-27T04:01:59.435927+00:00",
+    "last_used_at": "2026-05-27T04:01:39.543973+00:00",
+    "last_viewed_at": "2026-05-27T04:01:39.540161+00:00",
+    "patch_count": 14,
     "pinned": false,
     "state": "active",
-    "use_count": 14,
-    "view_count": 14
+    "use_count": 18,
+    "view_count": 18
   },
   "daily-news-aggregation": {
     "archived_at": null,
     "created_at": "2026-05-14T04:11:49.416074+00:00",
     "created_by": null,
     "last_patched_at": "2026-05-14T04:12:22.233752+00:00",
-    "last_used_at": "2026-05-26T04:00:54.165814+00:00",
-    "last_viewed_at": "2026-05-26T04:00:54.162225+00:00",
+    "last_used_at": "2026-05-27T04:00:18.262448+00:00",
+    "last_viewed_at": "2026-05-27T04:00:18.257690+00:00",
     "patch_count": 1,
     "pinned": false,
     "state": "active",
-    "use_count": 7,
-    "view_count": 7
+    "use_count": 8,
+    "view_count": 8
   },
   "daily-news-compiler": {
     "archived_at": null,

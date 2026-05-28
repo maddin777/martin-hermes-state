@@ -7,6 +7,9 @@ import sqlite3
 import requests
 import json
 import os
+import sys
+sys.path.insert(0, "/root/.hermes/profiles/hermes_trading/skills/trading")
+import env_loader  # noqa: F401  (side-effect: laedt .env)
 from datetime import datetime
 
 DB_PATH = "/root/.hermes/profiles/hermes_trading/skills/trading/data/trading.db"

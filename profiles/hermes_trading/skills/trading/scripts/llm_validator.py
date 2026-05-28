@@ -4,6 +4,9 @@ Läuft NACH watchlist_manager.py, VOR signal_manager.py.
 Nur für Kandidaten mit conviction >= 0.70.
 """
 import json, os, requests, sqlite3
+import sys
+sys.path.insert(0, "/root/.hermes/profiles/hermes_trading/skills/trading")
+import env_loader  # noqa: F401  (side-effect: laedt .env)
 from datetime import datetime
 
 DB_PATH = "/root/.hermes/profiles/hermes_trading/skills/trading/data/trading.db"

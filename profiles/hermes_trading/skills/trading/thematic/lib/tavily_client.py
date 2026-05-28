@@ -6,7 +6,9 @@ import os
 import time
 import json
 import requests
+from pathlib import Path
 from typing import Optional
+from thematic.lib import env_loader  # noqa: F401 (Side-effect: laedt .env)
 
 TAVILY_KEY = os.environ.get("TAVILY_API_KEY")
 TAVILY_URL = "https://api.tavily.com/search"
