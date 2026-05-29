@@ -73,21 +73,32 @@ def normalize_mentions(con):
             continue
         canonical = ...  # logic: prefer name matching norm exactly, else shortest
         
-        # 4. UPDATE or DELETE each duplicate
+        # 4. CRITICAL: DELETE conflicting rows FIRST, then UPDATE
+        #    A bulk-UPDATE fails on ALL rows if ANY row has a UNIQUE conflict.
+        #    Always delete conflicts before updating.
         for orig in originals:
             if orig == canonical:
                 continue
-            try:
-                con.execute("UPDATE table SET name=? WHERE name=?", (canonical, orig))
-            except sqlite3.IntegrityError:
-                # UNIQUE(name, video_id) conflict — same video already has canonical name
-                # Delete the now-redundant duplicate row
-                con.execute(
-                    "DELETE FROM table WHERE name=? AND EXISTS "
-                    "(SELECT 1 FROM table AS t2 WHERE t2.name=? AND t2.video_id=table.video_id)",
-                    (orig, canonical)
-                )
+            # Step 1: Delete rows where same video_id already has canonical
+            con.execute(
+                "DELETE FROM table WHERE name=? AND "
+                "EXISTS (SELECT 1 FROM table AS w2 "
+                "WHERE w2.name=? AND w2.video_id=table.video_id)",
+                (orig, canonical)
+            )
+            # Step 2: Bulk-UPDATE remaining non-conflicting rows
+            con.execute("UPDATE table SET name=? WHERE name=?", (canonical, orig))
 ```
+
+**CRITICAL BUG**: A single `UPDATE table SET name=X WHERE name=Y` that affects multiple rows fails ENTIRELY if ANY row causes a UNIQUE constraint violation. The `try/except IntegrityError → DELETE` pattern does NOT work because the UPDATE is atomic across all rows — once it fails, no rows are changed. **Always DELETE conflicting rows BEFORE the UPDATE**, not after.
+
+## Watchlist-Table-Level Dedup
+
+After normalizing the mentions table, the aggregated `watchlist` table often has stale duplicate entries with the same ticker but different names (e.g., "Meta", "Meta Platforms", "Meta Platforms Inc." as separate watching entries). Use a separate dedup script that:
+
+1. **By ticker**: Group watching entries by same ticker → merge conviction scores, mention counts, channels
+2. **By normalized name**: Group entries without tickers → merge
+3. **Followed by a re-aggregation run** to recalculate proper conviction scores
 
 **Key insight for UNIQUE conflicts**: When `(name, video_id)` has a UNIQUE constraint, renaming "Meta Platforms"→"Meta" for video X fails if "Meta" already exists for video X. The duplicate row should be DELETED, not kept — it's the same entity mention from the same source video.
 
@@ -96,8 +107,8 @@ def normalize_mentions(con):
 - **Iterative suffix stripping required**: One pass of the LEGAL_SUFFIX_RE is not enough for "DWS Group GmbH & Co. KGaA" → need while-loop until stable
 - **Order matters**: Strip brackets BEFORE suffixes (a suffix regex might eat part of the bracket content)
 - **Case variants**: "Nvidia" and "NVIDIA" are different after normalize unless you have a case-normalizing alias. Either add `"nvidia": "NVIDIA"` to aliases, or handle case generically
-- **Watchlist/Rollup tables**: After normalizing the source table (mentions), old duplicate rows in the aggregated table (e.g., watchlist) remain stale. They get cleaned up on the next full aggregation run
-- **Canonical name selection**: Prefer the normalized form's exact match, then the shortest name, then the most descriptive (prefer "Technologies"/"Systems" suffix if it helps ticker resolution)
+- **Watchlist/Rollup tables**: After normalizing the source table (mentions), old duplicate rows in the aggregated table (e.g., watchlist) remain stale. They get cleaned up on the next full aggregation run. For a deeper clean, see `references/watchlist-table-dedup.md` (three-phase script: ticker-variant, ticker, name).
+- **Canonical name selection**: Prefer the normalized form's exact match, then the shortest name. **Bug to avoid**: do NOT reset the canonical after selecting it — old code had `canonical = min(originals, key=len)` that overwrote the preferred selection.
 
 ## Verification
 

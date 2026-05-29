@@ -41,6 +41,7 @@ Database is at:
 ### Weekend (Sonntag)
 | Time | Script | Purpose |
 |------|--------|---------|
+| 05:30 | `watchlist_dedup.py` | **Weekly watchlist dedup** — merges duplicate entries by ticker (Hermes Cron, job-id `472ace6fe18a`) |
 | 06:00 | `nightly_eval.py` | Weekly aggregate (strategy optimizer run at 08:00) |
 | 07:00 | `source_lifecycle.py` | Source cleanup & rotation |
 | 08:00 | `strategy_optimizer.py` | Strategy parameter optimization |
@@ -73,7 +74,7 @@ Telegram report + Dashboard
 
 **Symptom:** Dashboard and Telegram report show 0 for Neue Unternehmen, Bestätigungen, Ø Conviction despite pipeline running correctly.
 
-**Root Cause:** `watchlist_manager.py` (line 596-601) stores `mention_date` using the **video upload date** from YouTube, not the pipeline run date. But `nightly_eval.py` `calc_signal_metrics()` used `datetime.now()` (= pipeline run date) to query `watchlist_mentions`. Result: query found no records for "today" → all metrics = 0.
+**Root Cause:** `watchlist_manager.py` stores `mention_date` using the **video upload date** from YouTube, not the pipeline run date. But `nightly_eval.py` `calc_signal_metrics()` used `datetime.now()` (= pipeline run date) to query `watchlist_mentions`. Result: query found no records for "today" → all metrics = 0.
 
 **Fix:** Override `today`/`yesterday` inside `calc_signal_metrics()` by querying the last two `DISTINCT mention_date` values from the DB:
 
@@ -106,6 +107,23 @@ Trading scripts live under profile `hermes_trading`. Edits from `default` profil
 
 Dashboard reads `eval_metrics` last row. After a `nightly_eval.py` fix, dashboard shows stale data until the next 05:00 cron run. To test: run `TELEGRAM_BOT_TOKEN='***' python3 nightly_eval.py` (masks token to prevent duplicate Telegram dispatch).
 
+### 6. Watchlist Duplikate wachsen trotz normalize_mentions
+
+**Symptom:** Immer mehr Duplikate in der `watchlist`-Tabelle (Nvidia/NVIDIA, Meta/Meta Platforms, Take-Two-Varianten). `normalize_mentions()` läuft täglich, aber Duplikate bleiben.
+
+**Root Cause 1 — SQLite Bulk-UPDATE Bug:** `normalize_mentions()` versucht ein `UPDATE watchlist_mentions SET name='NVIDIA' WHERE name='Nvidia'`. Wenn ANY dieser 92 Zeilen einen UNIQUE-Konflikt auslöst (weil es bereits ein "NVIDIA" mit derselben `video_id` gibt), schlägt das gesamte UPDATE fehl — ALLE 92 Zeilen bleiben unverändert. Der try/except IntegrityError-Fang-Lösch-Zweig wird zwar ausgeführt, aber nur die konfliktierenden Zeilen werden gelöscht — die restlichen 80 bleiben als "Nvidia" erhalten.
+
+**Fix:** DELETE konfliktierende Zeilen VOR dem UPDATE, nicht nachträglich als Catch:
+```python
+# DO THIS: Delete conflicts first, then update the rest
+con.execute("DELETE FROM table WHERE name=? AND EXISTS (SELECT 1 FROM table AS w2 WHERE w2.name=? AND w2.video_id=table.video_id)", (orig, canonical))
+con.execute("UPDATE table SET name=? WHERE name=?", (canonical, orig))
+```
+
+**Root Cause 2 — Watchlist-Table-Level:** Selbst wenn Mentions korrekt gemerged wurden, bleiben in `watchlist`-Tabelle alte Einträge mit `ON CONFLICT(name) DO NOTHING` bestehen. Case-Varianten ("Nvidia" vs "NVIDIA") werden als verschiedene Einträge angelegt.
+
+**Fix:** Wöchentlicher `watchlist_dedup.py` (So 05:30) merged diese über Ticker-Abgleich und droppt Duplikate.
+
 ## Quick Debug
 
 ```bash
@@ -125,4 +143,8 @@ curl -s http://localhost:8081/ | grep -o '<title>.*</title>'
 
 # System crontab
 crontab -l | grep trading
+
+# Watchlist dedup manually
+cd /root/.hermes/profiles/hermes_trading/skills/trading/scripts
+python3 watchlist_dedup.py
 ```

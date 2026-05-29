@@ -67,38 +67,6 @@ KNOWN_TICKERS = {
     "itaú unibanco":   "ITUB",
     "at&s":            "ATS.VI",   # österreichische Leiterplatten, NICHT A1Q.F (Insurance)
     "at & s":          "ATS.VI",
-    # --- Cross-Exchange Mappings (verified gegen Yahoo, 2026-05-28) ---
-    # US-Hauptlisting bevorzugt; verhindert dass yfinance EU-Mirrors waehlt
-    "alphabet":            "GOOGL",   # statt ABEA.F (Frankfurt-Mirror)
-    "apple":               "AAPL",    # statt APC.DE
-    "blackstone":          "BX",      # statt BBN1.F
-    "doordash":            "DASH",    # statt DD2.MU
-    "hsbc":                "HSBC",    # statt HSBA.L (London) — US-ADR
-    "intel":               "INTC",    # statt INL.DE
-    "marvell":             "MRVL",    # statt 9MW.MU
-    "marvell technology":  "MRVL",
-    "microsoft":           "MSFT",    # statt MSF.DE
-    "netflix":             "NFLX",    # statt NFC1.MU
-    "s&p global":          "SPGI",    # statt MHL.F
-    "sp global":           "SPGI",
-    "schlumberger":        "SLB",     # statt SCL.MU
-    "tesla":               "TSLA",    # statt TL0.F
-    "ubs":                 "UBS",     # statt 0UB.F
-    # Sonderfaelle (kein US-Listing): Heimatboerse statt obskurer Mirror
-    "airbus":              "AIR.PA",  # Paris-Heimat, statt AIR.DE oder anderem
-    "sma solar":           "S92.DE",  # XETRA-Heimat, statt 1S.MI oder S92D.XC
-    "sma solar technology":"S92.DE",
-    # --- Cross-Exchange Mappings Runde 2 (verified, 2026-05-28) ---
-    "coreweave":         "CRWV",     # statt I1V.F
-    "costco":            "COST",     # statt CTO.DE
-    "costco wholesale":  "COST",
-    "moody's":           "MCO",      # statt DUT.MU
-    "moodys":            "MCO",      # ohne Apostroph
-    "xiaomi":            "1810.HK",  # Hong Kong = Heimat, kein US-Listing
-    # --- Cross-Exchange Mappings Runde 3 (verified, 2026-05-28) ---
-    "micron":                 "MU",     # statt MTE.SG
-    "micron technology":      "MU",
-    "constellation energy":   "CEG",    # statt E7S.F / E7S.SG (NYSE-Hauptlisting)
 }
 
 # Indizes, Krypto, ETFs, Newsletter-/Depot-Namen — nicht handelbar als Einzelaktie
@@ -135,54 +103,11 @@ def is_tradable(name: str) -> bool:
     return _NOT_TRADABLE_RE.search(name) is None
 
 
-# Suffix-Stripping fuer KNOWN_TICKERS Lookup
-# WICHTIG: nur als Fallback, NACHDEM der volle Name nicht gematcht hat.
-# So bleiben Sonderfaelle wie "Siemens Energy" -> ENR.DE intakt
-# (statt zu "siemens" gestrippt zu werden und auf SIE.DE zu kollidieren).
-_LEGAL_SUFFIXES_RE = re.compile(
-    r'[,\s]+(?:'
-    # Rechtsformen
-    r'inc\.?|incorporated|corp\.?|corporation|'
-    r'ag|se|plc|ltd\.?|limited|kgaa|gmbh|'
-    r's\.?\s*a\.?|s\.?\s*p\.?\s*a\.?|n\.?\s*v\.?|'
-    r'co\.?\s*,?\s*ltd\.?|co\.?\s*kgaa|'
-    # Generische Firmen-Suffixe (sicher, weil Schutz durch Volltext-Match steht)
-    r'group|holdings?|company|technology|technologies|systems|'
-    r'motor company'
-    r')\s*$',
-    re.IGNORECASE
-)
-
-def _strip_suffixes(name: str) -> str:
-    """Schneidet iterativ rechtliche/generische Suffixe ab. 'Apple Inc.' -> 'apple'."""
-    prev = None
-    cur = name.lower().strip()
-    while prev != cur:
-        prev = cur
-        cur = _LEGAL_SUFFIXES_RE.sub('', cur).strip(' ,.')
-    return cur
-
-
 def resolve_ticker(company_name):
-    """Löst Unternehmensnamen zu Ticker auf.
-
-    Lookup-Reihenfolge:
-    1. Voller Name in KNOWN_TICKERS  (schuetzt 'siemens energy' vor Kollision mit 'siemens')
-    2. Suffix-gestrippter Name in KNOWN_TICKERS  (faengt 'Apple Inc.' -> 'apple')
-    3. Yahoo-Suche (yf.Search), bevorzugt DE-Boersen
-    """
+    """Löst Unternehmensnamen zu Ticker auf."""
     key = company_name.lower().strip()
-
-    # 1. Voller Name
     if key in KNOWN_TICKERS:
         return KNOWN_TICKERS[key]
-
-    # 2. Suffix-Stripping Fallback
-    stripped = _strip_suffixes(key)
-    if stripped and stripped != key and stripped in KNOWN_TICKERS:
-        return KNOWN_TICKERS[stripped]
-
-    # 3. Yahoo-Suche
     try:
         results = yf.Search(company_name, max_results=3)
         quotes = results.quotes
@@ -341,8 +266,9 @@ def main():
     with open(SIGNALS_PATH, encoding="utf-8") as f:
         signals = json.load(f)
 
-    # === PHASE 1: Sammeln aller Kandidaten ===
+    validated = []
     all_candidates = []
+
     for signal in signals:
         for company in signal.get("companies", []):
             all_candidates.append({
@@ -350,10 +276,10 @@ def main():
                 "source":         signal["source"],
                 "market_outlook": signal.get("market_outlook"),
             })
+
     print(f"Kandidaten gesamt: {len(all_candidates)}", flush=True)
 
-    # === PHASE 2: Filter (Indizes/Krypto/ETFs) + Vor-Dedup nach Name ===
-    by_name = {}     # normalized_name -> list of candidates
+    seen = {}
     filtered_count = 0
     for c in all_candidates:
         name = c["company"]["name"]
@@ -361,39 +287,24 @@ def main():
             filtered_count += 1
             continue
         key = name.lower().strip()
-        by_name.setdefault(key, []).append(c)
+        if key not in seen:
+            seen[key] = c
 
     if filtered_count:
         print(f"Gefiltert (Indizes/Krypto/ETFs): {filtered_count}", flush=True)
-    print(f"Unique Namen: {len(by_name)}", flush=True)
+    print(f"Unique Unternehmen: {len(seen)}", flush=True)
 
-    # === PHASE 3: Ticker-Auflösung pro unique Name ===
-    print(f"\n--- Ticker-Auflösung ---", flush=True)
-    by_ticker = {}   # ticker -> list of candidates (alle Namensvarianten zusammen)
-    unresolved = 0
-    for nkey, candidates in by_name.items():
-        # nimm den längsten Namen aus der Gruppe als Display-Repräsentant
-        rep_name = max((c["company"]["name"] for c in candidates), key=len)
-        ticker = resolve_ticker(rep_name)
-        if not ticker:
-            unresolved += 1
-            continue
-        by_ticker.setdefault(ticker, []).extend(candidates)
-
-    print(f"Unique Ticker: {len(by_ticker)} | Nicht aufgelöst: {unresolved}", flush=True)
-
-    # === PHASE 4: Technical-Score pro Ticker (1x statt N-mal) ===
-    print(f"\n--- Technical Analysis ---", flush=True)
     results = []
-    for ticker, candidates in by_ticker.items():
-        # Längster/vollständigster Name als Anzeige
-        rep_name = max((c["company"]["name"] for c in candidates), key=len)
-        mentions = len(candidates)
+    for key, candidate in seen.items():
+        company = candidate["company"]
+        name    = company["name"]
+        print(f"\n[{name}]", flush=True)
 
-        if mentions > 1:
-            print(f"\n[{rep_name}] (× {mentions} Mentions)", flush=True)
-        else:
-            print(f"\n[{rep_name}]", flush=True)
+        ticker = resolve_ticker(name)
+        if not ticker:
+            print("  ✗ Kein Ticker gefunden – überspringe", flush=True)
+            continue
+
         print(f"  → Ticker: {ticker}", flush=True)
 
         tech = get_technical_score(ticker)
@@ -405,75 +316,33 @@ def main():
               f"| Confidence: {tech['confidence']} "
               f"| {tech['direction']}", flush=True)
 
-        # === PHASE 5: Aggregation der Metadaten über alle Mentions ===
-        # Sources sammeln (unique nach video_id, Reihenfolge stabil)
-        sources_seen, sources_list = set(), []
-        for c in candidates:
-            s = c.get("source")
-            if not s:
-                continue
-            # Eindeutiger Schluessel: video_id wenn dict, sonst Fallback auf String-Repr
-            sid = s.get("video_id") if isinstance(s, dict) else str(s)
-            if sid and sid not in sources_seen:
-                sources_seen.add(sid)
-                sources_list.append(s)
-
-        # Eintrag mit höchster strength als Repräsentant für Sentiment-Metadaten
-        def _strength_val(c):
-            v = c["company"].get("strength")
-            try: return float(v) if v is not None else -1
-            except (TypeError, ValueError): return -1
-        top = max(candidates, key=_strength_val)
-        top_comp = top["company"]
-
-        # Alle Reasons sammeln (unique)
-        reasons_seen, reasons_list = set(), []
-        for c in candidates:
-            r = c["company"].get("reason")
-            if r and r not in reasons_seen:
-                reasons_seen.add(r)
-                reasons_list.append(r)
-
-        # Ersten nicht-null Preis/Target nehmen
-        def _first_nonnull(field):
-            for c in candidates:
-                v = c["company"].get(field)
-                if v is not None:
-                    return v
-            return None
-
         results.append({
-            "name":            rep_name,
-            "ticker":          ticker,
-            "mentions":        mentions,
-            "sentiment":       top_comp.get("sentiment"),
-            "strength":        top_comp.get("strength"),
-            "action_hint":     top_comp.get("action_hint"),
-            "reason":          reasons_list[0] if reasons_list else None,
-            "all_reasons":     reasons_list,
-            "mentioned_price": _first_nonnull("mentioned_price"),
-            "price_target":    _first_nonnull("price_target"),
-            "technical":       tech,
-            "sources":         sources_list,
-            "source":          sources_list[0] if sources_list else None,  # Backward-compat
+            "name":           name,
+            "ticker":         ticker,
+            "sentiment":      company.get("sentiment"),
+            "strength":       company.get("strength"),
+            "action_hint":    company.get("action_hint"),
+            "reason":         company.get("reason"),
+            "mentioned_price":company.get("mentioned_price"),
+            "price_target":   company.get("price_target"),
+            "technical":      tech,
+            "source":         candidate["source"],
         })
 
-    # === Sortierung & Output ===
-    results.sort(key=lambda x: (x["technical"]["confidence"], x["mentions"]), reverse=True)
+    results.sort(key=lambda x: x["technical"]["confidence"], reverse=True)
 
     os.makedirs(os.path.dirname(OUTPUT_PATH), exist_ok=True)
     with open(OUTPUT_PATH, "w", encoding="utf-8") as f:
         json.dump(results, f, ensure_ascii=False, indent=2)
 
     print(f"\n✅ Fertig. {len(results)} validierte Signale → {OUTPUT_PATH}", flush=True)
-    print("\nTop 10 nach Confidence × Mentions:", flush=True)
-    for r in results[:10]:
+    print("\nTop 5 nach Confidence:", flush=True)
+    for r in results[:5]:
         t = r["technical"]
-        m = r["mentions"]
-        print(f"  {r['name'][:30]:30} {r['ticker']:10} "
-              f"Score:{t['score']:+.1f} Conf:{t['confidence']} "
-              f"×{m} {t['direction']}",
+        print(f"  {r['name']:25} {r['ticker']:10} "
+              f"Score:{t['score']:+.1f} Conf:{t['confidence']} {t['direction']}",
               flush=True)
+
 
 if __name__ == "__main__":
     main()

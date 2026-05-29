@@ -101,14 +101,14 @@
     "archived_at": null,
     "created_at": "2026-05-25T16:25:51.199575+00:00",
     "created_by": "agent",
-    "last_patched_at": "2026-05-26T05:46:27.986150+00:00",
-    "last_used_at": "2026-05-26T05:45:37.828613+00:00",
-    "last_viewed_at": "2026-05-26T05:45:37.824518+00:00",
-    "patch_count": 4,
+    "last_patched_at": "2026-05-28T05:50:09.602046+00:00",
+    "last_used_at": "2026-05-28T05:50:04.837124+00:00",
+    "last_viewed_at": "2026-05-28T05:50:04.832666+00:00",
+    "patch_count": 6,
     "pinned": false,
     "state": "active",
-    "use_count": 3,
-    "view_count": 3
+    "use_count": 7,
+    "view_count": 7
   },
   "sqlite-optimization": {
     "archived_at": null,
@@ -139,13 +139,13 @@
     "archived_at": null,
     "created_at": "2026-05-27T06:29:36.528930+00:00",
     "created_by": "agent",
-    "last_patched_at": null,
-    "last_used_at": "2026-05-27T06:29:43.055185+00:00",
-    "last_viewed_at": "2026-05-27T06:29:43.050792+00:00",
-    "patch_count": 0,
+    "last_patched_at": "2026-05-28T05:50:00.567029+00:00",
+    "last_used_at": "2026-05-28T05:49:39.516133+00:00",
+    "last_viewed_at": "2026-05-28T05:49:39.511554+00:00",
+    "patch_count": 3,
     "pinned": false,
     "state": "active",
-    "use_count": 1,
-    "view_count": 1
+    "use_count": 4,
+    "view_count": 4
   }
 }

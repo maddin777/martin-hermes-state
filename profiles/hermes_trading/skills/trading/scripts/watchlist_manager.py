@@ -228,6 +228,8 @@ NORMALIZE_ALIASES = {
     "intel corporation": "Intel",
     "cerebras systems": "Cerebras", "cerebras systems inc.": "Cerebras",
     "take two interactive": "Take-Two Interactive",
+    "take two interactive software": "Take-Two Interactive",
+    "take-two interactive software": "Take-Two Interactive",
     "d-wave systems": "D-Wave Quantum", "d-wave systems inc.": "D-Wave Quantum",
     "d-wave quantum inc.": "D-Wave Quantum",
     "d w v quantum": "D-Wave Quantum",
@@ -475,46 +477,32 @@ def normalize_mentions(con):
     for norm, originals in groups.items():
         if len(originals) <= 1:
             continue
-        # Canonical = kürzester, außer originals enthält den norm-Wortlaut
-        canonical = min(originals, key=len)
-        for norm_n in originals:
-            if norm_n.lower() == norm.lower():
-                canonical = norm_n
-                break
-        # Gibt es einen der auf "Technologies/Systems/Interactive" endet? Den bevorzugen
-        for n in originals:
-            for kw in ["Technologies", "Systems", "Interactive", "Group"]:
-                if n.lower().endswith(kw.lower()) and len(n) < len(canonical):
-                    canonical = n
-        canonical = min(originals, key=len)  # reset: nimm kürzesten
-        # Aber bevorzuge den norm-Wortlaut falls vorhanden
-        cand = [n for n in originals if n.lower() == norm.lower()]
-        if cand:
-            canonical = cand[0]
+        # Canonical: bevorzuge Namen der dem norm-Wortlaut exakt entspricht,
+        # sonst kürzesten. Vermeide Legal-Suffixe (Inc., Corp., AG, SE etc.)
+        canon_candidates = [n for n in originals if n.lower() == norm.lower()]
+        if canon_candidates:
+            canonical = canon_candidates[0]
+        else:
+            canonical = min(originals, key=len)
 
-        # UPDATE alle Duplikate auf canonical name
+        # Duplikat-Reihenfolge: zuerst alle alte Namen löschen die mit
+        # canonical im selben video_id konfliktieren, DANN updaten
         for orig in originals:
             if orig == canonical:
                 continue
-            try:
-                con.execute(
-                    "UPDATE watchlist_mentions SET name=? WHERE name=?",
-                    (canonical, orig)
-                )
-                merged += 1
-            except sqlite3.IntegrityError:
-                # UNIQUE-Konflikt: (name, video_id) existiert bereits für canonical
-                # -> orig ist ein Duplikat aus demselben Video -> löschen
-                deleted = con.execute(
-                    "DELETE FROM watchlist_mentions WHERE name=? AND "
-                    "name != ? AND EXISTS (SELECT 1 FROM watchlist_mentions AS w2 "
-                    "WHERE w2.name=? AND w2.video_id=watchlist_mentions.video_id)",
-                    (orig, canonical, canonical)
-                ).rowcount
-                if deleted:
-                    merged += 1
-            except Exception as e:
-                print(f"  ⚠ Merge-Fehler '{orig}' → '{canonical}': {e}", flush=True)
+            # Schritt 1: Konflikte vor dem UPDATE bereinigen
+            con.execute(
+                "DELETE FROM watchlist_mentions WHERE name=? AND "
+                "EXISTS (SELECT 1 FROM watchlist_mentions AS w2 "
+                "WHERE w2.name=? AND w2.video_id=watchlist_mentions.video_id)",
+                (orig, canonical)
+            )
+            # Schritt 2: Bulk-UPDATE der restlichen
+            updated = con.execute(
+                "UPDATE watchlist_mentions SET name=? WHERE name=?",
+                (canonical, orig)
+            ).rowcount
+            merged += updated
 
         print(f"  🔗 {len(originals)} → '{canonical}'  "
               f"(zusammengeführt: {', '.join(originals)})", flush=True)
