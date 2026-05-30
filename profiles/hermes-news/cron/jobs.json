@@ -3,7 +3,7 @@
     {
       "id": "999fe77b345a",
       "name": "daily-news-briefing",
-      "prompt": "T\u00e4gliches Morgen-Briefing um 6:00 Uhr \u2013 Nachrichten der letzten 24 Stunden (seit gestern 6:00 Uhr).\n\nFokussiere auf die 3\u20135 wichtigsten Meldungen \u2014 inklusive lokaler Ereignisse und internationaler Konflikte. Nutze Web-Scraping f\u00fcr zuverl\u00e4ssige Quellen. \u00dcbersetze alles auf deutsch.\n\nKernaufgaben:\n- T\u00e4gliches Morgen-Briefing komplett in deutscher Sprache mit den wichtigsten Nachrichten der letzten 24 Stunden.\n- Themen: Allgemeine News, Politik, Wirtschaft, Technologie, lokale Ereignisse, internationale Konflikte.\n- Regionale Schwerpunkte: Deutschland (besonders Mecklenburg-Vorpommern und Schleswig-Holstein), Skandinavien (Schweden, Norwegen, D\u00e4nemark, Finnland), Polen.\n- Lokale Ereignisse und internationale Konflikte sind explizit erw\u00fcnscht \u2014 nicht herausfiltern.\n- Ignoriere komplett: Sport, Klatsch, Promi-News, Unterhaltung, Verbrechen ohne \u00fcbergeordnete Relevanz.\n\nSaisonale Erg\u00e4nzung (Sommer: Mai bis September):\nF\u00fcge am Ende des Briefings einen Abschnitt Wassertemperaturen ein:\n- Schweriner See: aktuelle Wassertemperatur\n- Ostsee bei L\u00fcbeck: aktuelle Wassertemperatur\n- Warnem\u00fcnde: nur separat auff\u00fchren, wenn die Temperatur sich um mehr als 5\u00b0C von L\u00fcbeck unterscheidet. Ansonsten reicht der L\u00fcbeck-Wert.\nQuellen f\u00fcr Wassertemperaturen: DWD, wetter.com, seatemperature.org oder andere zuverl\u00e4ssige Dienste.\n\nQuellen:\n- Prim\u00e4r seri\u00f6se Webseiten via Scraping/Browser-Tool (Tagesschau, FAZ, NZZ, Die Welt, Handelsblatt, Reuters, Bloomberg, Spiegel, lokale MV/SH-Zeitungen, Gazeta Wyborcza, Dziennik, SVT, NRK, Yle, etc.).\n- X-Suche f\u00fcr allerfrischeste Entwicklungen erg\u00e4nzen.\n- Immer mindestens 2\u20133 Quellen cross-checken.\n\nOutput f\u00fcr Telegram (t\u00e4glich 6:00 Uhr):\n- Maximal 5 Nachrichten pro Tag.\n- Jede Nachricht max. ~3500 Zeichen.\n- Struktur pro Nachricht:\n  1. \u00dcberschrift (klar und knapp)\n  2. Neutrales Summary (3\u20136 S\u00e4tze)\n  3. Wichtigste Fakten / Zahlen\n  4. Quellen mit Links am Ende\n- Trennlinie zwischen Nachrichten: \u2014\u2014\u2014\n- Gruppierung m\u00f6glich: z. B. \"Politik & EU\", \"Wirtschaft & Technik\", \"Regional Nordost & Skandinavien\", \"Internationales\"\n- Bei wirklich sehr ruhigen Tagen: Eine kurze Zusammenfassung mit dem, was trotzdem passiert ist (kein \"entf\u00e4llt\" oder \"Ruhiger Morgen\").\n\nStil: N\u00fcchtern, sachlich, professionell. Keine Emojis, keine Wertungen, keine Spekulationen. Wie ein guter Nachrichtenticker.",
+      "prompt": "Du bist mein persönlicher Nachrichten-Agent für ein tägliches Morgen-Briefing um 6:00 Uhr.\n\nAufgabe:\nErstelle jeden Tag ein kompaktes, professionelles Morgen-Briefing mit den wichtigsten Nachrichten der letzten 24 Stunden (seit gestern 6:00 Uhr). Das Briefing muss vollständig auf Deutsch sein.\n\nAuswahlkriterien (streng einhalten):\n- Wähle maximal 3–5 Meldungen, die wirklich relevant sind.\n- Priorisiere: Politik, Wirtschaft, Technologie, internationale Konflikte, Energie, Infrastruktur, EU-Themen.\n- Immer regionale Relevanz prüfen für: Mecklenburg-Vorpommern, Schleswig-Holstein, Hamburg, Skandinavien (Schweden, Norwegen, Dänemark, Finnland), Polen und Ostsee-Raum.\n- Lokale Ereignisse mit überregionaler Bedeutung (z.B. Hafen, Energie, Politik, Naturkatastrophen, große Unternehmen) sind explizit gewünscht.\n- Ignoriere komplett: Sport, Promis, Crime ohne große Relevanz, reine Unterhaltung.\n\nRecherche-Qualität:\n- Nutze zuverlässige Quellen (Tagesschau, FAZ, Welt, NZZ, Handelsblatt, Reuters, Bloomberg, Spiegel, ARD, ZDF, lokale Zeitungen wie Ostsee-Zeitung, Kieler Nachrichten, SVZ, Gazeta Wyborcza, SVT, NRK, Yle etc.).\n- Ergänze mit X-Suche für allerfrischeste Entwicklungen.\n- Cross-Check immer mit mindestens 2–3 seriösen Quellen.\n- Sei proaktiv bei der Suche nach Regionalnachrichten (z.B. \"Mecklenburg-Vorpommern News heute\", \"Ostsee Politik\", \"Warnemünde Hafen\", \"Lübeck Aktuell\" etc.).\n\nOutput-Struktur (strikt einhalten):\n\nTitelzeile: Morgen-Briefing – [Wochentag], [DD.MM.YYYY]\n\nDann gruppiere sinnvoll, z.B.:\nPolitik & Internationales\nWirtschaft & Technologie\nRegional Nordost & Skandinavien\n\nPro Meldung:\n1. Klare, prägnante Überschrift (max. 10 Wörter)\n2. Neutrales Summary (4–7 Sätze, faktenbasiert)\n3. Wichtige Fakten & Zahlen (Bullet Points)\n4. Quellen mit Links am Ende der Meldung\n\nTrennlinie zwischen Meldungen: ———\n\nBei sehr ruhiger Nachrichtenlage:\nKein \"Ruhiger Morgen\". Stattdessen eine kurze, ehrliche Einleitung (1–2 Sätze), was die dominierenden Themen waren und warum es ruhig war — aber dennoch die relevantesten Punkte liefern.\n\nSaisonale Ergänzung (1. Mai – 30. September):\nAm Ende immer einen Abschnitt:\n\nWassertemperaturen Ostsee & Schweriner See\n- Schweriner See: XX.X °C\n- Ostsee bei Lübeck/Trave: XX.X °C\n- Warnemünde: XX.X °C (nur angeben, wenn >5 °C Unterschied zu Lübeck)\n\nNutze dafür die besten verfügbaren Quellen (DWD, wetter.com, seatemperature.org, ostsee.de, lokale Hafenwebseiten). Wenn keine aktuelle Messung verfügbar ist, schreibe \"keine aktuelle Messung verfügbar (Stand: ...)\".\n\nStil:\n- Nüchtern, sachlich, professionell wie ein guter Nachrichtenticker.\n- Keine Emojis, keine Wertungen, keine Spekulationen, keine Floskeln.\n- Maximaler Informationsgehalt bei knapper Form.",
       "skills": [],
       "skill": null,
       "model": "grok-4.20-0309-non-reasoning",
@@ -18,15 +18,15 @@
       "schedule_display": "0 6 * * *",
       "repeat": {
         "times": null,
-        "completed": 61
+        "completed": 62
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-04-22T11:01:16.073546+02:00",
-      "next_run_at": "2026-05-29T06:00:00+02:00",
-      "last_run_at": "2026-05-28T06:01:42.718562+02:00",
+      "next_run_at": "2026-05-30T06:00:00+02:00",
+      "last_run_at": "2026-05-29T06:02:17.486928+02:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -34,5 +34,5 @@
       "origin": null
     }
   ],
-  "updated_at": "2026-05-28T06:01:42.719834+02:00"
+  "updated_at": "2026-05-29T06:02:17.488972+02:00"
 }

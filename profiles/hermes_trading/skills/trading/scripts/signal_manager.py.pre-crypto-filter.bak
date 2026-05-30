@@ -606,14 +606,6 @@ def open_new_positions(con, cfg):
             break
 
         ticker = c["ticker"]
-     # 🚫 Krypto-Filter (Notnagel): verhindert dass extrahierte Privatfirmen
-        # wie "OpenAI"/"Anthropic" als CRYPTOCURRENCY-Ticker getradet werden.
-        # yfinance liefert fuer XYZ-USD echte Preise/Volumen – Liquiditaetsfilter
-        # blockt das nicht zuverlaessig.
-        if ticker and (ticker.endswith(('-USD', '-EUR', '-USDT', '-BTC')) or '/' in ticker):
-            print(f"  🚫 {c['name']}: Krypto-Ticker {ticker} – uebersprungen")
-            continue
-
         channels = json.loads(c["channels"] or "[]")
         unique_channels = len(set(channels))
 

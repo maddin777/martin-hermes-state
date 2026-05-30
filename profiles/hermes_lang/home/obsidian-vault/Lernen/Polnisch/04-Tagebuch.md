@@ -547,3 +547,57 @@ Lektion #8 abgeschlossen.
 10. **jeść**
 
 Lektion #9 abgeschlossen.
+
+### Lektion #10
+
+**1. Vokabeln (Top 500)**
+1. **ale** `aber`
+2. **bardzo** `sehr`
+3. **bo** `weil`
+4. **co** `was`
+5. **do** `zu / in / nach`
+6. **dużo** `viel`
+7. **i** `und`
+8. **jeśli** `wenn`
+9. **kiedy** `wann / wenn`
+10. **mniej** `weniger`
+
+**2. n+1 Sentence Mining**
+1. **Ale** to jest **bardzo** dobre. `Aber das ist sehr gut.`
+2. **Co** robisz, **kiedy** masz **dużo** pracy? `Was machst du, wenn du viel Arbeit hast?`
+3. Idę **do** domu, **bo** chcę odpocząć. `Ich gehe nach Hause, weil ich mich ausruhen möchte.`
+4. Chcę **mniej** cukru, **jeśli** to możliwe. `Ich möchte weniger Zucker, wenn es möglich ist.`
+
+**3. Grammatik: Aspekt & Kasus**
+*   **Aspekt (Verben):**
+    *   **pisać** (imperfekt) `schreiben`
+    *   **napisać** (perfekt) `geschrieben haben`
+*   **Kasus (Nomen):**
+    *   **dom** (Nominativ/Akkusativ) `Haus`
+    *   **domu** (Genitiv/Lokativ) `des Hauses / im Haus`
+
+**4. Lückentext-Quiz**
+1. Jestem **_______** zmęczony. (`sehr`)
+2. Idę **_______** kina. (`zu/nach`)
+3. **_______** kupiłeś? (`was`)
+4. Chcę **_______** pić. (`weniger`)
+5. Nie idę, **_______** nie mam czasu. (`weil`)
+6. **_______** to prawda. (`aber`)
+7. **_______** będziesz tam? (`wann`)
+8. Mam **_______** książek. (`viel`)
+9. **_______** pójdziesz, pójdę też. (`wenn`)
+10. Chcę **_______** to zrobić. (`und`)
+
+**5. Auflösung**
+1. **bardzo**
+2. **do**
+3. **Co**
+4. **mniej**
+5. **bo**
+6. **Ale**
+7. **Kiedy**
+8. **dużo**
+9. **Jeśli**
+10. **i**
+
+Lektion #10 abgeschlossen.

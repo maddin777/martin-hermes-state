@@ -11,10 +11,7 @@ import os
 import yfinance as yf
 import pandas_ta as ta
 import pandas as pd
-import sqlite3
-from pathlib import Path
 
-DB_PATH = "/root/.hermes/profiles/hermes_trading/skills/trading/data/trading.db"
 SIGNALS_PATH = "/root/.hermes/profiles/hermes_trading/skills/trading/data/trading_signals.json"
 OUTPUT_PATH  = "/root/.hermes/profiles/hermes_trading/skills/trading/data/trading_signals_validated.json"
 
@@ -140,40 +137,6 @@ _NOT_TRADABLE_PATTERNS = [
 ]
 _NOT_TRADABLE_RE = re.compile('|'.join(_NOT_TRADABLE_PATTERNS), re.IGNORECASE)
 
-def _load_ticker_cache():
-    """
-    Laedt company_aliases aus DB in Memory-Dict.
-    Bei Fehler (DB unreachable): fallback auf hardcoded KNOWN_TICKERS.
-    """
-    if not Path(DB_PATH).is_file():
-        print(f"[resolve_ticker] WARN: DB nicht gefunden, nutze hardcoded KNOWN_TICKERS", flush=True)
-        return dict(KNOWN_TICKERS)
-
-    try:
-        con = sqlite3.connect(DB_PATH)
-        cur = con.cursor()
-        cur.execute("""
-            SELECT a.alias, a.ticker, c.status
-            FROM company_aliases a
-            JOIN companies c ON c.ticker = a.ticker
-        """)
-        rows = cur.fetchall()
-        con.close()
-
-        cache = {}
-        for alias, ticker, status in rows:
-            # private companies -> None (wie im alten KNOWN_TICKERS)
-            cache[alias] = None if status == 'private' else ticker
-        return cache
-    except Exception as e:
-        print(f"[resolve_ticker] WARN: DB-Lookup fehlgeschlagen ({e}), Fallback auf KNOWN_TICKERS", flush=True)
-        return dict(KNOWN_TICKERS)
-
-
-# Beim Modul-Import einmal laden
-_TICKER_CACHE = _load_ticker_cache()
-
-
 def is_tradable(name: str) -> bool:
     """Filtert Indizes, Krypto-Coins, ETFs und Newsletter-Namen aus."""
     if not name or not name.strip():
@@ -220,13 +183,13 @@ def resolve_ticker(company_name):
     key = company_name.lower().strip()
 
     # 1. Voller Name
-    if key in _TICKER_CACHE:
-        return _TICKER_CACHE[key]
+    if key in KNOWN_TICKERS:
+        return KNOWN_TICKERS[key]
 
     # 2. Suffix-Stripping Fallback
     stripped = _strip_suffixes(key)
-    if stripped and stripped != key and stripped in _TICKER_CACHE:
-        return _TICKER_CACHE[stripped]
+    if stripped and stripped != key and stripped in KNOWN_TICKERS:
+        return KNOWN_TICKERS[stripped]
 
     # 3. Yahoo-Suche
     try:
