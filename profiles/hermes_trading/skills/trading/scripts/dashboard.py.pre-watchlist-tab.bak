@@ -233,12 +233,9 @@ def get_data():
     total_value  = cash + open_val + open_pnl
     total_return = (total_value - cfg["starting_capital"]) / cfg["starting_capital"] * 100
     try:
-       watchlist = [dict(w) for w in con.execute("""
-            SELECT w.*, c.canonical_name AS company_name, c.sector AS company_sector
-            FROM watchlist w
-            LEFT JOIN companies c ON c.ticker = w.ticker
-            ORDER BY w.conviction_score DESC
-        """).fetchall()]
+        watchlist = [dict(w) for w in con.execute(
+            "SELECT * FROM watchlist WHERE status='watching' ORDER BY conviction_score DESC LIMIT 30"
+        ).fetchall()]
     except: watchlist = []
 
     # Watchlist Mentions pro Kanal (für Sources-Seite)
@@ -733,41 +730,28 @@ def build_html(data):
     if not closed_rows:
         closed_rows = '<tr><td colspan="9" style="text-align:center;color:#555;padding:20px">Noch keine abgeschlossenen Trades</td></tr>'
 
-    # Watchlist – als JSON für Client-Side-Rendering im JS
-    wl_data = []
+    # Watchlist
+    wl_rows = ""
     for w in data["watchlist"]:
-        chs = []
-        try:
-            chs = json.loads(w.get("channels") or "[]")
-            chs = list(dict.fromkeys(chs))  # uniq, behält Reihenfolge
-        except (json.JSONDecodeError, TypeError):
-            chs = []
-        # Bevorzuge canonical_name aus companies (LEFT JOIN), sonst watchlist.name
-        display_name   = w.get("company_name")  or w.get("name") or ""
-        display_sector = w.get("company_sector") or w.get("sector") or "Other"
-        wl_data.append({
-            "name":          display_name,
-            "ticker":        w.get("ticker") or "?",
-            "sector":        display_sector,
-            "mention_count": w.get("mention_count") or 0,
-            "bullish":       w.get("bullish_count") or 0,
-            "bearish":       w.get("bearish_count") or 0,
-            "neutral":       w.get("neutral_count") or 0,
-            "conviction":    w.get("conviction_score") or 0,
-            "conviction_aged": w.get("conviction_score_aged") or 0,
-            "tech_score":    w.get("tech_score"),
-            "tech_direction": w.get("tech_direction") or "",
-            "channels":      chs,
-            "first_seen":    w.get("first_seen") or "",
-            "last_seen":     w.get("last_seen") or "",
-            "status":        w.get("status") or "watching",
-        })
-    wl_json = json.dumps(wl_data, ensure_ascii=False)
-    wl_count_total    = len(wl_data)
-    wl_count_watching = sum(1 for w in wl_data if w["status"] == "watching")
-    wl_count_bought   = sum(1 for w in wl_data if w["status"] == "bought")
-    wl_count_dropped  = sum(1 for w in wl_data if w["status"] == "dropped")
-
+        conv = w.get("conviction_score") or 0
+        cc   = "color:#00e676" if conv>=0.6 else "color:#ffd740" if conv>=0.4 else "color:#ff5252"
+        tech = f"{w['tech_score']:.2f}" if w.get("tech_score") else "–"
+        dc   = "color:#00e676" if w.get("tech_direction")=="LONG" else "color:#ff5252" if w.get("tech_direction")=="SHORT" else "color:#888"
+        chs  = json.loads(w.get("channels") or "[]")
+        wl_rows += f"""<tr>
+            <td>{w['name']}</td><td>{w.get('ticker') or '?'}</td>
+            <td>{w.get('sector') or 'Other'}</td>
+            <td style="text-align:center">{w.get('mention_count',0)}</td>
+            <td style="color:#00e676;text-align:center">{w.get('bullish_count',0)}↑</td>
+            <td style="color:#ff5252;text-align:center">{w.get('bearish_count',0)}↓</td>
+            <td style="{cc};font-weight:bold;text-align:center">{conv:.0%}</td>
+            <td style="text-align:center">{tech}</td>
+            <td style="{dc};text-align:center">{w.get('tech_direction') or '–'}</td>
+            <td style="font-size:0.8em">{', '.join(list(set(chs))[:3])}</td>
+            <td style="font-size:0.8em">{w.get('last_seen','')}</td>
+        </tr>"""
+    if not wl_rows:
+        wl_rows = '<tr><td colspan="11" style="text-align:center;color:#555;padding:20px">Watchlist leer</td></tr>'
 
     # Cron
     cron_rows = ""
@@ -911,191 +895,14 @@ def build_html(data):
 
 <!-- Tab: Watchlist -->
 <div id="tab-watchlist" class="tab-content">
-    <h2>📋 Watchlist <span style="color:#888;font-size:0.7em">({wl_count_total} gesamt)</span></h2>
-    
-    <!-- Filter Buttons -->
-    <div style="margin-bottom:15px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-        <span style="color:#888;font-size:0.85em">Status:</span>
-        <button class="wl-filter active" data-status="watching" onclick="wlSetFilter('watching')">
-            Beobachtet ({wl_count_watching})
-        </button>
-        <button class="wl-filter" data-status="bought" onclick="wlSetFilter('bought')">
-            Gekauft ({wl_count_bought})
-        </button>
-        <button class="wl-filter" data-status="dropped" onclick="wlSetFilter('dropped')">
-            Verworfen ({wl_count_dropped})
-        </button>
-        <button class="wl-filter" data-status="all" onclick="wlSetFilter('all')">
-            Alle ({wl_count_total})
-        </button>
-        <input type="text" id="wl-search" placeholder="🔍 Suche (Name/Ticker/Sektor)" 
-               style="margin-left:auto;padding:6px 10px;background:#1a1a2e;border:1px solid #2a2a4a;color:#fff;border-radius:4px;min-width:240px"
-               oninput="wlRender()">
-    </div>
-    
-    <!-- Tabelle -->
-    <table id="wl-table">
-        <thead>
-            <tr>
-                <th class="wl-sort" data-sort="name">Unternehmen ▾</th>
-                <th class="wl-sort" data-sort="ticker">Ticker</th>
-                <th class="wl-sort" data-sort="sector">Sektor</th>
-                <th class="wl-sort" data-sort="mention_count" style="text-align:center">Mentions</th>
-                <th class="wl-sort" data-sort="bullish" style="text-align:center">Bull</th>
-                <th class="wl-sort" data-sort="bearish" style="text-align:center">Bear</th>
-                <th class="wl-sort" data-sort="conviction" style="text-align:center">Conviction</th>
-                <th class="wl-sort" data-sort="conviction_aged" style="text-align:center">Conv. (aged)</th>
-                <th class="wl-sort" data-sort="tech_score" style="text-align:center">Tech</th>
-                <th class="wl-sort" data-sort="tech_direction" style="text-align:center">Richtung</th>
-                <th>Kanäle</th>
-                <th class="wl-sort" data-sort="first_seen" style="text-align:center">Zuerst</th>
-                <th class="wl-sort" data-sort="last_seen" style="text-align:center">Zuletzt</th>
-            </tr>
-        </thead>
-        <tbody id="wl-tbody"></tbody>
+    <h2>📋 Watchlist ({len(data['watchlist'])} Kandidaten, Top 30)</h2>
+    <table>
+        <tr><th>Unternehmen</th><th>Ticker</th><th>Sektor</th><th>Mentions</th>
+        <th>Bull</th><th>Bear</th><th>Conviction</th>
+        <th>Tech</th><th>Richtung</th><th>Kanäle</th><th>Zuletzt</th></tr>
+        {wl_rows}
     </table>
-    
-    <!-- Pagination -->
-    <div id="wl-pagination" style="margin-top:15px;display:flex;gap:8px;align-items:center;color:#888;font-size:0.9em">
-        <span id="wl-info"></span>
-        <span style="margin-left:auto"></span>
-        <button onclick="wlPagePrev()" id="wl-prev">◀ Zurück</button>
-        <span id="wl-page-info"></span>
-        <button onclick="wlPageNext()" id="wl-next">Weiter ▶</button>
-    </div>
 </div>
-
-<style>
-.wl-filter {{
-    background: #1a1a2e; border: 1px solid #2a2a4a; color: #aaa;
-    padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 0.85em;
-}}
-.wl-filter:hover {{ background: #252540; color: #fff; }}
-.wl-filter.active {{ background: #00d4ff; color: #000; border-color: #00d4ff; font-weight: bold; }}
-.wl-sort {{ cursor: pointer; user-select: none; }}
-.wl-sort:hover {{ background: #1e1e38; }}
-.wl-sort.sort-asc::after {{ content: " ▲"; color: #00d4ff; }}
-.wl-sort.sort-desc::after {{ content: " ▼"; color: #00d4ff; }}
-#wl-prev, #wl-next {{
-    background: #1a1a2e; border: 1px solid #2a2a4a; color: #fff;
-    padding: 6px 12px; border-radius: 4px; cursor: pointer;
-}}
-#wl-prev:disabled, #wl-next:disabled {{ opacity: 0.4; cursor: not-allowed; }}
-.wl-channels-wrap {{ position: relative; display: inline-block; }}
-.wl-channels-tip {{
-    visibility: hidden; position: absolute; z-index: 10; left: 0; top: 100%;
-    background: #0a0a14; border: 1px solid #2a2a4a; padding: 8px; border-radius: 4px;
-    min-width: 200px; font-size: 0.85em; color: #fff; box-shadow: 0 4px 12px rgba(0,0,0,0.5);
-}}
-.wl-channels-wrap:hover .wl-channels-tip {{ visibility: visible; }}
-</style>
-
-<script>
-const WL_DATA = {wl_json};
-let wlFilter = "watching";
-let wlSortKey = "conviction";
-let wlSortDir = "desc";
-let wlPage = 1;
-const WL_PAGE_SIZE = 50;
-
-function wlSetFilter(status) {{
-    wlFilter = status;
-    wlPage = 1;
-    document.querySelectorAll(".wl-filter").forEach(b => b.classList.toggle("active", b.dataset.status === status));
-    wlRender();
-}}
-
-document.querySelectorAll(".wl-sort").forEach(th => {{
-    th.addEventListener("click", () => {{
-        const key = th.dataset.sort;
-        if (wlSortKey === key) {{
-            wlSortDir = wlSortDir === "asc" ? "desc" : "asc";
-        }} else {{
-            wlSortKey = key;
-            wlSortDir = ["name","ticker","sector","first_seen","last_seen","tech_direction"].includes(key) ? "asc" : "desc";
-        }}
-        wlPage = 1;
-        wlRender();
-    }});
-}});
-
-function wlPagePrev() {{ if (wlPage > 1) {{ wlPage--; wlRender(); }} }}
-function wlPageNext() {{ wlPage++; wlRender(); }}
-
-function wlFiltered() {{
-    const q = (document.getElementById("wl-search").value || "").toLowerCase().trim();
-    return WL_DATA.filter(w => {{
-        if (wlFilter !== "all" && w.status !== wlFilter) return false;
-        if (q) {{
-            const hay = (w.name + " " + w.ticker + " " + w.sector).toLowerCase();
-            if (!hay.includes(q)) return false;
-        }}
-        return true;
-    }});
-}}
-
-function wlSorted(rows) {{
-    const k = wlSortKey, dir = wlSortDir === "asc" ? 1 : -1;
-    return rows.slice().sort((a, b) => {{
-        let va = a[k], vb = b[k];
-        if (va == null) va = (typeof vb === "number") ? -Infinity : "";
-        if (vb == null) vb = (typeof va === "number") ? -Infinity : "";
-        if (typeof va === "number" && typeof vb === "number") return (va - vb) * dir;
-        return String(va).localeCompare(String(vb)) * dir;
-    }});
-}}
-
-function wlRender() {{
-    document.querySelectorAll(".wl-sort").forEach(th => {{
-        th.classList.remove("sort-asc", "sort-desc");
-        if (th.dataset.sort === wlSortKey) th.classList.add("sort-" + wlSortDir);
-    }});
-    const filtered = wlFiltered();
-    const sorted = wlSorted(filtered);
-    const total = sorted.length;
-    const maxPage = Math.max(1, Math.ceil(total / WL_PAGE_SIZE));
-    if (wlPage > maxPage) wlPage = maxPage;
-    const start = (wlPage - 1) * WL_PAGE_SIZE;
-    const slice = sorted.slice(start, start + WL_PAGE_SIZE);
-
-    const tbody = document.getElementById("wl-tbody");
-    tbody.innerHTML = slice.map(w => {{
-        const conv = w.conviction || 0;
-        const cc = conv >= 0.6 ? "#00e676" : conv >= 0.4 ? "#ffd740" : "#ff5252";
-        const tech = w.tech_score != null ? w.tech_score.toFixed(2) : "–";
-        const dc = w.tech_direction === "LONG" ? "#00e676" : w.tech_direction === "SHORT" ? "#ff5252" : "#888";
-        const first3 = w.channels.slice(0, 3).join(", ");
-        const rest = w.channels.slice(3);
-        const tip = w.channels.length > 0
-            ? `<div class="wl-channels-tip">${{w.channels.join("<br>")}}</div>` : "";
-        const more = rest.length > 0 ? ` <span style="color:#00d4ff">+${{rest.length}}</span>` : "";
-        const status_icon = w.status === "bought" ? "🛒 " : w.status === "dropped" ? "✗ " : "";
-        return `<tr>
-            <td>${{status_icon}}${{w.name}}</td>
-            <td>${{w.ticker}}</td>
-            <td>${{w.sector}}</td>
-            <td style="text-align:center">${{w.mention_count}}</td>
-            <td style="color:#00e676;text-align:center">${{w.bullish}}↑</td>
-            <td style="color:#ff5252;text-align:center">${{w.bearish}}↓</td>
-            <td style="color:${{cc}};font-weight:bold;text-align:center">${{(conv*100).toFixed(0)}}%</td>
-            <td style="text-align:center">${{w.conviction_aged > 0 ? (w.conviction_aged*100).toFixed(0)+'%' : '–'}}</td>
-            <td style="text-align:center">${{tech}}</td>
-            <td style="color:${{dc}};text-align:center">${{w.tech_direction || "–"}}</td>
-            <td style="font-size:0.8em"><span class="wl-channels-wrap">${{first3}}${{more}}${{tip}}</span></td>
-            <td style="font-size:0.8em;text-align:center">${{w.first_seen}}</td>
-            <td style="font-size:0.8em;text-align:center">${{w.last_seen}}</td>
-        </tr>`;
-    }}).join("") || `<tr><td colspan="13" style="text-align:center;color:#555;padding:20px">Keine Treffer</td></tr>`;
-
-    document.getElementById("wl-info").textContent = total === 0
-        ? "Keine Eintraege" : `${{start + 1}}–${{Math.min(start + WL_PAGE_SIZE, total)}} von ${{total}}`;
-    document.getElementById("wl-page-info").textContent = `Seite ${{wlPage}} / ${{maxPage}}`;
-    document.getElementById("wl-prev").disabled = wlPage <= 1;
-    document.getElementById("wl-next").disabled = wlPage >= maxPage;
-}}
-
-wlRender();
-</script>
 
 <!-- Tab: Quellen -->
 <div id="tab-sources" class="tab-content">

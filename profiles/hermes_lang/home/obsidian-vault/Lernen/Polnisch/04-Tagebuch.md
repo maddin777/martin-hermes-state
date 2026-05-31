@@ -601,3 +601,60 @@ Lektion #9 abgeschlossen.
 10. **i**
 
 Lektion #10 abgeschlossen.
+
+
+# Polnisch Lektion #11
+
+## 1. Vokabeln (Top 500)
+1. **dom** `Haus`
+2. **kobieta** `Frau`
+3. **robić** `machen`
+4. **dużo** `viel`
+5. **dzisiaj** `heute`
+6. **mieć** `haben`
+7. **dobry** `gut`
+8. **być** `sein`
+9. **woda** `Wasser`
+10. **jeść** `essen`
+
+## 2. n+1 Sentence Mining
+1. **Dzisiaj mam dobry dzień.** `Heute habe ich einen guten Tag.`
+2. **Kobieta robi dużo.** `Die Frau macht viel.`
+3. **Woda jest w domu.** `Das Wasser ist im Haus.`
+4. **On je bardzo dużo.** `Er isst sehr viel.`
+5. **Czy masz dom?** `Hast du ein Haus?`
+
+## 3. Grammatik: Aspekt & Kasus
+**Aspekt-Paare (Verben):**
+- **robić** (imperfekt) / **zrobić** (perfekt) `machen`
+- **jeść** (imperfekt) / **zjeść** (perfekt) `essen`
+
+**Kasus (Nomen):**
+- **dom** (Nominativ) / **domu** (Genitiv/Lokativ) `Haus`
+- **kobieta** (Nominativ) / **kobiety** (Genitiv) `Frau`
+
+## 4. Lueckentext-Quiz
+1. **Dzisiaj ______ dobry dzień.**
+2. **Kobieta ______ dużo.**
+3. **Woda jest w ______.**
+4. **On ______ bardzo dużo.**
+5. **Czy ______ masz dom?**
+6. **To jest ______ dom.**
+7. **Gdzie jest ______?**
+8. **On ______ bardzo dużo je.**
+9. **______ jest bardzo zimna.**
+10. **Mamy ______ dom.**
+
+## 5. Aufloesung
+1. **jest**
+2. **robi**
+3. **domu**
+4. **je**
+5. **ty**
+6. **dobry**
+7. **kobieta**
+8. **dzisiaj**
+9. **Woda**
+10. **nasz**
+
+Lektion #11 abgeschlossen.

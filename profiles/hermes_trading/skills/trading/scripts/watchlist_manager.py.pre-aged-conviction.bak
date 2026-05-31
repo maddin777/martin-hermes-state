@@ -50,85 +50,6 @@ def _weighted_sentiment(mentions_list, channel_weights, sentiment):
     total_weight = sum(channel_weights.get(ch.strip(), 1.0) for ch in mentions_list)
     return total_weight
 
-# === Aged Conviction (Bayesian + Time-Decay) ===
-HALF_LIFE_DAYS = 14
-PRIOR_NEUTRAL  = 3.0
-
-def calculate_conviction_aged(con, name, channel_weights=None,
-                              half_life=HALF_LIFE_DAYS,
-                              prior_neutral=PRIOR_NEUTRAL,
-                              ref_date=None):
-    """
-    Conviction-Score mit zeitlichem Decay + Bayesian Prior.
-    
-    Liest watchlist_mentions(mention_date, channel, sentiment) und berechnet:
-      - time_weight   = 0.5 ^ (age_days / half_life)
-      - channel_w     = source_registry.weight (fallback 1.0)
-      - combined      = time_w * channel_w pro Mention
-      - sentiment     = sum_w_bull / (sum_w_bull + sum_w_bear), default 0.5
-      - confidence    = directional_w / (sum_w_all + prior_neutral)  ← Bayesian
-      - volume        = log(directional_n + 1) / log(11), capped 1.0
-      - conviction    = sentiment*0.5 + confidence*0.3 + volume*0.2
-    
-    Returns float [0,1] oder None bei keinen Daten.
-    """
-    ref_date = ref_date or datetime.now().date()
-
-    # Sammle alle Mention-Name-Varianten die zum gleichen ticker gehoeren
-    # Wir gehen ueber company_aliases -> ticker -> alle aliases -> alle mention-Namen
-    cur = con.execute("""
-        SELECT a2.alias
-        FROM company_aliases a1
-        JOIN company_aliases a2 ON a2.ticker = a1.ticker
-        WHERE a1.alias = ?
-    """, (name.lower().strip(),))
-    aliases = [r[0] for r in cur.fetchall()]
-    # Auch der original Name als Fallback (falls kein alias-match)
-    if name.lower().strip() not in aliases:
-        aliases.append(name.lower().strip())
-
-    # Mentions koennen unter beliebiger Schreibweise gespeichert sein
-    # -> Match per lower(name) IN (aliases)
-    placeholders = ",".join("?" * len(aliases))
-    rows = con.execute(
-        f"SELECT mention_date, channel, sentiment FROM watchlist_mentions "
-        f"WHERE lower(name) IN ({placeholders})",
-        aliases
-    ).fetchall()
-    if not rows:
-        return None
-
-    sum_w_bull = sum_w_bear = sum_w_neut = sum_w_all = 0.0
-    n_bull = n_bear = 0
-    for r in rows:
-        try:
-            md = datetime.strptime(r["mention_date"], "%Y-%m-%d").date()
-        except (ValueError, TypeError):
-            continue
-        age = max(0, (ref_date - md).days)
-        tw = 0.5 ** (age / half_life)
-        chw = (channel_weights or {}).get(r["channel"], 1.0)
-        w = tw * chw
-        sum_w_all += w
-        s = r["sentiment"]
-        if s == "bullish":   sum_w_bull += w; n_bull += 1
-        elif s == "bearish": sum_w_bear += w; n_bear += 1
-        else:                sum_w_neut += w
-
-    if sum_w_all == 0:
-        return None
-
-    directional_w   = sum_w_bull + sum_w_bear
-    directional_n   = n_bull + n_bear
-    sum_w_all_prior = sum_w_all + prior_neutral
-    sentiment_score = sum_w_bull / directional_w if directional_w > 0 else 0.5
-    confidence      = directional_w / sum_w_all_prior
-    volume          = min(1.0, math.log(directional_n + 1) / math.log(11))
-    conviction      = min(1.0, max(0.0,
-        sentiment_score * 0.5 + confidence * 0.3 + volume * 0.2
-    ))
-    return round(conviction, 4)
-
 def calculate_conviction(bullish, bearish, neutral, mention_count, unique_channels,
                          channels_list=None, channel_weights=None):
     """
@@ -671,23 +592,16 @@ def main():
         canonical_name = sector_row["canonical_name"] if sector_row else name
         sector         = (sector_row["sector"] if sector_row else None) or "Other"
 
-        # Aged Conviction (Bayesian + Time-Decay) zusaetzlich berechnen
-        conviction_aged = calculate_conviction_aged(con, name, channel_weights)
-        if conviction_aged is None:
-            conviction_aged = 0
-
         # INSERT: bei Ticker-Konflikt nichts tun, UPDATE-Pfad weiter unten kuemmert sich
         con.execute("""
             INSERT INTO watchlist (name, ticker, first_seen, last_seen,
                 mention_count, bullish_count, bearish_count, neutral_count,
-                conviction_score, conviction_score_bear, conviction_score_aged,
-                channels, status, sector)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                conviction_score, conviction_score_bear, channels, status, sector)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
             ON CONFLICT(ticker) DO NOTHING
         """, (canonical_name, ticker, m["first_seen"], m["last_seen"],
               m["mention_count"], m["bullish"], m["bearish"], m["neutral"],
-              conviction, conviction_bear, conviction_aged,
-              json.dumps(channels_list), "watching", sector))
+              conviction, conviction_bear, json.dumps(channels_list), "watching", sector))
 
         # UPDATE: existierenden Eintrag aktualisieren (auch dropped -> watching reaktivieren)
         con.execute("""
@@ -699,7 +613,7 @@ def main():
             WHERE ticker=? AND status IN ('watching', 'dropped')
         """, (canonical_name, m["last_seen"], m["mention_count"],
               m["bullish"], m["bearish"], m["neutral"],
-              conviction, conviction_bear, conviction_aged,
+              conviction, conviction_bear,
               json.dumps(channels_list), sector, ticker))
     con.commit()
 

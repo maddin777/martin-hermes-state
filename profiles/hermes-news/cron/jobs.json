@@ -3,7 +3,7 @@
     {
       "id": "999fe77b345a",
       "name": "daily-news-briefing",
-      "prompt": "Du bist mein persönlicher Nachrichten-Agent für ein tägliches Morgen-Briefing um 6:00 Uhr.\n\nAufgabe:\nErstelle jeden Tag ein kompaktes, professionelles Morgen-Briefing mit den wichtigsten Nachrichten der letzten 24 Stunden (seit gestern 6:00 Uhr). Das Briefing muss vollständig auf Deutsch sein.\n\nAuswahlkriterien (streng einhalten):\n- Wähle maximal 3–5 Meldungen, die wirklich relevant sind.\n- Priorisiere: Politik, Wirtschaft, Technologie, internationale Konflikte, Energie, Infrastruktur, EU-Themen.\n- Immer regionale Relevanz prüfen für: Mecklenburg-Vorpommern, Schleswig-Holstein, Hamburg, Skandinavien (Schweden, Norwegen, Dänemark, Finnland), Polen und Ostsee-Raum.\n- Lokale Ereignisse mit überregionaler Bedeutung (z.B. Hafen, Energie, Politik, Naturkatastrophen, große Unternehmen) sind explizit gewünscht.\n- Ignoriere komplett: Sport, Promis, Crime ohne große Relevanz, reine Unterhaltung.\n\nRecherche-Qualität:\n- Nutze zuverlässige Quellen (Tagesschau, FAZ, Welt, NZZ, Handelsblatt, Reuters, Bloomberg, Spiegel, ARD, ZDF, lokale Zeitungen wie Ostsee-Zeitung, Kieler Nachrichten, SVZ, Gazeta Wyborcza, SVT, NRK, Yle etc.).\n- Ergänze mit X-Suche für allerfrischeste Entwicklungen.\n- Cross-Check immer mit mindestens 2–3 seriösen Quellen.\n- Sei proaktiv bei der Suche nach Regionalnachrichten (z.B. \"Mecklenburg-Vorpommern News heute\", \"Ostsee Politik\", \"Warnemünde Hafen\", \"Lübeck Aktuell\" etc.).\n\nOutput-Struktur (strikt einhalten):\n\nTitelzeile: Morgen-Briefing – [Wochentag], [DD.MM.YYYY]\n\nDann gruppiere sinnvoll, z.B.:\nPolitik & Internationales\nWirtschaft & Technologie\nRegional Nordost & Skandinavien\n\nPro Meldung:\n1. Klare, prägnante Überschrift (max. 10 Wörter)\n2. Neutrales Summary (4–7 Sätze, faktenbasiert)\n3. Wichtige Fakten & Zahlen (Bullet Points)\n4. Quellen mit Links am Ende der Meldung\n\nTrennlinie zwischen Meldungen: ———\n\nBei sehr ruhiger Nachrichtenlage:\nKein \"Ruhiger Morgen\". Stattdessen eine kurze, ehrliche Einleitung (1–2 Sätze), was die dominierenden Themen waren und warum es ruhig war — aber dennoch die relevantesten Punkte liefern.\n\nSaisonale Ergänzung (1. Mai – 30. September):\nAm Ende immer einen Abschnitt:\n\nWassertemperaturen Ostsee & Schweriner See\n- Schweriner See: XX.X °C\n- Ostsee bei Lübeck/Trave: XX.X °C\n- Warnemünde: XX.X °C (nur angeben, wenn >5 °C Unterschied zu Lübeck)\n\nNutze dafür die besten verfügbaren Quellen (DWD, wetter.com, seatemperature.org, ostsee.de, lokale Hafenwebseiten). Wenn keine aktuelle Messung verfügbar ist, schreibe \"keine aktuelle Messung verfügbar (Stand: ...)\".\n\nStil:\n- Nüchtern, sachlich, professionell wie ein guter Nachrichtenticker.\n- Keine Emojis, keine Wertungen, keine Spekulationen, keine Floskeln.\n- Maximaler Informationsgehalt bei knapper Form.",
+      "prompt": "Du bist mein pers\u00f6nlicher Nachrichten-Agent f\u00fcr ein t\u00e4gliches Morgen-Briefing um 6:00 Uhr.\n\nAufgabe:\nErstelle jeden Tag ein kompaktes, professionelles Morgen-Briefing mit den wichtigsten Nachrichten der letzten 24 Stunden (seit gestern 6:00 Uhr). Das Briefing muss vollst\u00e4ndig auf Deutsch sein.\n\nAuswahlkriterien (streng einhalten):\n- W\u00e4hle maximal 3\u20135 Meldungen, die wirklich relevant sind.\n- Priorisiere: Politik, Wirtschaft, Technologie, internationale Konflikte, Energie, Infrastruktur, EU-Themen.\n- Immer regionale Relevanz pr\u00fcfen f\u00fcr: Mecklenburg-Vorpommern, Schleswig-Holstein, Hamburg, Skandinavien (Schweden, Norwegen, D\u00e4nemark, Finnland), Polen und Ostsee-Raum.\n- Lokale Ereignisse mit \u00fcberregionaler Bedeutung (z.B. Hafen, Energie, Politik, Naturkatastrophen, gro\u00dfe Unternehmen) sind explizit gew\u00fcnscht.\n- Ignoriere komplett: Sport, Promis, Crime ohne gro\u00dfe Relevanz, reine Unterhaltung.\n\nRecherche-Qualit\u00e4t:\n- Nutze zuverl\u00e4ssige Quellen (Tagesschau, FAZ, Welt, NZZ, Handelsblatt, Reuters, Bloomberg, Spiegel, ARD, ZDF, lokale Zeitungen wie Ostsee-Zeitung, Kieler Nachrichten, SVZ, Gazeta Wyborcza, SVT, NRK, Yle etc.).\n- Erg\u00e4nze mit X-Suche f\u00fcr allerfrischeste Entwicklungen.\n- Cross-Check immer mit mindestens 2\u20133 seri\u00f6sen Quellen.\n- Sei proaktiv bei der Suche nach Regionalnachrichten (z.B. \"Mecklenburg-Vorpommern News heute\", \"Ostsee Politik\", \"Warnem\u00fcnde Hafen\", \"L\u00fcbeck Aktuell\" etc.).\n\nOutput-Struktur (strikt einhalten):\n\nTitelzeile: Morgen-Briefing \u2013 [Wochentag], [DD.MM.YYYY]\n\nDann gruppiere sinnvoll, z.B.:\nPolitik & Internationales\nWirtschaft & Technologie\nRegional Nordost & Skandinavien\n\nPro Meldung:\n1. Klare, pr\u00e4gnante \u00dcberschrift (max. 10 W\u00f6rter)\n2. Neutrales Summary (4\u20137 S\u00e4tze, faktenbasiert)\n3. Wichtige Fakten & Zahlen (Bullet Points)\n4. Quellen mit Links am Ende der Meldung\n\nTrennlinie zwischen Meldungen: \u2014\u2014\u2014\n\nBei sehr ruhiger Nachrichtenlage:\nKein \"Ruhiger Morgen\". Stattdessen eine kurze, ehrliche Einleitung (1\u20132 S\u00e4tze), was die dominierenden Themen waren und warum es ruhig war \u2014 aber dennoch die relevantesten Punkte liefern.\n\nSaisonale Erg\u00e4nzung (1. Mai \u2013 30. September):\nAm Ende immer einen Abschnitt:\n\nWassertemperaturen Ostsee & Schweriner See\n- Schweriner See: XX.X \u00b0C\n- Ostsee bei L\u00fcbeck/Trave: XX.X \u00b0C\n- Warnem\u00fcnde: XX.X \u00b0C (nur angeben, wenn >5 \u00b0C Unterschied zu L\u00fcbeck)\n\nNutze daf\u00fcr die besten verf\u00fcgbaren Quellen (DWD, wetter.com, seatemperature.org, ostsee.de, lokale Hafenwebseiten). Wenn keine aktuelle Messung verf\u00fcgbar ist, schreibe \"keine aktuelle Messung verf\u00fcgbar (Stand: ...)\".\n\nStil:\n- N\u00fcchtern, sachlich, professionell wie ein guter Nachrichtenticker.\n- Keine Emojis, keine Wertungen, keine Spekulationen, keine Floskeln.\n- Maximaler Informationsgehalt bei knapper Form.",
       "skills": [],
       "skill": null,
       "model": "grok-4.20-0309-non-reasoning",
@@ -18,15 +18,15 @@
       "schedule_display": "0 6 * * *",
       "repeat": {
         "times": null,
-        "completed": 62
+        "completed": 63
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-04-22T11:01:16.073546+02:00",
-      "next_run_at": "2026-05-30T06:00:00+02:00",
-      "last_run_at": "2026-05-29T06:02:17.486928+02:00",
+      "next_run_at": "2026-05-31T06:00:00+02:00",
+      "last_run_at": "2026-05-30T06:01:42.265330+02:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -34,5 +34,5 @@
       "origin": null
     }
   ],
-  "updated_at": "2026-05-29T06:02:17.488972+02:00"
+  "updated_at": "2026-05-30T06:01:42.266598+02:00"
 }

@@ -13,10 +13,6 @@ import math
 import yfinance as yf
 import pandas_ta as ta
 from datetime import datetime, timedelta
-# Validierungs-Pipeline aus Paket B
-import sys as _sys
-_sys.path.insert(0, '/root/.hermes/profiles/hermes_trading/skills/trading/scripts')
-from company_validator import validate_and_register
 
 DB_PATH      = "/root/.hermes/profiles/hermes_trading/skills/trading/data/trading.db"
 SIGNALS_PATH = "/root/.hermes/profiles/hermes_trading/skills/trading/data/trading_signals.json"
@@ -49,85 +45,6 @@ def _weighted_sentiment(mentions_list, channel_weights, sentiment):
         return None
     total_weight = sum(channel_weights.get(ch.strip(), 1.0) for ch in mentions_list)
     return total_weight
-
-# === Aged Conviction (Bayesian + Time-Decay) ===
-HALF_LIFE_DAYS = 14
-PRIOR_NEUTRAL  = 3.0
-
-def calculate_conviction_aged(con, name, channel_weights=None,
-                              half_life=HALF_LIFE_DAYS,
-                              prior_neutral=PRIOR_NEUTRAL,
-                              ref_date=None):
-    """
-    Conviction-Score mit zeitlichem Decay + Bayesian Prior.
-    
-    Liest watchlist_mentions(mention_date, channel, sentiment) und berechnet:
-      - time_weight   = 0.5 ^ (age_days / half_life)
-      - channel_w     = source_registry.weight (fallback 1.0)
-      - combined      = time_w * channel_w pro Mention
-      - sentiment     = sum_w_bull / (sum_w_bull + sum_w_bear), default 0.5
-      - confidence    = directional_w / (sum_w_all + prior_neutral)  ← Bayesian
-      - volume        = log(directional_n + 1) / log(11), capped 1.0
-      - conviction    = sentiment*0.5 + confidence*0.3 + volume*0.2
-    
-    Returns float [0,1] oder None bei keinen Daten.
-    """
-    ref_date = ref_date or datetime.now().date()
-
-    # Sammle alle Mention-Name-Varianten die zum gleichen ticker gehoeren
-    # Wir gehen ueber company_aliases -> ticker -> alle aliases -> alle mention-Namen
-    cur = con.execute("""
-        SELECT a2.alias
-        FROM company_aliases a1
-        JOIN company_aliases a2 ON a2.ticker = a1.ticker
-        WHERE a1.alias = ?
-    """, (name.lower().strip(),))
-    aliases = [r[0] for r in cur.fetchall()]
-    # Auch der original Name als Fallback (falls kein alias-match)
-    if name.lower().strip() not in aliases:
-        aliases.append(name.lower().strip())
-
-    # Mentions koennen unter beliebiger Schreibweise gespeichert sein
-    # -> Match per lower(name) IN (aliases)
-    placeholders = ",".join("?" * len(aliases))
-    rows = con.execute(
-        f"SELECT mention_date, channel, sentiment FROM watchlist_mentions "
-        f"WHERE lower(name) IN ({placeholders})",
-        aliases
-    ).fetchall()
-    if not rows:
-        return None
-
-    sum_w_bull = sum_w_bear = sum_w_neut = sum_w_all = 0.0
-    n_bull = n_bear = 0
-    for r in rows:
-        try:
-            md = datetime.strptime(r["mention_date"], "%Y-%m-%d").date()
-        except (ValueError, TypeError):
-            continue
-        age = max(0, (ref_date - md).days)
-        tw = 0.5 ** (age / half_life)
-        chw = (channel_weights or {}).get(r["channel"], 1.0)
-        w = tw * chw
-        sum_w_all += w
-        s = r["sentiment"]
-        if s == "bullish":   sum_w_bull += w; n_bull += 1
-        elif s == "bearish": sum_w_bear += w; n_bear += 1
-        else:                sum_w_neut += w
-
-    if sum_w_all == 0:
-        return None
-
-    directional_w   = sum_w_bull + sum_w_bear
-    directional_n   = n_bull + n_bear
-    sum_w_all_prior = sum_w_all + prior_neutral
-    sentiment_score = sum_w_bull / directional_w if directional_w > 0 else 0.5
-    confidence      = directional_w / sum_w_all_prior
-    volume          = min(1.0, math.log(directional_n + 1) / math.log(11))
-    conviction      = min(1.0, max(0.0,
-        sentiment_score * 0.5 + confidence * 0.3 + volume * 0.2
-    ))
-    return round(conviction, 4)
 
 def calculate_conviction(bullish, bearish, neutral, mention_count, unique_channels,
                          channels_list=None, channel_weights=None):
@@ -460,6 +377,81 @@ def normalize_company_name(name):
     return n
 
 
+def resolve_ticker(name):
+    """Einfache Ticker-Auflösung via yfinance Search."""
+    KNOWN = {
+        "sap": "SAP.DE", "servicenow": "NOW", "service now": "NOW",
+        "microsoft": "MSFT", "apple": "AAPL", "nvidia": "NVDA",
+        "tesla": "TSLA", "amazon": "AMZN", "meta": "META",
+        "alphabet": "GOOGL", "google": "GOOGL", "intel": "INTC",
+        "nike": "NKE", "adobe": "ADBE", "broadcom": "AVGO",
+        "palantir": "PLTR", "salesforce": "CRM", "amd": "AMD",
+        "halliburton": "HAL", "siemens energy": "ENR.DE",
+        "sgl carbon": "SGL.DE", "commerzbank": "CBK.DE",
+        "allianz": "ALV.DE", "siemens": "SIE.DE",
+        "deutsche bank": "DBK.DE", "bmw": "BMW.DE",
+        "volkswagen": "VOW3.DE", "bas": "BAS.DE",
+        "bayer": "BAYN.DE", "adidas": "ADS.DE",
+        "infineon": "IFX.DE", "mtu aero engines": "MTX.DE",
+        "deutsche telekom": "DTE.DE", "rwe": "RWE.DE",
+        "eli lilly": "LLY", "unitedhealth": "UNH",
+        "johnson & johnson": "JNJ", "msci": "MSCI",
+        "crowdstrike": "CRWD", "palo alto": "PANW",
+        "fastly": "FSLY", "applovin": "APP",
+        "bloom energy": "BE", "ionq": "IONQ",
+        "synopsys": "SNPS", "autodesk": "ADSK",
+        "texas instruments": "TXN", "ibm": "IBM",
+        "sandisk": "SNDK", "qualcomm": "QCOM",
+        "take-two interactive": "TTWO", "d-wave quantum": "QBTS",
+        "lvmh": "MC.PA", "linde": "LIN",
+    }
+    key = name.lower().strip()
+    if key in KNOWN:
+        return KNOWN[key]
+    # Auch nach Normalisierung prüfen
+    norm = normalize_company_name(name).lower().strip()
+    if norm != key and norm in KNOWN:
+        return KNOWN[norm]
+    try:
+        results = yf.Search(name, max_results=3)
+        quotes  = results.quotes
+        if quotes:
+            for q in quotes:
+                if q.get("exchange") in ("GER","XETRA","FRA","STU","MUN"):
+                    return q.get("symbol")
+            return quotes[0].get("symbol")
+    except:
+        pass
+    return None
+
+def get_sector(ticker):
+    """Holt Sektor via yfinance, cached in DB."""
+    KNOWN_SECTORS = {
+        "Tech":      ["AAPL","MSFT","GOOGL","NVDA","META","NOW","SAP.DE",
+                      "INTC","AMD","AVGO","ADBE","PLTR","CRM","PANW",
+                      "CRWD","SNPS","ADSK","FSLY","APP","IBM","IONQ"],
+        "Finance":   ["MSCI","CBK.DE","DBK.DE","ALV.DE","UCG.MI",
+                      "BAC","JPM","GS","MS"],
+        "Energy":    ["ENR.DE","RWE.DE","EOAN.DE","HAL","BE","SLB"],
+        "Consumer":  ["NKE","ADS.DE"],
+        "Health":    ["LLY","JNJ","UNH","GILD","MRNA"],
+        "Materials": ["SGL.DE","BAS.DE","BAYN.DE"],
+        "Industrial":["SIE.DE","MTX.DE","DTG.DE"],
+        "Auto":      ["BMW.DE","VOW3.DE","MBG.DE","TSLA"],
+    }
+    for sector, tickers in KNOWN_SECTORS.items():
+        if ticker in tickers:
+            return sector
+    try:
+        info = yf.Ticker(ticker).info
+        sector = info.get("sector")
+        if sector:
+            return sector
+    except:
+        pass
+    return "Other"
+
+
 def normalize_mentions(con):
     """Dedupliziert watchlist_mentions.name via normalize_company_name().
 
@@ -654,53 +646,35 @@ def main():
             channels_list=channels_list, channel_weights=channel_weights
         )
 
-        # --- Validierungs-Pipeline (Paket B): Cache-Hit, neue Firma anlegen, oder skippen ---
-        result = validate_and_register(name)
-        if result["status"] == "rejected":
-            # Krypto, Indizes, abgeschnittene Namen, Mehrdeutigkeiten -> skip
-            continue
-        ticker = result["ticker"]
-        if not ticker:
-            # status='private' (OpenAI, SpaceX, ...) -> kein Trade moeglich
-            continue
-
-        # Sektor aus companies-Tabelle (single source of truth)
-        sector_row = con.execute(
-            "SELECT canonical_name, sector FROM companies WHERE ticker=?", (ticker,)
+        existing = con.execute(
+            "SELECT ticker FROM watchlist WHERE name=? AND status='watching'", (name,)
         ).fetchone()
-        canonical_name = sector_row["canonical_name"] if sector_row else name
-        sector         = (sector_row["sector"] if sector_row else None) or "Other"
 
-        # Aged Conviction (Bayesian + Time-Decay) zusaetzlich berechnen
-        conviction_aged = calculate_conviction_aged(con, name, channel_weights)
-        if conviction_aged is None:
-            conviction_aged = 0
+        ticker = existing["ticker"] if existing and existing["ticker"] else resolve_ticker(name)
+        sector = get_sector(ticker) if ticker else "Other"
 
-        # INSERT: bei Ticker-Konflikt nichts tun, UPDATE-Pfad weiter unten kuemmert sich
         con.execute("""
             INSERT INTO watchlist (name, ticker, first_seen, last_seen,
                 mention_count, bullish_count, bearish_count, neutral_count,
-                conviction_score, conviction_score_bear, conviction_score_aged,
-                channels, status, sector)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)
-            ON CONFLICT(ticker) DO NOTHING
-        """, (canonical_name, ticker, m["first_seen"], m["last_seen"],
+                conviction_score, conviction_score_bear, channels, status, sector)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
+            ON CONFLICT(name) DO NOTHING
+        """, (name, ticker, m["first_seen"], m["last_seen"],
               m["mention_count"], m["bullish"], m["bearish"], m["neutral"],
-              conviction, conviction_bear, conviction_aged,
-              json.dumps(channels_list), "watching", sector))
+              conviction, conviction_bear, json.dumps(channels_list), "watching", sector))
 
-        # UPDATE: existierenden Eintrag aktualisieren (auch dropped -> watching reaktivieren)
         con.execute("""
             UPDATE watchlist SET
-                name=?, last_seen=?, mention_count=?,
+                ticker=?, last_seen=?, mention_count=?,
                 bullish_count=?, bearish_count=?, neutral_count=?,
                 conviction_score=?, conviction_score_bear=?,
                 channels=?, status='watching', sector=?
-            WHERE ticker=? AND status IN ('watching', 'dropped')
-        """, (canonical_name, m["last_seen"], m["mention_count"],
+            WHERE name=? AND status IN ('watching', 'dropped')
+        """, (ticker, m["last_seen"], m["mention_count"],
               m["bullish"], m["bearish"], m["neutral"],
-              conviction, conviction_bear, conviction_aged,
-              json.dumps(channels_list), sector, ticker))
+              conviction, conviction_bear,
+              json.dumps(channels_list), sector, name))
+
     con.commit()
 
     # 6. Technische Scores für Top-Kandidaten aktualisieren

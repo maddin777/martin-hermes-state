@@ -64,13 +64,13 @@
     "created_at": "2026-05-26T03:52:18.196606+00:00",
     "created_by": null,
     "last_patched_at": "2026-05-26T05:55:14.239292+00:00",
-    "last_used_at": "2026-05-26T05:55:20.006170+00:00",
-    "last_viewed_at": "2026-05-26T05:55:20.002217+00:00",
+    "last_used_at": "2026-05-30T01:00:45.668586+00:00",
+    "last_viewed_at": "2026-05-30T01:00:45.665346+00:00",
     "patch_count": 10,
     "pinned": false,
     "state": "active",
-    "use_count": 17,
-    "view_count": 17
+    "use_count": 18,
+    "view_count": 18
   },
   "hermes-voice": {
     "archived_at": null,
