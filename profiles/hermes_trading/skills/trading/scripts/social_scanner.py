@@ -15,17 +15,15 @@ import locale
 import requests
 import feedparser
 from datetime import datetime, timedelta, timezone
+from config import DB_PATH, SOURCES_CONFIG_PATH, SIGNALS_PATH
 
-DB_PATH      = "/root/.hermes/profiles/hermes_trading/skills/trading/data/trading.db"
-CONFIG_PATH  = "/root/.hermes/profiles/hermes_trading/skills/trading/config/sources.json"
-SIGNALS_PATH = "/root/.hermes/profiles/hermes_trading/skills/trading/data/trading_signals.json"
 OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY")
 MODEL = "google/gemini-2.5-flash-lite"
 
 DAYS = 2
 
 def load_config():
-    with open(CONFIG_PATH) as f:
+    with open(SOURCES_CONFIG_PATH) as f:
         return json.load(f)
 
 def parse_date(entry):

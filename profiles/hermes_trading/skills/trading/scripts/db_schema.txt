@@ -1,0 +1,504 @@
+CREATE TABLE videos (
+            video_id    TEXT PRIMARY KEY,
+            channel     TEXT,
+            title       TEXT,
+            upload_date TEXT,
+            transcript  TEXT,
+            status      TEXT DEFAULT 'pending',
+            created_at  TEXT DEFAULT (datetime('now')),
+            analyzed_at TEXT
+        );
+CREATE TABLE positions (
+            id           INTEGER PRIMARY KEY AUTOINCREMENT,
+            ticker       TEXT,
+            name         TEXT,
+            direction    TEXT,
+            entry_price  REAL,
+            entry_date   TEXT,
+            stop_loss    REAL,
+            take_profit  REAL,
+            trailing_sl  REAL,
+            breakeven_set INTEGER DEFAULT 0,
+            position_size REAL,
+            shares       REAL,
+            status       TEXT DEFAULT 'open',
+            exit_price   REAL,
+            exit_date    TEXT,
+            exit_reason  TEXT,
+            pnl_eur      REAL,
+            pnl_pct      REAL,
+            atr_at_entry REAL,
+            confidence   REAL,
+            source_channel TEXT,
+            reason       TEXT
+        , highest_price REAL, lowest_price REAL, partial_exit_done INTEGER DEFAULT 0, thesis_text TEXT, thesis_theme_id INTEGER, thesis_current_status TEXT DEFAULT 'intact', entry_conviction_tier TEXT, entry_conviction_score REAL, signal_source TEXT, currency TEXT DEFAULT 'EUR', entry_fx_rate REAL DEFAULT 1.0, exit_fx_rate REAL, pnl_local_currency REAL, pnl_fx_effect_eur REAL, pm_supporting_markets TEXT);
+CREATE TABLE sqlite_sequence(name,seq);
+CREATE TABLE portfolio (
+            id           INTEGER PRIMARY KEY,
+            cash         REAL,
+            total_value  REAL,
+            updated_at   TEXT
+        );
+CREATE TABLE watchlist_mentions (
+        id          INTEGER PRIMARY KEY AUTOINCREMENT,
+        name        TEXT,
+        channel     TEXT,
+        video_id    TEXT,
+        video_title TEXT,
+        sentiment   TEXT,
+        reason      TEXT,
+        mention_date TEXT,
+        UNIQUE(name, video_id)
+    );
+CREATE TABLE IF NOT EXISTS "watchlist_old" (
+        id               INTEGER PRIMARY KEY AUTOINCREMENT,
+        name             TEXT NOT NULL UNIQUE,
+        ticker           TEXT,
+        first_seen       TEXT,
+        last_seen        TEXT,
+        mention_count    INTEGER DEFAULT 0,
+        bullish_count    INTEGER DEFAULT 0,
+        bearish_count    INTEGER DEFAULT 0,
+        neutral_count    INTEGER DEFAULT 0,
+        conviction_score REAL DEFAULT 0,
+        tech_score       REAL,
+        tech_direction   TEXT,
+        channels         TEXT DEFAULT '[]',
+        status           TEXT DEFAULT 'watching',
+        notes            TEXT,
+        sector           TEXT DEFAULT 'Other'
+    , conviction_score_bear REAL DEFAULT 0);
+CREATE TABLE macro_data (
+        id          INTEGER PRIMARY KEY AUTOINCREMENT,
+        indicator   TEXT NOT NULL,
+        value       REAL,
+        date        TEXT,
+        fetched_at  TEXT,
+        signal      TEXT,
+        description TEXT
+    );
+CREATE TABLE insider_trades (
+        id            INTEGER PRIMARY KEY AUTOINCREMENT,
+        ticker        TEXT,
+        company       TEXT,
+        insider_name  TEXT,
+        insider_role  TEXT,
+        trade_type    TEXT,
+        shares        REAL,
+        price         REAL,
+        value_usd     REAL,
+        trade_date    TEXT,
+        fetched_at    TEXT,
+        signal        TEXT
+    );
+CREATE TABLE options_data (
+        id          INTEGER PRIMARY KEY AUTOINCREMENT,
+        ticker      TEXT,
+        pcr         REAL,
+        signal      TEXT,
+        fetched_at  TEXT
+    );
+CREATE TABLE external_mentions (
+        id           INTEGER PRIMARY KEY AUTOINCREMENT,
+        source_type  TEXT,
+        source_name  TEXT,
+        title        TEXT,
+        content      TEXT,
+        url          TEXT,
+        published_at TEXT,
+        fetched_at   TEXT,
+        companies    TEXT,
+        sentiment    TEXT,
+        UNIQUE(url)
+    );
+CREATE TABLE eval_metrics (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    date            TEXT NOT NULL,
+    metric_type     TEXT NOT NULL,
+    -- signal_metrics
+    new_companies   INTEGER DEFAULT 0,
+    confirmed       INTEGER DEFAULT 0,
+    contradicted    INTEGER DEFAULT 0,
+    avg_conviction  REAL DEFAULT 0,
+    signals_bought  INTEGER DEFAULT 0,
+    -- portfolio_metrics
+    open_positions  INTEGER DEFAULT 0,
+    win_rate_7d     REAL DEFAULT 0,
+    win_rate_30d    REAL DEFAULT 0,
+    profit_factor_7d REAL DEFAULT 0,
+    avg_holding_days REAL DEFAULT 0,
+    exit_sl_pct     REAL DEFAULT 0,
+    exit_tp_pct     REAL DEFAULT 0,
+    exit_tech_pct   REAL DEFAULT 0,
+    -- meta
+    created_at      TEXT,
+    notes           TEXT, sortino_30d REAL DEFAULT 0, calmar_30d REAL DEFAULT 0, max_drawdown_30d REAL DEFAULT 0, avg_r_multiple REAL DEFAULT 0, exposure_long_pct REAL DEFAULT 0, exposure_short_pct REAL DEFAULT 0, exposure_net_pct REAL DEFAULT 0,
+    UNIQUE(date, metric_type)
+);
+CREATE TABLE source_quality (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    date            TEXT NOT NULL,
+    channel         TEXT NOT NULL,
+    source_type     TEXT DEFAULT 'youtube',
+    mentions_30d    INTEGER DEFAULT 0,
+    bought_30d      INTEGER DEFAULT 0,
+    win_rate_30d    REAL DEFAULT 0,
+    avg_pnl_30d     REAL DEFAULT 0,
+    quality_score   REAL DEFAULT 0,
+    UNIQUE(date, channel)
+);
+CREATE TABLE regime_history (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    date        TEXT NOT NULL UNIQUE,
+    regime      TEXT NOT NULL,
+    spy_return  REAL,
+    dax_return  REAL,
+    bull_prob   REAL,
+    bear_prob   REAL,
+    sideways_prob REAL,
+    created_at  TEXT
+);
+CREATE TABLE source_registry (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    source_type TEXT NOT NULL,
+    source_key TEXT NOT NULL UNIQUE,
+    display_name TEXT NOT NULL,
+    language TEXT DEFAULT 'en',
+    region TEXT DEFAULT 'global',
+    category TEXT DEFAULT 'general',
+    status TEXT DEFAULT 'candidate',
+    status_changed_at TEXT,
+    added_at TEXT DEFAULT (datetime('now')),
+    added_by TEXT DEFAULT 'manual',
+    weight REAL DEFAULT 1.0,
+    enabled INTEGER DEFAULT 1,
+    scan_interval_hours INTEGER DEFAULT 6,
+    total_mentions INTEGER DEFAULT 0,
+    total_bought INTEGER DEFAULT 0,
+    total_wins INTEGER DEFAULT 0,
+    total_losses INTEGER DEFAULT 0,
+    win_rate_alltime REAL DEFAULT 0,
+    win_rate_90d REAL DEFAULT 0,
+    avg_pnl_per_trade REAL DEFAULT 0,
+    avg_conviction_at_buy REAL DEFAULT 0,
+    last_mention_date TEXT,
+    last_win_date TEXT,
+    consecutive_losses INTEGER DEFAULT 0,
+    probation_start TEXT,
+    probation_trades INTEGER DEFAULT 0,
+    probation_wins INTEGER DEFAULT 0,
+    probation_target_trades INTEGER DEFAULT 5,
+    discovery_reason TEXT,
+    rejection_reason TEXT,
+    subscriber_count INTEGER,
+    content_frequency TEXT
+);
+CREATE INDEX idx_source_status ON source_registry(status, source_type);
+CREATE INDEX idx_source_perf   ON source_registry(win_rate_90d, total_bought);
+CREATE TABLE benchmark (
+    date TEXT PRIMARY KEY,
+    spy_close REAL,
+    dax_close REAL,
+    portfolio_value REAL,
+    spy_return_ytd REAL,
+    dax_return_ytd REAL,
+    portfolio_return_ytd REAL,
+    alpha_spy REAL,
+    alpha_dax REAL
+);
+CREATE TABLE backtest_results (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    run_date TEXT,
+    params_json TEXT,
+    total_trades INTEGER,
+    win_rate REAL,
+    profit_factor REAL,
+    sharpe REAL,
+    sortino REAL,
+    max_drawdown REAL,
+    total_pnl_pct REAL,
+    oos_profitable INTEGER,
+    fold_details TEXT
+);
+CREATE TABLE theme_definitions (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    name            TEXT NOT NULL UNIQUE,
+    category        TEXT,
+    description     TEXT NOT NULL,
+    first_detected  DATE NOT NULL,
+    last_seen       DATE NOT NULL,
+    status          TEXT DEFAULT 'active',
+    momentum        TEXT,
+    underreported_score REAL,
+    coverage_count  INTEGER DEFAULT 0,
+    sources_json    TEXT,
+    parent_theme_id INTEGER,
+    embedding_vector TEXT,
+    pm_confirmation_status TEXT,
+    pm_confirmation_score REAL,
+    archived_reason TEXT,
+    created_at      TEXT DEFAULT (datetime('now')),
+    FOREIGN KEY(parent_theme_id) REFERENCES theme_definitions(id)
+);
+CREATE INDEX idx_theme_status ON theme_definitions(status);
+CREATE INDEX idx_theme_last_seen ON theme_definitions(last_seen);
+CREATE TABLE theme_beneficiaries (
+    id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+    theme_id            INTEGER NOT NULL,
+    ticker              TEXT NOT NULL,
+    company_name        TEXT,
+    play_type           TEXT,
+    llm_confidence_count INTEGER,
+    llm_models_picked   TEXT,
+    rationale           TEXT,
+    added_date          DATE NOT NULL,
+    last_updated        DATE,
+    status              TEXT DEFAULT 'candidate',
+    archived_reason     TEXT,
+    FOREIGN KEY(theme_id) REFERENCES theme_definitions(id),
+    UNIQUE(theme_id, ticker)
+);
+CREATE INDEX idx_benef_status ON theme_beneficiaries(status);
+CREATE INDEX idx_benef_ticker ON theme_beneficiaries(ticker);
+CREATE TABLE fundamentals_snapshot (
+    date            DATE NOT NULL,
+    ticker          TEXT NOT NULL,
+    market_cap_eur  REAL,
+    pe_ttm          REAL,
+    pe_forward      REAL,
+    pe_sector_median REAL,
+    fcf_yield       REAL,
+    revenue_growth_yoy REAL,
+    short_interest_pct REAL,
+    analyst_count   INTEGER,
+    debt_to_equity  REAL,
+    roic            REAL,
+    next_earnings_date DATE,
+    flags_json      TEXT,
+    PRIMARY KEY (date, ticker)
+);
+CREATE TABLE factor_scores (
+    date            DATE NOT NULL,
+    ticker          TEXT NOT NULL,
+    momentum_score  REAL,
+    quality_score   REAL,
+    value_score     REAL,
+    revision_score  REAL,
+    lowvol_score    REAL,
+    composite_score REAL,
+    rank_in_universe INTEGER,
+    PRIMARY KEY (date, ticker)
+);
+CREATE INDEX idx_factor_composite ON factor_scores(date, composite_score DESC);
+CREATE TABLE setup_zones (
+    date            DATE NOT NULL,
+    ticker          TEXT NOT NULL,
+    setup_type      TEXT NOT NULL,
+    strength        REAL,
+    distance_pct    REAL,
+    notes           TEXT,
+    PRIMARY KEY (date, ticker, setup_type)
+);
+CREATE TABLE thesis_status_log (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    position_id     INTEGER,
+    beneficiary_id  INTEGER,
+    ticker          TEXT NOT NULL,
+    theme_id        INTEGER,
+    check_date      DATE NOT NULL,
+    status          TEXT,
+    confidence      REAL,
+    rationale       TEXT,
+    news_summary    TEXT,
+    triggering_urls TEXT,
+    pm_signal_used  TEXT,
+    llm_model_used  TEXT,
+    created_at      TEXT DEFAULT (datetime('now')),
+    FOREIGN KEY(position_id) REFERENCES positions(id),
+    FOREIGN KEY(beneficiary_id) REFERENCES theme_beneficiaries(id)
+);
+CREATE INDEX idx_thesis_ticker_date ON thesis_status_log(ticker, check_date DESC);
+CREATE TABLE briefings (
+    id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+    date                DATE UNIQUE NOT NULL,
+    content_md          TEXT NOT NULL,
+    new_themes_count    INTEGER,
+    red_alerts_count    INTEGER,
+    yellow_alerts_count INTEGER,
+    new_candidates_count INTEGER,
+    thesis_breaks_count INTEGER,
+    pm_signal_alerts    INTEGER,
+    sent_to_telegram    INTEGER DEFAULT 0,
+    user_marked_read    INTEGER DEFAULT 0,
+    created_at          TEXT DEFAULT (datetime('now'))
+);
+CREATE TABLE news_references (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    url             TEXT UNIQUE NOT NULL,
+    title           TEXT,
+    source_domain   TEXT,
+    published_at    DATE,
+    content_hash    TEXT,
+    content_snippet TEXT,
+    used_in_theme_id INTEGER,
+    used_in_thesis_check_id INTEGER,
+    fetched_at      TEXT DEFAULT (datetime('now')),
+    FOREIGN KEY(used_in_theme_id) REFERENCES theme_definitions(id),
+    FOREIGN KEY(used_in_thesis_check_id) REFERENCES thesis_status_log(id)
+);
+CREATE INDEX idx_news_published ON news_references(published_at);
+CREATE INDEX idx_news_fetched ON news_references(fetched_at);
+CREATE TABLE theme_merge_queue (
+    id                      INTEGER PRIMARY KEY AUTOINCREMENT,
+    new_theme_data          TEXT NOT NULL,
+    candidate_existing_id   INTEGER,
+    similarity_score        REAL,
+    status                  TEXT DEFAULT 'pending',
+    decided_at              TEXT,
+    decided_by              TEXT DEFAULT 'human',
+    created_at              TEXT DEFAULT (datetime('now')),
+    FOREIGN KEY(candidate_existing_id) REFERENCES theme_definitions(id)
+);
+CREATE TABLE drawdown_log (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    date            DATE NOT NULL,
+    portfolio_value REAL,
+    all_time_high   REAL,
+    drawdown_pct    REAL,
+    trigger_level   TEXT,
+    action_taken    TEXT,
+    user_notes      TEXT,
+    created_at      TEXT DEFAULT (datetime('now'))
+);
+CREATE TABLE system_state (
+    key             TEXT PRIMARY KEY,
+    value           TEXT,
+    updated_at      TEXT DEFAULT (datetime('now'))
+);
+CREATE TABLE fx_rates_history (
+    date        DATE PRIMARY KEY,
+    eur_usd     REAL,
+    eur_jpy     REAL,
+    eur_gbp     REAL,
+    eur_nok     REAL,
+    eur_chf     REAL,
+    eur_sek     REAL,
+    fetched_at  TEXT DEFAULT (datetime('now'))
+);
+CREATE TABLE tax_year_tracking (
+    year                            INTEGER PRIMARY KEY,
+    realized_gains_eur              REAL DEFAULT 0,
+    realized_losses_eur             REAL DEFAULT 0,
+    net_realized_eur                REAL DEFAULT 0,
+    sparerpauschbetrag_eur          REAL DEFAULT 1000,
+    sparerpauschbetrag_used         REAL DEFAULT 0,
+    estimated_tax_liability_eur     REAL DEFAULT 0,
+    dividends_us_received_eur       REAL DEFAULT 0,
+    withholding_tax_credit_eur      REAL DEFAULT 0,
+    notes                           TEXT,
+    last_recalculated               TEXT
+);
+CREATE TABLE prediction_markets (
+    id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+    platform            TEXT NOT NULL DEFAULT 'polymarket',
+    market_id           TEXT UNIQUE NOT NULL,
+    question            TEXT NOT NULL,
+    category            TEXT,
+    resolution_date     DATE,
+    current_yes_price   REAL,
+    price_7d_ago        REAL,
+    price_30d_ago       REAL,
+    delta_7d            REAL,
+    delta_24h           REAL,
+    volume_24h_usd      REAL,
+    total_volume_usd    REAL,
+    liquidity_score     REAL,
+    related_themes      TEXT,
+    related_tickers     TEXT,
+    classification_done INTEGER DEFAULT 0,
+    status              TEXT DEFAULT 'active',
+    last_updated        TEXT,
+    created_at          TEXT DEFAULT (datetime('now'))
+);
+CREATE INDEX idx_pm_active ON prediction_markets(status, total_volume_usd DESC);
+CREATE TABLE prediction_market_history (
+    market_id           TEXT NOT NULL,
+    timestamp           TEXT NOT NULL,
+    yes_price           REAL,
+    volume_24h_usd      REAL,
+    PRIMARY KEY (market_id, timestamp)
+);
+CREATE TABLE pm_index_definitions (
+    id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+    name                TEXT UNIQUE,
+    description         TEXT,
+    constituent_markets TEXT,
+    current_value       REAL,
+    delta_7d            REAL,
+    last_calculated     TEXT
+);
+CREATE TABLE companies (
+    ticker              TEXT PRIMARY KEY,
+    canonical_name      TEXT NOT NULL,
+    quote_type          TEXT,
+    sector              TEXT,
+    industry            TEXT,
+    country             TEXT,
+    currency            TEXT,
+    isin                TEXT,
+    status              TEXT DEFAULT 'active',   -- 'active' | 'manual_block' | 'delisted'
+    notes               TEXT,
+    source              TEXT,                    -- 'curated' | 'auto' | 'migration'
+    created_at          TEXT DEFAULT (datetime('now')),
+    updated_at          TEXT DEFAULT (datetime('now')),
+    last_validated_at   TEXT
+);
+CREATE INDEX idx_companies_status ON companies(status);
+CREATE INDEX idx_companies_sector ON companies(sector);
+CREATE TABLE company_aliases (
+    alias       TEXT PRIMARY KEY,
+    ticker      TEXT NOT NULL,
+    FOREIGN KEY (ticker) REFERENCES companies(ticker) ON DELETE CASCADE
+);
+CREATE INDEX idx_alias_ticker ON company_aliases(ticker);
+CREATE TABLE IF NOT EXISTS "watchlist_with_sector_bak" (
+                id               INTEGER PRIMARY KEY AUTOINCREMENT,
+                ticker           TEXT NOT NULL UNIQUE,
+                name             TEXT NOT NULL,
+                first_seen       TEXT,
+                last_seen        TEXT,
+                mention_count    INTEGER DEFAULT 0,
+                bullish_count    INTEGER DEFAULT 0,
+                bearish_count    INTEGER DEFAULT 0,
+                neutral_count    INTEGER DEFAULT 0,
+                conviction_score REAL DEFAULT 0,
+                conviction_score_bear REAL DEFAULT 0,
+                tech_score       REAL,
+                tech_direction   TEXT,
+                channels         TEXT DEFAULT '[]',
+                status           TEXT DEFAULT 'watching',
+                notes            TEXT,
+                sector           TEXT DEFAULT 'Other'
+            , conviction_score_aged REAL DEFAULT 0);
+CREATE INDEX idx_watchlist_new_status ON "watchlist_with_sector_bak"(status);
+CREATE INDEX idx_watchlist_new_ticker ON "watchlist_with_sector_bak"(ticker);
+CREATE TABLE IF NOT EXISTS "watchlist"(
+  id INT,
+  ticker TEXT,
+  name TEXT,
+  first_seen TEXT,
+  last_seen TEXT,
+  mention_count INT,
+  bullish_count INT,
+  bearish_count INT,
+  neutral_count INT,
+  conviction_score REAL,
+  conviction_score_bear REAL,
+  tech_score REAL,
+  tech_direction TEXT,
+  channels TEXT,
+  status TEXT,
+  notes TEXT,
+  conviction_score_aged REAL
+);
+CREATE UNIQUE INDEX idx_watchlist_ticker ON "watchlist"(ticker);

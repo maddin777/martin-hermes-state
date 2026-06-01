@@ -15,10 +15,8 @@ import pandas_ta as ta
 from datetime import datetime, timedelta
 import requests
 import itertools
+from config import DB_PATH, SIGNALS_PATH, STRATEGY_STRATEGY_CONFIG_PATH, OPTIMIZATION_OPTIMIZATION_REPORT_PATH
 
-DB_PATH      = "/root/.hermes/profiles/hermes_trading/skills/trading/data/trading.db"
-CONFIG_PATH  = "/root/.hermes/profiles/hermes_trading/skills/trading/data/strategy_config.json"
-REPORT_PATH  = "/root/.hermes/profiles/hermes_trading/skills/trading/data/optimization_report.json"
 
 TELEGRAM_TOKEN   = os.environ.get("TELEGRAM_BOT_TOKEN")
 TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID")
@@ -47,8 +45,8 @@ def send_telegram(message):
         print(f"Telegram Fehler: {e}")
 
 def load_config():
-    if os.path.exists(CONFIG_PATH):
-        with open(CONFIG_PATH) as f:
+    if os.path.exists(STRATEGY_CONFIG_PATH):
+        with open(STRATEGY_CONFIG_PATH) as f:
             return json.load(f)
     return {
         "starting_capital": 10000.0,
@@ -291,7 +289,7 @@ def main():
         "updated":          improvement >= IMPROVEMENT_THRESHOLD,
     }
 
-    with open(REPORT_PATH, "w") as f:
+    with open(OPTIMIZATION_REPORT_PATH, "w") as f:
         json.dump(report, f, indent=2, ensure_ascii=False)
 
     # Automatisch updaten wenn > 10% besser
@@ -300,7 +298,7 @@ def main():
         cfg["atr_tp_multiplier"] = best_params["atr_tp_multiplier"]
         cfg["min_confidence"]    = best_params["min_confidence"]
 
-        with open(CONFIG_PATH, "w") as f:
+        with open(STRATEGY_CONFIG_PATH, "w") as f:
             json.dump(cfg, f, indent=2)
 
         msg = (
@@ -344,7 +342,7 @@ def main():
 def adjust_source_weights(con):
     """Passt Source-Gewichte basierend auf quality_score an."""
     import json as _json
-    SOURCES_PATH = "/root/.hermes/profiles/hermes_trading/skills/trading/config/sources.json"
+    SOURCES_PATH = SOURCES_CONFIG_PATH
 
     try:
         with open(SOURCES_PATH) as f:
@@ -488,7 +486,7 @@ def main():
         _original_main()
     else:
         print(f"\n⏳ Optimierung übersprungen ({trade_count}/10 Trades)", flush=True)
-        with open(CONFIG_PATH, "w") as f:
+        with open(STRATEGY_CONFIG_PATH, "w") as f:
             json.dump(cfg, f, indent=2)
 
     # 4. Telegram Wochenbericht

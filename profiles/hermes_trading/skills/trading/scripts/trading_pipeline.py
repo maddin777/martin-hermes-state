@@ -6,9 +6,13 @@ Verhindert Race Conditions zwischen den einzelnen Schritten.
 import subprocess
 import os
 from datetime import datetime
+from utils import get_logger
+from config import SCRIPTS_DIR, CRON_LOG_PATH
 
-SCRIPTS = "/root/.hermes/profiles/hermes_trading/skills/trading/scripts"
-LOG     = "/root/.hermes/profiles/hermes_trading/skills/trading/data/cron.log"
+log = get_logger("trading_pipeline")
+
+# SCRIPTS_DIR → SCRIPTS_DIR_DIR aus config.py
+# CRON_LOG_PATH → CRON_LOG_PATH aus config.py
 PYTHON  = "/usr/bin/python3"
 
 def log(msg):
@@ -18,7 +22,7 @@ def run(script, label, args=""):
     log(f"\n{'='*60}")
     log(f"=== {datetime.now().strftime('%H:%M:%S')} {label} START ===")
     log(f"{'='*60}")
-    cmd = [PYTHON, f"{SCRIPTS}/{script}"]
+    cmd = [PYTHON, f"{SCRIPTS_DIR}/{script}"]
     if args:
         cmd += args.split()
     result = subprocess.run(cmd)

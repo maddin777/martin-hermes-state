@@ -4,14 +4,12 @@ Backtest-Engine mit OHLC-Pfad-Simulation + Walk-Forward Optimierung.
 import sqlite3, json, os, math, yfinance as yf, pandas_ta as ta
 from datetime import datetime, timedelta
 from statistics import median
+from config import DB_PATH, BACKTEST_BACKTEST_REPORT_PATH
 
-DB_PATH     = "/root/.hermes/profiles/hermes_trading/skills/trading/data/trading.db"
-CONFIG_PATH = "/root/.hermes/profiles/hermes_trading/skills/trading/data/strategy_config.json"
-REPORT_PATH = "/root/.hermes/profiles/hermes_trading/skills/trading/data/backtest_results.json"
 
 def load_config():
-    if os.path.exists(CONFIG_PATH):
-        with open(CONFIG_PATH) as f:
+    if os.path.exists(STRATEGY_CONFIG_PATH):
+        with open(STRATEGY_CONFIG_PATH) as f:
             return json.load(f)
     return {}
 
@@ -208,9 +206,9 @@ def main():
         "current_metrics": current,
         "optimized_params": new_params,
     }
-    with open(REPORT_PATH, "w") as f:
+    with open(BACKTEST_REPORT_PATH, "w") as f:
         json.dump(report, f, indent=2, ensure_ascii=False)
-    print(f"  Report → {REPORT_PATH}", flush=True)
+    print(f"  Report → {BACKTEST_REPORT_PATH}", flush=True)
     print("✅ Backtester abgeschlossen", flush=True)
 
 if __name__ == "__main__":

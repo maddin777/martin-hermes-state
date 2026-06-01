@@ -4,18 +4,14 @@ from collections import deque
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from urllib.parse import parse_qs, urlparse
 from datetime import datetime
+from config import DB_PATH, SCRIPTS_DIR
 
 # Pfad fuer thematic-Import
 THEMATIC_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "thematic")
 if THEMATIC_DIR not in sys.path:
     sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
-DB_PATH      = "/root/.hermes/profiles/hermes_trading/skills/trading/data/trading.db"
-CONFIG_PATH  = "/root/.hermes/profiles/hermes_trading/skills/trading/data/strategy_config.json"
-SOURCES_PATH = "/root/.hermes/profiles/hermes_trading/skills/trading/config/sources.json"
-YT_MONITOR   = "/root/.hermes/profiles/hermes_trading/skills/trading/scripts/yt_channel_monitor.py"
-LOG_PATH          = "/root/.hermes/profiles/hermes_trading/skills/trading/data/cron.log"
-THEMATIC_LOG_PATH = "/root/.hermes/profiles/hermes_trading/skills/trading/data/thematic.log"
+YT_MONITOR = os.path.join(SCRIPTS_DIR, "yt_channel_monitor.py")
 
 # ─── Config ──────────────────────────────────────────────────────────────────
 

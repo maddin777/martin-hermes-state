@@ -13,16 +13,21 @@ import math
 import yfinance as yf
 import pandas_ta as ta
 from datetime import datetime, timedelta
+
+log = get_logger("watchlist_manager")
 # Validierungs-Pipeline aus Paket B
 import sys as _sys
 _sys.path.insert(0, '/root/.hermes/profiles/hermes_trading/skills/trading/scripts')
 from company_validator import validate_and_register
+# DRY: zentrale Funktionen aus Shared-Modulen
+from utils import get_technical_score              # war lokale Kopie
+from company_normalizer import (                   # war lokale Kopie
 
-DB_PATH      = "/root/.hermes/profiles/hermes_trading/skills/trading/data/trading.db"
-SIGNALS_PATH = "/root/.hermes/profiles/hermes_trading/skills/trading/data/trading_signals.json"
-WATCHLIST_DAYS = 14  # REDUZIERT von 30 auf 14 Tage
-MIN_MENTIONS   = 2
-MIN_CONVICTION = 0.55  # leicht gesenkt für mehr SHORT-Signale
+    normalize_company_name, NORMALIZE_ALIASES,
+    LEGAL_SUFFIX_RE, BRACKET_NOTE_RE
+)
+from utils import get_logger
+from config import DB_PATH, SIGNALS_PATH, WATCHLIST_DAYS, MIN_MENTIONS, MIN_CONVICTION
 
 def get_channel_weights(con):
     """
@@ -130,335 +135,67 @@ def calculate_conviction_aged(con, name, channel_weights=None,
     return round(conviction, 4)
 
 def calculate_conviction(bullish, bearish, neutral, mention_count, unique_channels,
-                         channels_list=None, channel_weights=None):
+                         channels_list=None, channel_weights=None,
+                         bullish_weighted=None):
     """
     Conviction Score 0-1 für bullish-Signale.
-    Berücksichtigt source_registry Gewichte wenn vorhanden.
+    
+    bullish_weighted: Summe der Stärke-gewichteten Bull-Mentions
+      (strong=1.0, moderate=0.6, weak=0.3).
+      Falls None: einfache Zählung (Rückwärtskompatibilität).
     """
     if mention_count == 0:
         return 0.0
-    # Gewichtete Sentiment-Ratio falls Gewichte verfügbar
+
+    # Effektive Bullish-Zahl: Stärke-gewichtet wenn vorhanden, sonst Rohzählung
+    effective_bullish = bullish_weighted if bullish_weighted is not None else float(bullish)
+    # Normierung auf [0, mention_count]-Skala
+    effective_total   = (mention_count * 0.6) if bullish_weighted is not None else mention_count
+
     if channel_weights and channels_list and mention_count > 0:
-        # Gewichte pro Channel abrufen
-        weights = {}
-        for ch in channels_list:
-            weights[ch.strip()] = channel_weights.get(ch.strip(), 1.0)
-        w_total = sum(weights.values()) or 1.0
-        # Annahme: bullish Mentions verteilen sich proportional auf Channels
-        # Gewichtung: Jede bullishe Mention zählt mit dem Channel-Gewicht
-        bullish_weighted = bullish * (w_total / len(weights))  # ø-Gewicht pro Mention
-        sentiment_score = bullish_weighted / (mention_count * w_total / len(weights)) \
-                          if len(weights) > 0 else bullish / mention_count
-        # Vereinfacht: Anteil bullish * durchschnittliches Channel-Gewicht
-        avg_weight = w_total / len(weights)
-        sentiment_score = (bullish / mention_count) * avg_weight
+        weights    = {ch.strip(): channel_weights.get(ch.strip(), 1.0) for ch in channels_list}
+        avg_weight = sum(weights.values()) / len(weights) if weights else 1.0
+        sentiment_score = (effective_bullish / effective_total) * avg_weight if effective_total > 0 else 0
     else:
-        sentiment_score = bullish / mention_count
-    mention_weight  = math.log(mention_count + 1) / math.log(11)
-    channel_bonus   = min(unique_channels / 3, 1.0) * 0.2
+        sentiment_score = effective_bullish / effective_total if effective_total > 0 else 0
+
+    mention_weight = math.log(mention_count + 1) / math.log(11)
+    channel_bonus  = min(unique_channels / 3, 1.0) * 0.2
     conviction = (sentiment_score * 0.6 + mention_weight * 0.4) * (1 + channel_bonus)
     return min(round(conviction, 3), 1.0)
 
 def calculate_conviction_bear(bullish, bearish, neutral, mention_count, unique_channels,
-                               channels_list=None, channel_weights=None):
+                               channels_list=None, channel_weights=None,
+                               bearish_weighted=None):
     """
     Conviction Score 0-1 für bearish/SHORT-Signale.
-    Berücksichtigt source_registry Gewichte wenn vorhanden.
+    
+    bearish_weighted: Summe der Stärke-gewichteten Bear-Mentions.
+    Falls None: einfache Zählung (Rückwärtskompatibilität).
     """
     if mention_count == 0:
         return 0.0
+
+    effective_bearish = bearish_weighted if bearish_weighted is not None else float(bearish)
+    effective_total   = (mention_count * 0.6) if bearish_weighted is not None else mention_count
+
     if channel_weights and channels_list and mention_count > 0:
-        weights = {}
-        for ch in channels_list:
-            weights[ch.strip()] = channel_weights.get(ch.strip(), 1.0)
-        w_total = sum(weights.values()) or 1.0
-        # Vereinfacht: Anteil bearish * durchschnittliches Channel-Gewicht
-        avg_weight = w_total / len(weights)
-        bear_ratio = (bearish / mention_count) * avg_weight
+        weights    = {ch.strip(): channel_weights.get(ch.strip(), 1.0) for ch in channels_list}
+        avg_weight = sum(weights.values()) / len(weights) if weights else 1.0
+        bear_ratio = (effective_bearish / effective_total) * avg_weight if effective_total > 0 else 0
     else:
-        bear_ratio = bearish / mention_count
+        bear_ratio = effective_bearish / effective_total if effective_total > 0 else 0
+
     mention_weight = math.log(mention_count + 1) / math.log(11)
-    channel_bonus = min(unique_channels / 3, 1.0) * 0.2
+    channel_bonus  = min(unique_channels / 3, 1.0) * 0.2
     conviction = (bear_ratio * 0.6 + mention_weight * 0.4) * (1 + channel_bonus)
     return min(round(conviction, 3), 1.0)
 
-def get_technical_score(ticker):
-    """
-    Schnelle technische Bewertung für Watchlist.
-    Neuer Score: -10 bis +10 → 0.0-1.0 mit ADX.
-    """
-    try:
-        df = yf.download(ticker, period="2y", interval="1d",
-                        progress=False, auto_adjust=True)
-        df = df.dropna()
-        if df.empty or len(df) < 50:
-            return None, None
+# get_technical_score() ist nach utils.py ausgelagert (DRY).
+# Import steht im Dateikopf: from utils import get_technical_score
 
-        close  = df["Close"].iloc[:, 0]
-        high   = df["High"].iloc[:, 0]
-        low    = df["Low"].iloc[:, 0]
-
-        ema20  = ta.ema(close, length=20)
-        ema50  = ta.ema(close, length=50)
-        ema200 = ta.ema(close, length=200)
-        rsi    = ta.rsi(close, length=14)
-        macd   = ta.macd(close)
-
-        score = 0
-        if ema200 is None or ema200.iloc[-1] is None:
-            return None, None
-
-        # 1. EMA Stack — Gewicht: 1
-        if ema20.iloc[-1] > ema50.iloc[-1] > ema200.iloc[-1]:
-            score += 1
-        elif ema20.iloc[-1] < ema50.iloc[-1] < ema200.iloc[-1]:
-            score -= 1
-
-        # 2. RSI — differenzierter
-        rsi_val = rsi.iloc[-1]
-        if 50 < rsi_val < 60:
-            score += 2
-        elif 40 < rsi_val < 70:
-            score += 1
-        elif rsi_val > 75:
-            score -= 2
-        elif rsi_val < 25:
-            score -= 2
-
-        # 3. MACD Histogram
-        hist_col = [c for c in macd.columns if "MACDh" in c][0]
-        if macd[hist_col].iloc[-1] > 0 and macd[hist_col].iloc[-1] > macd[hist_col].iloc[-2]:
-            score += 2
-        elif macd[hist_col].iloc[-1] > macd[hist_col].iloc[-2]:
-            score += 1
-        elif macd[hist_col].iloc[-1] < 0 and macd[hist_col].iloc[-1] < macd[hist_col].iloc[-2]:
-            score -= 2
-
-        # 4. Preis vs. EMA50
-        dist_ema50 = (close.iloc[-1] - ema50.iloc[-1]) / ema50.iloc[-1]
-        if dist_ema50 > 0.05:
-            score += 1
-        elif dist_ema50 > 0:
-            score += 0.5
-        elif dist_ema50 < -0.05:
-            score -= 1
-        else:
-            score -= 0.5
-
-        # 5. Volumen-Trend
-        vol = df["Volume"].iloc[:, 0]
-        vol_avg20 = vol.rolling(20).mean().iloc[-1]
-        vol_avg5  = vol.rolling(5).mean().iloc[-1]
-        if vol_avg5 > vol_avg20 * 1.5:
-            score += 1.5
-        elif vol_avg5 > vol_avg20 * 1.2:
-            score += 1
-
-        # 6. Weekly Trend — Gewicht: 1
-        df_w = yf.download(ticker, period="1y", interval="1wk",
-                          progress=False, auto_adjust=True)
-        df_w = df_w.dropna()
-        if not df_w.empty and len(df_w) > 20:
-            close_w = df_w["Close"].iloc[:, 0]
-            ema20_w = ta.ema(close_w, length=20)
-            if close_w.iloc[-1] > ema20_w.iloc[-1]:
-                score += 1
-            else:
-                score -= 1
-
-        # 7. ADX
-        try:
-            adx_df = ta.adx(high, low, close, length=14)
-            adx_val = adx_df["ADX_14"].iloc[-1]
-            if adx_val > 25:
-                score += 1
-            elif adx_val < 15:
-                score -= 0.5
-        except:
-            pass
-
-        max_score = 10
-        confidence = round((score + max_score) / (2 * max_score), 3)
-        confidence = max(0.0, min(1.0, confidence))
-        direction  = "LONG" if score >= 2 else "SHORT" if score <= -2 else "NEUTRAL"
-        return confidence, direction
-
-    except Exception as e:
-        return None, None
-
-# ── Normalisierung (Alias-Tabelle + Legal-Suffix-Regex) ──────────────────────
-NORMALIZE_ALIASES = {
-    # LLM-Tippfehler → Canonical
-    "palantier": "Palantir", "palanteer": "Palantir",
-    "reinmetall": "Rheinmetall", "reimmetall": "Rheinmetall",
-    "corweef": "CoreWeave", "core weave": "CoreWeave",
-    "nebiuz": "Nebius",
-    "enhropic": "Anthropic", "entropic": "Anthropic", "anropic": "Anthropic",
-    "tüssenkrup": "ThyssenKrupp", "tüssengrup": "ThyssenKrupp",
-    "morgen stanley": "Morgan Stanley",
-    "rocketlab": "Rocket Lab",
-    "soundhoundai": "SoundHound AI", "soundhound": "SoundHound AI",
-    "solar edge": "SolarEdge",
-    "johnson und johnson": "Johnson & Johnson",
-    "albe male": "Alphabet",  # LLM-Halluzination
-    "poo gold": "Poo Gold",  # Nischen-Aktie
-    # Bekannte Name-Varianten → Canonical
-    "meta platforms": "Meta", "meta platforms inc.": "Meta",
-    "nvidia corporation": "NVIDIA", "nvidia corp.": "NVIDIA",
-    "alphabet inc.": "Alphabet", "alphabet inc. (google)": "Alphabet",
-    "micron technology": "Micron",
-    "advanced micro devices": "Advanced Micro Devices",
-    "intel corporation": "Intel",
-    "cerebras systems": "Cerebras", "cerebras systems inc.": "Cerebras",
-    "take two interactive": "Take-Two Interactive",
-    "take two interactive software": "Take-Two Interactive",
-    "take-two interactive software": "Take-Two Interactive",
-    "d-wave systems": "D-Wave Quantum", "d-wave systems inc.": "D-Wave Quantum",
-    "d-wave quantum inc.": "D-Wave Quantum",
-    "d w v quantum": "D-Wave Quantum",
-    "jp morgan": "JPMorgan", "jp morgan chase": "JPMorgan",
-    "jpmorgan chase": "JPMorgan",
-    "goldman sachs group": "Goldman Sachs",
-    "berkshire hathaway inc.": "Berkshire Hathaway",
-    "costco wholesale": "Costco", "costco wholesale corporation": "Costco",
-    "amazon.com": "Amazon", "amazon.com inc.": "Amazon",
-    "apple inc.": "Apple",
-    "microsoft corporation": "Microsoft",
-    "meta platforms inc.": "Meta",
-    "salesforce inc.": "Salesforce",
-    "netflix inc.": "Netflix",
-    "intuit inc.": "Intuit",
-    "paypal holdings": "PayPal",
-    "snowflake inc.": "Snowflake",
-    "walmart inc.": "Walmart",
-    "mcdonald's corporation": "McDonald's",
-    "pepsico inc.": "PepsiCo",
-    "coca-cola co.": "Coca-Cola",
-    "palo alto networks": "Palo Alto",
-    "sk hynix inc.": "SK Hynix",
-    "softbank group": "SoftBank", "softbank group corp.": "SoftBank",
-    "mara holdings": "MARA",
-    "marathon digital holdings": "MARA", "marathon digital holdings inc.": "MARA",
-    "rheinmetall ag": "Rheinmetall",
-    "infineon technologies": "Infineon", "infineon technologies ag": "Infineon",
-    "siemens ag": "Siemens", "siemens aktiengesellschaft": "Siemens",
-    "basf se": "BASF",
-    "bayer ag": "Bayer",
-    "mercedes-benz group": "Mercedes-Benz",
-    "adidas ag": "Adidas",
-    "zaland se": "Zalando", "zalandos e": "Zalando",
-    "commerzbank ag": "Commerzbank",
-    "deutsche bank ag": "Deutsche Bank",
-    "delivery hero se": "Delivery Hero",
-    "dws group gmbh & co. kgaa": "DWS",
-    "henkel ag & co. kgaa": "Henkel",
-    "cts eventim ag & co. kgaa": "CTS Eventim",
-    "stroer se & co. kgaa": "Ströer",
-    "kws saat se & co. kgaa": "KWS SAAT",
-    "ottobock se & co. kgaa": "Ottobock",
-    "münchener rück": "Münchner Rück", "munich re": "Münchner Rück",
-    "hannover rück": "Hannover Rück",
-    "united health": "UnitedHealth",
-    "mercado libre": "MercadoLibre",
-    "alibaba group": "Alibaba",
-    "uber technologies": "Uber",
-    "cisco systems": "Cisco",
-    "mastercard inc.": "Mastercard",
-    "visa inc.": "Visa",
-    "the trade desk": "Trade Desk",
-    "booking holdings": "Booking Holdings",
-    "by company": "BYD",
-    "taiwan semiconductor": "TSMC",
-    "taiwan semiconductor manufacturing company": "TSMC",
-    "taiwan semiconductor manufacturing company limited": "TSMC",
-    "semiconductor manufacturing international corporation": "SMIC",
-    "johnson & johnson (jnj)": "Johnson & Johnson",
-    "linde plc": "Linde",
-    "arm holdings plc": "ARM",
-    "standard chartered plc": "Standard Chartered",
-    "nextracker inc.": "Nextracker",
-    "palantir technologies": "Palantir",
-    "microstrategy incorporated": "MicroStrategy",
-    "intuitive surgical": "Intuitive Surgical",
-    "marvell technology": "Marvell",
-    "marvell technology, inc.": "Marvell",
-    "on holding": "On",
-    "viking holdings ltd": "Viking Holdings",
-    "schneider electric se": "Schneider Electric",
-    "upstart holdings, inc. (upst)": "Upstart",
-    # Spezialfälle zusätzlich
-    "lvmh moët hennessy louis vuitton": "LVMH",
-    "lvmh moet hennessy louis vuitton": "LVMH",
-    "alphabet inc. (google)": "Alphabet",  # doppelt gemoppelt
-    "john deere": "Deere & Company",
-    "scalable capital": "Scalable Capital",  # nicht börsennotiert, aber keep
-    "delta airlines": "Delta Air Lines",
-    "itaú": "Itaú Unibanco",
-    "merck kgaa": "Merck",
-    "jabil inc.": "Jabil",
-    "united rentals": "United Rentals",
-    "royal caribbean cruises ltd.": "Royal Caribbean",
-    "mastercard inc.": "Mastercard",
-    # Case-Varianten (LLM liefert gemischt)
-    "nvidia": "NVIDIA",
-    "amd": "AMD",
-    "ibm": "IBM",
-    "cisco": "Cisco",
-    "intc": "Intel",
-    "msft": "Microsoft",
-    "googl": "Alphabet",
-    "meta": "Meta",  # falls mal "Meta" groß in der DB
-}
-
-LEGAL_SUFFIX_RE = re.compile(
-    r"(?:\s*[,/]\s*)?"
-    r"(?:"
-    r"AG(?:\s+&?\s*Co\.?\s*(?:KGaA|KG|OHG))?"
-    r"|SE|GmbH(?:\s*&\s*Co\.?\s*(?:KG|KGaA|OHG))?"
-    r"|PLC|plc|Inc\.|Inc|Corporation|Corp\.?|Corp"
-    r"|Ltd\.?|Limited|LLC|LLP|LP|NV|N\.V\.|SA|S\.A\.|AB|OY"
-    r"|S\.p\.A\.|Sp\.? z\.?o\.?o\.?|JSC|PJSC|OJSC"
-    r"|Holdings?|Group|Co\.|Company"
-    r"|Class\s+[ABCDE]|Common\s+Stock"
-    r")(?:\.|\s)*$",
-    re.IGNORECASE
-)
-
-BRACKET_NOTE_RE = re.compile(
-    r"\s*\((?:nicht\s+börsennotiert|Marke\s+von[^)]*|privat[^)]*|Teil\s+von[^)]*)\)\s*$",
-    re.IGNORECASE
-)
-
-
-def normalize_company_name(name):
-    """Normalisiert Unternehmensnamen zum Abgleich von Duplikaten.
-
-    1. Strip Klammer-Notizen: '(nicht börsennotiert)', '(Marke von ...)'
-    2. Strip Legal-Suffixe: 'AG', 'Inc.', 'Corporation', 'Ltd', 'PLC', 'SE', 'GmbH & Co. KGaA' usw.
-    3. Strip 'The '-Präfix (optional)
-    4. Alias-Resolution via NORMALIZE_ALIASES
-    5. Trim whitespace
-    """
-    n = name.strip()
-    # Klammer-Notizen entfernen
-    n = BRACKET_NOTE_RE.sub("", n)
-    # 'bei Do?' u.ä. aus Klammern im Namen
-    n = re.sub(r"\s*\([^)]*[?][^)]*\)\s*$", " ", n)
-    # Legal-Suffixe entfernen (iterativ für verschachtelte: "DWS Group GmbH & Co. KGaA")
-    prev = None
-    while prev != n:
-        prev = n
-        n = LEGAL_SUFFIX_RE.sub("", n).strip()
-    # 'The '-Präfix entfernen
-    n = re.sub(r"^The\s+", "", n)
-    # Whitespace normalisieren
-    n = re.sub(r"\s+", " ", n).strip()
-    # Alias-Resolution (lowercase-Key)
-    lower = n.lower()
-    if lower in NORMALIZE_ALIASES:
-        return NORMALIZE_ALIASES[lower]
-    return n
-
+# Normalisierungslogik ist nach company_normalizer.py ausgelagert (DRY).
+# Import steht im Dateikopf: from company_normalizer import ...
 
 def normalize_mentions(con):
     """Dedupliziert watchlist_mentions.name via normalize_company_name().
@@ -521,7 +258,6 @@ def normalize_mentions(con):
     else:
         print(f"  ✓ Keine Duplikate gefunden", flush=True)
     return merged
-
 
 def main():
     print("📋 Watchlist Manager gestartet", flush=True)
@@ -599,6 +335,7 @@ def main():
         for company in signal.get("companies", []):
             name      = company.get("name", "").strip()
             sentiment = company.get("sentiment", "neutral")
+            strength  = company.get("strength", "moderate")
             reason    = company.get("reason", "")
 
             if not name or len(name) < 2:
@@ -607,9 +344,10 @@ def main():
             try:
                 con.execute("""
                     INSERT OR IGNORE INTO watchlist_mentions
-                    (name, channel, video_id, video_title, sentiment, reason, mention_date)
-                    VALUES (?,?,?,?,?,?,?)
-                """, (name, channel, video_id, title, sentiment, reason, mention_date))
+                    (name, channel, video_id, video_title, sentiment, strength, reason, mention_date)
+                    VALUES (?,?,?,?,?,?,?,?)
+                """, (name, channel, video_id, title, sentiment,
+                        company.get("strength", "moderate"), reason, mention_date))
                 if con.execute("SELECT changes()").fetchone()[0] > 0:
                     new_mentions += 1
             except Exception as e:
@@ -628,6 +366,21 @@ def main():
                SUM(CASE WHEN sentiment='bullish' THEN 1 ELSE 0 END) as bullish,
                SUM(CASE WHEN sentiment='bearish' THEN 1 ELSE 0 END) as bearish,
                SUM(CASE WHEN sentiment='neutral' THEN 1 ELSE 0 END) as neutral,
+               -- Gewichtete Counts: strong=1.0, moderate=0.6, weak=0.3
+               SUM(CASE WHEN sentiment='bullish' THEN
+                   CASE COALESCE(strength,'moderate')
+                     WHEN 'strong'   THEN 1.0
+                     WHEN 'moderate' THEN 0.6
+                     WHEN 'weak'     THEN 0.3
+                     ELSE 0.6 END
+                   ELSE 0 END) as bullish_weighted,
+               SUM(CASE WHEN sentiment='bearish' THEN
+                   CASE COALESCE(strength,'moderate')
+                     WHEN 'strong'   THEN 1.0
+                     WHEN 'moderate' THEN 0.6
+                     WHEN 'weak'     THEN 0.3
+                     ELSE 0.6 END
+                   ELSE 0 END) as bearish_weighted,
                COUNT(DISTINCT channel) as unique_channels,
                GROUP_CONCAT(DISTINCT channel) as channels,
                MIN(mention_date) as first_seen,
@@ -646,12 +399,14 @@ def main():
         conviction = calculate_conviction(
             m["bullish"], m["bearish"], m["neutral"],
             m["mention_count"], m["unique_channels"],
-            channels_list=channels_list, channel_weights=channel_weights
+            channels_list=channels_list, channel_weights=channel_weights,
+            bullish_weighted=m["bullish_weighted"],
         )
         conviction_bear = calculate_conviction_bear(
             m["bullish"], m["bearish"], m["neutral"],
             m["mention_count"], m["unique_channels"],
-            channels_list=channels_list, channel_weights=channel_weights
+            channels_list=channels_list, channel_weights=channel_weights,
+            bearish_weighted=m["bearish_weighted"],
         )
 
         # --- Validierungs-Pipeline (Paket B): Cache-Hit, neue Firma anlegen, oder skippen ---
@@ -681,13 +436,13 @@ def main():
             INSERT INTO watchlist (name, ticker, first_seen, last_seen,
                 mention_count, bullish_count, bearish_count, neutral_count,
                 conviction_score, conviction_score_bear, conviction_score_aged,
-                channels, status, sector)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                channels, status)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
             ON CONFLICT(ticker) DO NOTHING
         """, (canonical_name, ticker, m["first_seen"], m["last_seen"],
               m["mention_count"], m["bullish"], m["bearish"], m["neutral"],
               conviction, conviction_bear, conviction_aged,
-              json.dumps(channels_list), "watching", sector))
+              json.dumps(channels_list), "watching"))
 
         # UPDATE: existierenden Eintrag aktualisieren (auch dropped -> watching reaktivieren)
         con.execute("""
@@ -695,12 +450,12 @@ def main():
                 name=?, last_seen=?, mention_count=?,
                 bullish_count=?, bearish_count=?, neutral_count=?,
                 conviction_score=?, conviction_score_bear=?,
-                channels=?, status='watching', sector=?
+                conviction_score_aged=?, channels=?, status='watching'
             WHERE ticker=? AND status IN ('watching', 'dropped')
         """, (canonical_name, m["last_seen"], m["mention_count"],
               m["bullish"], m["bearish"], m["neutral"],
               conviction, conviction_bear, conviction_aged,
-              json.dumps(channels_list), sector, ticker))
+              json.dumps(channels_list), ticker))
     con.commit()
 
     # 6. Technische Scores für Top-Kandidaten aktualisieren
@@ -716,8 +471,10 @@ def main():
 
     print(f"\n  Technische Analyse für {len(top_candidates)} Kandidaten...", flush=True)
     for c in top_candidates:
-        tech_score, direction = get_technical_score(c["ticker"])
-        if tech_score:
+        tech = get_technical_score(c["ticker"])  # gibt Dict zurück (utils.py)
+        if tech:
+            tech_score = tech["confidence"]
+            direction  = tech["direction"]
             con.execute("""
                 UPDATE watchlist SET tech_score=?, tech_direction=?
                 WHERE name=?
@@ -742,7 +499,7 @@ def main():
     for w in top:
         channels = json.loads(w["channels"]) if w["channels"] else []
         print(f"  {w['name']:25} {(w['ticker'] or '?'):10} "
-              f"{(w['sector'] or 'Other'):12} "
+              f"{'':12} "  # sector jetzt per JOIN aus companies
               f"{w['mention_count']:4}x  "
               f"{w['bullish_count']}↑/{w['bearish_count']}↓  "
               f"Conv:{w['conviction_score']:.2f}  "

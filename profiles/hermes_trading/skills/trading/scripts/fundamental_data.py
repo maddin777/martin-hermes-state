@@ -13,13 +13,12 @@ import env_loader  # noqa: F401  (side-effect: laedt .env)
 import requests
 import yfinance as yf
 from datetime import datetime, timedelta
+from config import DB_PATH, MACRO_SIGNAL_PATH
 
-DB_PATH     = "/root/.hermes/profiles/hermes_trading/skills/trading/data/trading.db"
-CONFIG_PATH = "/root/.hermes/profiles/hermes_trading/skills/trading/config/sources.json"
 FRED_API_KEY = os.environ.get("FRED_API_KEY", "")
 
 def load_config():
-    with open(CONFIG_PATH) as f:
+    with open(STRATEGY_CONFIG_PATH) as f:
         return json.load(f)
 
 def fetch_fred_data(con, indicators):
@@ -260,7 +259,7 @@ def detect_market_regime(con):
 
         # In macro_signal.json schreiben
         import json as _json
-        macro_file = "/root/.hermes/profiles/hermes_trading/skills/trading/data/macro_signal.json"
+        macro_file = MACRO_SIGNAL_PATH
         try:
             with open(macro_file) as f:
                 macro = _json.load(f)
@@ -357,7 +356,7 @@ def update_benchmark(con):
 
         # Portfolio-Startkapital aus config
         import json as _j
-        cfg_path = "/root/.hermes/profiles/hermes_trading/skills/trading/data/strategy_config.json"
+        cfg_path = STRATEGY_CONFIG_PATH
         starting_capital = 10000.0
         if os.path.exists(cfg_path):
             with open(cfg_path) as f:
@@ -430,7 +429,7 @@ def main():
 
     # Makrosignal speichern für signal_manager
     import json as _json
-    macro_file = "/root/.hermes/profiles/hermes_trading/skills/trading/data/macro_signal.json"
+    macro_file = MACRO_SIGNAL_PATH
     with open(macro_file) as f:
         macro_data = _json.load(f) if os.path.exists(macro_file) else {}
     macro_data.update({

@@ -658,3 +658,67 @@ Lektion #10 abgeschlossen.
 10. **nasz**
 
 Lektion #11 abgeschlossen.
+
+
+## Lektion #12
+
+### 1. Vokabeln (Top 500)
+- **kobieta**: `Frau`
+- **mężczyzna**: `Mann`
+- **dziecko**: `Kind`
+- **czas**: `Zeit`
+- **rok**: `Jahr`
+- **ręka**: `Hand`
+- **miasto**: `Stadt`
+- **droga**: `Weg`
+- **woda**: `Wasser`
+- **jedzenie**: `Essen`
+
+### 2. n+1 Sentence Mining
+- **Kobieta** idzie. ``Die Frau geht.``
+- **Mężczyzna** śpi. ``Der Mann schläft.``
+- **Dziecko** bawi się. ``Das Kind spielt.``
+- Masz **czas**? ``Hast du Zeit?``
+- To jest nowy **rok**. ``Es ist ein neues Jahr.``
+- Moja **ręka** boli. ``Meine Hand tut weh.``
+- To duże **miasto**. ``Das ist eine große Stadt.``
+- Ta **droga** jest długa. ``Dieser Weg ist lang.``
+- Piję **wodę**. ``Ich trinke Wasser.``
+- Lubię **jedzenie**. ``Ich mag Essen.``
+
+### 3. Grammatik: Aspekt & Kasus
+**Aspekt-Paare (Verben):**
+- **pisać** / **napisać** $\rightarrow$ `schreiben` / `geschrieben haben`
+- **czytać** / **przeczytać** $\rightarrow$ `lesen` / `gelesen haben`
+- **kupować** / **kupić** $\rightarrow$ `kaufen` / `gekauft haben`
+- **jeść** / **zjeść** $\rightarrow$ `essen` / `gegessen haben`
+
+**Kasus-Beispiele (Nomen):**
+- **widzę kobietę** $\rightarrow$ `ich sehe die Frau` (Accusative)
+- **nie ma dziecka** $\rightarrow$ `es gibt kein Kind` (Genitive)
+
+### 4. Lueckentext-Quiz
+1. Ta **_______** jest bardzo miła.
+2. Widzę **_______** (Mann).
+3. To jest małe **_______**.
+4. Ile masz **_______**?
+5. To był dobry **_______**.
+6. Moja **_______** jest mała.
+7. Kocham to **_______**.
+8. Ta **_______** jest kręta.
+9. Chcę pić **_______**.
+10. Dobre **_______** jest ważne.
+
+### 5. Aufloesung
+1. kobieta
+2. mężczyznę
+3. dziecko
+4. czasu
+5. rok
+6. ręka
+7. miasto
+8. droga
+9. wodę
+10. jedzenie
+
+Lektion #12 abgeschlossen.

@@ -39,13 +39,13 @@
     "archived_at": null,
     "created_at": "2026-05-10T22:19:09.296101+00:00",
     "last_patched_at": "2026-05-24T23:46:50.832212+00:00",
-    "last_used_at": "2026-05-24T23:43:23.502040+00:00",
-    "last_viewed_at": "2026-05-24T23:43:23.494483+00:00",
+    "last_used_at": "2026-05-31T08:32:11.845860+00:00",
+    "last_viewed_at": "2026-05-31T08:32:11.843000+00:00",
     "patch_count": 21,
     "pinned": false,
     "state": "active",
-    "use_count": 25,
-    "view_count": 26
+    "use_count": 26,
+    "view_count": 27
   },
   "hermes-profile-news-cron": {
     "archived_at": null,
@@ -89,39 +89,26 @@
     "created_at": "2026-05-21T10:39:54.174790+00:00",
     "created_by": "agent",
     "last_patched_at": "2026-05-21T11:06:32.571160+00:00",
-    "last_used_at": "2026-05-24T23:43:18.465695+00:00",
-    "last_viewed_at": "2026-05-24T23:43:18.455556+00:00",
+    "last_used_at": "2026-06-01T00:20:57.365534+00:00",
+    "last_viewed_at": "2026-06-01T00:20:57.354865+00:00",
     "patch_count": 2,
     "pinned": false,
     "state": "active",
-    "use_count": 4,
-    "view_count": 4
+    "use_count": 5,
+    "view_count": 5
   },
   "name-normalization-dedup": {
     "archived_at": null,
     "created_at": "2026-05-25T16:25:51.199575+00:00",
     "created_by": "agent",
-    "last_patched_at": "2026-05-28T05:50:09.602046+00:00",
-    "last_used_at": "2026-05-28T05:50:04.837124+00:00",
-    "last_viewed_at": "2026-05-28T05:50:04.832666+00:00",
-    "patch_count": 6,
+    "last_patched_at": "2026-06-01T00:22:08.881693+00:00",
+    "last_used_at": "2026-06-01T00:22:16.013736+00:00",
+    "last_viewed_at": "2026-06-01T00:22:16.009892+00:00",
+    "patch_count": 7,
     "pinned": false,
     "state": "active",
-    "use_count": 7,
-    "view_count": 7
-  },
-  "sqlite-optimization": {
-    "archived_at": null,
-    "created_at": "2026-05-26T05:46:38.900827+00:00",
-    "created_by": "agent",
-    "last_patched_at": null,
-    "last_used_at": "2026-05-26T05:54:23.217503+00:00",
-    "last_viewed_at": "2026-05-26T05:54:23.209773+00:00",
-    "patch_count": 0,
-    "pinned": false,
-    "state": "active",
-    "use_count": 1,
-    "view_count": 1
+    "use_count": 9,
+    "view_count": 9
   },
   "telegram-voice-stt": {
     "archived_at": null,
@@ -140,12 +127,12 @@
     "created_at": "2026-05-27T06:29:36.528930+00:00",
     "created_by": "agent",
     "last_patched_at": "2026-05-28T05:50:00.567029+00:00",
-    "last_used_at": "2026-05-28T05:49:39.516133+00:00",
-    "last_viewed_at": "2026-05-28T05:49:39.511554+00:00",
+    "last_used_at": "2026-06-01T00:20:57.362016+00:00",
+    "last_viewed_at": "2026-06-01T00:20:57.351612+00:00",
     "patch_count": 3,
     "pinned": false,
     "state": "active",
-    "use_count": 4,
-    "view_count": 4
+    "use_count": 6,
+    "view_count": 5
   }
 }

@@ -1,11 +1,12 @@
 ---
 name: name-normalization-dedup
 description: >-
-  Normalize entity names AND resolve stock ticker symbols in SQLite. Three-layer
-  approach: alias map fixes LLM typos, regex strips legal suffixes, SQL merge
-  handles UNIQUE conflicts. Extended by yfinance Search for bulk ticker lookup
-  of unknown companies. Covers private-company detection, subsidiary→parent mapping,
-  and LLM hallucination cleanup.
+  Normalize entity names AND resolve stock ticker symbols in SQLite. Four-layer
+  approach: DB config for concurrent access, alias map fixes LLM typos, regex
+  strips legal suffixes, SQL merge handles UNIQUE conflicts. Extended by yfinance
+  Search for bulk ticker lookup of unknown companies. Covers private-company
+  detection, subsidiary→parent mapping, LLM hallucination cleanup, and SQLite
+  WAL mode / busy_timeout configuration for pipeline reliability.
 trigger:
   - "User says 'deduplicate', 'normalize names', 'clean up duplicates'"
   - "User says 'resolve tickers', '? ticker', 'abräumen', 'fix tickers'"
@@ -13,6 +14,9 @@ trigger:
   - "Database has entries with NULL or '?' ticker symbols"
   - "LLM output contains typos, inconsistent name formatting, or hallucinated companies"
   - "Working with company names, stock tickers, or entity identifiers"
+  - "Error: 'database is locked' in SQLite"
+  - "Multiple scripts access same SQLite database concurrently"
+  - "Setting up a new SQLite-backed pipeline"
 ---
 
 # Name Normalization & Deduplication (SQLite)
@@ -22,10 +26,72 @@ A reusable three-layer approach to normalize entity names in a SQLite database a
 ## Architecture
 
 ```
+Layer 0: DB Config        — WAL mode + busy_timeout for concurrent access
 Layer 1: Alias Map        — LLM typo fixups + known variants → canonical
 Layer 2: Regex Pipeline   — Strip legal suffixes, annotation brackets, prefixes
 Layer 3: SQL Merge        — UPDATE or DELETE with UNIQUE constraint handling
 ```
+
+## Layer 0: Database Configuration for Concurrent Access
+
+Configure SQLite for reliable concurrent access before running any normalization or merge operations. The default SQLite configuration (`journal_mode=delete`, `busy_timeout=0`) is worst-case for concurrent pipeline access and causes the dreaded "database is locked" errors.
+
+### Root Cause: Why "database is locked"
+
+The error means one connection has an active transaction while another connection tries to access the database.
+
+| Setting | Default | Problem |
+|---------|---------|---------|
+| `journal_mode` | `delete` | Only one writer allowed; readers block writers |
+| `busy_timeout` | `0` | No retry — fails immediately on lock contention |
+
+### Fix: WAL Mode + Busy Timeout
+
+**One-time DB setup (persists in DB file):**
+
+```bash
+sqlite3 /path/to/database.db "PRAGMA journal_mode=WAL;"
+sqlite3 /path/to/database.db "PRAGMA wal_autocheckpoint=500;"
+```
+
+WAL (Write-Ahead Logging) allows multiple concurrent readers while a writer is active — the writer does not block readers.
+
+**Per-connection busy_timeout (must set at connect time on EVERY script):**
+
+```python
+import sqlite3
+con = sqlite3.connect("/path/to/database.db")
+con.execute("PRAGMA busy_timeout=5000")  # Wait 5s instead of failing immediately
+```
+
+The `busy_timeout` is connection-level — it does NOT persist in the DB file. Every script that opens a connection must set it.
+
+### Verification
+
+```sql
+PRAGMA journal_mode;        -- Should return 'wal'
+PRAGMA busy_timeout;         -- Should return '5000' (current session only)
+PRAGMA wal_autocheckpoint;   -- Should return '500'
+```
+
+### Systematic Patching Pattern
+
+For codebases with many scripts connecting to the same DB:
+
+```bash
+# Find all connection points
+grep -rn "sqlite3\.connect" /path/to/scripts/
+```
+
+For each file, add `con.execute("PRAGMA busy_timeout=5000")` directly after each `sqlite3.connect()` line, matching indentation.
+
+### Pitfalls
+
+- **busy_timeout is not persistent**: Set on every new connection, including inside loops and subprocesses.
+- **WAL mode requires file system support**: Works on ext4, xfs, btrfs, zfs. May fail on NFS without lockd.
+- **WAL file cleanup**: `.db-wal` and `.db-shm` files persist after a crash. Safe to delete when DB is not in use.
+- **journal_mode=delete is still the default**: SQLite defaults to delete mode even if the DB was previously in WAL when opened by an old SQLite version — verify after upgrades.
+- **Long-running queries prevent WAL checkpoint**: Set `wal_autocheckpoint` to ~2MB. See `references/sqlite-concurrent-access.md` for full detail.
 
 ## Layer 1: Alias Map
 

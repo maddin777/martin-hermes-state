@@ -13,6 +13,8 @@ import sqlite3
 import json
 import os
 import sys
+
+log = get_logger("signal_manager")
 sys.path.insert(0, "/root/.hermes/profiles/hermes_trading/skills/trading")
 import env_loader  # noqa: F401  (side-effect: laedt .env)
 import requests
@@ -20,10 +22,9 @@ import yfinance as yf
 import pandas_ta as ta
 from datetime import datetime, timedelta
 from utils import passes_liquidity_filter, apply_slippage, COMMISSION_EUR
+from utils import get_logger
+from config import DB_PATH, SIGNALS_VALIDATED_PATH, STRATEGY_CONFIG_PATH, MACRO_SIGNAL_PATH
 
-DB_PATH      = "/root/.hermes/profiles/hermes_trading/skills/trading/data/trading.db"
-SIGNALS_PATH = "/root/.hermes/profiles/hermes_trading/skills/trading/data/trading_signals_validated.json"
-CONFIG_PATH  = "/root/.hermes/profiles/hermes_trading/skills/trading/data/strategy_config.json"
 
 TELEGRAM_TOKEN   = os.environ.get("TELEGRAM_BOT_TOKEN")
 TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID")
@@ -135,20 +136,9 @@ def init_db(con):
     con.commit()
 
 def get_current_price_and_atr(ticker):
-    try:
-        df = yf.download(ticker, period="2y", interval="1d",
-                         progress=False, auto_adjust=True)
-        df = df.dropna()
-        if df.empty or len(df) < 20:
-            return None, None
-        close = df["Close"].iloc[:, 0]
-        high  = df["High"].iloc[:, 0]
-        low   = df["Low"].iloc[:, 0]
-        atr   = ta.atr(high, low, close, length=14)
-        return float(close.iloc[-1]), float(atr.iloc[-1])
-    except Exception as e:
-        print(f"  ⚠ Preisfehler {ticker}: {e}")
-        return None, None
+    """Wrapper → delegiert an zentralen Cache in utils.py (TTL 5 min)."""
+    close, atr_val, _ = get_price_data_cached(ticker)
+    return close, atr_val
 
 def send_telegram(message):
     if not TELEGRAM_TOKEN or not TELEGRAM_CHAT_ID:
@@ -218,9 +208,15 @@ def has_upcoming_earnings(ticker, days_ahead=5):
 
 def check_open_positions(con, cfg):
     """Prüft offene Positionen auf SL/TP, Trailing Stop und Partial TP."""
+        # Batch-Preisabfrage vorab (befüllt Cache für alle open positions)
     positions = con.execute(
         "SELECT * FROM positions WHERE status='open'"
     ).fetchall()
+
+    # Batch-Download aller Position-Kurse in einem Aufruf (TTL-Cache)
+    if positions:
+        prefetch_prices([p["ticker"] for p in positions if p["ticker"]])
+
 
     portfolio = con.execute("SELECT * FROM portfolio WHERE id=1").fetchone()
     cash = portfolio["cash"]
@@ -409,7 +405,7 @@ def check_open_positions(con, cfg):
 def get_macro_signal():
     """Liest aktuelles Makro-Signal + Regime."""
     import json as _json
-    macro_file = "/root/.hermes/profiles/hermes_trading/skills/trading/data/macro_signal.json"
+    macro_file = MACRO_SIGNAL_PATH
     try:
         with open(macro_file) as f:
             data = _json.load(f)
@@ -432,8 +428,56 @@ def apply_regime_filter(conviction, direction, regime):
     return conviction
 
 
+
+def check_drawdown(con):
+    """
+    Prüft Portfolio-Drawdown gegen ATH.
+    Gibt (drawdown_pct, action) zurück:
+      action = 'ok'       → normal weiter
+      action = 'no_entry' → -15%: keine neuen Positionen
+      action = 'close_all' → -25%: alle Positionen schließen
+    """
+    portfolio = con.execute("SELECT total_value, ath_value FROM portfolio WHERE id=1").fetchone()
+    if not portfolio:
+        return 0.0, "ok"
+
+    total   = portfolio["total_value"] or 0
+    ath     = portfolio["ath_value"]   or total
+
+    # ATH aktualisieren wenn neues Hoch
+    if total > ath:
+        con.execute("UPDATE portfolio SET ath_value=? WHERE id=1", (total,))
+        con.commit()
+        ath = total
+
+    if ath == 0:
+        return 0.0, "ok"
+
+    drawdown = (ath - total) / ath
+
+    if drawdown >= 0.25:
+        return drawdown, "close_all"
+    elif drawdown >= 0.15:
+        return drawdown, "no_entry"
+    else:
+        return drawdown, "ok"
+
+
 def open_new_positions(con, cfg):
     """Öffnet neue Positionen aus der Watchlist (LONG + SHORT)."""
+    # ── Drawdown-Notbremse ────────────────────────────────────────────────
+    drawdown_pct, dd_action = check_drawdown(con)
+    if dd_action == "close_all":
+        print(f"  🚨 DRAWDOWN NOTBREMSE: -{drawdown_pct:.1%} vom ATH → ALLE Positionen schließen!", flush=True)
+        send_telegram(f"🚨 DRAWDOWN NOTBREMSE\n-{drawdown_pct:.1%} vom ATH\nAlle Positionen werden geschlossen!")
+        _emergency_close_all(con, cfg)
+        return
+    elif dd_action == "no_entry":
+        print(f"  ⚠️  Drawdown -{drawdown_pct:.1%} vom ATH → keine neuen Positionen", flush=True)
+        return
+    elif drawdown_pct > 0.05:
+        print(f"  📉 Drawdown: -{drawdown_pct:.1%} vom ATH (noch OK)", flush=True)
+
     macro, regime = get_macro_signal()
     print(f"  🌍 Makro: {macro.upper()} | Regime: {regime.upper()}", flush=True)
 
@@ -501,6 +545,18 @@ def open_new_positions(con, cfg):
     open_tickers = {r["ticker"] for r in con.execute(
         "SELECT ticker FROM positions WHERE status='open'"
     ).fetchall()}
+
+    # Sektor-Zähler für offene Positionen (JOIN auf companies)
+    MAX_POSITIONS_PER_SECTOR = 2
+    sector_counts = {}
+    for r in con.execute("""
+        SELECT COALESCE(c.sector, 'Other') as sector, COUNT(*) as cnt
+        FROM positions p
+        LEFT JOIN companies c ON c.ticker = p.ticker
+        WHERE p.status='open'
+        GROUP BY sector
+    """).fetchall():
+        sector_counts[r["sector"]] = r["cnt"]
 
     # Heute bereits gehandelte Ticker
     yesterday = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
@@ -636,6 +692,18 @@ def open_new_positions(con, cfg):
             print(f"  💰 SHORT-Allokation voll ({short_invested:.0f}€/{max_short:.0f}€)")
             continue
 
+        # Sektor-Cap: max 2 Positionen pro Sektor
+        ticker_sector = "Other"
+        sector_row = con.execute(
+            "SELECT sector FROM companies WHERE ticker=?", (ticker,)
+        ).fetchone()
+        if sector_row and sector_row["sector"]:
+            ticker_sector = sector_row["sector"]
+        if sector_counts.get(ticker_sector, 0) >= MAX_POSITIONS_PER_SECTOR:
+            print(f"  🏭 {c['name']}: Sektor '{ticker_sector}' bereits voll "
+                  f"({sector_counts[ticker_sector]}/{MAX_POSITIONS_PER_SECTOR})")
+            continue
+
         # Liquiditätsfilter
         if not passes_liquidity_filter(ticker, cfg.get("min_liquidity_eur", 500000)):
             print(f"  💧 {c['name']}: Liquidität zu gering – überspringe")
@@ -722,6 +790,8 @@ def open_new_positions(con, cfg):
             "UPDATE watchlist SET status='bought' WHERE name=?",
             (c["name"],)
         )
+        # Sektor-Zähler für nächste Iteration aktualisieren
+        sector_counts[ticker_sector] = sector_counts.get(ticker_sector, 0) + 1
 
         # Cash reduzieren
         cash -= position_size

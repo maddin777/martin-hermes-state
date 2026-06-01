@@ -8,6 +8,8 @@ Aktiver Exit-Check (2x täglich 10:00 + 15:30)
 import sqlite3
 import os
 import sys
+
+log = get_logger("active_exit_check")
 sys.path.insert(0, "/root/.hermes/profiles/hermes_trading/skills/trading")
 import env_loader  # noqa: F401  (side-effect: laedt .env)
 import math
@@ -17,14 +19,15 @@ import pandas_ta as ta
 from datetime import datetime
 from utils import SLIPPAGE_PCT, COMMISSION_EUR
 
-DB_PATH    = "/root/.hermes/profiles/hermes_trading/skills/trading/data/trading.db"
-CONFIG_PATH= "/root/.hermes/profiles/hermes_trading/skills/trading/data/strategy_config.json"
 TELEGRAM_TOKEN   = os.environ.get("TELEGRAM_BOT_TOKEN")
 TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID")
 
 import json
+from utils import get_logger
+from config import DB_PATH, STRATEGY_CONFIG_PATH
+from utils import get_price_data_cached, prefetch_prices
 def load_config():
-    with open(CONFIG_PATH) as f:
+    with open(STRATEGY_CONFIG_PATH) as f:
         return json.load(f)
 
 def send_telegram(msg):
@@ -41,12 +44,10 @@ def send_telegram(msg):
         pass
 
 def get_tech_status(ticker):
-    """Prüft ob technisches Setup noch intakt ist."""
+    """Prüft ob technisches Setup noch intakt ist (nutzt utils-Cache)."""
     try:
-        df = yf.download(ticker, period="2y", interval="1d",
-                        progress=False, auto_adjust=True)
-        df = df.dropna()
-        if df.empty or len(df) < 50:
+        _, _, df = get_price_data_cached(ticker)
+        if df is None or len(df) < 50:
             return None, None, None
 
         close  = df["Close"].iloc[:, 0]
@@ -84,6 +85,8 @@ def main():
     positions = con.execute(
         "SELECT * FROM positions WHERE status='open'"
     ).fetchall()
+    if positions:
+        prefetch_prices([p['ticker'] for p in positions if p['ticker']])
 
     print(f"  Offene Positionen: {len(positions)}", flush=True)
     actions = []

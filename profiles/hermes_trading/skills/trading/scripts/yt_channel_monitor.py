@@ -8,8 +8,8 @@ import subprocess
 import time
 import sys
 from datetime import datetime, timedelta, timezone
+from config import DB_PATH
 
-DB_PATH = "/root/.hermes/profiles/hermes_trading/skills/trading/data/trading.db"
 DAYS = 10  # Erhöht von 5 auf 10 — deckt auch Wochenenden und kurze Pausen ab
 SLEEP_BETWEEN_VIDEOS = 120
 

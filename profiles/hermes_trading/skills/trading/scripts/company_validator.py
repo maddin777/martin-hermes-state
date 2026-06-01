@@ -25,10 +25,10 @@ import yfinance as yf
 import sys
 sys.path.insert(0, '/root/.hermes/profiles/hermes_trading/skills/trading/scripts')
 from technical_validator import _strip_suffixes
+from config import DB_PATH, VALIDATION_REJECTS_LOG
 
 # --- Konfiguration ---
-DB_PATH = "/root/.hermes/profiles/hermes_trading/skills/trading/data/trading.db"
-REJECT_LOG = "/root/.hermes/profiles/hermes_trading/skills/trading/data/company_validation_rejects.log"
+# VALIDATION_REJECTS_LOG → VALIDATION_REJECTS_LOG aus config.py
 
 # Liquiditaets-Schwelle: avg_volume * price > 1M (Waehrung egal, FX-Konvertierung optional)
 MIN_LIQUIDITY = 1_000_000
@@ -48,7 +48,7 @@ def _log_reject(name, ticker, reason, details):
     ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     line = f"{ts}\t{name!r}\t{ticker or '-'}\t{reason}\t{details}\n"
     try:
-        with open(REJECT_LOG, "a", encoding="utf-8") as f:
+        with open(VALIDATION_REJECTS_LOG, "a", encoding="utf-8") as f:
             f.write(line)
     except Exception:
         pass  # Logging-Fehler darf Pipeline nicht stoppen

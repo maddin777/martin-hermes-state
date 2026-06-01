@@ -8,12 +8,14 @@ import requests
 import json
 import os
 import sys
+
+log = get_logger("signal_extractor")
 sys.path.insert(0, "/root/.hermes/profiles/hermes_trading/skills/trading")
 import env_loader  # noqa: F401  (side-effect: laedt .env)
 from datetime import datetime
+from utils import get_logger, retry
+from config import DB_PATH, SIGNALS_PATH
 
-DB_PATH = "/root/.hermes/profiles/hermes_trading/skills/trading/data/trading.db"
-SIGNALS_PATH = "/root/.hermes/profiles/hermes_trading/skills/trading/data/trading_signals.json"
 OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY")
 MODEL = "deepseek/deepseek-v4-flash"
 CHUNK_SIZE = 15000
@@ -49,7 +51,10 @@ Regeln:
 - Auch Unternehmen im Videotitel berücksichtigen
 - Bei Unsicherheit: LIEBER AUFNEHMEN als weglassen
 - Nur Unternehmen die explizit im Text erwähnt werden
-- Keine Duplikate"""
+- Keine Duplikate
+- VOLLSTAENDIGE NAMEN: Gib immer den vollstaendigen offiziellen Firmennamen an. FALSCH: "Kri", "Konk", "Haid", "Macy" (abgeschnitten). RICHTIG: "Krispy Kreme", "ConocoPhillips", "Haidilao", "Macy's"
+- KEINE Ticker im name-Feld: Schreibe "NVIDIA" nicht "NVDA" oder "NVD.DE"
+- Mindestlaenge: Namen mit weniger als 4 Zeichen NICHT aufnehmen"""
 
 
 FALLBACK_MODEL = "openai/gpt-4o-mini"
@@ -61,32 +66,38 @@ def call_api(chunk, channel, title, date, chunk_num, total_chunks):
         f"Transkript-Abschnitt {chunk_num}/{total_chunks}:\n\n{chunk}"
     )
 
+    @retry(max_attempts=3, backoff=2.0, exceptions=(requests.RequestException, KeyError))
     def _request(model, system_extra=""):
-        r = requests.post(
-            "https://openrouter.ai/api/v1/chat/completions",
-            headers={
-                "Authorization": f"Bearer {OPENROUTER_API_KEY}",
-                "Content-Type": "application/json"
-            },
-            json={
-                "model": model,
-                "max_tokens": 4000,
-                "messages": [
-                    {"role": "system", "content": SYSTEM_PROMPT + system_extra},
-                    {"role": "user",   "content": user_content}
-                ]
-            },
-            timeout=60
-        )
+        try:
+            r = requests.post(
+                "https://openrouter.ai/api/v1/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+                    "Content-Type": "application/json"
+                },
+                json={
+                    "model": model,
+                    "max_tokens": 4000,
+                    "messages": [
+                        {"role": "system", "content": SYSTEM_PROMPT + system_extra},
+                        {"role": "user",   "content": user_content}
+                    ]
+                },
+                timeout=60
+            )
+            r.raise_for_status()
+        except requests.RequestException as e:
+            print(f"     ⚠ API-Verbindungsfehler ({model}): {e}", flush=True)
+            raise
         data = r.json()
         if "choices" not in data:
-            raise Exception(f"API Fehler: {data}")
-        content = data["choices"][0]["message"]["content"].strip()
-        if content.startswith("```"):
-            content = content.split("```")[1]
-            if content.startswith("json"):
-                content = content[4:]
-        return content.strip()
+            raise KeyError(f"Keine 'choices' in API-Antwort: {data}")
+        text = data["choices"][0]["message"]["content"].strip()
+        if text.startswith("```"):
+            text = text.split("```")[1]
+            if text.startswith("json"):
+                text = text[4:]
+        return text.strip()
 
     def _try_parse(text):
         """JSON parsen, bei Fehler regex-repair versuchen."""
@@ -171,21 +182,27 @@ def main():
 
     print(f"Pending Videos: {len(pending)}", flush=True)
 
+    # Signals-JSON laden (Append-only – bestehende Ergebnisse bleiben)
     if os.path.exists(SIGNALS_PATH):
         with open(SIGNALS_PATH, encoding="utf-8") as f:
             all_signals = json.load(f)
-        existing_ids = {s["source"]["video_id"] for s in all_signals}
     else:
         all_signals = []
-        existing_ids = set()
+
+    # Cache: video_ids die bereits analysiert wurden (aus DB – robust gegen JSON-Verlust)
+    done_ids = {
+        row["video_id"]
+        for row in con.execute(
+            "SELECT video_id FROM videos WHERE status='done'"
+        ).fetchall()
+    }
 
     for row in pending:
         print(f"\n[{row['channel']}] {row['title'][:60]}...", flush=True)
 
-        if row['video_id'] in existing_ids:
-            print("  ⏭ Bereits analysiert", flush=True)
-            con.execute("UPDATE videos SET status='done' WHERE video_id=?", (row['video_id'],))
-            con.commit()
+        # DB-Status ist der primäre Cache (robust gegen JSON-Verlust)
+        if row['video_id'] in done_ids:
+            print("  ⏭ Bereits analysiert (DB-Cache)", flush=True)
             continue
 
         try:

@@ -9,8 +9,8 @@ import sys
 sys.path.insert(0, "/root/.hermes/profiles/hermes_trading/skills/trading")
 import env_loader  # noqa: F401  (side-effect: laedt .env)
 from datetime import datetime, timedelta
+from config import DB_PATH, STRATEGY_CONFIG_PATH, SIGNALS_VALIDATED_PATH
 
-DB_PATH    = "/root/.hermes/profiles/hermes_trading/skills/trading/data/trading.db"
 TG_TOKEN   = os.environ.get("TELEGRAM_BOT_TOKEN")
 TG_CHAT    = os.environ.get("TELEGRAM_CHAT_ID")
 IS_SUNDAY  = datetime.now().weekday() == 6

@@ -17,9 +17,9 @@ import sys
 sys.path.insert(0, "/root/.hermes/profiles/hermes_trading/skills/trading")
 import env_loader  # noqa: F401  (side-effect: laedt .env)
 from datetime import datetime, timedelta
+from config import DB_PATH, SOURCES_CONFIG_PATH
 
-DB_PATH = "/root/.hermes/profiles/hermes_trading/skills/trading/data/trading.db"
-SOURCES_JSON = "/root/.hermes/profiles/hermes_trading/skills/trading/config/sources.json"
+# SOURCES_CONFIG_PATH → SOURCES_CONFIG_PATH aus config.py
 OPENROUTER_KEY = os.environ.get("OPENROUTER_API_KEY")
 DISCOVERY_MODEL = "meta-llama/llama-4-scout"
 
@@ -91,7 +91,7 @@ def migrate_existing_sources(con):
         return
     print("🔄 Migriere bestehende Quellen in source_registry...", flush=True)
     try:
-        with open(SOURCES_JSON) as f:
+        with open(SOURCES_CONFIG_PATH) as f:
             rss_feeds = json.load(f)
         for feed in rss_feeds.get("rss_feeds", []):
             lang = feed.get("language", "en")

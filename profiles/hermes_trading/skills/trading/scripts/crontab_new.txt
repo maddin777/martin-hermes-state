@@ -1,0 +1,49 @@
+# crontab_new.txt
+#
+# Hermes Trading System – Crontab (OHNE Klartext-API-Keys)
+#
+# EINRICHTEN:
+#   crontab crontab_new.txt
+#
+# VORHER PRÜFEN dass /root/.hermes/.env existiert und alle Keys enthält:
+#   OPENROUTER_API_KEY=...
+#   TELEGRAM_BOT_TOKEN=...
+#   TELEGRAM_CHAT_ID=...
+#   TWITTERAPI_IO_KEY=...
+#   TAVILY_API_KEY=...
+#   PYTHONPATH=/root/.hermes/profiles/hermes_trading/skills/trading
+#
+# WICHTIG: Die env-Datei darf NICHT via `source` in Cron geladen werden (kein Bash).
+# Stattdessen: env_loader.py wird von jedem Script importiert und liest die .env.
+# Alle Scripts haben bereits `import env_loader` im Header.
+
+SHELL=/bin/bash
+PYTHONPATH=/root/.hermes/profiles/hermes_trading/skills/trading
+
+# ═══ TRADING SYSTEM ═══
+0 2 * * 1-5 echo "=== $(date) === fundamental_data START ===" >> /root/.hermes/profiles/hermes_trading/skills/trading/data/cron.log && /usr/bin/python3 /root/.hermes/profiles/hermes_trading/skills/trading/scripts/fundamental_data.py >> /root/.hermes/profiles/hermes_trading/skills/trading/data/cron.log 2>&1
+0 3 * * 1-5 echo "=== $(date) === social_scanner START ===" >> /root/.hermes/profiles/hermes_trading/skills/trading/data/cron.log && /usr/bin/python3 /root/.hermes/profiles/hermes_trading/skills/trading/scripts/social_scanner.py >> /root/.hermes/profiles/hermes_trading/skills/trading/data/cron.log 2>&1
+0 4 * * 1-5 echo "=== $(date) === trading_pipeline START ===" >> /root/.hermes/profiles/hermes_trading/skills/trading/data/cron.log && /usr/bin/python3 /root/.hermes/profiles/hermes_trading/skills/trading/scripts/trading_pipeline.py >> /root/.hermes/profiles/hermes_trading/skills/trading/data/cron.log 2>&1
+50 4 * * 1-5 cd /root/.hermes/profiles/hermes_trading/skills/trading && venv/bin/python scripts/llm_validator.py >> data/cron.log 2>&1
+0 5 * * 1-5 echo "=== $(date) === nightly_eval START ===" >> /root/.hermes/profiles/hermes_trading/skills/trading/data/cron.log && /usr/bin/python3 /root/.hermes/profiles/hermes_trading/skills/trading/scripts/nightly_eval.py >> /root/.hermes/profiles/hermes_trading/skills/trading/data/cron.log 2>&1 && echo "=== $(date) === nightly_eval DONE ===" >> /root/.hermes/profiles/hermes_trading/skills/trading/data/cron.log
+30 9 * * 1-5 echo "=== $(date) === active_exit_check START ===" >> /root/.hermes/profiles/hermes_trading/skills/trading/data/cron.log && /usr/bin/python3 /root/.hermes/profiles/hermes_trading/skills/trading/scripts/active_exit_check.py >> /root/.hermes/profiles/hermes_trading/skills/trading/data/cron.log 2>&1
+0 13-20 * * 1-5 /usr/bin/python3 /root/.hermes/profiles/hermes_trading/skills/trading/scripts/signal_manager.py check_only >> /root/.hermes/profiles/hermes_trading/skills/trading/data/cron.log 2>&1
+30 15 * * 1-5 echo "=== $(date) === active_exit_check START ===" >> /root/.hermes/profiles/hermes_trading/skills/trading/data/cron.log && /usr/bin/python3 /root/.hermes/profiles/hermes_trading/skills/trading/scripts/active_exit_check.py >> /root/.hermes/profiles/hermes_trading/skills/trading/data/cron.log 2>&1
+0 20 * * 5 /usr/bin/python3 /root/.hermes/profiles/hermes_trading/skills/trading/scripts/signal_manager.py full >> /root/.hermes/profiles/hermes_trading/skills/trading/data/cron.log 2>&1
+0 22 * * * cp /root/.hermes/profiles/hermes_trading/skills/trading/data/trading.db /root/obsidian-vault/Projekte/trading_db_backup_$(date +\%Y\%m\%d).db
+5 22 * * * /usr/bin/python3 /root/.hermes/profiles/hermes_trading/skills/trading/scripts/export_watchlist.py >> /root/.hermes/profiles/hermes_trading/skills/trading/data/cron.log 2>&1
+0 6 * * 0 echo "=== $(date) === nightly_eval_weekly START ===" >> /root/.hermes/profiles/hermes_trading/skills/trading/data/cron.log && /usr/bin/python3 /root/.hermes/profiles/hermes_trading/skills/trading/scripts/nightly_eval.py >> /root/.hermes/profiles/hermes_trading/skills/trading/data/cron.log 2>&1 && echo "=== $(date) === nightly_eval_weekly DONE ===" >> /root/.hermes/profiles/hermes_trading/skills/trading/data/cron.log
+0 7 * * 0 cd /root/.hermes/profiles/hermes_trading/skills/trading && venv/bin/python scripts/source_lifecycle.py >> data/cron.log 2>&1
+0 8 * * 0 echo "=== $(date) === strategy_optimizer START ===" >> /root/.hermes/profiles/hermes_trading/skills/trading/data/cron.log && /usr/bin/python3 /root/.hermes/profiles/hermes_trading/skills/trading/scripts/strategy_optimizer.py >> /root/.hermes/profiles/hermes_trading/skills/trading/data/cron.log 2>&1 && echo "=== $(date) === strategy_optimizer DONE ===" >> /root/.hermes/profiles/hermes_trading/skills/trading/data/cron.log
+
+# ═══ SONSTIGES ═══
+0 8 * * * /usr/bin/python3 /root/.hermes/profiles/hermes-lang/cron/jobs.py Polnisch-disss-daily
+0 8 * * * /usr/local/bin/hermes-lang-disss-language-learning Polnisch
+
+# ═══ THEMATIC BOT ═══
+30 2 * * 1-5 cd /root/.hermes/profiles/hermes_trading/skills/trading && /root/.hermes/profiles/hermes_trading/skills/trading/venv/bin/python3 thematic/prediction_market_scanner.py >> data/thematic.log 2>&1
+0 3 * * 1-5 cd /root/.hermes/profiles/hermes_trading/skills/trading && /root/.hermes/profiles/hermes_trading/skills/trading/venv/bin/python3 thematic/thematic_pipeline.py >> data/thematic.log 2>&1
+0 10 * * 1-5 cd /root/.hermes/profiles/hermes_trading/skills/trading && /root/.hermes/profiles/hermes_trading/skills/trading/venv/bin/python3 thematic/drawdown_monitor.py >> data/thematic.log 2>&1
+30 15 * * 1-5 cd /root/.hermes/profiles/hermes_trading/skills/trading && /root/.hermes/profiles/hermes_trading/skills/trading/venv/bin/python3 thematic/thesis_monitor.py >> data/thematic.log 2>&1
+0 4 * * 0 cd /root/.hermes/profiles/hermes_trading/skills/trading && /root/.hermes/profiles/hermes_trading/skills/trading/venv/bin/python3 thematic/news_cleanup.py >> data/thematic.log 2>&1
+0 8 * * 0 cd /root/.hermes/profiles/hermes_trading/skills/trading && /root/.hermes/profiles/hermes_trading/skills/trading/venv/bin/python3 thematic/weekly_review.py >> data/thematic.log 2>&1

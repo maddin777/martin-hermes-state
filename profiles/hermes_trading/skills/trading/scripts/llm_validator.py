@@ -8,8 +8,8 @@ import sys
 sys.path.insert(0, "/root/.hermes/profiles/hermes_trading/skills/trading")
 import env_loader  # noqa: F401  (side-effect: laedt .env)
 from datetime import datetime
+from config import DB_PATH
 
-DB_PATH = "/root/.hermes/profiles/hermes_trading/skills/trading/data/trading.db"
 OPENROUTER_KEY = os.environ.get("OPENROUTER_API_KEY")
 VALIDATION_MODEL = "openrouter/owl-alpha"
 
