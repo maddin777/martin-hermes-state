@@ -8,17 +8,17 @@ import requests
 import json
 import os
 import sys
-
-log = get_logger("signal_extractor")
 sys.path.insert(0, "/root/.hermes/profiles/hermes_trading/skills/trading")
 import env_loader  # noqa: F401  (side-effect: laedt .env)
 from datetime import datetime
 from utils import get_logger, retry
+log = get_logger("signal_extractor")
 from config import DB_PATH, SIGNALS_PATH
 
 OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY")
 MODEL = "deepseek/deepseek-v4-flash"
 CHUNK_SIZE = 15000
+OVERLAP = 1000
 
 SYSTEM_PROMPT = """Du bist ein erfahrener Finanzanalyst, der YouTube-Transkripte auf Unternehmensnennungen scannt.
 Analysiere einen Ausschnitt eines YouTube-Transkripts eines deutschen Finanzkanals.
@@ -162,7 +162,16 @@ def merge_results(results):
 
 
 def analyze(transcript, channel, title, date):
-    chunks = [transcript[i:i+CHUNK_SIZE] for i in range(0, len(transcript), CHUNK_SIZE)]
+    chunks = []
+    start = 0
+    t_len = len(transcript)
+    while start < t_len:
+        end = min(start + CHUNK_SIZE + OVERLAP, t_len)
+        chunks.append(transcript[start:end])
+        start += CHUNK_SIZE
+        if start >= t_len:
+            break
+
     total = len(chunks)
     print(f"     → {len(transcript)} Zeichen, {total} Chunk(s)", flush=True)
     results = []
@@ -174,6 +183,8 @@ def analyze(transcript, channel, title, date):
 
 def main():
     con = sqlite3.connect(DB_PATH)
+    con.execute("PRAGMA journal_mode=WAL;")
+    con.execute("PRAGMA busy_timeout=5000;")
     con.row_factory = sqlite3.Row
 
     pending = con.execute(

@@ -14,6 +14,8 @@ import requests
 import yfinance as yf
 from datetime import datetime, timedelta
 from config import DB_PATH, MACRO_SIGNAL_PATH
+from utils import retry, get_logger
+log = get_logger("fundamental_data")
 
 FRED_API_KEY = os.environ.get("FRED_API_KEY", "")
 
@@ -171,45 +173,111 @@ def get_macro_summary(con):
 
 def detect_market_regime(con):
     """
-    Markov Chain Regime-Detection auf SPY + DAX.
-    3 Zustände: bull / bear / sideways
-    Rolling 252 Tage Walk-Forward Transition Matrix
+    Erweitertes Regime-Modell mit zwei Dimensionen:
+      1. Trend-Regime (bull/bear/sideways): Markov Chain auf SPY + DAX 20d-Returns
+      2. Makro-Overlay: VIX-Level, Credit Spreads (HYG/LQD), Dollar-Index (DXY)
+
+    Separate US- und EU-Regimes werden berechnet.
+    Das kombinierte Regime gewichtet US 60% / EU 40%.
     """
-    print("\n📈 Markt-Regime Erkennung...", flush=True)
+    print("\n📈 Markt-Regime Erkennung (erweitert)...", flush=True)
     try:
         import yfinance as yf
         import numpy as np
         from datetime import datetime, timedelta
 
-        # SPY und DAX laden (2 Jahre)
-        spy = yf.download("SPY", period="2y", interval="1d",
-                         progress=False, auto_adjust=True)["Close"].iloc[:, 0]
-        dax = yf.download("^GDAXI", period="2y", interval="1d",
-                         progress=False, auto_adjust=True)["Close"].iloc[:, 0]
+        # ── Marktdaten laden ────────────────────────────────────────────────
+        tickers = {
+            "SPY":    yf.download("SPY",    period="2y", interval="1d", progress=False, auto_adjust=True)["Close"].iloc[:, 0],
+            "DAX":    yf.download("^GDAXI", period="2y", interval="1d", progress=False, auto_adjust=True)["Close"].iloc[:, 0],
+            "VIX":    yf.download("^VIX",   period="2y", interval="1d", progress=False, auto_adjust=True)["Close"].iloc[:, 0],
+            "HYG":    yf.download("HYG",    period="2y", interval="1d", progress=False, auto_adjust=True)["Close"].iloc[:, 0],  # High-Yield Credit
+            "DXY":    yf.download("DX-Y.NYB", period="2y", interval="1d", progress=False, auto_adjust=True)["Close"].iloc[:, 0],  # Dollar-Index
+        }
 
-        # 20-Tage Returns
+        spy = tickers["SPY"]
+        dax = tickers["DAX"]
+        vix = tickers["VIX"]
+        hyg = tickers["HYG"]
+        dxy = tickers["DXY"]
+
+        # ── 20-Tage Returns (US + EU getrennt) ──────────────────────────────
         spy_ret = spy.pct_change(20).dropna()
         dax_ret = dax.pct_change(20).dropna()
 
-        # Gemeinsamer Index
+        # ── US Regime (60% Gewicht) ──────────────────────────────────────────
+        vol_spy = spy_ret.std()
+        def classify_us(ret):
+            if vol_spy == 0: return "sideways"
+            z = ret / vol_spy
+            return "bull" if z > 0.5 else "bear" if z < -0.5 else "sideways"
+
+        # ── EU Regime (40% Gewicht) ──────────────────────────────────────────
+        vol_dax = dax_ret.std()
+        def classify_eu(ret):
+            if vol_dax == 0: return "sideways"
+            z = ret / vol_dax
+            return "bull" if z > 0.5 else "bear" if z < -0.5 else "sideways"
+
+        # ── Makro-Overlay-Score (−2 bis +2) ──────────────────────────────────
+        def macro_overlay_score():
+            """
+            Addiert Punkte basierend auf:
+              VIX < 18  → +1 (risikofreudig)  | VIX > 28 → −1 (risikoscheu)
+              HYG 20d   → +1 wenn steigend     | fallend  → −1 (Credit Spreads)
+              DXY 20d   → −0.5 wenn steigend   | fallend  → +0.5 (schwacher Dollar = Risk-On)
+            """
+            score = 0.0
+            # VIX
+            try:
+                vix_now = float(vix.iloc[-1])
+                if vix_now < 18:   score += 1.0
+                elif vix_now > 28: score -= 1.0
+                print(f"  VIX: {vix_now:.1f} → overlay {'+1' if vix_now < 18 else ('-1' if vix_now > 28 else '0')}", flush=True)
+            except Exception: pass
+            # Credit Spreads (HYG)
+            try:
+                hyg_ret = float(hyg.pct_change(20).dropna().iloc[-1])
+                if hyg_ret > 0.01:   score += 1.0   # HYG steigt = Spreads eng = Risk-On
+                elif hyg_ret < -0.01: score -= 1.0
+                print(f"  HYG 20d: {hyg_ret:+.1%} → overlay {'+1' if hyg_ret > 0.01 else ('-1' if hyg_ret < -0.01 else '0')}", flush=True)
+            except Exception: pass
+            # Dollar-Index
+            try:
+                dxy_ret = float(dxy.pct_change(20).dropna().iloc[-1])
+                if dxy_ret > 0.02:    score -= 0.5   # starker Dollar = Risk-Off
+                elif dxy_ret < -0.02: score += 0.5
+                print(f"  DXY 20d: {dxy_ret:+.1%} → overlay {'-0.5' if dxy_ret > 0.02 else ('+0.5' if dxy_ret < -0.02 else '0')}", flush=True)
+            except Exception: pass
+            return round(score, 2)
+
+        overlay = macro_overlay_score()
+
+        # ── Gemeinsamer Index + kombinierter Return ───────────────────────────
         common = spy_ret.index.intersection(dax_ret.index)
         spy_ret = spy_ret[common]
         dax_ret = dax_ret[common]
+        combined = (spy_ret * 0.6 + dax_ret * 0.4)   # US 60% / EU 40%
 
-        # Kombinierter Return (50/50 SPY + DAX)
-        combined = (spy_ret + dax_ret) / 2
-
-        # Regime-Schwellenwerte — risiko-adjustiert (Return / Volatilitäts-Normalisierung)
         vol_20d = combined.std()
         def classify(ret):
-            if vol_20d == 0:
-                return "sideways"
+            if vol_20d == 0: return "sideways"
             z_score = ret / vol_20d
-            if z_score > 0.5:   return "bull"
-            elif z_score < -0.5: return "bear"
-            else:                return "sideways"
+            return "bull" if z_score > 0.5 else "bear" if z_score < -0.5 else "sideways"
 
         regimes = combined.apply(classify)
+
+        # ── Makro-Overlay auf aktuelles Regime anwenden ───────────────────────
+        # Overlay ≥ +1.5 → bull-Bias, ≤ −1.5 → bear-Bias
+        base_regime = regimes.iloc[-1]
+        if overlay >= 1.5 and base_regime == "sideways":
+            current_regime = "bull"
+            print(f"  Overlay +{overlay}: sideways → bull (makro-adjustiert)", flush=True)
+        elif overlay <= -1.5 and base_regime in ("sideways", "bull"):
+            current_regime = "bear"
+            print(f"  Overlay {overlay}: {base_regime} → bear (makro-adjustiert)", flush=True)
+        else:
+            current_regime = base_regime
 
         # Rolling 252d Transition Matrix
         window = min(252, len(regimes))
@@ -247,14 +315,32 @@ def detect_market_regime(con):
 
         # In DB speichern
         today = datetime.now().strftime("%Y-%m-%d")
+        # Migration: neue Spalten falls noch nicht vorhanden
+        existing_cols = [r[1] for r in con.execute("PRAGMA table_info(regime_history)").fetchall()]
+        for col_def in [
+            ("regime_us",     "TEXT"),
+            ("regime_eu",     "TEXT"),
+            ("macro_overlay", "REAL"),
+            ("vix",           "REAL"),
+        ]:
+            if col_def[0] not in existing_cols:
+                con.execute(f"ALTER TABLE regime_history ADD COLUMN {col_def[0]} {col_def[1]}")
+
         con.execute("""
             INSERT OR REPLACE INTO regime_history
             (date, regime, spy_return, dax_return,
-             bull_prob, bear_prob, sideways_prob, created_at)
-            VALUES (?,?,?,?,?,?,?,?)
+             bull_prob, bear_prob, sideways_prob,
+             regime_us, regime_eu, macro_overlay, vix,
+             created_at)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?)
         """, (today, current_regime, current_spy, current_dax,
               curr_probs.get("bull", 0), curr_probs.get("bear", 0),
-              curr_probs.get("sideways", 0), datetime.now().isoformat()))
+              curr_probs.get("sideways", 0),
+              classify_us(float(spy_ret.iloc[-1])),
+              classify_eu(float(dax_ret.iloc[-1])),
+              overlay,
+              round(float(vix.iloc[-1]), 1) if len(vix) > 0 else None,
+              datetime.now().isoformat()))
         con.commit()
 
         # In macro_signal.json schreiben
@@ -266,10 +352,14 @@ def detect_market_regime(con):
         except:
             macro = {}
 
-        macro["regime"]       = current_regime
-        macro["regime_probs"] = curr_probs
-        macro["spy_return"]   = current_spy
-        macro["dax_return"]   = current_dax
+        macro["regime"]        = current_regime
+        macro["regime_probs"]  = curr_probs
+        macro["spy_return"]    = current_spy
+        macro["dax_return"]    = current_dax
+        macro["regime_us"]     = classify_us(float(spy_ret.iloc[-1]))
+        macro["regime_eu"]     = classify_eu(float(dax_ret.iloc[-1]))
+        macro["macro_overlay"] = overlay
+        macro["vix"]           = round(float(vix.iloc[-1]), 1) if len(vix) > 0 else None
         macro["regime_updated"] = datetime.now().isoformat()
 
         with open(macro_file, "w") as f:

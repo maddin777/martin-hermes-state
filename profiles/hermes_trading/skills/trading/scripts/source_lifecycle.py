@@ -323,7 +323,7 @@ def discover_new_sources(con):
 GESUCHTE LÜCKE:
 - Region: {gap['region']}
 - Kategorie: {gap['category']}
-- Typ: YouTube-Kanäle, RSS-Feeds/Blogs, oder X/Twitter-Accounts
+- Typ: YouTube-Kanäle oder RSS-Feeds/Blogs (KEIN Twitter – dafür gibt es Grok-Discovery)
 
 BEREITS VORHANDEN:
 {json.dumps(existing_names[:30], indent=2)}
@@ -334,7 +334,7 @@ ANFORDERUNGEN:
 - Nachweisbare Track-Records oder hohe fachliche Qualität
 
 Antworte NUR mit einem JSON-Array von maximal 3 Vorschlägen (kein Markdown, kein Kommentar):
-[{{"name": "Kanalname", "type": "youtube|rss|twitter", "url_or_handle": "URL oder @handle",
+[{{"name": "Kanalname", "type": "youtube|rss", "url_or_handle": "URL oder Kanal-ID",
   "language": "en|de|fr|ja|zh", "reason": "Warum diese Quelle gut ist (1 Satz)",
   "estimated_frequency": "daily|weekly", "estimated_audience": 50000}}]"""
 
@@ -396,9 +396,11 @@ Antworte NUR mit einem JSON-Array von maximal 3 Vorschlägen (kein Markdown, kei
                 if slots <= 0:
                     break
                 audience = s.get("estimated_audience", 0)
-                if s["type"] == "youtube" and audience < T["min_subscribers_yt"]:
+                # Twitter wird ausschließlich über Grok-Discovery gefunden (discover_twitter_via_grok)
+                # LLM-Vorschläge für Twitter überspringen da halluzinationsanfällig
+                if s["type"] == "twitter":
                     continue
-                if s["type"] == "twitter" and audience < T["min_followers_x"]:
+                if s["type"] == "youtube" and audience < T["min_subscribers_yt"]:
                     continue
                 dup = con.execute(
                     "SELECT id FROM source_registry WHERE display_name=? OR source_key=?",

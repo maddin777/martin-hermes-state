@@ -18,7 +18,7 @@ DB_PATH = os.path.join(
 )
 
 TELEGRAM_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
-TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID")
+TELEGRAM_HOME_CHANNEL = os.environ.get("TELEGRAM_HOME_CHANNEL")
 
 
 def _db_connect():
@@ -28,13 +28,13 @@ def _db_connect():
 
 
 def _send_telegram(msg: str):
-    if not TELEGRAM_TOKEN or not TELEGRAM_CHAT_ID:
+    if not TELEGRAM_TOKEN or not TELEGRAM_HOME_CHANNEL:
         print(msg)
         return
     try:
         requests.post(
             f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage",
-            json={"chat_id": TELEGRAM_CHAT_ID, "text": msg, "parse_mode": "HTML"},
+            json={"chat_id": TELEGRAM_HOME_CHANNEL, "text": msg, "parse_mode": "HTML"},
             timeout=10,
         )
     except Exception as e:
@@ -73,9 +73,24 @@ def main(intraday: bool = False):
 
     for pos in positions:
         ticker = pos["ticker"]
-        thesis = pos["thesis_text"] or "Keine These dokumentiert."
+        thesis_raw = pos["thesis_text"] or ""
         theme_dict, theme_desc = _load_position_themes(con, pos)
         theme_name = theme_dict.get("name", "–")
+
+        # Kein Thesis-Check wenn weder thesis_theme_id noch thesis_text vorhanden
+        # → verhindert false "BROKEN" Meldungen für rein sentiment-basierte Trades
+        has_theme  = bool(pos["thesis_theme_id"])
+        has_thesis = bool(thesis_raw.strip()) and thesis_raw.strip() != "Keine These dokumentiert."
+        if not has_theme and not has_thesis:
+            # Status auf no_thesis setzen (einmalig, ohne Telegram-Alert)
+            con.execute(
+                "UPDATE positions SET thesis_current_status='no_thesis' WHERE id=?",
+                (pos["id"],)
+            )
+            print(f"  {ticker}: kein Thesis-Eintrag → übersprungen (no_thesis)", flush=True)
+            continue
+
+        thesis = thesis_raw if has_thesis else "Keine explizite These – Bewertung auf Basis des Themas."
 
         # News holen
         news = tavily_client.fetch_ticker_news(ticker, days=1)
@@ -108,9 +123,25 @@ def main(intraday: bool = False):
         result = llm_client.call_llm(prompt, model, temperature=0.3, json_mode=True)
         data = llm_client.parse_json_response(result)
 
-        verdict = data.get("verdict", "UNCERTAIN")
+        verdict    = data.get("verdict", "UNCERTAIN")
         confidence = float(data.get("confidence", 0.5))
-        rationale = data.get("rationale", "")
+        rationale  = data.get("rationale", "")
+
+        # Schutzfilter: LLM-Antworten die nur sagen "es gibt keine These" ablehnen
+        # Diese entstehen wenn der Prompt-Kontext unzureichend war
+        no_thesis_phrases = [
+            "no documented thesis",
+            "keine dokumentierte these",
+            "impossible for the thesis to be intact",
+            "there was no documented",
+            "no thesis was provided",
+        ]
+        is_no_thesis_verdict = any(p.lower() in rationale.lower() for p in no_thesis_phrases)
+        if is_no_thesis_verdict:
+            print(f"  {ticker}: LLM-Rationale enthält 'no thesis'-Phrase → verdict auf UNCERTAIN gesetzt", flush=True)
+            verdict    = "UNCERTAIN"
+            confidence = 0.3
+            rationale  = f"[Gefiltert: keine Thesis vorhanden] {rationale}"
 
         # Log
         con.execute("""
@@ -143,7 +174,7 @@ def main(intraday: bool = False):
                 f"Thema: {theme_name}\n"
                 f"Confidence: {confidence:.0%}\n"
                 f"Rationale: {rationale}\n\n"
-                f"<i>Exit-Empfehlung — bitte pruefen</i>"
+                f"<i>SL wurde automatisch auf 0.5×ATR enger gezogen.</i>"
             )
         elif verdict == "WEAKENING":
             weakening_count += 1

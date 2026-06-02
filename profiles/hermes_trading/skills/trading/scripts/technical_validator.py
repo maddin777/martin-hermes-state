@@ -117,6 +117,7 @@ KNOWN_TICKERS = {
 # Indizes, Krypto, ETFs, Newsletter-/Depot-Namen — nicht handelbar als Einzelaktie
 import re
 from config import DB_PATH, SIGNALS_PATH, SIGNALS_VALIDATED_PATH
+OUTPUT_PATH = SIGNALS_VALIDATED_PATH
 
 _NOT_TRADABLE_PATTERNS = [
     # Indizes

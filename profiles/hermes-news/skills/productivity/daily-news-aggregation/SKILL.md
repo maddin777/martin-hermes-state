@@ -191,24 +191,25 @@ Nach dem Ausführen findet man die Markdown‑Datei im definierten Obsidian‑Va
 7. **Verification** – Optionally read back a few lines with `read_file` to confirm the file exists and is non‑empty.
 
 ## Pitfalls & Tips
-- **Network restrictions** – Some RSS endpoints (e.g., Reuters, Tagesschau, BBC) reject default `curl`/`requests` calls. Use a proper User-Agent header (`-A "Mozilla/5.0"` or appropriate header in Python) to avoid 403/404 errors. If a primary feed returns empty, automatically switch to an alternative reputable source for the same topic (maintain at least three fallback URLs per category).
-- **Fallback strategy** – When all known RSS feeds for a category fail, perform a targeted Bing News search (`https://www.bing.com/news/search?q=<Begriff> site:reuters.com`) and extract titles/links from the result snippets as a last resort.
-- **Source diversity enforcement** – Limit to a maximum of two items per source and ensure at least three distinct sources per section (BBC ≤2). After selection, verify the count before writing the markdown.
-- **Translation** – If titles/descriptions are not already in German, call a translation API (e.g., DeepL) or fallback to the original English text with a “(EN)” marker.
-- **Verification checklist** – After writing, read back a few lines with `read_file` to confirm non‑empty content and correct wikilinks.
-- **Network restrictions** – Some RSS endpoints (e.g., Reuters, Tagesschau API, BBC EU feeds) reject default `curl`/`requests` calls. Use a proper User‑Agent header (`-A "Mozilla/5.0"` or `headers={'User-Agent': 'Mozilla/5.0'}`) to avoid 403/404 errors.
-- **Fallback strategy** – If a primary feed fails, automatically switch to an alternative reputable source for the same topic (e.g., replace a missing Tagesschau feed with DW or FAZ). Keep a list of at least three backup URLs per category.
-- **Parallel sub‑tasks** – The skill now recommends using `delegate_task` with separate parallel goals for *Politics*, *Economy*, and *Events* to reduce total runtime.
-- **Offline sandbox handling** – When run in an environment without outbound internet (e.g., sandbox tests), the script should detect lack of response and either skip the fetch or use a cached stub, logging which feeds were unavailable instead of aborting.
-- **Source diversity enforcement** – Limit to a maximum of two items per source and ensure at least three distinct sources per section (BBC ≤2). After selection, verify the count before writing the markdown.
-- **Translation** – If titles/descriptions are not already in German, call a translation API (e.g., DeepL) or fallback to the original English text with a “(EN)” marker.
-- **Verification checklist** – After writing, read back a few lines with `read_file` to confirm non‑empty content and correct wikilinks.
+- **Network restrictions** – Many news sites (Tagesschau, Spiegel, Reuters, FAZ, Welt) aggressively block default curl/user-agents. Always use a realistic browser User-Agent (`-A "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"`). Browser tools (browser_navigate + browser_snapshot) are often more reliable than direct RSS for live top stories.
+- **Browser-first research pattern (new default for morning briefing)**: Start with browser_navigate on tagesschau.de, spiegel.de, faz.net, ndr.de/mecklenburg-vorpommern, handelsblatt.com. Extract dominant themes across sources before writing. Cross-check every claim with ≥2–3 outlets. Prioritize Politik, Wirtschaft, EU, internationale Konflikte, Energie, Regional (MV, SH, Hamburg, Skandinavien, Polen).
+- **Output format enforcement (strict)**: Never produce RSS/Obsidian markdown for the final briefing. Use the exact user-specified structure: "Morgen-Briefing – [Wochentag], [DD.MM.YYYY]", sections (Politik & Internationales / Wirtschaft & Technologie / Regional Nordost & Skandinavien), per topic (Überschrift max 8–10 Wörter, 4–6 sentence neutral summary, Bullet facts & Zahlen, Quellen with links). End with Wetter and Wassertemperaturen blocks. No emojis, no speculation, nüchtern-sachlich.
+- **Regional relevance filter**: Always scan NDR MV, Ostsee-Zeitung, local politics/economy for Mecklenburg-Vorpommern, Schleswig-Holstein, Hamburg, Skandinavien, Polen. Include only if genuinely relevant (ignore Sport, Crime, Promis).
+- **Fallback strategy** – When direct feeds or browser fail, fall back to Google News RSS with site: operators or targeted web_search. Limit max 2 items per source, enforce ≥3 distinct reputable sources per major theme.
+- **Source diversity & verification** – Cross-check every major claim. For weather/water: always query wetter.com, wetteronline.de, DWD, wassertemperatur.org, seatemperature.org. Never output "keine Messung verfügbar" — dig until values are found.
+- **Cron/scheduled execution rules**: This is a scheduled job with no user present. Produce the full formatted briefing as final response or exactly "[SILENT]" if nothing new. Do not ask questions, do not use send_message.
+- **Translation & style**: All output must be professional, concise, high-information German. Embed user preference for "nüchtern, sachlich, professionell, wie ein guter Nachrichtenticker".
 
-- **Timeouts** – If a sub‑task (e.g., events) exceeds the default 300 s, increase the timeout or treat it as non‑critical.
-- **RSS restrictions & fallback strategy** – Some feeds block plain `curl`. Use a proper User‑Agent header (e.g., `-A "Mozilla/5.0"`) and, if a feed returns empty or an error, automatically switch to an alternative reputable source for the same topic (maintain at least three fallback URLs per category). Prefer HTTPS URLs. Log which feeds succeeded and which failed for future debugging.
-- **XML parsing** – Simple `grep`/`sed` works for well‑formed feeds; for complex feeds consider a lightweight Python script (`xml.etree.ElementTree`).
-- **Translation quality** – Manual translation yields higher quality; if using an API, handle rate limits and verify language code (`de`).
-- **File path** – `write_file` creates missing directories automatically; ensure the vault path is correct.
+## New Support Files
+- references/morning-briefing-strict-format.md — exact output template and style rules
+- references/regional-search-queries.md — proven search patterns for MV/SH/Hamburg/Poland/Scandinavia
+
+## Verification Checklist
+- Exactly 5 (or fewer) unique top themes, aggregated across sources.
+- Every topic follows the 4-part structure (Überschrift, Summary, Bullets, Quellen).
+- Regional section contains genuine North-East coverage when available.
+- Weather and water temperatures are concrete values from active searches.
+- Final response is either the full briefing or exactly "[SILENT]".
 
 ## Verification Checklist
 - File size > 1 KB.

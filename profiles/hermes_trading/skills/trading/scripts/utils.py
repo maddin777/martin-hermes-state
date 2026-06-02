@@ -258,17 +258,14 @@ def get_technical_score(ticker):
             score += 1
             reasons.append("Volumen erhöht ✓")
 
-        # 6. Weekly Trend — Gewicht 1
-        df_w = yf.download(ticker, period="1y", interval="1wk",
-                           progress=False, auto_adjust=True)
-        df_w = df_w.dropna()
-        if not df_w.empty and len(df_w) > 20:
-            close_w = df_w["Close"].iloc[:, 0]
+        # 6. Weekly Trend — Gewicht 1: Resample daily series locally
+        close_w = close.resample('W').last()
+        if len(close_w) > 20:
             ema20_w = ta.ema(close_w, length=20)
-            if close_w.iloc[-1] > ema20_w.iloc[-1]:
+            if ema20_w is not None and not ema20_w.empty and close_w.iloc[-1] > ema20_w.iloc[-1]:
                 score += 1
                 reasons.append("Weekly Trend bullish ✓")
-            else:
+            elif ema20_w is not None and not ema20_w.empty:
                 score -= 1
                 reasons.append("Weekly Trend bearish ✗")
 

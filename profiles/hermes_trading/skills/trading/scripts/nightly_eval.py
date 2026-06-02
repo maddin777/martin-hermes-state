@@ -12,7 +12,7 @@ from datetime import datetime, timedelta
 from config import DB_PATH, STRATEGY_CONFIG_PATH, SIGNALS_VALIDATED_PATH
 
 TG_TOKEN   = os.environ.get("TELEGRAM_BOT_TOKEN")
-TG_CHAT    = os.environ.get("TELEGRAM_CHAT_ID")
+TG_CHAT    = os.environ.get("TELEGRAM_HOME_CHANNEL")
 IS_SUNDAY  = datetime.now().weekday() == 6
 
 def send_telegram(msg):
@@ -149,24 +149,129 @@ def calc_portfolio_metrics(con):
     }
 
 def calc_source_quality(con, today):
+    """
+    Berechnet Quellen-Qualität mit zwei Metriken:
+
+    1. Trade-Qualität (für etablierte Quellen mit ≥1 Trade):
+       quality = win_rate * 0.6 + consistency * 0.4
+
+    2. Signal-Qualität (Früh-Indikator, funktioniert ab Tag 1):
+       signal_quality = watchlist_hits / mentions
+       → Wieviel % der Mentions führten zu einer Watchlist-Aufnahme (conviction ≥ 0.55)?
+       → Relevant für Twitter-Quellen die noch keine Trade-Historie haben
+
+    Die signal_quality wird in source_quality.signal_quality gespeichert und
+    von source_lifecycle.evaluate_active_sources() für Probation-Entscheidungen genutzt.
+    """
     d30 = (datetime.now() - timedelta(days=30)).strftime("%Y-%m-%d")
-    channels = con.execute("SELECT DISTINCT channel FROM watchlist_mentions WHERE mention_date >= ?", (d30,)).fetchall()
+    channels = con.execute(
+        "SELECT DISTINCT channel FROM watchlist_mentions WHERE mention_date >= ?", (d30,)
+    ).fetchall()
     results = []
     for (channel,) in channels:
-        mentions = con.execute("SELECT COUNT(*) FROM watchlist_mentions WHERE channel=? AND mention_date >= ?", (channel, d30)).fetchone()[0]
-        trades = con.execute("SELECT pnl_eur FROM positions WHERE source_channel LIKE ? AND status='closed' AND exit_date >= ?", (f"%{channel}%", d30)).fetchall()
-        bought = len(trades)
-        wins = sum(1 for t in trades if (t[0] or 0) > 0)
+        mentions = con.execute(
+            "SELECT COUNT(*) FROM watchlist_mentions WHERE channel=? AND mention_date >= ?",
+            (channel, d30)
+        ).fetchone()[0]
+
+        trades = con.execute(
+            "SELECT pnl_eur FROM positions WHERE source_channel LIKE ? AND status='closed' AND exit_date >= ?",
+            (f"%{channel}%", d30)
+        ).fetchall()
+        bought   = len(trades)
+        wins     = sum(1 for t in trades if (t[0] or 0) > 0)
         win_rate = round(wins / bought, 3) if bought > 0 else 0
-        avg_pnl = round(sum(t[0] or 0 for t in trades) / bought, 2) if bought > 0 else 0
+        avg_pnl  = round(sum(t[0] or 0 for t in trades) / bought, 2) if bought > 0 else 0
+
+        # Signal-Qualität: Mentions → Watchlist-Treffer (Früh-Indikator)
+        watchlist_hits = con.execute("""
+            SELECT COUNT(DISTINCT wm.name) FROM watchlist_mentions wm
+            JOIN watchlist w ON lower(w.name) = lower(wm.name)
+            WHERE wm.channel = ?
+              AND wm.mention_date >= ?
+              AND w.conviction_score >= 0.55
+        """, (channel, d30)).fetchone()[0]
+        signal_quality = round(watchlist_hits / mentions, 3) if mentions > 0 else 0
+
+        # Kombinierter Score:
+        # - Mit Trades: trade-basiert
+        # - Ohne Trades (neue Quelle): signal_quality als Proxy
         consistency = min(mentions / 10, 1.0)
-        quality = round(win_rate * 0.6 + consistency * 0.4, 3)
-        results.append({"channel": channel, "mentions_30d": mentions, "bought_30d": bought,
-                         "win_rate_30d": win_rate, "avg_pnl_30d": avg_pnl, "quality_score": quality})
-        con.execute("INSERT OR REPLACE INTO source_quality (date, channel, mentions_30d, bought_30d, win_rate_30d, avg_pnl_30d, quality_score) VALUES (?,?,?,?,?,?,?)",
-                    (today, channel, mentions, bought, win_rate, avg_pnl, quality))
+        if bought >= 3:
+            quality = round(win_rate * 0.6 + consistency * 0.4, 3)
+        else:
+            # Neue Quelle: signal_quality (Relevanz der Mentions) als Proxy
+            quality = round(signal_quality * 0.7 + consistency * 0.3, 3)
+
+        results.append({
+            "channel":        channel,
+            "mentions_30d":   mentions,
+            "bought_30d":     bought,
+            "win_rate_30d":   win_rate,
+            "avg_pnl_30d":    avg_pnl,
+            "quality_score":  quality,
+            "signal_quality": signal_quality,
+            "watchlist_hits": watchlist_hits,
+        })
+        con.execute("""
+            INSERT OR REPLACE INTO source_quality
+            (date, channel, mentions_30d, bought_30d, win_rate_30d, avg_pnl_30d, quality_score)
+            VALUES (?,?,?,?,?,?,?)
+        """, (today, channel, mentions, bought, win_rate, avg_pnl, quality))
     con.commit()
     return sorted(results, key=lambda x: x["quality_score"], reverse=True)
+
+
+def check_half_life_calibration(con):
+    """
+    Prüft ob CONVICTION_HALF_LIFE_DAYS gut kalibriert ist.
+
+    Wenn conviction_aged systematisch viel niedriger als conviction_score ist
+    → Halbwertszeit möglicherweise zu kurz (Signale veralten zu schnell).
+    Wenn beide fast identisch sind → viele Signale sind frisch, ok.
+
+    Gibt einen Hinweis aus wenn Kalibrierung angepasst werden sollte.
+    """
+    try:
+        rows = con.execute("""
+            SELECT AVG(conviction_score) as avg_raw,
+                   AVG(conviction_score_aged) as avg_aged,
+                   COUNT(*) as cnt
+            FROM watchlist
+            WHERE status = 'watching'
+              AND conviction_score >= 0.50
+              AND conviction_score_aged IS NOT NULL
+              AND conviction_score_aged > 0
+        """).fetchone()
+
+        if not rows or rows["cnt"] < 10:
+            return
+
+        avg_raw   = rows["avg_raw"]   or 0
+        avg_aged  = rows["avg_aged"]  or 0
+        cnt       = rows["cnt"]
+
+        if avg_raw == 0:
+            return
+
+        decay_ratio = avg_aged / avg_raw
+
+        print(f"\n⏱  Halbwertszeit-Kalibrierung ({cnt} Einträge):")
+        print(f"   Ø conviction_raw:  {avg_raw:.2f}")
+        print(f"   Ø conviction_aged: {avg_aged:.2f}")
+        print(f"   Decay-Ratio: {decay_ratio:.2f}", flush=True)
+
+        if decay_ratio < 0.60:
+            print("   ⚠ Decay-Ratio < 0.60: Signale veralten sehr schnell.")
+            print("     → CONVICTION_HALF_LIFE_DAYS erhöhen? (aktuell in config.py)")
+        elif decay_ratio > 0.95:
+            print("   ℹ Decay-Ratio > 0.95: Fast kein Decay – Signale sind sehr frisch")
+            print("     oder Halbwertszeit sehr lang.")
+        else:
+            print("   ✅ Decay-Ratio im normalen Bereich (0.60–0.95)")
+    except Exception as e:
+        print(f"  ⚠ half_life_check Fehler: {e}")
+
 
 def weekly_aggregate(con):
     d7 = (datetime.now() - timedelta(days=7)).strftime("%Y-%m-%d")
@@ -293,6 +398,7 @@ def main():
 
     send_telegram(msg)
     con.close()
+    check_half_life_calibration(con)
     print("\n✅ Nightly Eval abgeschlossen", flush=True)
 
 if __name__ == "__main__":

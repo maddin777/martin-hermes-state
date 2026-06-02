@@ -20,7 +20,7 @@ from datetime import datetime
 from utils import SLIPPAGE_PCT, COMMISSION_EUR
 
 TELEGRAM_TOKEN   = os.environ.get("TELEGRAM_BOT_TOKEN")
-TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID")
+TELEGRAM_HOME_CHANNEL = os.environ.get("TELEGRAM_HOME_CHANNEL")
 
 import json
 from utils import get_logger
@@ -31,13 +31,13 @@ def load_config():
         return json.load(f)
 
 def send_telegram(msg):
-    if not TELEGRAM_TOKEN or not TELEGRAM_CHAT_ID:
+    if not TELEGRAM_TOKEN or not TELEGRAM_HOME_CHANNEL:
         print(msg)
         return
     try:
         requests.post(
             f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage",
-            json={"chat_id": TELEGRAM_CHAT_ID, "text": msg, "parse_mode": "HTML"},
+            json={"chat_id": TELEGRAM_HOME_CHANNEL, "text": msg, "parse_mode": "HTML"},
             timeout=10
         )
     except:
@@ -79,6 +79,8 @@ def get_tech_status(ticker):
 def main():
     print(f"🔍 Aktiver Exit-Check [{datetime.now().strftime('%H:%M')}]", flush=True)
     con = sqlite3.connect(DB_PATH)
+    con.execute("PRAGMA journal_mode=WAL;")
+    con.execute("PRAGMA busy_timeout=5000;")
     con.row_factory = sqlite3.Row
     cfg = load_config()
 
@@ -127,6 +129,51 @@ def main():
 
         print(f"\n  [{pos['name']}] {ticker} | P&L: {pnl_pct_net:+.1f}% | "
               f"Tech: {tech_status} | ATR-P&L: {pnl_atr:+.1f}x", flush=True)
+
+        # --- AKTION 0: Thesis BROKEN → SL enger ziehen (kein sofortiger Exit) ---
+        thesis_status = pos["thesis_current_status"] or "no_thesis"
+        if thesis_status.upper() == "BROKEN":
+            # Letzten Thesis-Log-Eintrag holen
+            thesis_log = con.execute("""
+                SELECT rationale, confidence, check_date
+                FROM thesis_status_log
+                WHERE ticker=? AND (status='broken' OR status='BROKEN')
+                ORDER BY id DESC LIMIT 1
+            """, (ticker,)).fetchone()
+
+            # SL auf 0.5×ATR vom aktuellen Preis setzen (statt 1.5×ATR Standard)
+            if direction == "LONG":
+                tight_sl = current_price - (0.5 * atr)
+                if tight_sl > sl:  # Nur enger ziehen, nie lockern
+                    con.execute(
+                        "UPDATE positions SET stop_loss=?, trailing_sl=? WHERE id=?",
+                        (round(tight_sl, 2), round(tight_sl, 2), pos["id"])
+                    )
+                    rationale = thesis_log["rationale"][:80] if thesis_log else "Thesis broken"
+                    print(f"    📋 Thesis BROKEN → SL enger: {sl:.2f} → {tight_sl:.2f} "
+                          f"(0.5×ATR | {rationale})", flush=True)
+                    actions.append(
+                        f"📋 <b>Thesis broken: {pos['name']}</b>\n"
+                        f"Ticker: {ticker} | P&L: {pnl_pct_net:+.1f}%\n"
+                        f"SL enger: {sl:.2f} → {tight_sl:.2f} (0.5×ATR)\n"
+                        f"Grund: {rationale}"
+                    )
+            else:  # SHORT
+                tight_sl = current_price + (0.5 * atr)
+                if tight_sl < sl:
+                    con.execute(
+                        "UPDATE positions SET stop_loss=?, trailing_sl=? WHERE id=?",
+                        (round(tight_sl, 2), round(tight_sl, 2), pos["id"])
+                    )
+                    rationale = thesis_log["rationale"][:80] if thesis_log else "Thesis broken"
+                    print(f"    📋 Thesis BROKEN → SL enger: {sl:.2f} → {tight_sl:.2f} "
+                          f"(0.5×ATR | {rationale})", flush=True)
+                    actions.append(
+                        f"📋 <b>Thesis broken: {pos['name']}</b>\n"
+                        f"Ticker: {ticker} | P&L: {pnl_pct_net:+.1f}%\n"
+                        f"SL enger: {sl:.2f} → {tight_sl:.2f} (0.5×ATR)\n"
+                        f"Grund: {rationale}"
+                    )
 
         # --- AKTION 1: Tech-Verschlechterung → Exit ---
         if tech_status == "broken" and pnl_pct_net < 5:

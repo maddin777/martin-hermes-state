@@ -25,7 +25,8 @@ import yfinance as yf
 import sys
 sys.path.insert(0, '/root/.hermes/profiles/hermes_trading/skills/trading/scripts')
 from technical_validator import _strip_suffixes
-from config import DB_PATH, VALIDATION_REJECTS_LOG
+from config import DB_PATH
+from utils import retry, VALIDATION_REJECTS_LOG
 
 # --- Konfiguration ---
 # VALIDATION_REJECTS_LOG → VALIDATION_REJECTS_LOG aus config.py
@@ -67,6 +68,8 @@ def _is_known(name: str):
         return None
     try:
         con = sqlite3.connect(DB_PATH)
+        con.execute("PRAGMA journal_mode=WAL;")
+        con.execute("PRAGMA busy_timeout=5000;")
         cur = con.cursor()
         # 1. Voller Name
         key = name.lower().strip()
@@ -105,6 +108,40 @@ def _name_similarity(a: str, b: str) -> float:
 
 
 # --- Public API ---
+# ── ISIN-Cross-Exchange-Mapping ────────────────────────────────────────────────
+# Bekannte ISIN-formatige Ticker wie "US4330001060.SG" → primärer US-Ticker
+# Entsteht wenn der LLM oder yfinance ISIN statt Ticker liefert
+ISIN_TICKER_MAP = {
+    "US4330001060.SG": "HIMS",    # Hims & Hers Health
+    "IE00BKVD2N49.SG": "STX",     # Seagate Technology
+    "US78446M1099.SG": "SMASM",   # SMA Solar ADR (kein US-Ticker verfügbar)
+    "US87155N1090.SG": "SY1.DE",  # Symrise
+    "US8334451098.SG": "SNOW",    # Snowflake
+    "US7865841024.SG": "SAF.PA",  # Safran
+    "US4330001060":    "HIMS",    # ohne .SG-Suffix
+    "IE00BKVD2N49":    "STX",
+    "US8334451098":    "SNOW",
+    "US7865841024":    "SAF.PA",
+}
+
+def _resolve_isin_ticker(name_or_ticker: str) -> str | None:
+    """
+    Erkennt ISIN-formatige Ticker (12 Zeichen, Länderkürzel + Ziffern + Suffix)
+    und gibt den primären Ticker zurück falls bekannt.
+    Returns None wenn kein Mapping vorhanden.
+    """
+    import re as _re
+    # Direkt im Mapping
+    key = name_or_ticker.upper()
+    if key in ISIN_TICKER_MAP:
+        return ISIN_TICKER_MAP[key]
+    # Pattern: US/IE/DE + 10 Ziffern/Buchstaben + optionales .XX
+    if _re.match('^[A-Z]{2}[A-Z0-9]{10}(\\.[A-Z]{1,3})?$', key):
+        # ISIN-Pattern erkannt, aber kein Mapping → gibt None zurück
+        return None
+    return None
+
+
 def validate(name: str) -> dict:
     """
     Validiert einen Firmennamen, OHNE DB-Write.
@@ -171,7 +208,9 @@ def validate(name: str) -> dict:
             continue
 
         try:
-            info = yf.Ticker(ticker).info
+            @retry(max_attempts=2, backoff=1.5, exceptions=(Exception,))
+            def _get_info(): return yf.Ticker(ticker).info
+            info = _get_info()
         except Exception as e:
             continue  # naechsten probieren
 
@@ -233,32 +272,6 @@ def validate(name: str) -> dict:
             "reason": rejection_reason or "unknown",
             "details": rejection_details or {}}
 
-    # === Step 4: Name-Plausibilitaet ===
-    if not yahoo_name:
-        _log_reject(name, ticker, "name_mismatch", "no yahoo_name")
-        return {"status": "rejected", "ticker": ticker, "reason": "name_mismatch",
-                "details": base_details}
-
-    sim = _name_similarity(name, yahoo_name)
-    threshold = _name_threshold(name)
-    if sim < threshold:
-        _log_reject(name, ticker, "name_mismatch",
-                    f"sim={sim:.2f}<thr={threshold}, yahoo={yahoo_name!r}")
-        return {"status": "rejected", "ticker": ticker, "reason": "name_mismatch",
-                "details": {**base_details, "similarity": sim, "threshold": threshold}}
-
-    # === Step 5: Liquiditaet ===
-    liquidity = (volume or 0) * (price or 0)
-    if liquidity < MIN_LIQUIDITY:
-        _log_reject(name, ticker, "low_liquidity",
-                    f"vol*price={liquidity:.0f}<{MIN_LIQUIDITY}")
-        return {"status": "rejected", "ticker": ticker, "reason": "low_liquidity",
-                "details": {**base_details, "liquidity": liquidity}}
-
-    # Alle Checks bestanden
-    return {"status": "accepted", "ticker": ticker, "reason": None,
-            "details": base_details}
-
 def validate_and_register(name: str) -> dict:
     """
     Validiert UND schreibt bei status='accepted' in companies + company_aliases.
@@ -281,6 +294,8 @@ def validate_and_register(name: str) -> dict:
 
     try:
         con = sqlite3.connect(DB_PATH)
+        con.execute("PRAGMA journal_mode=WAL;")
+        con.execute("PRAGMA busy_timeout=5000;")
         con.execute("PRAGMA foreign_keys = ON")
         cur = con.cursor()
 

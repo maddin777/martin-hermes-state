@@ -1,4 +1,5 @@
 """
+
 Watchlist Manager
 - Liest analysierte Signale aus trading_signals.json
 - Pflegt Watchlist über 14 Tage (reduziert von 30)
@@ -14,7 +15,6 @@ import yfinance as yf
 import pandas_ta as ta
 from datetime import datetime, timedelta
 
-log = get_logger("watchlist_manager")
 # Validierungs-Pipeline aus Paket B
 import sys as _sys
 _sys.path.insert(0, '/root/.hermes/profiles/hermes_trading/skills/trading/scripts')
@@ -27,7 +27,9 @@ from company_normalizer import (                   # war lokale Kopie
     LEGAL_SUFFIX_RE, BRACKET_NOTE_RE
 )
 from utils import get_logger
-from config import DB_PATH, SIGNALS_PATH, WATCHLIST_DAYS, MIN_MENTIONS, MIN_CONVICTION
+log = get_logger("watchlist_manager")
+from config import (DB_PATH, SIGNALS_PATH, WATCHLIST_DAYS, MIN_MENTIONS, MIN_CONVICTION,
+                    CONVICTION_HALF_LIFE_DAYS, CONVICTION_PRIOR_NEUTRAL)
 
 def get_channel_weights(con):
     """
@@ -56,8 +58,9 @@ def _weighted_sentiment(mentions_list, channel_weights, sentiment):
     return total_weight
 
 # === Aged Conviction (Bayesian + Time-Decay) ===
-HALF_LIFE_DAYS = 14
-PRIOR_NEUTRAL  = 3.0
+# HALF_LIFE_DAYS und PRIOR_NEUTRAL kommen jetzt aus config.py
+HALF_LIFE_DAYS = CONVICTION_HALF_LIFE_DAYS
+PRIOR_NEUTRAL  = CONVICTION_PRIOR_NEUTRAL
 
 def calculate_conviction_aged(con, name, channel_weights=None,
                               half_life=HALF_LIFE_DAYS,
@@ -197,6 +200,60 @@ def calculate_conviction_bear(bullish, bearish, neutral, mention_count, unique_c
 # Normalisierungslogik ist nach company_normalizer.py ausgelagert (DRY).
 # Import steht im Dateikopf: from company_normalizer import ...
 
+
+def get_thesis_conviction_boost(con, ticker):
+    """
+    Gibt einen Conviction-Boost zurück wenn der Ticker:
+      1. In theme_beneficiaries eingetragen ist (status != 'archived')
+      2. Das Theme aktiv ist (theme_definitions.status = 'active')
+      3. Der letzte Thesis-Check 'intact' war (oder kein Check vorhanden)
+
+    Boost-Staffelung:
+      +0.08  bei intact + hohem Theme-Momentum (bullish)
+      +0.05  bei intact (Standard)
+      +0.02  bei kein Check vorhanden (aber Beneficiary-Eintrag existiert)
+       0.00  bei broken / degraded / archived
+    """
+    if not ticker:
+        return 0.0
+    try:
+        row = con.execute("""
+            SELECT tb.id, tb.status as bene_status,
+                   td.status as theme_status, td.momentum
+            FROM theme_beneficiaries tb
+            JOIN theme_definitions td ON td.id = tb.theme_id
+            WHERE tb.ticker = ?
+              AND tb.status != 'archived'
+              AND td.status = 'active'
+            ORDER BY td.momentum DESC
+            LIMIT 1
+        """, (ticker,)).fetchone()
+
+        if not row:
+            return 0.0
+
+        # Letzten Thesis-Status prüfen
+        latest = con.execute("""
+            SELECT status FROM thesis_status_log
+            WHERE beneficiary_id = ?
+            ORDER BY id DESC LIMIT 1
+        """, (row["id"],)).fetchone()
+
+        thesis_status = latest["status"] if latest else "no_check"
+
+        if thesis_status == "broken" or thesis_status == "degraded":
+            return 0.0
+        elif thesis_status == "intact":
+            # Extra-Boost bei bullishem Theme-Momentum
+            if row["momentum"] == "bullish":
+                return 0.08
+            return 0.05
+        else:  # no_check oder no_thesis
+            return 0.02
+    except Exception:
+        return 0.0
+
+
 def normalize_mentions(con):
     """Dedupliziert watchlist_mentions.name via normalize_company_name().
 
@@ -262,6 +319,8 @@ def normalize_mentions(con):
 def main():
     print("📋 Watchlist Manager gestartet", flush=True)
     con = sqlite3.connect(DB_PATH)
+    con.execute("PRAGMA journal_mode=WAL;")
+    con.execute("PRAGMA busy_timeout=5000;")
     con.row_factory = sqlite3.Row
 
     # Migration: conviction_score_bear Spalte hinzufügen
@@ -430,6 +489,23 @@ def main():
         conviction_aged = calculate_conviction_aged(con, name, channel_weights)
         if conviction_aged is None:
             conviction_aged = 0
+
+        # Thesis-Boost: Wenn Ticker in aktiver positiver Thesis eingetragen ist
+        thesis_boost = get_thesis_conviction_boost(con, ticker)
+        if thesis_boost > 0:
+            conviction = min(1.0, conviction + thesis_boost)
+            print(f"    📋 Thesis-Boost +{thesis_boost:.0%} → conviction={conviction:.2f}", flush=True)
+
+        # Grok X-Boost: Nur für High-Conviction-Kandidaten (≥70%) um API-Calls zu sparen
+        if conviction >= 0.70 and ticker:
+            try:
+                from xsearch_helper import conviction_boost as x_conviction_boost
+                new_conv, reason = x_conviction_boost(ticker, canonical_name, conviction)
+                if new_conv != conviction:
+                    conviction = new_conv
+                    print(f"    🐦 Grok: {reason} → conviction={conviction:.2f}", flush=True)
+            except Exception:
+                pass  # Grok-Fehler stoppen die Pipeline nicht
 
         # INSERT: bei Ticker-Konflikt nichts tun, UPDATE-Pfad weiter unten kuemmert sich
         con.execute("""

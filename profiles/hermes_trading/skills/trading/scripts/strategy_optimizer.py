@@ -19,7 +19,7 @@ from config import DB_PATH, SIGNALS_PATH, STRATEGY_STRATEGY_CONFIG_PATH, OPTIMIZ
 
 
 TELEGRAM_TOKEN   = os.environ.get("TELEGRAM_BOT_TOKEN")
-TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID")
+TELEGRAM_HOME_CHANNEL = os.environ.get("TELEGRAM_HOME_CHANNEL")
 
 MIN_TRADES       = 10      # Mindestanzahl Trades für Optimierung
 IMPROVEMENT_THRESHOLD = 0.10  # 10% Verbesserung nötig
@@ -32,13 +32,13 @@ PARAM_GRID = {
 }
 
 def send_telegram(message):
-    if not TELEGRAM_TOKEN or not TELEGRAM_CHAT_ID:
+    if not TELEGRAM_TOKEN or not TELEGRAM_HOME_CHANNEL:
         print(message)
         return
     try:
         requests.post(
             f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage",
-            json={"chat_id": TELEGRAM_CHAT_ID, "text": message, "parse_mode": "HTML"},
+            json={"chat_id": TELEGRAM_HOME_CHANNEL, "text": message, "parse_mode": "HTML"},
             timeout=10
         )
     except Exception as e:
@@ -513,7 +513,7 @@ def main():
     try:
         _req.post(
             f"https://api.telegram.org/bot{_os.environ.get('TELEGRAM_BOT_TOKEN')}/sendMessage",
-            json={"chat_id": _os.environ.get("TELEGRAM_CHAT_ID"),
+            json={"chat_id": _os.environ.get("TELEGRAM_HOME_CHANNEL"),
                   "text": msg, "parse_mode": "HTML"},
             timeout=10
         )

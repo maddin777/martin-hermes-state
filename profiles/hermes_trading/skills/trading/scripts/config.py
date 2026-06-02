@@ -49,8 +49,13 @@ OBSIDIAN_WATCHLIST_PATH = "/root/obsidian-vault/Trading/Watchlist.md"
 
 # ── Telegram ──────────────────────────────────────────────────────────────────
 
-TELEGRAM_TOKEN   = os.environ.get("TELEGRAM_BOT_TOKEN", "")
-TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "")
+TELEGRAM_TOKEN        = os.environ.get("TELEGRAM_BOT_TOKEN", "")
+TELEGRAM_HOME_CHANNEL = os.environ.get("TELEGRAM_CHAT_ID", "")   # Haupt-Chat-ID
+TELEGRAM_CHAT_ID      = TELEGRAM_HOME_CHANNEL  # Alias für Rückwärtskompatibilität
+
+# ── Sentiment-Aging ───────────────────────────────────────────────────────────
+CONVICTION_HALF_LIFE_DAYS = 14    # Halbwertszeit für Time-Decay in conviction_aged
+CONVICTION_PRIOR_NEUTRAL  = 3.0   # Bayesian Prior (höher = konservativer bei wenig Daten)
 
 # ── Trading-Parameter ─────────────────────────────────────────────────────────
 

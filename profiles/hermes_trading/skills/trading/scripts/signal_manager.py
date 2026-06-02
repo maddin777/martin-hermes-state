@@ -13,21 +13,21 @@ import sqlite3
 import json
 import os
 import sys
-
-log = get_logger("signal_manager")
 sys.path.insert(0, "/root/.hermes/profiles/hermes_trading/skills/trading")
 import env_loader  # noqa: F401  (side-effect: laedt .env)
 import requests
 import yfinance as yf
 import pandas_ta as ta
 from datetime import datetime, timedelta
-from utils import passes_liquidity_filter, apply_slippage, COMMISSION_EUR
+from utils import passes_liquidity_filter, apply_slippage, COMMISSION_EUR, get_price_data_cached, prefetch_prices
 from utils import get_logger
+log = get_logger("signal_manager")
 from config import DB_PATH, SIGNALS_VALIDATED_PATH, STRATEGY_CONFIG_PATH, MACRO_SIGNAL_PATH
+CONFIG_PATH = STRATEGY_CONFIG_PATH
 
 
 TELEGRAM_TOKEN   = os.environ.get("TELEGRAM_BOT_TOKEN")
-TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID")
+TELEGRAM_HOME_CHANNEL = os.environ.get("TELEGRAM_HOME_CHANNEL")
 
 DEFAULT_CONFIG = {
     "starting_capital":    10000.0,
@@ -141,14 +141,14 @@ def get_current_price_and_atr(ticker):
     return close, atr_val
 
 def send_telegram(message):
-    if not TELEGRAM_TOKEN or not TELEGRAM_CHAT_ID:
+    if not TELEGRAM_TOKEN or not TELEGRAM_HOME_CHANNEL:
         print(f"\n{message}")
         return
     try:
         requests.post(
             f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage",
             json={
-                "chat_id": TELEGRAM_CHAT_ID,
+                "chat_id": TELEGRAM_HOME_CHANNEL,
                 "text": message,
                 "parse_mode": "HTML"
             },
@@ -463,6 +463,70 @@ def check_drawdown(con):
         return drawdown, "ok"
 
 
+
+def check_short_thesis(con, ticker: str, conviction_bear: float, cfg: dict) -> tuple:
+    """
+    Short-Thesis Score – SHORT nur wenn mindestens 2 von 4 Kriterien erfüllt:
+
+      1. Neg. Sentiment:  conviction_score_bear >= min_confidence_short
+      2. Hohe Bewertung:  P/E > Sektor-Median (aus fundamentals_snapshot)
+      3. Neg. Revisionen: Analyst-Konsens negativ (aus fundamentals_snapshot)
+      4. Tech. Schwäche:  tech_direction = 'SHORT'
+
+    Returns (score: int, reasons: list)
+    """
+    score = 0
+    reasons = []
+
+    # Kriterium 1: Bearish Sentiment
+    if conviction_bear >= cfg.get("min_confidence_short", 0.65):
+        score += 1
+        reasons.append(f"Bearish conviction {conviction_bear:.0%}")
+
+    # Kriterium 2: Bewertung (P/E > Sektor-Median)
+    try:
+        snap = con.execute("""
+            SELECT fs.pe_ratio, fs.pe_sector_median
+            FROM fundamentals_snapshot fs
+            WHERE fs.ticker = ?
+            ORDER BY fs.updated_at DESC LIMIT 1
+        """, (ticker,)).fetchone()
+        if snap and snap["pe_ratio"] and snap["pe_sector_median"]:
+            if snap["pe_ratio"] > snap["pe_sector_median"] * 1.2:  # 20% über Median
+                score += 1
+                reasons.append(f"P/E {snap['pe_ratio']:.0f} > Sektor-Median {snap['pe_sector_median']:.0f}")
+    except Exception:
+        pass
+
+    # Kriterium 3: Negative Earnings-Revisionen
+    try:
+        snap = con.execute("""
+            SELECT analyst_recommendation FROM fundamentals_snapshot
+            WHERE ticker = ? ORDER BY updated_at DESC LIMIT 1
+        """, (ticker,)).fetchone()
+        if snap and snap["analyst_recommendation"]:
+            neg_recs = ["sell", "underperform", "underweight", "reduce"]
+            if any(r in snap["analyst_recommendation"].lower() for r in neg_recs):
+                score += 1
+                reasons.append(f"Analyst: {snap['analyst_recommendation']}")
+    except Exception:
+        pass
+
+    # Kriterium 4: Technische Schwäche
+    try:
+        wl = con.execute(
+            "SELECT tech_direction FROM watchlist WHERE ticker=? AND status='watching'",
+            (ticker,)
+        ).fetchone()
+        if wl and wl["tech_direction"] == "SHORT":
+            score += 1
+            reasons.append("Tech-Direction: SHORT")
+    except Exception:
+        pass
+
+    return score, reasons
+
+
 def open_new_positions(con, cfg):
     """Öffnet neue Positionen aus der Watchlist (LONG + SHORT)."""
     # ── Drawdown-Notbremse ────────────────────────────────────────────────
@@ -684,6 +748,17 @@ def open_new_positions(con, cfg):
             print(f"  ⛔ {c['name']}: SHORT nicht erlaubt bei BULLISH + BULL-Regime")
             continue
 
+        # Short-Thesis Score: min. 2 von 4 Kriterien nötig
+        if direction == "SHORT":
+            short_score, short_reasons = check_short_thesis(
+                con, ticker, c["conviction_score_bear"] or 0, cfg
+            )
+            if short_score < 2:
+                print(f"  📊 {c['name']}: SHORT-Thesis Score {short_score}/4 "
+                      f"(mind. 2 nötig) → übersprungen")
+                continue
+            print(f"  ✅ SHORT-Thesis {short_score}/4: {', '.join(short_reasons)}", flush=True)
+
         # Allokations-Limit pro Richtung
         if direction == "LONG" and long_invested >= max_long:
             print(f"  💰 LONG-Allokation voll ({long_invested:.0f}€/{max_long:.0f}€)")
@@ -714,6 +789,19 @@ def open_new_positions(con, cfg):
             print(f"  📅 {c['name']}: Earnings in <{cfg.get('earnings_blackout_days', 5)} Tagen – überspringe")
             continue
 
+        # Grok Breaking-News-Check: Negative Breaking News → kein Entry
+        # Nur für HIGH-Conviction (spart Grok-Calls für schwächere Kandidaten)
+        if (c["conviction_score"] or 0) >= cfg.get("conviction_high", 0.80):
+            try:
+                from xsearch_helper import breaking_news_check
+                has_breaking, summary = breaking_news_check(ticker, c["name"])
+                if has_breaking:
+                    print(f"  🐦 {c['name']}: Grok meldet negative Breaking News → Entry abgebrochen")
+                    print(f"     {summary}", flush=True)
+                    continue
+            except Exception:
+                pass  # Grok-Fehler stoppen den Entry nicht
+
         # Preis und ATR holen
         current_price, atr = get_current_price_and_atr(ticker)
         if not current_price or not atr:
@@ -737,8 +825,24 @@ def open_new_positions(con, cfg):
             pct = cfg.get("max_position_pct", 0.15)
             sizing_label = "NORMAL"
 
-        position_size = min(pct * portfolio_value, cash, remaining_budget)
-        print(f"  💰 Position Sizing: {sizing_label} ({pct:.0%}) = {position_size:.0f}€", flush=True)
+        # Volatilitätsbereinigtes Positionsgrößensystem (Risk-Parity)
+        # Risiko pro Trade capped auf 1.5% des Gesamtportfolios
+        risk_pct = 0.015
+        risk_amount = portfolio_value * risk_pct
+        sl_multiplier = cfg.get("atr_sl_multiplier", 1.5)
+        
+        # SL-Abstand in EUR
+        sl_distance = sl_multiplier * atr
+        
+        if sl_distance > 0:
+            vol_position_size = (risk_amount / sl_distance) * current_price
+            # Cap mit klassischem prozentualen Limit, Cash und Budget
+            position_size = min(vol_position_size, pct * portfolio_value, cash, remaining_budget)
+            sizing_label += f" | Vol-Adjusted (Risk: {risk_pct:.1%})"
+        else:
+            position_size = min(pct * portfolio_value, cash, remaining_budget)
+
+        print(f"  💰 Position Sizing: {sizing_label} = {position_size:.0f}€", flush=True)
         if position_size < 200:
             continue
 
@@ -879,6 +983,8 @@ def print_portfolio_summary(con, cfg):
 
 def main(mode="full"):
     con = sqlite3.connect(DB_PATH)
+    con.execute("PRAGMA journal_mode=WAL;")
+    con.execute("PRAGMA busy_timeout=5000;")
     con.row_factory = sqlite3.Row
     init_db(con)
 
