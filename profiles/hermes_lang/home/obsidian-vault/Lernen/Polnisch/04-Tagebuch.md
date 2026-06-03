@@ -722,3 +722,65 @@ Lektion #11 abgeschlossen.
 10. jedzenie
 
 Lektion #12 abgeschlossen.
+
+## Lektion #13
+### Polnisch Lektion #13
+
+#### 1. Słownictwo (Top 500)
+- **praca** `Arbeit`
+- **auto** `Auto`
+- **torba** `Tasche`
+- **droga** `Weg`
+- **sukienka** `Kleid`
+- **okno** `Fenster`
+- **słońce** `Sonne`
+- **mięso** `Fleisch`
+- **masło** `Butter`
+- **kot** `Katze`
+
+#### 2. Sentence Mining (n+1)
+- **To jest praca.** (`Das ist Arbeit.`)
+- **To jest auto.** (`Das ist Auto.`)
+- **To jest torba.** (`Das ist Tasche.`)
+- **To jest droga.** (`Das ist Weg.`)
+- **To jest sukienka.** (`Das ist Kleid.`)
+- **To jest okno.** (`Das ist Fenster.`)
+- **To jest słońce.** (`Das ist Sonne.`)
+- **To jest mięso.** (`Das ist Fleisch.`)
+- **To jest masło.** (`Das ist Butter.`)
+- **To jest kot.** (`Das ist Katze.`)
+
+#### 3. Gramatyka: Aspekt i Przypadki
+**Aspekt-Pary:**
+- **robić** / **zrobić** `machen / machen (perfektive)`
+- **pisać** / **napisać** `schreiben / schreiben (perfektive)`
+
+**Przypadki (Kasus):**
+- **pies** (Mianownik) -> **psa** (Biernik) `Hund (Nom) -> den Hund (Akk)`
+- **książka** (Mianownik) -> **książki** (Dopełniacz) `Buch (Nom) -> des Buches (Gen)`
+
+#### 4. Quiz: Uzupełnij luki
+1. Widzę ____. (`Ich sehe Arbeit.`)
+2. Widzę ____. (`Ich sehe Auto.`)
+3. Widzę ____. (`Ich sehe Tasche.`)
+4. Widzę ____. (`Ich sehe Weg.`)
+5. Widzę ____. (`Ich sehe Kleid.`)
+6. Widzę ____. (`Ich sehe Fenster.`)
+7. Widzę ____. (`Ich sehe Sonne.`)
+8. Widzę ____. (`Ich sehe Fleisch.`)
+9. Widzę ____. (`Ich sehe Butter.`)
+10. Widzę ____. (`Ich sehe Katze.`)
+
+#### 5. Rozwiązania
+1. **praca**
+2. **auto**
+3. **torba**
+4. **droga**
+5. **sukienka**
+6. **okno**
+7. **słońce**
+8. **mięso**
+9. **masło**
+10. **kot**
+
+Lektion #13 abgeschlossen.
