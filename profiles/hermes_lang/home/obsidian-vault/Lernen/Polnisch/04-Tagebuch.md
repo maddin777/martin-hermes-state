@@ -784,3 +784,70 @@ Lektion #12 abgeschlossen.
 10. **kot**
 
 Lektion #13 abgeschlossen.
+
+### 📚 Polnisch Lektion #14
+
+#### 1. Słownictwo (Top 500)
+- **że** `[dass]`
+- **nowy** `[neu]`
+- **ludzie** `[Menschen]`
+- **dzień** `[Tag]`
+- **kto** `[wer]`
+- **tak** `[ja]`
+- **jak** `[wie]`
+- **czy** `[ob/oder]`
+- **dla** `[für]`
+- **i** `[und]`
+
+#### 2. Sentence Mining (n+1)
+- To jest **dobry** dzień. `[Das ist ein guter Tag.]`
+- On ma **duży** dom. `[Er hat ein großes Haus.]`
+- Gdzie jest **woda**? `[Wo ist das Wasser?]`
+- To jest **nowy** samochód. `[Das ist ein neues Auto.]`
+- **Ludzie** idą do pracy. `[Die Menschen gehen zur Arbeit.]`
+- **Czas** leci szybko. `[Die Zeit vergeht schnell.]`
+- **Miasto** jest piękne. `[Die Stadt ist schön.]`
+- On jest **stary**. `[Er ist alt.]`
+- To nie jest **zły** plan. `[Das ist kein schlechter Plan.]`
+- **Rok** ma dwanaście miesięcy. `[Das Jahr hat zwölf Monate.]`
+
+#### 3. Aspekty (Verba)
+- **pisać / napisać** `(schreiben (impf / perf))`
+- **czytać / przeczytać** `(lesen (impf / perf))`
+- **robić / zrobić** `(machen (impf / perf))`
+- **brać / wziąć** `(nehmen (impf / perf))`
+- **jeść / zjeść** `(essen (impf / perf))`
+
+#### 4. Przypadki (Rzeczowniki)
+- **dom / domu** `(Haus (Nom / Gen))`
+- **kobieta / kobiety** `(Frau (Nom / Gen))`
+- **dziecko / dziecka** `(Kind (Nom / Gen))`
+- **miasto / miasta** `(Stadt (Nom / Gen))`
+- **pies / psa** `(Hund (Nom / Gen))`
+
+#### 5. Quiz (Lückentext)
+1. To jest ____ dzień.
+2. On ma ____ dom.
+3. Gdzie jest ____?
+4. To jest ____ samochód.
+5. ____ idą do pracy.
+6. ____ leci szybko.
+7. ____ jest piękne.
+8. On jest ____.
+9. To nie jest ____ plan.
+10. ____ ma dwanaście miesięcy.
+
+---
+#### ✅ Rozwiązania
+1. guter
+2. großes
+3. Wasser
+4. neues
+5. Die Menschen
+6. Die Zeit
+7. Die Stadt
+8. alt
+9. schlechter
+10. Das Jahr
+
+Lektion #14 abgeschlossen.

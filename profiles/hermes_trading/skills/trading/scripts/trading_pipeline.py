@@ -39,6 +39,7 @@ def main():
         ("yt_channel_monitor.py",  "YouTube Scan"),
         ("signal_extractor.py",    "KI Analyse"),
         ("watchlist_manager.py",   "Watchlist Update"),
+        ("watchlist_dedup.py",     "Watchlist Dedup"),
         ("technical_validator.py", "Technical Analysis"),
         ("signal_manager.py",      "Signal Manager", "full"),
     ]

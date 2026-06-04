@@ -25,8 +25,8 @@ import yfinance as yf
 import sys
 sys.path.insert(0, '/root/.hermes/profiles/hermes_trading/skills/trading/scripts')
 from technical_validator import _strip_suffixes
-from config import DB_PATH
-from utils import retry, VALIDATION_REJECTS_LOG
+from config import DB_PATH, VALIDATION_REJECTS_LOG
+from utils import retry
 
 # --- Konfiguration ---
 # VALIDATION_REJECTS_LOG → VALIDATION_REJECTS_LOG aus config.py

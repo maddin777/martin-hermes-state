@@ -320,13 +320,28 @@ def main():
     print("📋 Watchlist Manager gestartet", flush=True)
     con = sqlite3.connect(DB_PATH)
     con.execute("PRAGMA journal_mode=WAL;")
-    con.execute("PRAGMA busy_timeout=5000;")
+    con.execute("PRAGMA busy_timeout=30000;")  # 30s statt 5s
     con.row_factory = sqlite3.Row
 
     # Migration: conviction_score_bear Spalte hinzufügen
     cols = [row[1] for row in con.execute("PRAGMA table_info(watchlist)")]
     if "conviction_score_bear" not in cols:
         con.execute("ALTER TABLE watchlist ADD COLUMN conviction_score_bear REAL DEFAULT 0")
+
+    # Migration: bestehende channel-Namen in watchlist_mentions normalisieren (einmalig)
+    # Behebt den "der aktionaer" vs "der Aktionaer" Source-Case-Bug
+    dirty = con.execute("""
+        SELECT DISTINCT channel FROM watchlist_mentions
+        WHERE channel != lower(trim(channel))
+    """).fetchall()
+    if dirty:
+        print(f"  🔧 Normalisiere {len(dirty)} Kanal-Namen in watchlist_mentions...", flush=True)
+        for row in dirty:
+            old = row["channel"]
+            new = old.lower().strip()
+            con.execute("UPDATE watchlist_mentions SET channel=? WHERE channel=?", (new, old))
+        con.commit()
+        print(f"  ✓ Kanal-Namen normalisiert", flush=True)
 
     # Quellen-Gewichte aus source_registry laden (Lifecycle-Integration)
     channel_weights = get_channel_weights(con)
@@ -381,7 +396,7 @@ def main():
     new_mentions = 0
     for signal in signals:
         source  = signal.get("source", {})
-        channel = source.get("channel", "")
+        channel = source.get("channel", "").lower().strip()  # Normalisierung: "der Aktionaer" == "der aktionaer"
         video_id= source.get("video_id", "")
         title   = source.get("title", "")
         date    = source.get("date", datetime.now().strftime("%Y%m%d"))

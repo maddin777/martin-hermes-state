@@ -11,7 +11,7 @@ from datetime import datetime
 from config import DB_PATH
 
 OPENROUTER_KEY = os.environ.get("OPENROUTER_API_KEY")
-VALIDATION_MODEL = "openrouter/owl-alpha"
+VALIDATION_MODEL = "deepseek/deepseek-v3"  # owl-alpha existiert nicht mehr; v3 ist stabiler
 
 
 def validate_signal(name, ticker, sentiment, mentions, reasons):
@@ -19,7 +19,10 @@ def validate_signal(name, ticker, sentiment, mentions, reasons):
     Fragt zweites LLM ob das Signal plausibel ist.
     Returns: 'confirmed', 'contradicted', 'uncertain'
     """
-    prompt = """Du bist ein erfahrener Aktienanalyst. Bewerte folgendes Trading-Signal:
+    if not OPENROUTER_KEY:
+        return "UNCERTAIN", "OPENROUTER_API_KEY nicht gesetzt"
+
+    prompt = f"""Du bist ein erfahrener Aktienanalyst. Bewerte folgendes Trading-Signal:
 
 Aktie: {name} ({ticker})
 Sentiment aus Quellen: {sentiment} (basierend auf {mentions} Erwähnungen)
@@ -48,12 +51,19 @@ Antworte NUR mit einem JSON-Objekt:
             },
             timeout=30,
         )
+        if response.status_code == 401:
+            print(f"  ⚠ Auth-Fehler 401: OPENROUTER_API_KEY ungültig oder abgelaufen", flush=True)
+            return "UNCERTAIN", "Auth 401"
+        if response.status_code != 200:
+            print(f"  ⚠ HTTP {response.status_code}: {response.text[:200]}", flush=True)
+            return "UNCERTAIN", f"HTTP {response.status_code}"
         data = response.json()
         text = data["choices"][0]["message"]["content"]
-        result = json.loads(text.strip().strip("```json").strip("```"))
+        text = text.strip().lstrip("```json").lstrip("```").rstrip("```").strip()
+        result = json.loads(text)
         return result.get("verdict", "UNCERTAIN"), result.get("reason", "")
     except Exception as e:
-        print(f"  ⚠ LLM-Validierung fehlgeschlagen: {e}")
+        print(f"  ⚠ LLM-Validierung fehlgeschlagen: {e}", flush=True)
         return "UNCERTAIN", str(e)
 
 

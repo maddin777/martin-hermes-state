@@ -5,6 +5,7 @@ Quellen aus source_registry DB (Fallback zu statischem CHANNELS dict).
 """
 import sqlite3
 import subprocess
+import shutil
 import time
 import sys
 from datetime import datetime, timedelta, timezone
@@ -12,6 +13,27 @@ from config import DB_PATH
 
 DAYS = 10  # Erhöht von 5 auf 10 — deckt auch Wochenenden und kurze Pausen ab
 SLEEP_BETWEEN_VIDEOS = 120
+
+# yt-dlp Pfad: absoluter Pfad bevorzugt, Fallback via shutil.which
+_YTDLP_CANDIDATES = [
+    "/root/.pyenv/versions/3.12.13/bin/yt-dlp",
+    "/usr/local/bin/yt-dlp",
+    "/usr/bin/yt-dlp",
+]
+def _find_ytdlp():
+    for p in _YTDLP_CANDIDATES:
+        import os
+        if os.path.isfile(p):
+            return p
+    found = shutil.which("yt-dlp")
+    if found:
+        return found
+    raise FileNotFoundError(
+        "yt-dlp nicht gefunden. Bitte installieren: "
+        "pip install yt-dlp  oder  pipx install yt-dlp"
+    )
+
+YTDLP = _find_ytdlp()
 
 # Statischer Fallback (wenn DB leer ist)
 CHANNELS_FALLBACK = [
@@ -66,6 +88,7 @@ def get_active_channels(con):
 
 def init_db():
     con = sqlite3.connect(DB_PATH)
+    con.row_factory = sqlite3.Row  # ermöglicht Zugriff per Spaltenname in get_active_channels
     con.execute("""
         CREATE TABLE IF NOT EXISTS videos (
             video_id    TEXT PRIMARY KEY,
@@ -88,18 +111,18 @@ def get_recent_video_ids(channel_url, days):
     else:
         url = channel_url + "/videos"
     result = subprocess.run([
-        "/root/.pyenv/versions/3.12.13/bin/yt-dlp", "--flat-playlist",
+        YTDLP, "--flat-playlist",
         "--print", "%(id)s", "--playlist-items", "1:15", "--no-warnings", url
-    ], capture_output=True, text=True)
+    ], capture_output=True, text=True, timeout=60)
     return [l.strip() for l in result.stdout.strip().split("\n") if l.strip()]
 
 def get_video_meta(video_id):
     result = subprocess.run([
-        "/root/.pyenv/versions/3.12.13/bin/yt-dlp",
+        YTDLP,
         "--print", "%(upload_date)s|%(title)s",
         "--no-warnings", "--skip-download",
         f"https://www.youtube.com/watch?v={video_id}"
-    ], capture_output=True, text=True)
+    ], capture_output=True, text=True, timeout=30)
     line = result.stdout.strip()
     if "|" not in line:
         return None, None
@@ -144,7 +167,11 @@ def main():
 
     for channel_name, channel_url in channels:
         print(f"\n[{channel_name}] Scanning...", flush=True)
-        video_ids = get_recent_video_ids(channel_url, DAYS)
+        try:
+            video_ids = get_recent_video_ids(channel_url, DAYS)
+        except Exception as e:
+            print(f"  ⚠ Kanal übersprungen ({channel_name}): {e}", flush=True)
+            continue
         print(f"  → {len(video_ids)} candidate IDs", flush=True)
 
         for vid_id in video_ids:

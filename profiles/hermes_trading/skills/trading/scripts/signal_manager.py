@@ -982,28 +982,43 @@ def print_portfolio_summary(con, cfg):
 
 
 def main(mode="full"):
-    con = sqlite3.connect(DB_PATH)
-    con.execute("PRAGMA journal_mode=WAL;")
-    con.execute("PRAGMA busy_timeout=5000;")
-    con.row_factory = sqlite3.Row
-    init_db(con)
+    # Lockfile: verhindert parallelen full-Lauf während check_only läuft (und umgekehrt)
+    import fcntl, tempfile
+    lock_path = os.path.join(os.path.dirname(DB_PATH), "signal_manager.lock")
+    lock_file = open(lock_path, "w")
+    try:
+        fcntl.flock(lock_file, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except BlockingIOError:
+        print(f"⚠ signal_manager läuft bereits (Lockfile: {lock_path}) – Abbruch.", flush=True)
+        lock_file.close()
+        sys.exit(0)  # kein Fehler-Exit, Pipeline soll weiterlaufen
 
-    cfg = load_config()
-    print(f"📊 Signal Manager gestartet (Modus: {mode})", flush=True)
+    try:
+        con = sqlite3.connect(DB_PATH)
+        con.execute("PRAGMA journal_mode=WAL;")
+        con.execute("PRAGMA busy_timeout=30000;")  # 30s statt 5s
+        con.row_factory = sqlite3.Row
+        init_db(con)
 
-    # Immer: Offene Positionen prüfen (SL/TP/Trailing)
-    print("\n1. Prüfe offene Positionen...", flush=True)
-    cfg = check_open_positions(con, cfg)
+        cfg = load_config()
+        print(f"📊 Signal Manager gestartet (Modus: {mode})", flush=True)
 
-    # Nur im Full-Modus: Neue Positionen öffnen
-    if mode == "full":
-        print("\n2. Prüfe neue Signale...", flush=True)
-        open_new_positions(con, cfg)
+        # Immer: Offene Positionen prüfen (SL/TP/Trailing)
+        print("\n1. Prüfe offene Positionen...", flush=True)
+        cfg = check_open_positions(con, cfg)
 
-    # Übersicht ausgeben
-    print_portfolio_summary(con, cfg)
+        # Nur im Full-Modus: Neue Positionen öffnen
+        if mode == "full":
+            print("\n2. Prüfe neue Signale...", flush=True)
+            open_new_positions(con, cfg)
 
-    con.close()
+        # Übersicht ausgeben
+        print_portfolio_summary(con, cfg)
+
+        con.close()
+    finally:
+        fcntl.flock(lock_file, fcntl.LOCK_UN)
+        lock_file.close()
 
 
 if __name__ == "__main__":

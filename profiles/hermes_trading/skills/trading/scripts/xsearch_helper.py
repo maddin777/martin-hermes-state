@@ -4,7 +4,7 @@ Nutzt Grok OAuth - kein separater API-Key nötig.
 """
 import sys, os, json, re
 
-sys.path.insert(0, '/root/.hermes/hermes-agent')
+HERMES_AGENT_PATH = '/root/.hermes/hermes-agent'
 
 def _load_env():
     for env_path in [
@@ -21,12 +21,21 @@ def _load_env():
 
 def _get_agent():
     _load_env()
-    from run_agent import AIAgent
-    return AIAgent(
-        enabled_toolsets=["x_search"],
-        quiet_mode=True,
-        skip_memory=True,
-    )
+    # Hermes-Agent-Pfad muss an Position 0 stehen, damit run_agent seine eigene
+    # utils.py findet statt unserer Trading-utils.py (sys.path-Kollision).
+    original_path = sys.path[:]
+    if HERMES_AGENT_PATH in sys.path:
+        sys.path.remove(HERMES_AGENT_PATH)
+    sys.path.insert(0, HERMES_AGENT_PATH)
+    try:
+        from run_agent import AIAgent
+        return AIAgent(
+            enabled_toolsets=["x_search"],
+            quiet_mode=True,
+            skip_memory=True,
+        )
+    finally:
+        sys.path[:] = original_path
 
 def x_search(query, hours=24, allowed_handles=None):
     """Fuehrt x_search via Hermes AIAgent aus."""
