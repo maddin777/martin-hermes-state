@@ -11,7 +11,7 @@ from datetime import datetime
 from config import DB_PATH
 
 OPENROUTER_KEY = os.environ.get("OPENROUTER_API_KEY")
-VALIDATION_MODEL = "deepseek/deepseek-v3"  # owl-alpha existiert nicht mehr; v3 ist stabiler
+VALIDATION_MODEL = "deepseek/deepseek-v4-flash"
 
 
 def validate_signal(name, ticker, sentiment, mentions, reasons):

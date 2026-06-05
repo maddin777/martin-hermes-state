@@ -851,3 +851,79 @@ Lektion #13 abgeschlossen.
 10. Das Jahr
 
 Lektion #14 abgeschlossen.
+
+## Lektion #15
+
+### 1. Słownictwo (Top 500)
+- **dom** `Haus`
+- **kobieta** `Frau`
+- **pies** `Hund`
+- **miasto** `Stadt`
+- **czas** `Zeit`
+- **droga** `Weg`
+- **dziecko** `Kind`
+- **praca** `Arbeit`
+- **woda** `Wasser`
+- **jedzenie** `Essen`
+
+### 2. Sentence Mining (n+1)
+- **Mój** `mein` **dom** `Haus` **jest** `ist` **duży** `groß`. (`**Mój** `mein` **dom** `Haus` **jest** `ist` **duży** `groß`.`)
+- **Ta** `Diese` **kobieta** `Frau` **jest** `ist` **miła** `nett`. (`**Ta** `Diese` **kobieta** `Frau` **jest** `ist` **miła** `nett`.`)
+- **Mój** `mein` **pies** `Hund` **biega** `rennt` **szybko** `schnell`. (`**Mój** `mein` **pies** `Hund` **biega** `rennt` **szybko** `schnell`.`)
+- **To** `Das` **duże** `große` **miasto** `Stadt` **jest** `ist` **piękne** `schön`. (`**To** `Das` **duże** `große` **miasto** `Stadt` **jest** `ist` **piękne** `schön`.`)
+- **Nie** `Nicht` **mam** `habe` **czasu** `Zeit`. (`**Nie** `Nicht` **mam** `czasu` `Zeit`.`)
+- **Długa** `Lange` **droga** `Weg` **jest** `ist` **trudna** `schwierig`. (`**Długa** `Lange` **droga** `Weg` **jest** `ist` **trudna** `schwierig`.`)
+- **To** `Das` **małe** `kleine` **dziecko** `Kind` **śpi** `schläft`. (`**To** `Das` **małe** `kleine` **dziecko** `Kind` **śpi** `schläft`.`)
+- **Moja** `Meine` **praca** `Arbeit` **jest** `ist` **ciekawa** `interessant`. (`**Moja** `Meine` **praca** `Arbeit` **jest** `ist` **ciekawa** `interessant`.`)
+- **Piję** `Ich trinke` **wodę** `Wasser`. (`**Piję** `Ich trinke` **wodę** `Wasser`.`)
+- **Dobre** `Gutes` **jedzenie** `Essen` **jest** `ist` **ważne** `wichtig`. (`**Dobre** `Gutes` **jedzenie** `Essen` **jest** `ist` **ważne** `wichtig`.`)
+
+### 3. Aspekt-Paare (Verben)
+- **pisać** `schreiben` / **napisać** `schreiben (perfekt)`
+- **czytać** `lesen` / **przeczytać** `lesen (perfekt)`
+- **robić** `machen` / **zrobić** `machen (perfekt)`
+- **pić** `trinken` / **wypić** `trinken (perfekt)`
+- **jeść** `essen` / **zjeść** `essen (perfekt)`
+- **widzieć** `sehen` / **zobaczyć** `sehen (perfekt)`
+- **kupować** `kaufen` / **kupić** `kaufen (perfekt)`
+- **otwierać** `öffnen` / **otworzyć** `öffnen (perfekt)`
+- **zamykać** `schließen` / **zamknąć** `schließen (perfekt)`
+- **rozumieć** `verstehen` / **zrozumieć** `verstehen (perfekt)`
+
+### 4. Kasus (Nomen: Nominativ / Genitiv)
+- **dom** `Haus` / **domu** `Hauses`
+- **kobieta** `Frau` / **kobiety** `Frau`
+- **pies** `Hund` / **psa** `Hundes`
+- **miasto** `Stadt` / **miasta** `Stadt`
+- **czas** `Zeit` / **czasu** `Zeit`
+- **droga** `Weg` / **drogi** `Weges`
+- **dziecko** `Kind` / **dziecka** `Kindes`
+- **praca** `Arbeit` / **pracy** `Arbeit`
+- **woda** `Wasser` / **wody** `Wassers`
+- **jedzenie** `Essen` / **jedzenia** `Essens`
+
+### 5. Lueckentext-Quiz
+1. **Mój** `mein` ____ `Haus` **jest duży**.
+2. **Ta** `Diese` **____** `Frau` **jest miła**.
+3. **Mój** `mein` **____** `Hund` **biega szybko**.
+4. **To duże** `große` **____** `Stadt` **jest piękne**.
+5. **Nie mam** `habe nicht` **____** `Zeit**.
+6. **Długa** `Lange` **____** `Weg` **jest trudna**.
+7. **To małe** `kleine` **____** `Kind` **śpi**.
+8. **Moja** `Meine` **____** `Arbeit` **jest ciekawa**.
+9. **Piję** `Ich trinke` **____** `Wasser**.
+10. **Dobre** `Gutes` **____** `Essen` **jest ważne**.
+
+### 6. Aufloesung
+1. dom
+2. kobieta
+3. pies
+4. miasto
+5. czasu
+6. droga
+7. dziecko
+8. praca
+9. wodę
+10. jedzenie
+
+Lektion #15 abgeschlossen.

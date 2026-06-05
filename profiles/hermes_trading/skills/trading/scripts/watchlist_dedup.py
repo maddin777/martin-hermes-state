@@ -176,7 +176,32 @@ def dedup_ticker_variants(con):
         "CRWD": ["CRWD"],
         "NU": ["NU"],
         "UBER": ["UBER"],
+        # Quantum Computing: Zertifikate/strukturierte Produkte auf QUBT
+        "QUBT": ["QUBT", "DE000SL0FUQ7.SG"],
     }
+
+    # Automatische Erkennung: Ticker mit Exchange-Suffix (.SG, .MU, .F, .DE, .L etc.)
+    # die ISIN/WKN-artige Basis haben (>6 Zeichen vor dem Punkt = strukturiertes Produkt)
+    import re
+    STRUCTURED_PRODUCT_RE = re.compile(
+        r'^([A-Z]{2}[0-9A-Z]{10,})\.(SG|MU|F|DE|L|PA|SW|VI|AS)$'
+    )
+    structured = con.execute("""
+        SELECT ticker FROM watchlist
+        WHERE status='watching' AND ticker IS NOT NULL
+    """).fetchall()
+    for row in structured:
+        t = row["ticker"]
+        m = STRUCTURED_PRODUCT_RE.match(t)
+        if m:
+            # Strukturiertes Produkt erkannt — in dropped überführen (kein echter Aktien-Ticker)
+            dropped = con.execute("""
+                UPDATE watchlist SET status='dropped', notes=?
+                WHERE ticker=? AND status='watching'
+            """, (f"strukturiertes Produkt / Zertifikat erkannt: {t}", t)).rowcount
+            if dropped:
+                print(f"  🗑 Strukturiertes Produkt entfernt: {t}", flush=True)
+    con.commit()
     total = 0
     for canonical_ticker, variants in TICKER_GROUPS.items():
         if len(variants) <= 1:

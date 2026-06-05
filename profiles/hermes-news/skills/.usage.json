@@ -4,38 +4,38 @@
     "created_at": "2026-05-13T04:07:38.406194+00:00",
     "created_by": null,
     "last_patched_at": "2026-05-31T04:02:39.378347+00:00",
-    "last_used_at": "2026-06-02T04:00:40.442739+00:00",
-    "last_viewed_at": "2026-06-02T04:00:40.436915+00:00",
+    "last_used_at": "2026-06-04T04:00:46.631236+00:00",
+    "last_viewed_at": "2026-06-04T04:00:46.621849+00:00",
     "patch_count": 20,
     "pinned": false,
     "state": "active",
-    "use_count": 26,
-    "view_count": 26
+    "use_count": 27,
+    "view_count": 27
   },
   "daily-news-aggregation": {
     "archived_at": null,
     "created_at": "2026-05-14T04:11:49.416074+00:00",
     "created_by": null,
     "last_patched_at": "2026-06-03T04:03:45.193268+00:00",
-    "last_used_at": "2026-06-03T04:01:48.710329+00:00",
-    "last_viewed_at": "2026-06-03T04:01:48.706487+00:00",
+    "last_used_at": "2026-06-04T04:00:46.642047+00:00",
+    "last_viewed_at": "2026-06-04T04:00:46.638672+00:00",
     "patch_count": 6,
     "pinned": false,
     "state": "active",
-    "use_count": 17,
-    "view_count": 17
+    "use_count": 18,
+    "view_count": 18
   },
   "daily-news-compiler": {
     "archived_at": null,
     "created_at": "2026-05-21T14:02:10.394252+00:00",
     "created_by": null,
     "last_patched_at": null,
-    "last_used_at": "2026-06-03T04:01:36.145690+00:00",
-    "last_viewed_at": "2026-06-03T04:01:36.140954+00:00",
+    "last_used_at": "2026-06-04T04:00:46.635273+00:00",
+    "last_viewed_at": "2026-06-04T04:00:46.627317+00:00",
     "patch_count": 0,
     "pinned": false,
     "state": "active",
-    "use_count": 14,
-    "view_count": 14
+    "use_count": 15,
+    "view_count": 15
   }
 }
