@@ -13,7 +13,7 @@ import env_loader  # noqa: F401  (side-effect: laedt .env)
 import requests
 import yfinance as yf
 from datetime import datetime, timedelta
-from config import DB_PATH, MACRO_SIGNAL_PATH
+from config import DB_PATH, MACRO_SIGNAL_PATH, STRATEGY_CONFIG_PATH
 from utils import retry, get_logger
 log = get_logger("fundamental_data")
 

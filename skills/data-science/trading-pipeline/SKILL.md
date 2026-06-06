@@ -107,15 +107,45 @@ Trading scripts live under profile `hermes_trading`. Edits from `default` profil
 
 Dashboard reads `eval_metrics` last row. After a `nightly_eval.py` fix, dashboard shows stale data until the next 05:00 cron run. To test: run `TELEGRAM_BOT_TOKEN='***' python3 nightly_eval.py` (masks token to prevent duplicate Telegram dispatch).
 
-### 6. Watchlist Duplikate wachsen trotz normalize_mentions
+### 7. Standalone Script Import Failures (system crontab)
+
+**Symptom:** Scripts wie `fundamental_data.py`, `social_scanner.py`, `active_exit_check.py` crashen mit `NameError` obwohl die Import-Zeilen im Code stehen. Die Pipeline (`trading_pipeline.py`) läuft aber fehlerfrei.
+
+**Root Cause:** Diese Scripts werden via **system crontab** (im Profil `hermes_trading`) standalone ausgeführt — nicht als Teil der orchestrierten Pipeline. Sie importieren aus `config.py` und `utils.py`, aber die importierten Namen passen nicht zum tatsächlichen Bedarf:
+
+- **`fundamental_data.py`** importierte `DB_PATH, MACRO_SIGNAL_PATH` aber verwendete `STRATEGY_CONFIG_PATH` (nicht importiert)
+- **`social_scanner.py`** importierte `DB_PATH` aber verwendete `SOURCES_CONFIG_PATH` (nicht importiert), plus kaputte Zeile: `log = get_logger(...), SOURCES_CONFIG_PATH, SIGNALS_PATH` (Tuple statt Logger)
+- **`active_exit_check.py`** transient: `get_logger` war korrekt importiert, crashte sporadisch (vermutlich Kaskadeneffekt durch vorherige Crashes)
+
+Warum läuft die Pipeline trotzdem? `trading_pipeline.py` lädt die Sub-Skripte anders oder hat eigene Fehlerbehandlung.
+
+**Fix:** Imports in den Standalone-Skripts mit `config.py` abgleichen:
+
+```python
+# fundamental_data.py — STRATEGY_CONFIG_PATH fehlte
+from config import DB_PATH, MACRO_SIGNAL_PATH, STRATEGY_CONFIG_PATH
+
+# social_scanner.py — SOURCES_CONFIG_PATH fehlte, Tuple kaputt
+from config import DB_PATH, SOURCES_CONFIG_PATH
+log = get_logger("social_scanner")  # kein Tuple!
+```
+
+**Prävention:** Beim Editieren von Standalone-Crontab-Skripts immer `from config import` auf Vollständigkeit prüfen. Schnelltest:
+
+```bash
+cd /root/.hermes/profiles/hermes_trading/skills/trading/scripts
+python3 -c "from config import DB_PATH, STRATEGY_CONFIG_PATH, SOURCES_CONFIG_PATH, SIGNALS_PATH; from utils import get_logger, SLIPPAGE_PCT, COMMISSION_EUR; import fundamental_data; import social_scanner; import active_exit_check; print('ALL IMPORTS OK')"
+```
+
+### 8. Watchlist Duplikate wachsen trotz normalize_mentions
 
 **Symptom:** Immer mehr Duplikate in der `watchlist`-Tabelle (Nvidia/NVIDIA, Meta/Meta Platforms, Take-Two-Varianten). `normalize_mentions()` läuft täglich, aber Duplikate bleiben.
 
 **Root Cause 1 — SQLite Bulk-UPDATE Bug:** `normalize_mentions()` versucht ein `UPDATE watchlist_mentions SET name='NVIDIA' WHERE name='Nvidia'`. Wenn ANY dieser 92 Zeilen einen UNIQUE-Konflikt auslöst (weil es bereits ein "NVIDIA" mit derselben `video_id` gibt), schlägt das gesamte UPDATE fehl — ALLE 92 Zeilen bleiben unverändert. Der try/except IntegrityError-Fang-Lösch-Zweig wird zwar ausgeführt, aber nur die konfliktierenden Zeilen werden gelöscht — die restlichen 80 bleiben als "Nvidia" erhalten.
 
 **Fix:** DELETE konfliktierende Zeilen VOR dem UPDATE, nicht nachträglich als Catch:
+
 ```python
-# DO THIS: Delete conflicts first, then update the rest
 con.execute("DELETE FROM table WHERE name=? AND EXISTS (SELECT 1 FROM table AS w2 WHERE w2.name=? AND w2.video_id=table.video_id)", (orig, canonical))
 con.execute("UPDATE table SET name=? WHERE name=?", (canonical, orig))
 ```
@@ -124,7 +154,43 @@ con.execute("UPDATE table SET name=? WHERE name=?", (canonical, orig))
 
 **Fix:** Wöchentlicher `watchlist_dedup.py` (So 05:30) merged diese über Ticker-Abgleich und droppt Duplikate.
 
+### 6. Cron Health Daily meldet "Keine Trading-Jobs" obwohl Pipeline lief
+
+**Symptom:** `cron_health.py` (08:00) meldet "Keine Trading-Jobs für heute geloggt" oder zeigt falsche Status an.
+
+**Root Cause 1 — Leading-Zero vs Unpadded Day:**
+```python
+today_day = TODAY.strftime("%d")  # "05" (zero-padded)
+```
+Aber Linux `date` im crontab schreibt `5` (unpadded) für den 5. Juni. String-Vergleich `"05" == "5"` failt → null Treffer → fälschlich "Keine Trading-Jobs".
+
+**Fix:** `int-Vergleich` statt String:
+```python
+today_day_int = TODAY.day  # int, keine führende Null
+if m and int(m.group(1)) == today_day_int:
+```
+
+**Root Cause 2 — Doppel-Space zwischen Monat und Tag:**
+Log: `=== Fri Jun  5 02:00:01 CEST 2026 === ...`
+Regex: `=== \w+ \w+ (\d+)` erwartet genau einen Space nach dem Monat, aber `date` padded eintägige Zahlen mit **zwei** Spaces (`Jun  5` → `Jun` + zwei Spaces + `5`).
+
+**Fix:** `\s+` statt ` `:
+```python
+r"=== \w+ \w+\s+(\d+) ..."
+```
+
+**Root Cause 3 — Pipeline-interne Jobnamen mit Timestamp:**
+Phase-2 matched `=== 05:03:16 Technical Analysis DONE ===` und extrahiert `pjob = "05:03:16 Technical Analysis"`, aber Phase-1 hat den Eintrag unter `"Technical Analysis"`. Der Match in der for-Schleife findet nichts → separater ⚠️-Eintrag bleibt trotz ✅.
+
+**Fix:** Timestamp aus pjob entfernen vor Status-Vergleich:
+```python
+pjob_parts = parts[0].split(" ", 1)
+pjob = pjob_parts[1] if len(pjob_parts) > 1 else pjob_parts[0]
+```
+
 ## Quick Debug
+
+See `references/cron-log-format.md` for details on parsing the two log formats.
 
 ```bash
 # Last pipeline run

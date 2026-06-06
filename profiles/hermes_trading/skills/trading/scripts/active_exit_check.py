@@ -8,8 +8,6 @@ Aktiver Exit-Check (2x täglich 10:00 + 15:30)
 import sqlite3
 import os
 import sys
-
-log = get_logger("active_exit_check")
 sys.path.insert(0, "/root/.hermes/profiles/hermes_trading/skills/trading")
 import env_loader  # noqa: F401  (side-effect: laedt .env)
 import math
@@ -17,7 +15,9 @@ import requests
 import yfinance as yf
 import pandas_ta as ta
 from datetime import datetime
-from utils import SLIPPAGE_PCT, COMMISSION_EUR
+from utils import get_logger, SLIPPAGE_PCT, COMMISSION_EUR
+
+log = get_logger("active_exit_check")
 
 TELEGRAM_TOKEN   = os.environ.get("TELEGRAM_BOT_TOKEN")
 TELEGRAM_HOME_CHANNEL = os.environ.get("TELEGRAM_HOME_CHANNEL")

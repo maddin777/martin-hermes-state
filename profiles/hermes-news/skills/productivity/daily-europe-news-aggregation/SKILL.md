@@ -14,17 +14,22 @@ description: |
 ## Ablauf (erweitert)
 
 ### Benutzerpräferenz: Telegram-Morgen-Briefing (streng priorisiert)
-- **Maximale Anzahl**: Maximal 5 Nachrichten pro Briefing (Fokus auf 3–5 wichtigsten). Bei sehr wenigen relevanten Meldungen 1–2 oder eine kurze „Ruhiger Morgen“-Zusammenfassung mit Quellen-Check-Begründung.
-- **Format pro Nachricht**:
-  1. Überschrift (klar und knapp)
-  2. Neutrales Summary (3–6 Sätze)
-  3. Wichtigste Fakten / Zahlen (Bullet-Liste)
-  4. Quellen mit Links am Ende
-- **Gesamtlänge**: Jede Nachricht max. ~3500 Zeichen. Gesamt-Briefing nüchtern, sachlich, professionell.
-- **Stil**: Keine Emojis, keine Wertungen, keine Spekulationen. Wie ein guter Nachrichtenticker. Finale Cron-Antwort ausschließlich das Briefing (oder exakt "[SILENT]").
-- **Thematische Priorisierung**: Starke regionale Fokussierung auf Deutschland (besonders Mecklenburg-Vorpommern und Schleswig-Holstein), Skandinavien (Schweden, Norwegen, Dänemark, Finnland), Polen sowie Entwicklungen mit direkter Relevanz für diese Regionen. Themen: Allgemeine News, Politik, Wirtschaft, Technologie, internationale Konflikte, lokale Ereignisse (nicht herausfiltern). Ignoriere komplett: Sport, Klatsch, Promi-News, Unterhaltung, Verbrechen ohne übergeordnete Relevanz.
-- **Quellen & Cross-Check**: Primär seriöse Seiten via Browser-Tools/Scraping (Tagesschau, FAZ, NZZ, Die Welt, Handelsblatt, Reuters, Bloomberg, Spiegel, lokale MV/SH-Zeitungen, Gazeta Wyborcza, SVT, NRK, Yle etc.). Ergänze mit X-Suche für allerfrischeste Entwicklungen. Immer mindestens 2–3 Quellen cross-checken. Nutze `browser_navigate` + `browser_snapshot` + `terminal` (curl mit realistischem User-Agent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"). Bei Browser-Fehlern (403, Consent-Banner, leere Snapshots) sofort auf curl oder alternative seriöse URLs ausweichen.
-- **Ausgabe**: Komplett auf Deutsch. Trennlinie `———` zwischen Nachrichten. Gruppierung möglich (z. B. „Politik & EU“, „Wirtschaft & Technik“, „Regional Nordost & Skandinavien“, „Internationales“). Für Cron-Jobs direkt als finale Antwort liefern – keine zusätzlichen Erklärungen, Tool-Nennungen oder Meta-Kommentare.
+- **Maximale Anzahl**: Maximal 5 unique Top-Themen der letzten 24 Stunden (seit gestern 6:00 Uhr), aggregiert aus seriösen Quellen (Tagesschau, Spiegel, FAZ, Welt, ZEIT, Handelsblatt, Reuters, ARD, NDR etc.). Bei ruhiger Lage weniger Themen oder eine kurze ehrliche Einleitungssatz (kein "Ruhiger Morgen").
+- **Strenge Auswahlregeln**: Identifiziere zuerst die dominierenden Meldungen über alle großen Quellen hinweg und aggregiere zu maximal 5 einzigartigen, relevanten Themen. Priorisiere Politik, Wirtschaft, Technologie, internationale Konflikte, EU, Energie, Infrastruktur. Immer regionale Relevanz für Mecklenburg-Vorpommern, Schleswig-Holstein, Hamburg, Skandinavien und Polen prüfen und einbeziehen, wenn relevant. Ignoriere vollständig: Sport, Promis, Kriminalität ohne große Relevanz, Unterhaltung.
+- **Format pro Thema**:
+  1. Klare, aussagekräftige Überschrift (max. 8–10 Wörter)
+  2. Neutrales, faktenreiches Summary (4–6 Sätze)
+  3. Wichtige Fakten & Zahlen (Bullet Points)
+  4. Quellen (mit Links) am Ende jeder Meldung
+- **Gesamtaufbau** (strikt einhalten): 
+  - Titel: Morgen-Briefing – [Wochentag], [DD.MM.YYYY]
+  - Sinnvolle Gruppierung: Politik & Internationales / Wirtschaft & Technologie / Regional Nordost & Skandinavien
+  - Trennlinie: ———
+  - Bei ruhiger Lage: Kurzer ehrlicher Einleitungssatz (1 Satz), welche Themen die Berichterstattung dominierten.
+  - Neue Abschnitte: Wetter heute (Ratzeburg & Schwerin) mit konkreten Werten; Wassertemperaturen Ostsee & Schweriner See (nie „keine Messung verfügbar“ – aktiv suchen auf wetter.com, wetteronline.de, DWD, wassertemperatur.org, seatemperature.org, NDR etc.).
+- **Stil**: Nüchtern, sachlich, professionell, wie ein guter Nachrichtenticker. Maximaler Informationsgehalt, knappe Form. Keine Emojis, keine Wertungen, keine Spekulationen, keine vagen Formulierungen (z. B. vermeide „plant Strategien“, „bereitet vor“ – nur konkrete Entscheidungen oder Maßnahmen). Finale Cron-Antwort ausschließlich das Briefing (oder exakt "[SILENT]"). Komplett auf Deutsch.
+- **Recherche**: Nutze intensive Web-Suche und Scraping (browser_navigate + browser_snapshot zuerst auf tagesschau.de, spiegel.de, faz.net, ndr.de, welt.de, handelsblatt.com). Cross-Check jede Meldung mit mindestens 2–3 seriösen Quellen. Bei Regionalthemen gezielt suchen („Mecklenburg-Vorpommern Politik heute“, Ostsee-Zeitung, NDR MV Aktuell). Vor Schreiben einer Meldung oder Aussage „wenig Neues“ Tools intensiv nutzen.
+- **Quellen & Cross-Check**: Primär seriöse Seiten via Browser-Tools/Scraping (Tagesschau, FAZ, Welt, Handelsblatt, Spiegel, Reuters, ARD/NDR). Immer mindestens 2–3 Quellen cross-checken. Nutze `browser_navigate` + `browser_snapshot` + `terminal` (curl mit realistischem User-Agent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"). Bei Browser-Fehlern (403, Consent-Banner, leere Snapshots) sofort auf curl oder alternative seriöse URLs ausweichen.
 
 ## Ablauf (erweitert)
 1. **Quellen festlegen** – 3‑5 RSS‑Feeds pro Kategorie (z. B. BBC Europe, FAZ Politik, NYT Business, Al Jazeera, DW). Maximal 2 BBC‑Einträge pro Liste.

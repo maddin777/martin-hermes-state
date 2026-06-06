@@ -15,9 +15,9 @@ import locale
 import requests
 import feedparser
 from datetime import datetime, timedelta, timezone
-from config import DB_PATH
+from config import DB_PATH, SOURCES_CONFIG_PATH
 from utils import retry, get_logger
-log = get_logger("social_scanner"), SOURCES_CONFIG_PATH, SIGNALS_PATH
+log = get_logger("social_scanner")
 
 OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY")
 MODEL = "google/gemini-2.5-flash-lite"
