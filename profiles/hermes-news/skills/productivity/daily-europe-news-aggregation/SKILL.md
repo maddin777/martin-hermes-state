@@ -25,7 +25,7 @@ description: |
   - Titel: Morgen-Briefing – [Wochentag], [DD.MM.YYYY]
   - Sinnvolle Gruppierung: Politik & Internationales / Wirtschaft & Technologie / Regional Nordost & Skandinavien
   - Trennlinie: ———
-  - Bei ruhiger Lage: Kurzer ehrlicher Einleitungssatz (1 Satz), welche Themen die Berichterstattung dominierten.
+  - Bei ruhiger/moderater Lage: Kurzer ehrlicher Einleitungssatz (1 Satz) der Form „Die Berichterstattung wird von [dominierenden Themen] dominiert.“ statt „Ruhiger Morgen“. Diese Formulierung hat sich in den Sessions 05.06. und 06.06.2026 bewährt.
   - Neue Abschnitte: Wetter heute (Ratzeburg & Schwerin) mit konkreten Werten; Wassertemperaturen Ostsee & Schweriner See (nie „keine Messung verfügbar“ – aktiv suchen auf wetter.com, wetteronline.de, DWD, wassertemperatur.org, seatemperature.org, NDR etc.).
 - **Stil**: Nüchtern, sachlich, professionell, wie ein guter Nachrichtenticker. Maximaler Informationsgehalt, knappe Form. Keine Emojis, keine Wertungen, keine Spekulationen, keine vagen Formulierungen (z. B. vermeide „plant Strategien“, „bereitet vor“ – nur konkrete Entscheidungen oder Maßnahmen). Finale Cron-Antwort ausschließlich das Briefing (oder exakt "[SILENT]"). Komplett auf Deutsch.
 - **Recherche**: Nutze intensive Web-Suche und Scraping (browser_navigate + browser_snapshot zuerst auf tagesschau.de, spiegel.de, faz.net, ndr.de, welt.de, handelsblatt.com). Cross-Check jede Meldung mit mindestens 2–3 seriösen Quellen. Bei Regionalthemen gezielt suchen („Mecklenburg-Vorpommern Politik heute“, Ostsee-Zeitung, NDR MV Aktuell). Vor Schreiben einer Meldung oder Aussage „wenig Neues“ Tools intensiv nutzen.
@@ -69,5 +69,5 @@ Siehe `references/`-Verzeichnis:
 - `2026-05-26-cron-outcome.md`
 - `2026-05-27-cron-outcome.md`
 - `2026-05-29-cron-outcome.md` (Bestätigung von curl + grep als primärem robustem Fallback bei langen Browser-Snapshots; erfolgreiche Anwendung des „Ruhiger Morgen“-Formats mit Quellenauflistung und „keine aktuellen Messwerte verfügbar“ bei Wassertemperaturen; strikte Output-Disziplin ohne Tool-Spuren)
-- `2026-05-27-cron-outcome.md`
-- `2026-05-29-cron-outcome.md` (Bestätigung von curl + grep als primärem robustem Fallback bei langen Browser-Snapshots; erfolgreiche Anwendung des „Ruhiger Morgen“-Formats mit Quellenauflistung und „keine aktuellen Messwerte verfügbar“ bei Wassertemperaturen; strikte Output-Disziplin ohne Tool-Spuren)
+- `2026-06-05-morning-briefing-cron-outcome.md`
+- `2026-06-06-morning-briefing-cron-outcome.md` (US-Iran-Eskalation + Putin/Selenskyj + Tech-Einbruch + MV-Landtag; erfolgreiche Einleitung „Die Berichterstattung wird von … dominiert“ bei moderater Lage; Wetter/Wasser-Werte aktiv über wetteronline.de + wassertemperatur.org gesichert; keine „keine Messung verfügbar“; strikte Format- und Stiltreue)
