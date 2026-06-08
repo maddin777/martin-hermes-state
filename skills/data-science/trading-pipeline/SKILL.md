@@ -109,32 +109,39 @@ Dashboard reads `eval_metrics` last row. After a `nightly_eval.py` fix, dashboar
 
 ### 7. Standalone Script Import Failures (system crontab)
 
-**Symptom:** Scripts wie `fundamental_data.py`, `social_scanner.py`, `active_exit_check.py` crashen mit `NameError` obwohl die Import-Zeilen im Code stehen. Die Pipeline (`trading_pipeline.py`) läuft aber fehlerfrei.
+**Symptom:** Standalone crontab-Scripts crashen mit `ImportError` oder `NameError`, obwohl die Pipeline (`trading_pipeline.py`) fehlerfrei läuft.
 
-**Root Cause:** Diese Scripts werden via **system crontab** (im Profil `hermes_trading`) standalone ausgeführt — nicht als Teil der orchestrierten Pipeline. Sie importieren aus `config.py` und `utils.py`, aber die importierten Namen passen nicht zum tatsächlichen Bedarf:
+**Root Cause 1 — Doppelt-vorsilbende Importnamen:** AI-generierte Imports enthalten doppelte Prefixe wie `STRATEGY_STRATEGY_CONFIG_PATH` statt `STRATEGY_CONFIG_PATH`, `BACKTEST_BACKTEST_REPORT_PATH` statt `BACKTEST_REPORT_PATH`, `OPTIMIZATION_OPTIMIZATION_REPORT_PATH` statt `OPTIMIZATION_REPORT_PATH`.
 
-- **`fundamental_data.py`** importierte `DB_PATH, MACRO_SIGNAL_PATH` aber verwendete `STRATEGY_CONFIG_PATH` (nicht importiert)
-- **`social_scanner.py`** importierte `DB_PATH` aber verwendete `SOURCES_CONFIG_PATH` (nicht importiert), plus kaputte Zeile: `log = get_logger(...), SOURCES_CONFIG_PATH, SIGNALS_PATH` (Tuple statt Logger)
-- **`active_exit_check.py`** transient: `get_logger` war korrekt importiert, crashte sporadisch (vermutlich Kaskadeneffekt durch vorherige Crashes)
+**Root Cause 2 — Fehlende Imports:** Scripts importieren nicht alle benötigten Namen aus `config.py`. Beispiele:
+- `fundamental_data.py`: importierte `DB_PATH, MACRO_SIGNAL_PATH`, nutzte aber `STRATEGY_CONFIG_PATH`
+- `social_scanner.py`: importierte `DB_PATH`, nutzte aber `SOURCES_CONFIG_PATH`
+- `strategy_optimizer.py`: importierte nicht `SOURCES_CONFIG_PATH`
 
-Warum läuft die Pipeline trotzdem? `trading_pipeline.py` lädt die Sub-Skripte anders oder hat eigene Fehlerbehandlung.
+**Root Cause 3 — Kaputte Tuple-Zeile:** `social_scanner.py` hatte `log = get_logger(...), SOURCES_CONFIG_PATH, SIGNALS_PATH` — ein Tuple statt einem Logger, der Rest der Values wurde nie assigned.
 
-**Fix:** Imports in den Standalone-Skripts mit `config.py` abgleichen:
-
-```python
-# fundamental_data.py — STRATEGY_CONFIG_PATH fehlte
-from config import DB_PATH, MACRO_SIGNAL_PATH, STRATEGY_CONFIG_PATH
-
-# social_scanner.py — SOURCES_CONFIG_PATH fehlte, Tuple kaputt
-from config import DB_PATH, SOURCES_CONFIG_PATH
-log = get_logger("social_scanner")  # kein Tuple!
+**Fix:** Imports mit config.py abgleichen. Nie den importierten Namen blind glauben — in config.py nachschlagen:
+```bash
+grep '=.*os\.path\.join' /root/.hermes/profiles/hermes_trading/skills/trading/scripts/config.py
 ```
 
-**Prävention:** Beim Editieren von Standalone-Crontab-Skripts immer `from config import` auf Vollständigkeit prüfen. Schnelltest:
-
+**Prävention:** Regelmäßiger Scan:
 ```bash
 cd /root/.hermes/profiles/hermes_trading/skills/trading/scripts
-python3 -c "from config import DB_PATH, STRATEGY_CONFIG_PATH, SOURCES_CONFIG_PATH, SIGNALS_PATH; from utils import get_logger, SLIPPAGE_PCT, COMMISSION_EUR; import fundamental_data; import social_scanner; import active_exit_check; print('ALL IMPORTS OK')"
+python3 -c "
+import config
+for name in dir(config):
+    if not name.startswith('_'):
+        print(name)
+" > /tmp/actual_names.txt
+```
+Auf doppelte Vorsilben prüfen:
+```bash
+grep -nP '_[A-Z]+_[A-Z]+_[A-Z]+_PATH' *.py
+```
+Schnelltest:
+```bash
+python3 -c "from config import DB_PATH, STRATEGY_CONFIG_PATH, SOURCES_CONFIG_PATH, SIGNALS_PATH, MACRO_SIGNAL_PATH, BACKTEST_REPORT_PATH, OPTIMIZATION_REPORT_PATH; from utils import get_logger; import fundamental_data; import social_scanner; import active_exit_check; import strategy_optimizer; import backtester; print('ALL IMPORTS OK')"
 ```
 
 ### 8. Watchlist Duplikate wachsen trotz normalize_mentions

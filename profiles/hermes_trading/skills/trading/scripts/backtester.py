@@ -4,7 +4,7 @@ Backtest-Engine mit OHLC-Pfad-Simulation + Walk-Forward Optimierung.
 import sqlite3, json, os, math, yfinance as yf, pandas_ta as ta
 from datetime import datetime, timedelta
 from statistics import median
-from config import DB_PATH, BACKTEST_BACKTEST_REPORT_PATH
+from config import DB_PATH, BACKTEST_REPORT_PATH
 
 
 def load_config():

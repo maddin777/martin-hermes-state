@@ -15,7 +15,7 @@ import pandas_ta as ta
 from datetime import datetime, timedelta
 import requests
 import itertools
-from config import DB_PATH, SIGNALS_PATH, STRATEGY_STRATEGY_CONFIG_PATH, OPTIMIZATION_OPTIMIZATION_REPORT_PATH
+from config import DB_PATH, SIGNALS_PATH, STRATEGY_CONFIG_PATH, OPTIMIZATION_REPORT_PATH, SOURCES_CONFIG_PATH
 
 
 TELEGRAM_TOKEN   = os.environ.get("TELEGRAM_BOT_TOKEN")
