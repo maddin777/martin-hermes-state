@@ -20,22 +20,45 @@ def _load_env():
                         os.environ.setdefault(k.strip(), v.strip())
 
 def _get_agent():
+    """Startet einen isolierten Subprozess für den Hermes AIAgent.
+    Vermeidet sys.path/sys.modules-Kollisionen mit der Trading-Umgebung."""
     _load_env()
-    # Hermes-Agent-Pfad muss an Position 0 stehen, damit run_agent seine eigene
-    # utils.py findet statt unserer Trading-utils.py (sys.path-Kollision).
-    original_path = sys.path[:]
-    if HERMES_AGENT_PATH in sys.path:
-        sys.path.remove(HERMES_AGENT_PATH)
-    sys.path.insert(0, HERMES_AGENT_PATH)
-    try:
-        from run_agent import AIAgent
-        return AIAgent(
-            enabled_toolsets=["x_search"],
-            quiet_mode=True,
-            skip_memory=True,
-        )
-    finally:
-        sys.path[:] = original_path
+    import subprocess, json, sys as _sys
+    cmd = [
+        _sys.executable, "-c", """
+import sys, json
+sys.path.insert(0, '/root/.hermes/hermes-agent')
+from run_agent import AIAgent
+agent = AIAgent(
+    enabled_toolsets=["x_search"],
+    quiet_mode=True,
+    skip_memory=True,
+)
+result = agent.chat(sys.stdin.read())
+print(result)
+"""
+    ]
+    return _SubprocessAgent(cmd)
+
+
+class _SubprocessAgent:
+    """Wrapper, der AIAgent via Subprozess aufruft — volle Import-Isolation."""
+
+    def __init__(self, cmd):
+        self._cmd = cmd
+
+    def chat(self, message):
+        import subprocess, json
+        try:
+            p = subprocess.run(
+                self._cmd, input=message, capture_output=True,
+                text=True, timeout=120
+            )
+            if p.returncode != 0:
+                raise RuntimeError(p.stderr.strip() or f"exit {p.returncode}")
+            return p.stdout.strip()
+        except subprocess.TimeoutExpired:
+            raise RuntimeError("AIAgent timeout (120s)")
 
 def x_search(query, hours=24, allowed_handles=None):
     """Fuehrt x_search via Hermes AIAgent aus."""

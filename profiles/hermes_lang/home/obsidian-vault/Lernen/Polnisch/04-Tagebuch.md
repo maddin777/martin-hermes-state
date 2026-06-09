@@ -927,3 +927,65 @@ Lektion #14 abgeschlossen.
 10. jedzenie
 
 Lektion #15 abgeschlossen.
+
+**Lektion #16**
+
+**Słownictwo**
+1. **ludzie** `people`
+2. **czas** `time`
+3. **rok** `year`
+4. **mówić** `to speak`
+5. **dzień** `day`
+6. **widzieć** `to see`
+7. **człowiek** `human`
+8. **sprawa** `matter`
+9. **mieć** `to have`
+10. **jeśli** `if`
+
+**Sentence Mining (n+1)**
+1. Ci **ludzie** są bardzo mili. `These people are very kind.`
+2. Nie mam teraz **czasu**. `I don't have time right now.`
+3. To był dobry **rok**. `It was a good year.`
+4. Musisz **mówić** wolniej. `You must speak slower.`
+5. Dziś jest piękny **dzień**. `Today is a beautiful day.`
+6. Czy możesz mnie **widzieć**? `Can you see me?`
+7. Każdy **człowiek** potrzebuje miłości. `Every human needs love.`
+8. To jest ważna **sprawa**. `This is an important matter.`
+9. Muszę **mieć** więcej pieniędzy. `I need to have more money.`
+10. **Jeśli** będziesz miał czas, zadzwoń. `If you have time, call.`
+
+**Grammatik**
+* **Aspekt (Verb Pairs)**:
+  * **mówić** `to speak` (imp) / **powiedzieć** `to say` (perf)
+  * **widzieć** `to see` (imp) / **zobaczyć** `to see` (perf)
+  * **brać** `to take` (imp) / **wziąć** `to take` (perf)
+* **Kasus (Noun Declension)**:
+  * **ludzie** (Mianownik) -> **ludzi** (Dopełniacz)
+  * **dzień** (Mianownik) -> **dnia** (Dopełniacz)
+  * **rok** (Mianownik) -> **roku** (Dopełniacz)
+
+**Lückentext-Quiz**
+1. Ci ______ są bardzo mili.
+2. Nie mam teraz ______.
+3. To był dobry ______.
+4. Musisz ______ wolniej.
+5. Dziś jest piękny ______.
+6. Czy możesz mnie ______?
+7. Każdy ______ potrzebuje miłości.
+8. To jest ważna ______.
+9. Muszę ______ więcej pieniędzy.
+10. ______ będziesz miał czas, zadzwoń.
+
+**Auflösung**
+1. **ludzie**
+2. **czasu**
+3. **rok**
+4. **mówić**
+5. **dzień**
+6. **widzieć**
+7. **człowiek**
+8. **sprawa**
+9. **mieć**
+10. **Jeśli**
+
+Lektion #16 abgeschlossen.

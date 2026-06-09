@@ -1,9 +1,9 @@
 {
-  "last_report_path": "/root/.hermes/logs/curator/20260601-002052",
-  "last_run_at": "2026-06-01T00:20:52.416945+00:00",
-  "last_run_duration_seconds": 107.520908,
-  "last_run_summary": "auto: no changes; llm: The archive check confirms the skill was cleaned up (not under `.archive/` — the `delete` action with absorbed content removes the directory). Content is fully preserved in the umbrella. Now let me write the final summary.\n\n## Consolidation…\narchived 1 skill(s):\n  • sqlite-optimization → name-normalization-dedup\nfull report: hermes curator status\nkeep an umbrella stable: hermes curator pin name-normalization-dedup",
+  "last_report_path": "/root/.hermes/logs/curator/20260608-010350",
+  "last_run_at": "2026-06-08T01:03:50.778609+00:00",
+  "last_run_duration_seconds": 114.270536,
+  "last_run_summary": "auto: no changes; llm: Now let me write the complete structured summary.\n\n## Consolidation Analysis — Summary\n\n**The 3 active agent-created skills are already correctly scoped as class-level umbrellas, with no prefix clusters to merge.**\n\nEach skill occupies a di…",
   "last_run_summary_shown_at": "2026-05-24T23:43:04.598615+00:00",
   "paused": false,
-  "run_count": 4
+  "run_count": 5
 }

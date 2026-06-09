@@ -66,9 +66,12 @@ def _score_news_sentiment(news_items: list, company_name: str) -> tuple:
     )
     prompt = (
         f"Bewerte folgende News zu {company_name} auf einer Skala:\n"
-        f"0.0 = sehr positiv, 0.5 = neutral, 1.0 = sehr negativ\n\n"
+        f"0.0 = sehr positiv, 0.5 = neutral (keine klare Richtung, unvollständige Infos), "
+        f"1.0 = sehr negativ\n\n"
+        f"WICHTIG: Score UND Summary müssen konsistent sein. "
+        f"Wenn die News keine klare negative Tendenz haben, ist der Score maximal 0.6.\n\n"
         f"{snippets}\n\n"
-        f"Antworte NUR mit JSON: {{\"score\": 0.7, \"summary\": \"kurze Begründung\"}}"
+        f"Antworte NUR mit JSON: {{\"score\": 0.5, \"summary\": \"kurze Begründung\"}}"
     )
     try:
         r = requests.post(
@@ -82,7 +85,13 @@ def _score_news_sentiment(news_items: list, company_name: str) -> tuple:
         text = r.json()["choices"][0]["message"]["content"].strip()
         text = text.replace("```json", "").replace("```", "").strip()
         data = json.loads(text)
-        return float(data.get("score", 0.5)), data.get("summary", "")
+        score = float(data.get("score", 0.5))
+        summary = data.get("summary", "")
+        # Plausibilitäts-Check: Wenn die Summary "neutral/unklar/keine" sagt, Score deckeln
+        import re as _re
+        if _re.search(r'\b(neutral|unklar|unvollständig|keine\s*klare|keine\s*konkrete)\b', summary, _re.IGNORECASE):
+            score = min(score, 0.6)
+        return score, summary
     except Exception as e:
         log.warning("LLM-Sentiment-Fehler: %s", e)
         return 0.5, ""

@@ -482,56 +482,59 @@ def main():
     print("📡 Fundamental Data Collector gestartet", flush=True)
     con = sqlite3.connect(DB_PATH)
     con.row_factory = sqlite3.Row
+    con.execute("PRAGMA busy_timeout=30000;")  # 30s Timeout für Lock-Konflikte
 
-    config = load_config()
+    try:
+        config = load_config()
 
-    # 1. FRED Makrodaten
-    fetch_fred_data(con, config["fred_indicators"])
+        # 1. FRED Makrodaten
+        fetch_fred_data(con, config["fred_indicators"])
 
-    # 2. Watchlist-Ticker für Insider + PCR
-    watchlist_tickers = [
-        r[0] for r in con.execute("""
-            SELECT DISTINCT ticker FROM watchlist
-            WHERE status='watching'
-            AND ticker IS NOT NULL
-            AND conviction_score >= 0.5
-            ORDER BY conviction_score DESC
-            LIMIT 30
-        """).fetchall()
-    ]
-    print(f"\n  Watchlist-Ticker für Analyse: {len(watchlist_tickers)}", flush=True)
+        # 2. Watchlist-Ticker für Insider + PCR
+        watchlist_tickers = [
+            r[0] for r in con.execute("""
+                SELECT DISTINCT ticker FROM watchlist
+                WHERE status='watching'
+                AND ticker IS NOT NULL
+                AND conviction_score >= 0.5
+                ORDER BY conviction_score DESC
+                LIMIT 30
+            """).fetchall()
+        ]
+        print(f"\n  Watchlist-Ticker für Analyse: {len(watchlist_tickers)}", flush=True)
 
-    # 3. SEC Insider Trades
-    fetch_insider_trades(con, watchlist_tickers)
+        # 3. SEC Insider Trades
+        fetch_insider_trades(con, watchlist_tickers)
 
-    # 4. Put/Call Ratio
-    fetch_pcr(con, watchlist_tickers)
+        # 4. Put/Call Ratio
+        fetch_pcr(con, watchlist_tickers)
 
-    # 5. Makro-Zusammenfassung
-    macro_signal = get_macro_summary(con)
-    print(f"\n  🌍 Gesamt-Makrosignal: {macro_signal.upper()}", flush=True)
+        # 5. Makro-Zusammenfassung
+        macro_signal = get_macro_summary(con)
+        print(f"\n  🌍 Gesamt-Makrosignal: {macro_signal.upper()}", flush=True)
 
-    # 6. Regime-Detection
-    regime, regime_probs = detect_market_regime(con)
+        # 6. Regime-Detection
+        regime, regime_probs = detect_market_regime(con)
 
-    # 7. Benchmark-Tracking (Phase 5)
-    update_benchmark(con)
+        # 7. Benchmark-Tracking (Phase 5)
+        update_benchmark(con)
 
-    # Makrosignal speichern für signal_manager
-    import json as _json
-    macro_file = MACRO_SIGNAL_PATH
-    with open(macro_file) as f:
-        macro_data = _json.load(f) if os.path.exists(macro_file) else {}
-    macro_data.update({
-        "signal":  macro_signal,
-        "regime":  regime,
-        "updated": datetime.now().isoformat()
-    })
-    with open(macro_file, "w") as f:
-        _json.dump(macro_data, f, indent=2)
+        # Makrosignal speichern für signal_manager
+        import json as _json
+        macro_file = MACRO_SIGNAL_PATH
+        with open(macro_file) as f:
+            macro_data = _json.load(f) if os.path.exists(macro_file) else {}
+        macro_data.update({
+            "signal":  macro_signal,
+            "regime":  regime,
+            "updated": datetime.now().isoformat()
+        })
+        with open(macro_file, "w") as f:
+            _json.dump(macro_data, f, indent=2)
 
-    con.close()
-    print("\n✅ Fundamental Data Collector abgeschlossen", flush=True)
+        print("\n✅ Fundamental Data Collector abgeschlossen", flush=True)
+    finally:
+        con.close()
 
 if __name__ == "__main__":
     main()

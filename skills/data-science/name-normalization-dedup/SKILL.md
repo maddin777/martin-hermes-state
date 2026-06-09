@@ -173,7 +173,7 @@ After normalizing the mentions table, the aggregated `watchlist` table often has
 - **Iterative suffix stripping required**: One pass of the LEGAL_SUFFIX_RE is not enough for "DWS Group GmbH & Co. KGaA" → need while-loop until stable
 - **Order matters**: Strip brackets BEFORE suffixes (a suffix regex might eat part of the bracket content)
 - **Case variants**: "Nvidia" and "NVIDIA" are different after normalize unless you have a case-normalizing alias. Either add `"nvidia": "NVIDIA"` to aliases, or handle case generically
-- **Watchlist/Rollup tables**: After normalizing the source table (mentions), old duplicate rows in the aggregated table (e.g., watchlist) remain stale. They get cleaned up on the next full aggregation run. For a deeper clean, see `references/watchlist-table-dedup.md` (three-phase script: ticker-variant, ticker, name).
+- **Watchlist/Rollup tables**: After normalizing the source table (mentions), old duplicate rows in the aggregated table (e.g., watchlist) remain stale. They get cleaned up on the next full aggregation run. For a deeper clean specific to the trading pipeline, see the `trading-pipeline` skill's `references/watchlist-table-dedup.md` (three-phase script: ticker-variant, ticker, name).
 - **Canonical name selection**: Prefer the normalized form's exact match, then the shortest name. **Bug to avoid**: do NOT reset the canonical after selecting it — old code had `canonical = min(originals, key=len)` that overwrote the preferred selection.
 
 ## Verification

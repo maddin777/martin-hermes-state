@@ -343,6 +343,22 @@ def main():
         con.commit()
         print(f"  ✓ Kanal-Namen normalisiert", flush=True)
 
+    # Migration: auch watchlist.channels JSON normalisieren (Case-Bug in gespeicherten Channels)
+    import json as _json
+    _dirty_channels = 0
+    for _row in con.execute("SELECT id, channels FROM watchlist WHERE channels IS NOT NULL").fetchall():
+        try:
+            _chans = _json.loads(_row["channels"])
+        except Exception:
+            continue
+        _norm = sorted(set(c.lower().strip() for c in _chans if c and c.strip()))
+        if _norm != sorted(set(c.strip() for c in _chans if c and c.strip() if c)):
+            con.execute("UPDATE watchlist SET channels=? WHERE id=?", (_json.dumps(_norm), _row["id"]))
+            _dirty_channels += 1
+    if _dirty_channels:
+        con.commit()
+        print(f"  🔧 {_dirty_channels} watchlist.channels-JSONs normalisiert", flush=True)
+
     # Quellen-Gewichte aus source_registry laden (Lifecycle-Integration)
     channel_weights = get_channel_weights(con)
     if channel_weights:
