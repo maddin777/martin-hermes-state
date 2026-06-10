@@ -73,57 +73,60 @@ def main():
         return
 
     con = sqlite3.connect(DB_PATH)
-    con.row_factory = sqlite3.Row
+    try:
+        con.execute("PRAGMA busy_timeout=30000")
+        con.row_factory = sqlite3.Row
 
-    candidates = con.execute("""
-        SELECT w.name, w.ticker, w.conviction_score, w.mention_count,
-               w.bullish_count, w.bearish_count, w.channels,
-               w.tech_score, w.tech_direction
-        FROM watchlist w
-        WHERE w.status = 'watching'
-        AND w.conviction_score >= 0.70
-        AND w.ticker IS NOT NULL
-        AND w.tech_score >= 0.50
-        ORDER BY w.conviction_score DESC
-        LIMIT 10
-    """).fetchall()
+        candidates = con.execute("""
+            SELECT w.name, w.ticker, w.conviction_score, w.mention_count,
+                   w.bullish_count, w.bearish_count, w.channels,
+                   w.tech_score, w.tech_direction
+            FROM watchlist w
+            WHERE w.status = 'watching'
+            AND w.conviction_score >= 0.70
+            AND w.ticker IS NOT NULL
+            AND w.tech_score >= 0.50
+            ORDER BY w.conviction_score DESC
+            LIMIT 10
+        """).fetchall()
 
-    print(f"🔍 LLM-Validierung für {len(candidates)} Kandidaten...", flush=True)
+        print(f"🔍 LLM-Validierung für {len(candidates)} Kandidaten...", flush=True)
 
-    for c in candidates:
-        reasons = [r[0] for r in con.execute("""
-            SELECT reason FROM watchlist_mentions
-            WHERE name = ? AND reason IS NOT NULL AND reason != ''
-            ORDER BY mention_date DESC LIMIT 5
-        """, (c["name"],)).fetchall()]
+        for c in candidates:
+            reasons = [r[0] for r in con.execute("""
+                SELECT reason FROM watchlist_mentions
+                WHERE name = ? AND reason IS NOT NULL AND reason != ''
+                ORDER BY mention_date DESC LIMIT 5
+            """, (c["name"],)).fetchall()]
 
-        sentiment = "bullish" if c["bullish_count"] > c["bearish_count"] else "bearish"
+            sentiment = "bullish" if c["bullish_count"] > c["bearish_count"] else "bearish"
 
-        verdict, reason = validate_signal(
-            c["name"], c["ticker"], sentiment,
-            c["mention_count"], reasons
-        )
+            verdict, reason = validate_signal(
+                c["name"], c["ticker"], sentiment,
+                c["mention_count"], reasons
+            )
 
-        if verdict == "CONFIRMED":
-            boost = min(0.10, 0.05 * (c["mention_count"] / 5))
-            new_conv = min(1.0, c["conviction_score"] + boost)
-            print(f"  ✅ {c['name']:25} CONFIRMED (+{boost:.2f}) → {new_conv:.2f}")
-        elif verdict == "CONTRADICTED":
-            penalty = 0.15
-            new_conv = max(0.0, c["conviction_score"] - penalty)
-            print(f"  ❌ {c['name']:25} CONTRADICTED (-{penalty:.2f}) → {new_conv:.2f}")
-        else:
-            new_conv = c["conviction_score"]
-            print(f"  ❓ {c['name']:25} UNCERTAIN (unverändert)")
+            if verdict == "CONFIRMED":
+                boost = min(0.10, 0.05 * (c["mention_count"] / 5))
+                new_conv = min(1.0, c["conviction_score"] + boost)
+                print(f"  ✅ {c['name']:25} CONFIRMED (+{boost:.2f}) → {new_conv:.2f}")
+            elif verdict == "CONTRADICTED":
+                penalty = 0.15
+                new_conv = max(0.0, c["conviction_score"] - penalty)
+                print(f"  ❌ {c['name']:25} CONTRADICTED (-{penalty:.2f}) → {new_conv:.2f}")
+            else:
+                new_conv = c["conviction_score"]
+                print(f"  ❓ {c['name']:25} UNCERTAIN (unverändert)")
 
-        con.execute(
-            "UPDATE watchlist SET conviction_score=? WHERE name=?",
-            (round(new_conv, 3), c["name"])
-        )
+            con.execute(
+                "UPDATE watchlist SET conviction_score=? WHERE name=?",
+                (round(new_conv, 3), c["name"])
+            )
 
-    con.commit()
-    con.close()
-    print("✅ LLM-Validierung abgeschlossen", flush=True)
+        con.commit()
+        print("✅ LLM-Validierung abgeschlossen", flush=True)
+    finally:
+        con.close()
 
 
 if __name__ == "__main__":

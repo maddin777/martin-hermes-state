@@ -481,6 +481,7 @@ def update_benchmark(con):
 def main():
     print("📡 Fundamental Data Collector gestartet", flush=True)
     con = sqlite3.connect(DB_PATH)
+    con.execute("PRAGMA busy_timeout=30000")
     con.row_factory = sqlite3.Row
     con.execute("PRAGMA busy_timeout=30000;")  # 30s Timeout für Lock-Konflikte
 

@@ -4,7 +4,12 @@ from collections import deque
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from urllib.parse import parse_qs, urlparse
 from datetime import datetime
-from config import DB_PATH, SCRIPTS_DIR
+from config import DB_PATH, SCRIPTS_DIR, CRON_LOG_PATH, SOURCES_CONFIG_PATH, STRATEGY_CONFIG_PATH, THEMATIC_LOG_PATH
+
+# Aliase für dashboard.py (abweichende Namen im Skript)
+CONFIG_PATH = STRATEGY_CONFIG_PATH
+SOURCES_PATH = SOURCES_CONFIG_PATH
+LOG_PATH = CRON_LOG_PATH
 
 # Pfad fuer thematic-Import
 THEMATIC_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "thematic")
@@ -93,6 +98,13 @@ def remove_yt_channel(name):
 # ─── Cron ────────────────────────────────────────────────────────────────────
 
 def get_last_run(script_name):
+    # Aliases für Pipeline-Schritte die anders geloggt werden
+    LOG_ALIASES = {
+        "watchlist_manager": "Watchlist Update",
+        "signal_extractor": "KI Analyse",
+    }
+    search_name = LOG_ALIASES.get(script_name, script_name)
+    
     last_done_ts = None
     last_start_ts = None
     last_status = "–"
@@ -102,7 +114,7 @@ def get_last_run(script_name):
             lines = f.readlines()
         for line in lines:
             line = line.strip()
-            if script_name not in line: continue
+            if search_name not in line: continue
             m = re.search(r"===\s+(.+?)\s+===", line)
             ts = m.group(1).strip() if m else None
             if "DONE" in line and ts:
@@ -660,7 +672,7 @@ def build_html(data):
 
     # Equity-Kurve Chart (SVG-basiert, kein externer JS)
     if equity_curve and len(equity_curve) >= 2:
-        chart_dates = [r.get("date","")[-5:] for r in equity_curve]  # MM-DD
+        chart_dates = [(r.get("date") or "")[-5:] for r in equity_curve]  # MM-DD
         port_vals   = [r.get("portfolio_return_ytd") or 0 for r in equity_curve]
         spy_vals    = [r.get("spy_return_ytd") or 0 for r in equity_curve]
         dax_vals    = [r.get("dax_return_ytd") or 0 for r in equity_curve]

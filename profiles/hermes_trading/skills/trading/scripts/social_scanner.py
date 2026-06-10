@@ -221,28 +221,31 @@ def get_active_twitter_accounts(con):
 def main():
     print("📡 Social Scanner gestartet", flush=True)
     con = sqlite3.connect(DB_PATH)
-    con.row_factory = sqlite3.Row
-
-    # Quellen aus DB laden (Fallback zu sources.json)
     try:
-        rss_feeds = get_active_rss_feeds(con)
-        twitter_accounts = get_active_twitter_accounts(con)
-        if not rss_feeds and not twitter_accounts:
+        con.execute("PRAGMA busy_timeout=30000")
+        con.row_factory = sqlite3.Row
+
+        # Quellen aus DB laden (Fallback zu sources.json)
+        try:
+            rss_feeds = get_active_rss_feeds(con)
+            twitter_accounts = get_active_twitter_accounts(con)
+            if not rss_feeds and not twitter_accounts:
+                config = load_config()
+                rss_feeds = [f for f in config.get("rss_feeds", []) if f.get("enabled")]
+                twitter_accounts = [a for a in config.get("twitter_accounts", []) if a.get("enabled")]
+        except Exception:
             config = load_config()
             rss_feeds = [f for f in config.get("rss_feeds", []) if f.get("enabled")]
             twitter_accounts = [a for a in config.get("twitter_accounts", []) if a.get("enabled")]
-    except Exception:
-        config = load_config()
-        rss_feeds = [f for f in config.get("rss_feeds", []) if f.get("enabled")]
-        twitter_accounts = [a for a in config.get("twitter_accounts", []) if a.get("enabled")]
 
-    fetch_rss_feeds(con, rss_feeds)
-    if twitter_accounts:
-        fetch_twitter(con, twitter_accounts)
-    inject_into_watchlist(con)
+        fetch_rss_feeds(con, rss_feeds)
+        if twitter_accounts:
+            fetch_twitter(con, twitter_accounts)
+        inject_into_watchlist(con)
 
-    con.close()
-    print("\n✅ Social Scanner abgeschlossen", flush=True)
+        print("\n✅ Social Scanner abgeschlossen", flush=True)
+    finally:
+        con.close()
 
 if __name__ == "__main__":
     main()

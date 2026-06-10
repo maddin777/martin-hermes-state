@@ -294,112 +294,115 @@ def get_benchmark_data(con):
 def main():
     print(f"📊 Nightly Eval {'(Woche)' if IS_SUNDAY else '(täglich)'} [{datetime.now().strftime('%Y-%m-%d %H:%M')}]", flush=True)
     con = sqlite3.connect(DB_PATH)
-    con.row_factory = sqlite3.Row
-    today = datetime.now().strftime("%Y-%m-%d")
-    yesterday = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
+    try:
+        con.execute("PRAGMA busy_timeout=30000")
+        con.row_factory = sqlite3.Row
+        today = datetime.now().strftime("%Y-%m-%d")
+        yesterday = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
 
-    print("\n📡 Signal-Metriken...", flush=True)
-    sm = calc_signal_metrics(con, today, yesterday)
-    print(f"  Neue Unternehmen: {sm['new_companies']}", flush=True)
-    print(f"  Bestätigungen: {sm['confirmed']}", flush=True)
-    print(f"  Widersprüche: {sm['contradicted']}", flush=True)
-    print(f"  Ø Conviction: {sm['avg_conviction']:.1%}", flush=True)
-    print(f"  Signale gekauft: {sm['signals_bought']}", flush=True)
+        print("\n📡 Signal-Metriken...", flush=True)
+        sm = calc_signal_metrics(con, today, yesterday)
+        print(f"  Neue Unternehmen: {sm['new_companies']}", flush=True)
+        print(f"  Bestätigungen: {sm['confirmed']}", flush=True)
+        print(f"  Widersprüche: {sm['contradicted']}", flush=True)
+        print(f"  Ø Conviction: {sm['avg_conviction']:.1%}", flush=True)
+        print(f"  Signale gekauft: {sm['signals_bought']}", flush=True)
 
-    print("\n💼 Portfolio-Metriken...", flush=True)
-    pm = calc_portfolio_metrics(con)
-    print(f"  Offene Positionen: {pm['open_positions']}", flush=True)
-    print(f"  Win Rate (7d): {pm['win_rate_7d']:.1%}", flush=True)
-    print(f"  Win Rate (30d): {pm['win_rate_30d']:.1%}", flush=True)
-    print(f"  Profit Factor (7d): {pm['profit_factor_7d']:.2f}", flush=True)
-    print(f"  Sortino (30d): {pm['sortino_30d']:.2f}", flush=True)
-    print(f"  Calmar (30d): {pm['calmar_30d']:.2f}", flush=True)
-    print(f"  Max Drawdown (30d): {pm['max_drawdown_30d']:.1f}%", flush=True)
-    print(f"  Ø R-Multiple: {pm['avg_r_multiple']:.2f}R", flush=True)
-    print(f"  Exposure: LONG {pm['exposure_long_pct']:.0f}% | SHORT {pm['exposure_short_pct']:.0f}% | Net {pm['exposure_net_pct']:.0f}%", flush=True)
-    print(f"  Ø Haltedauer: {pm['avg_holding_days']} Tage", flush=True)
-    print(f"  SL/TP/Tech Exits: {pm['exit_sl_pct']:.0%}/{pm['exit_tp_pct']:.0%}/{pm['exit_tech_pct']:.0%}", flush=True)
+        print("\n💼 Portfolio-Metriken...", flush=True)
+        pm = calc_portfolio_metrics(con)
+        print(f"  Offene Positionen: {pm['open_positions']}", flush=True)
+        print(f"  Win Rate (7d): {pm['win_rate_7d']:.1%}", flush=True)
+        print(f"  Win Rate (30d): {pm['win_rate_30d']:.1%}", flush=True)
+        print(f"  Profit Factor (7d): {pm['profit_factor_7d']:.2f}", flush=True)
+        print(f"  Sortino (30d): {pm['sortino_30d']:.2f}", flush=True)
+        print(f"  Calmar (30d): {pm['calmar_30d']:.2f}", flush=True)
+        print(f"  Max Drawdown (30d): {pm['max_drawdown_30d']:.1f}%", flush=True)
+        print(f"  Ø R-Multiple: {pm['avg_r_multiple']:.2f}R", flush=True)
+        print(f"  Exposure: LONG {pm['exposure_long_pct']:.0f}% | SHORT {pm['exposure_short_pct']:.0f}% | Net {pm['exposure_net_pct']:.0f}%", flush=True)
+        print(f"  Ø Haltedauer: {pm['avg_holding_days']} Tage", flush=True)
+        print(f"  SL/TP/Tech Exits: {pm['exit_sl_pct']:.0%}/{pm['exit_tp_pct']:.0%}/{pm['exit_tech_pct']:.0%}", flush=True)
 
-    # Benchmark-Vergleich
-    bm = get_benchmark_data(con)
-    if bm:
-        print(f"\n📈 Benchmark-Vergleich (YTD):", flush=True)
-        print(f"  Portfolio:  {bm['portfolio_return_ytd']:+.1f}%", flush=True)
-        print(f"  SPY:        {bm['spy_return_ytd']:+.1f}% | Alpha: {bm['alpha_spy']:+.1f}%", flush=True)
-        print(f"  DAX:        {bm['dax_return_ytd']:+.1f}% | Alpha: {bm['alpha_dax']:+.1f}%", flush=True)
+        # Benchmark-Vergleich
+        bm = get_benchmark_data(con)
+        if bm:
+            print(f"\n📈 Benchmark-Vergleich (YTD):", flush=True)
+            print(f"  Portfolio:  {bm['portfolio_return_ytd']:+.1f}%", flush=True)
+            print(f"  SPY:        {bm['spy_return_ytd']:+.1f}% | Alpha: {bm['alpha_spy']:+.1f}%", flush=True)
+            print(f"  DAX:        {bm['dax_return_ytd']:+.1f}% | Alpha: {bm['alpha_dax']:+.1f}%", flush=True)
 
-    metric_type = "weekly" if IS_SUNDAY else "daily"
-    con.execute("""
-        INSERT OR REPLACE INTO eval_metrics
-        (date, metric_type, new_companies, confirmed, contradicted, avg_conviction, signals_bought,
-         open_positions, win_rate_7d, win_rate_30d, profit_factor_7d, avg_holding_days,
-         exit_sl_pct, exit_tp_pct, exit_tech_pct, created_at)
-        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
-    """, (today, metric_type, sm["new_companies"], sm["confirmed"], sm["contradicted"],
-          sm["avg_conviction"], sm["signals_bought"], pm["open_positions"], pm["win_rate_7d"],
-          pm["win_rate_30d"], pm["profit_factor_7d"], pm["avg_holding_days"],
-          pm["exit_sl_pct"], pm["exit_tp_pct"], pm["exit_tech_pct"], datetime.now().isoformat()))
-    con.commit()
+        metric_type = "weekly" if IS_SUNDAY else "daily"
+        con.execute("""
+            INSERT OR REPLACE INTO eval_metrics
+            (date, metric_type, new_companies, confirmed, contradicted, avg_conviction, signals_bought,
+             open_positions, win_rate_7d, win_rate_30d, profit_factor_7d, avg_holding_days,
+             exit_sl_pct, exit_tp_pct, exit_tech_pct, created_at)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+        """, (today, metric_type, sm["new_companies"], sm["confirmed"], sm["contradicted"],
+              sm["avg_conviction"], sm["signals_bought"], pm["open_positions"], pm["win_rate_7d"],
+              pm["win_rate_30d"], pm["profit_factor_7d"], pm["avg_holding_days"],
+              pm["exit_sl_pct"], pm["exit_tp_pct"], pm["exit_tech_pct"], datetime.now().isoformat()))
+        con.commit()
 
-    print("\n🔍 Source-Qualität...", flush=True)
-    sources = calc_source_quality(con, today)
-    for s in sources[:5]:
-        print(f"  {s['channel']:25} WR:{s['win_rate_30d']:.0%} Q:{s['quality_score']:.2f} ({s['mentions_30d']}x)", flush=True)
+        print("\n🔍 Source-Qualität...", flush=True)
+        sources = calc_source_quality(con, today)
+        for s in sources[:5]:
+            print(f"  {s['channel']:25} WR:{s['win_rate_30d']:.0%} Q:{s['quality_score']:.2f} ({s['mentions_30d']}x)", flush=True)
 
-    cons_ok = "✅" if sm["confirmed"] >= sm["contradicted"] else "⚠️"
-    wr_ok = "✅" if pm["win_rate_7d"] >= 0.5 else "⚠️" if pm["win_rate_7d"] >= 0.35 else "❌"
-    top_src = sources[0] if sources else None
-    top_line = f"Top-Quelle: <b>{top_src['channel']}</b> (WR:{top_src['win_rate_30d']:.0%}, Q:{top_src['quality_score']:.2f})" if top_src else ""
-    bm_line = ""
-    if bm:
-        a_spy_icon = "✅" if bm["alpha_spy"] >= 0 else "❌"
-        a_dax_icon = "✅" if bm["alpha_dax"] >= 0 else "❌"
-        bm_line = (
-            f"\n📈 Benchmark (YTD):\n"
-            f"  Portfolio: {bm['portfolio_return_ytd']:+.1f}%\n"
-            f"  vs SPY: {bm['alpha_spy']:+.1f}% {a_spy_icon} | vs DAX: {bm['alpha_dax']:+.1f}% {a_dax_icon}\n"
-        )
+        cons_ok = "✅" if sm["confirmed"] >= sm["contradicted"] else "⚠️"
+        wr_ok = "✅" if pm["win_rate_7d"] >= 0.5 else "⚠️" if pm["win_rate_7d"] >= 0.35 else "❌"
+        top_src = sources[0] if sources else None
+        top_line = f"Top-Quelle: <b>{top_src['channel']}</b> (WR:{top_src['win_rate_30d']:.0%}, Q:{top_src['quality_score']:.2f})" if top_src else ""
+        bm_line = ""
+        if bm:
+            a_spy_icon = "✅" if bm["alpha_spy"] >= 0 else "❌"
+            a_dax_icon = "✅" if bm["alpha_dax"] >= 0 else "❌"
+            bm_line = (
+                f"\n📈 Benchmark (YTD):\n"
+                f"  Portfolio: {bm['portfolio_return_ytd']:+.1f}%\n"
+                f"  vs SPY: {bm['alpha_spy']:+.1f}% {a_spy_icon} | vs DAX: {bm['alpha_dax']:+.1f}% {a_dax_icon}\n"
+            )
 
-    if IS_SUNDAY:
-        weekly = weekly_aggregate(con)
-        msg = (
-            f"📊 <b>Wochen-Report {today}</b>\n\n"
-            "Signal-Pipeline (7d):\n"
-            f"  Ø Conviction: {weekly['avg_conviction_7d']:.0%}\n"
-            f"  Signale gekauft: {weekly['total_signals_bought']}\n\n"
-            "Portfolio:\n"
-            f"  Win Rate (7d): {pm['win_rate_7d']:.0%} {wr_ok}\n"
-            f"  Profit Factor: {pm['profit_factor_7d']:.2f}\n"
-            f"  Sortino: {pm['sortino_30d']:.2f} | Calmar: {pm['calmar_30d']:.2f}\n"
-            f"  Max DD: {pm['max_drawdown_30d']:.1f}% | Ø R: {pm['avg_r_multiple']:.2f}R\n"
-            f"  Exposure: LONG {pm['exposure_long_pct']:.0f}% SHORT {pm['exposure_short_pct']:.0f}%\n"
-            f"  SL/TP/Tech: {pm['exit_sl_pct']:.0%}/{pm['exit_tp_pct']:.0%}/{pm['exit_tech_pct']:.0%}\n"
-            f"{bm_line}\n"
-            f"{top_line}\n\n"
-            "🔧 Strategy Optimizer läuft um 08:00..."
-        )
-    else:
-        msg = (
-            f"📊 <b>Tages-Report {today}</b>\n\n"
-            "Signal-Pipeline:\n"
-            f"  Neue Unternehmen: {sm['new_companies']}\n"
-            f"  Bestätigungen: {sm['confirmed']} {cons_ok}\n"
-            f"  Widersprüche: {sm['contradicted']}\n"
-            f"  Ø Conviction: {sm['avg_conviction']:.0%}\n\n"
-            "Portfolio:\n"
-            f"  Offene Pos.: {pm['open_positions']}/8\n"
-            f"  Win Rate (7d): {pm['win_rate_7d']:.0%} {wr_ok}\n"
-            f"  Profit Factor: {pm['profit_factor_7d']:.2f}\n"
-            f"  Sortino: {pm['sortino_30d']:.2f} | Calmar: {pm['calmar_30d']:.2f}\n"
-            f"  Exposure: LONG {pm['exposure_long_pct']:.0f}% SHORT {pm['exposure_short_pct']:.0f}%\n"
-            f"{bm_line}\n"
-            f"{top_line}"
-        )
+        if IS_SUNDAY:
+            weekly = weekly_aggregate(con)
+            msg = (
+                f"📊 <b>Wochen-Report {today}</b>\n\n"
+                "Signal-Pipeline (7d):\n"
+                f"  Ø Conviction: {weekly['avg_conviction_7d']:.0%}\n"
+                f"  Signale gekauft: {weekly['total_signals_bought']}\n\n"
+                "Portfolio:\n"
+                f"  Win Rate (7d): {pm['win_rate_7d']:.0%} {wr_ok}\n"
+                f"  Profit Factor: {pm['profit_factor_7d']:.2f}\n"
+                f"  Sortino: {pm['sortino_30d']:.2f} | Calmar: {pm['calmar_30d']:.2f}\n"
+                f"  Max DD: {pm['max_drawdown_30d']:.1f}% | Ø R: {pm['avg_r_multiple']:.2f}R\n"
+                f"  Exposure: LONG {pm['exposure_long_pct']:.0f}% SHORT {pm['exposure_short_pct']:.0f}%\n"
+                f"  SL/TP/Tech: {pm['exit_sl_pct']:.0%}/{pm['exit_tp_pct']:.0%}/{pm['exit_tech_pct']:.0%}\n"
+                f"{bm_line}\n"
+                f"{top_line}\n\n"
+                "🔧 Strategy Optimizer läuft um 08:00..."
+            )
+        else:
+            msg = (
+                f"📊 <b>Tages-Report {today}</b>\n\n"
+                "Signal-Pipeline:\n"
+                f"  Neue Unternehmen: {sm['new_companies']}\n"
+                f"  Bestätigungen: {sm['confirmed']} {cons_ok}\n"
+                f"  Widersprüche: {sm['contradicted']}\n"
+                f"  Ø Conviction: {sm['avg_conviction']:.0%}\n\n"
+                "Portfolio:\n"
+                f"  Offene Pos.: {pm['open_positions']}/8\n"
+                f"  Win Rate (7d): {pm['win_rate_7d']:.0%} {wr_ok}\n"
+                f"  Profit Factor: {pm['profit_factor_7d']:.2f}\n"
+                f"  Sortino: {pm['sortino_30d']:.2f} | Calmar: {pm['calmar_30d']:.2f}\n"
+                f"  Exposure: LONG {pm['exposure_long_pct']:.0f}% SHORT {pm['exposure_short_pct']:.0f}%\n"
+                f"{bm_line}\n"
+                f"{top_line}"
+            )
 
-    send_telegram(msg)
-    con.close()
-    check_half_life_calibration(con)
-    print("\n✅ Nightly Eval abgeschlossen", flush=True)
+        send_telegram(msg)
+        check_half_life_calibration(con)
+        print("\n✅ Nightly Eval abgeschlossen", flush=True)
+    finally:
+        con.close()
 
 if __name__ == "__main__":
     main()

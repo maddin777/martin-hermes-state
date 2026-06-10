@@ -155,62 +155,64 @@ def cleanup_db(con):
 
 def main():
     con = init_db()
-    print("\n🧹 Starte Cleanup...", flush=True)
-    cleanup_db(con)
+    try:
+        print("\n🧹 Starte Cleanup...", flush=True)
+        cleanup_db(con)
 
-    # Kanäle aus DB laden (Fallback zu statisch)
-    channels = get_active_channels(con)
-    print(f"  📺 {len(channels)} aktive YouTube-Kanäle", flush=True)
+        # Kanäle aus DB laden (Fallback zu statisch)
+        channels = get_active_channels(con)
+        print(f"  📺 {len(channels)} aktive YouTube-Kanäle", flush=True)
 
-    cutoff = (datetime.now(timezone.utc) - timedelta(days=DAYS)).strftime("%Y%m%d")
-    total_new = 0
+        cutoff = (datetime.now(timezone.utc) - timedelta(days=DAYS)).strftime("%Y%m%d")
+        total_new = 0
 
-    for channel_name, channel_url in channels:
-        print(f"\n[{channel_name}] Scanning...", flush=True)
-        try:
-            video_ids = get_recent_video_ids(channel_url, DAYS)
-        except Exception as e:
-            print(f"  ⚠ Kanal übersprungen ({channel_name}): {e}", flush=True)
-            continue
-        print(f"  → {len(video_ids)} candidate IDs", flush=True)
-
-        for vid_id in video_ids:
-            existing = con.execute(
-                "SELECT video_id FROM videos WHERE video_id=?", (vid_id,)
-            ).fetchone()
-            if existing:
-                print(f"  ⏭ {vid_id} bereits in DB", flush=True)
+        for channel_name, channel_url in channels:
+            print(f"\n[{channel_name}] Scanning...", flush=True)
+            try:
+                video_ids = get_recent_video_ids(channel_url, DAYS)
+            except Exception as e:
+                print(f"  ⚠ Kanal übersprungen ({channel_name}): {e}", flush=True)
                 continue
+            print(f"  → {len(video_ids)} candidate IDs", flush=True)
 
-            date_str, title = get_video_meta(vid_id)
-            if not date_str or date_str < cutoff:
-                print(f"  ⏭ {vid_id} zu alt ({date_str})", flush=True)
-                break
+            for vid_id in video_ids:
+                existing = con.execute(
+                    "SELECT video_id FROM videos WHERE video_id=?", (vid_id,)
+                ).fetchone()
+                if existing:
+                    print(f"  ⏭ {vid_id} bereits in DB", flush=True)
+                    continue
 
-            print(f"  📹 {title[:60]} ({date_str})", flush=True)
-            transcript = get_transcript(vid_id)
-            if transcript:
-                print(f"     ✓ {len(transcript)} Zeichen", flush=True)
-            else:
-                print("     ✗ Kein Transkript", flush=True)
+                date_str, title = get_video_meta(vid_id)
+                if not date_str or date_str < cutoff:
+                    print(f"  ⏭ {vid_id} zu alt ({date_str})", flush=True)
+                    break
 
-            con.execute("""
-                INSERT OR IGNORE INTO videos
-                (video_id, channel, title, upload_date, transcript, status)
-                VALUES (?,?,?,?,?,?)
-            """, (vid_id, channel_name, title, date_str, transcript,
-                  'pending' if transcript else 'no_transcript'))
-            con.commit()
-            total_new += 1
+                print(f"  📹 {title[:60]} ({date_str})", flush=True)
+                transcript = get_transcript(vid_id)
+                if transcript:
+                    print(f"     ✓ {len(transcript)} Zeichen", flush=True)
+                else:
+                    print("     ✗ Kein Transkript", flush=True)
 
-            if transcript:
-                print(f"     💤 Warte {SLEEP_BETWEEN_VIDEOS}s...", flush=True)
-                time.sleep(SLEEP_BETWEEN_VIDEOS)
-            else:
-                time.sleep(5)
+                con.execute("""
+                    INSERT OR IGNORE INTO videos
+                    (video_id, channel, title, upload_date, transcript, status)
+                    VALUES (?,?,?,?,?,?)
+                """, (vid_id, channel_name, title, date_str, transcript,
+                      'pending' if transcript else 'no_transcript'))
+                con.commit()
+                total_new += 1
 
-    print(f"\n✅ Fertig. {total_new} neue Videos gespeichert.", flush=True)
-    con.close()
+                if transcript:
+                    print(f"     💤 Warte {SLEEP_BETWEEN_VIDEOS}s...", flush=True)
+                    time.sleep(SLEEP_BETWEEN_VIDEOS)
+                else:
+                    time.sleep(5)
+
+        print(f"\n✅ Fertig. {total_new} neue Videos gespeichert.", flush=True)
+    finally:
+        con.close()
 
 if __name__ == "__main__":
     main()

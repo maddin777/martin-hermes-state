@@ -1,0 +1,121 @@
+---
+name: trading-scan
+description: "Run the complete Hermes Trading pipeline — macro data, social/RSS/YouTube scan, LLM signal extraction, watchlist management, technical analysis, signal management, nightly evaluation. Use as a single entry point for the daily trading workflow."
+version: 1.0.0
+author: Hermes
+license: MIT
+metadata:
+  hermes:
+    tags: [trading, pipeline, scan, watchlist, signals]
+    related_skills: [trading-pipeline]
+---
+
+# Trading Scan Bundle
+
+## Overview
+
+Führt die komplette nächtliche Trading-Pipeline aus dem Profil `hermes_trading` aus. Bündelt alle Einzelschritte in einem konsistenten Workflow.
+
+## Pipeline-Schritte (Reihenfolge)
+
+| Schritt | Script | Zeit | Zweck |
+|---------|--------|------|-------|
+| 1. Fundamental Data | `fundamental_data.py` | 02:00 | FRED Makro, SEC Insider, Put/Call Ratio, Regime-Detection |
+| 2. Social Scanner | `social_scanner.py` | 03:00 | RSS Feeds (Seeking Alpha, Bloomberg etc.) + Twitter/X |
+| 3. YouTube Scan | `yt_channel_monitor.py` | 04:00 | 23 YouTube-Kanäle scannen |
+| 4. KI Analyse | via trading_pipeline | 04:00 | LLM-Extraktion von Unternehmen + Sentiment aus Transkripten |
+| 5. Watchlist Update | `watchlist_manager.py` | 04:00 | Watchlist + Conviction Score berechnen |
+| 6. Technical Analysis | `technical_validator.py` | 04:00 | EMA/RSI/MACD für Watchlist-Kandidaten |
+| 7. Signal Manager | `signal_manager.py` | 04:00 | Entry-Signale, Position-Sizing, Portfolio-Management |
+| 8. LLM Validation | `llm_validator.py` | 04:50 | Kreuzvalidierung der Top-Kandidaten |
+| 9. Nightly Eval | `nightly_eval.py` | 05:00 | Metriken, Quellen-Qualität, Telegram-Report |
+| 10. Watchlist Export | `export_watchlist.py` | 22:05 | Export nach Obsidian |
+
+## Verwendung
+
+### Manueller Durchlauf (alle Schritte)
+Startet die Pipeline im Profil hermes_trading und führt alle Schritte nacheinander aus:
+```
+cd /root/.hermes/profiles/hermes_trading/skills/trading/scripts
+python3 trading_pipeline.py
+```
+
+### Einzelschritte ausführen
+Jedes Script kann einzeln gestartet werden:
+
+**Nacht-Pipeline (02:00-05:00, Mo-Fr):**
+```
+# Profil-Umgebung laden
+source /root/.hermes/profiles/hermes_trading/.env
+
+# Schritt 1-2
+python3 fundamental_data.py    # Makro + Insider + PCR
+python3 social_scanner.py      # RSS + Twitter
+
+# Schritt 3-7 (Orchestriert)
+python3 trading_pipeline.py    # YouTube → Analyse → Watchlist → Technisch → Signale
+
+# Schritt 8-9
+python3 llm_validator.py       # Kreuzvalidierung
+python3 nightly_eval.py        # Metriken + Report
+```
+
+**Intraday (09:00-20:00, Mo-Fr):**
+```
+python3 signal_manager.py check_only  # SL/TP prüfen
+python3 active_exit_check.py          # Tech-Check + Profit-Sicherung
+```
+
+**Wöchentlich (Sonntag):**
+```
+# Hermes Cron jobs (automatisiert):
+# - 05:30 watchlist_dedup.py (Cron: 472ace6fe18a)
+# - 06:00 nightly_eval.py (weekly mode)
+# - 07:00 source_lifecycle.py (Quellen-Cleanup)
+# - 08:00 strategy_optimizer.py (Parameter-Optimierung)
+```
+
+## Status-Check
+
+### Dashboard
+```bash
+curl -s http://localhost:8081/ | head -50
+```
+
+### Letzter Pipeline-Lauf
+```bash
+tail -30 /root/.hermes/profiles/hermes_trading/skills/trading/data/cron.log
+```
+
+### Letzte Metriken
+```bash
+sqlite3 /root/.hermes/profiles/hermes_trading/skills/trading/data/trading.db \
+  "SELECT date, new_companies, confirmed, avg_conviction, open_positions, win_rate_30d \
+   FROM eval_metrics ORDER BY date DESC LIMIT 5;"
+```
+
+## Bekannte Probleme
+
+### DB-Lock Cascade
+Wenn fundamental_data oder watchlist_manager mit offener SQLite-Connection crasht, blockiert es alle nachfolgenden Jobs („database is locked“).
+
+**Fix:** `PRAGMA busy_timeout=30000` in allen Pipeline-Scripts + `con.close()` im finally-Block.
+
+### Watchlist-Log-Alias
+Der Dashboard-Cron-Status für „Watchlist Update“ sucht nach „watchlist_manager“ im Log, aber die Pipeline loggt als „Watchlist Update“. Gelber Status = String-Mismatch.
+
+**Fix:** `LOG_ALIASES = {"watchlist_manager": "Watchlist Update"}` in `get_last_run()` des Dashboards.
+
+## Cron-Jobs (Hermes Daemon)
+| Job | Zeit | Zweck |
+|-----|------|-------|
+| ttwo-catalyst-alarm | So 10:00 | TTWO/GTA6-Katalysator-Check |
+| watchlist-dedup | So 05:30 | Watchlist-Deduplizierung |
+| vault-insights-daily | 02:45 tägl. | Wiki-Pflege |
+| cron-health-daily | 08:00 tägl. | System-Health |
+
+## System-Crontab (Profil hermes_trading)
+Alle Pipeline-Jobs laufen über die System-Crontab des Profils. Anzeigen mit:
+```bash
+crontab -l | grep trading
+```
