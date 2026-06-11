@@ -483,7 +483,8 @@ def main():
         """, (cutoff,)).fetchall()
     
         print(f"  → {len(mentions)} Unternehmen in Watchlist", flush=True)
-    
+
+        _grok_counter = 0  # Limit Grok API-Calls
         for m in mentions:
             name       = m["name"]
             channels_list = m["channels"].split(",") if m["channels"] else []
@@ -528,8 +529,9 @@ def main():
                 conviction = min(1.0, conviction + thesis_boost)
                 print(f"    📋 Thesis-Boost +{thesis_boost:.0%} → conviction={conviction:.2f}", flush=True)
     
-            # Grok X-Boost: Nur für High-Conviction-Kandidaten (≥70%) um API-Calls zu sparen
-            if conviction >= 0.70 and ticker:
+            # Grok X-Boost: Nur Top 20 mit conviction ≥ 0.80 (reduziert API-Calls um ~75%)
+            if conviction >= 0.80 and ticker and _grok_counter < 20:
+                _grok_counter += 1
                 try:
                     from xsearch_helper import conviction_boost as x_conviction_boost
                     new_conv, reason = x_conviction_boost(ticker, canonical_name, conviction)

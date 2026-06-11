@@ -125,9 +125,11 @@ The pipeline has three parallel tasks. See `references/vault-insights-prompt.md`
 
 ### A — Wiki Maintenance (Einsortieren)
 
-Scan newly synced files in trading-relevant directories: `boerse/`, `Trading/`, `Geldverdienen/` (trading subset), `hermes/` (trading subset).
+Scan newly synced files in these directories (use `-maxdepth 5` so Unterordner wie `Projekte/MarineIT/` nicht übersehen werden):
+- `boerse/`, `Trading/`, `Geldverdienen/` (trading subset), `hermes/` (trading subset)
+- `Projekte/` (non-trading projects like Zeeslogger, MarineIT, etc.)
 - Incorporate new insights into existing wiki pages (`concepts/`, `entities/`, `sources/`)
-- Create new wiki pages for new concepts
+- Create new wiki pages for new concepts — for non-trading project files (e.g. Zeeslogger), create in `wiki/concepts/` with appropriate tags and source links
 - Maintain wikilinks
 
 #### Trading Data Quality
@@ -136,7 +138,9 @@ When the Watchlist shows a spike in unresolved "?" tickers in its data-quality s
 
 #### Derived Page Auto-Refresh
 
-When creating a wiki page derived from a source file (e.g., `wiki/concepts/Exit Management.md` from `Projekte/Hermes_Trading_Skill_Erklaerung.md`):
+When creating a wiki page derived from a source file (e.g., `wiki/concepts/Exit Management.md` from `Trading/Erklaerung.md`):
+
+**Achtung:** Die Exit-Management-Quelldatei ist `Trading/Erklaerung.md`, **nicht** `Projekte/Hermes_Trading_Skill_Erklaerung.md` (existiert nicht). Der vault-insights-daily Cron-Prompt wurde am 10.06.2026 auf den korrekten Pfad gefixt.
 
 1. **Always update the nightly cron prompt** to include a timestamp comparison check on subsequent runs:
    - Compare `mtime` of source file vs wiki page
@@ -267,3 +271,4 @@ If trading system scripts are added/removed from the crontab, `cron_health.py` s
 - **Sync check before pipeline**: The bisync runs via cron (global scheduler), not via `sync.sh`. Don't falsely report sync broken because `sync.sh` has a different path.
 - **X Bookmarks (paused)**: SuperGrok is integrated as a news-agent provider, but X Bookmarks access is still unresolved. Skip until further notice.
 - **Obsidian Diary gets overwritten on vault refresh** — `04-Tagebuch.md` is on GDrive. After vault refresh, recreate diary entries manually.
+- **`-maxdepth 3` ist zu flach für den Vault-Scan** — Dateien in `Projekte/MarineIT/` liegen auf Tiefe 4. Der vault-insights-daily Cron verwendet `-maxdepth 5` (gefixt 10.06.2026) um Project-Unterordner zu erfassen. Bei neuen Ordnerstrukturen immer zuerst `find /root/obsidian-vault/ -maxdepth 6 -type d` laufen lassen um die Tiefe zu prüfen.
