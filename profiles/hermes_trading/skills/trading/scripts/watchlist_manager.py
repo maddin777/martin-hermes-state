@@ -568,8 +568,8 @@ def main():
                   json.dumps(channels_list), ticker))
         con.commit()
     
-        # 6. Technische Scores für Top-Kandidaten aktualisieren
-        top_candidates = con.execute("""
+        # 6. Technische Scores für Top-Kandidaten aktualisieren (LONG + SHORT)
+        candidates_long = con.execute("""
             SELECT * FROM watchlist
             WHERE status='watching'
             AND conviction_score >= ?
@@ -578,10 +578,22 @@ def main():
             ORDER BY conviction_score DESC
             LIMIT 20
         """, (MIN_CONVICTION * 0.5, 1)).fetchall()
-    
-        print(f"\n  Technische Analyse für {len(top_candidates)} Kandidaten...", flush=True)
+
+        candidates_short = con.execute("""
+            SELECT * FROM watchlist
+            WHERE status='watching'
+            AND conviction_score_bear >= ?
+            AND mention_count >= 1
+            AND ticker IS NOT NULL
+            ORDER BY conviction_score_bear DESC
+            LIMIT 20
+        """, (MIN_CONVICTION * 0.5,)).fetchall()
+
+        top_candidates = candidates_long + [c for c in candidates_short if c["ticker"] not in {x["ticker"] for x in candidates_long}]
+        print(f"\n  Technische Analyse für {len(top_candidates)} Kandidaten (LONG:{len(candidates_long)} SHORT:{len(candidates_short)})...", flush=True)
+
         for c in top_candidates:
-            tech = get_technical_score(c["ticker"])  # gibt Dict zurück (utils.py)
+            tech = get_technical_score(c["ticker"])
             if tech:
                 tech_score = tech["confidence"]
                 direction  = tech["direction"]
@@ -589,10 +601,12 @@ def main():
                     UPDATE watchlist SET tech_score=?, tech_direction=?
                     WHERE name=?
                 """, (tech_score, direction, c["name"]))
-                print(f"  {c['name']:25} {c['ticker']:10} "
+                is_short_candidate = c["ticker"] in {x["ticker"] for x in candidates_short}
+                print(f"  {'🔻' if is_short_candidate else '  '} {c['name']:25} {c['ticker']:10} "
                       f"Conv:{c['conviction_score']:.2f} "
+                      f"ShortConv:{c['conviction_score_bear']:.2f} "
                       f"Tech:{tech_score} {direction}", flush=True)
-    
+
         con.commit()
     
         # 7. Top Kandidaten ausgeben

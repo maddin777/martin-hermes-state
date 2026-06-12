@@ -30,13 +30,17 @@ Database is at:
 |-------|--------|---------|
 | 02:00 | `fundamental_data.py` | Macro data, insider trades, put/call ratios, regime detection |
 | 03:00 | `social_scanner.py` | RSS feeds (Seeking Alpha, Bloomberg etc.) + Twitter/X (twitterapi.io, 6 accounts) |
-| 04:00 | `trading_pipeline.py` | Orchestrator: YouTube scan → KI Analyse → Watchlist Update → Technical Analysis → Signal Manager. **Achtung:** Watchlist Update läuft 2-3h (Grok + yfinance API). llm_validator/nightly_eval crashen wenn Pipeline noch läuft — siehe Pitfall 12 |
-| 04:50 | `llm_validator.py` | ⚠️ Timing-Konflikt: crasht wenn Pipeline noch läuft — siehe Pitfall 12 |
-| 05:00 | `nightly_eval.py` | ⚠️ Timing-Konflikt: crasht wenn Pipeline noch läuft — siehe Pitfall 12 |
+| 04:00 | `trading_pipeline.py` | Orchestrator: YouTube scan → KI Analyse → Watchlist Update → Technical Analysis (yfinance) → Signal Manager. **Achtung:** Watchlist Update läuft 2-3h (Grok + yfinance API). llm_validator crasht wenn Pipeline noch läuft — siehe Pitfall 12 |
+| 04:50 | `llm_validator.py` | ⚠️ **Noch in crontab** obwohl Pitfall 12 Fix nicht angewendet — crasht regelmäßig mit DB-Lock |
+| 05:00 | `nightly_eval.py` | ✅ Läuft sauber seit Pipeline-Optimierung (unter 5s) |
 | 09:30 | `active_exit_check.py` | Mid-day exit checks |
 | 13-20:15 | `signal_manager.py check_only` | Intraday signal check (hourly) |
 | 15:30 | `active_exit_check.py` | Afternoon exit checks |
 | 20:00 (Fr) | `signal_manager.py full` | Weekly signal review |
+
+**Achtung Nicht-Selbstständige Scripts (keine eigenen Cron-Jobs):**
+- `technical_validator.py` → läuft **innerhalb** von `trading_pipeline.py` als Subprozess-Schritt "Technical Analysis". Nutzt **ausschließlich yfinance** (kein Grok, kein LLM).\n- `signal_extractor.py` → läuft innerhalb von `trading_pipeline.py` als "KI Analyse"\n- `watchlist_manager.py` → läuft innerhalb von `trading_pipeline.py` als "Watchlist Update"\n- `watchlist_dedup.py` → Hermes-Cron So 05:30
+- `source_lifecycle.py` → system crontab So 07:00
 
 ### Weekend (Sonntag)
 | Time | Script | Purpose |
@@ -60,12 +64,60 @@ transcripts (sqlite: videos table)
 watchlist_mentions
     ↓ (Watchlist Manager — normalizes names, merges duplicates)
 watchlist table (778 companies typ.)
-    ↓ (Technical Analysis — yfinance price data + indicators)
+    ↓ (Technical Analysis — yfinance ONLY, no Grok/LLM)
 trading_signals_validated.json + watchlist updated
     ↓ (Signal Manager — entry signals, position sizing)
 positions table → portfolio management
     ↓ (Nightly Eval — metrics → eval_metrics table)
 Telegram report + Dashboard
+```
+
+**Grok-Klarstellung:** Nur der Conviction-Boost im Watchlist Update nutzt Grok API (max 20 Calls/Lauf, ≥0.80 Schwelle). Technical Analysis, Signal Manager, Fundamental Data, Social Scanner und Nightly Eval arbeiten **ohne Grok** — dein Grok-Tokenlimit betrifft ausschließlich die Watchlist-Anreicherung, nicht die Pipeline als Ganzes.
+
+## Strukturelle Limitierungen
+
+### LONG-Bias der Signalquellen
+
+**Beobachtung (Stand Juni 2026):** 43 LONG-Trades vs. 1 SHORT-Trade seit Systemstart. 0% Win-Rate auf Shorts (1 Loss).
+
+**Warum:**
+1. **YouTube-Kanäle und RSS-Feeds sind bullish** — Finanz-Youtuber, Seeking Alpha, Bloomberg etc. liefern fast ausschließlich LONG-Thesen. Short-Thesen sind selten.
+2. **Conviction-Boost verstärkt den Bias** — Grok prüft nur Kandidaten mit ≥0.80 Conviction und boostet nur bullish (kein bearish Boost).
+3. **Tech-Scores wurden nur für Bull-Kandidaten aktualisiert** — watchlist_manager berechnete yfinance-Scores nur für Top 20 nach bullish conviction. Short-Kandidaten bekamen nie einen tech_score → nie tech_direction='SHORT' → nie als Short-Kandidat erkannt.
+
+**Short-Strategie Implementierung (11.06.2026) — 4 Änderungen:**
+1. **Short-RSS-Feeds:** ZeroHedge, MishTalk, HighShortInterest als Quellen hinzugefügt (sources.json)
+2. **Tech-Score-Update für Shorts:** watchlist_manager aktualisiert jetzt auch Top 20 nach `conviction_score_bear` (vorher nur bullish). Short-Kandidaten kriegen yfinance-Daten.
+3. **Niedrigere Short-Hürde:** `min_confidence_short` 0.65 → 0.5, neuer Key `min_mentions_short: 1` (strategy_config.json)
+4. **Separate Mention-Schwelle:** Signal-Manager nutzt `min_mentions_short` statt `min_mentions` für Short-Query
+
+**Live-Effekt (post-Fix):** 2 Short-Kandidaten sofort qualifiziert: Berkshire Hathaway (BRK-B, bear_conviction=0.643) und Walmart (WMT, bear_conviction=0.514). Pipeline checkt bei jedem Lauf.
+
+**Technische-Analyse Direction-Logik** (in `utils.py` `get_technical_score()`):
+- Score ≥ +2 → LONG, Score ≤ -2 → SHORT, sonst NEUTRAL
+- RSI >75 (überkauft) gibt -2 (Short-Signal), RSI <25 (stark überverkauft) gibt ebenfalls -2
+- Scale: -10 bis +10, aus 7 Indikatoren (EMA Stack, RSI, MACD, Preis/EMA50, Volumen, Weekly Trend, ADX)
+
+## Closed-Loop Architecture (seit 11.06.2026)
+
+Drei Feedback-Loops verbinden Trade-Outcomes mit der Aktien-Selektion. Das System lernt aus jedem Trade-Exit statt nur sonntags per Grid-Search.
+
+### Loop 1: Post-Trade Learner (`nightly_eval.py → update_segment_performance()`)
+Aggregiert geschlossene Positionen in `segment_performance`-Tabelle nach (Sektor × Conviction-Tier × Richtung × Regime). Läuft täglich 05:00.
+
+### Loop 2: Conviction Calibration (`nightly_eval.py → calibrate_conviction()`)
+Prüft ob HIGH ≥ 70%, NORMAL ≥ 55%, LOW ≥ 40% Win-Rate erreichen. Meldet Fehlkalibrierung im Log.
+
+### Loop 3: Pre-Entry Gate (`signal_manager.py → check_segment_performance()`)
+Blockiert Entry wenn Segment WR < 30% (≥5 Trades) oder WR < 35% + PnL < -3%.
+
+**Key Commands:**
+```bash
+# Segment-Performance prüfen
+sqlite3 $DB "SELECT sector, conviction_tier, tech_direction, trades_total, win_rate, avg_pnl_pct FROM segment_performance ORDER BY trades_total DESC LIMIT 15;"
+
+# Calibration im nightly_eval-Log
+grep "Conviction-Kalibrierung\\|Tier:" /root/.hermes/profiles/hermes_trading/skills/trading/data/cron.log | tail -10
 ```
 
 ## Pitfalls & Fixes
@@ -133,9 +185,9 @@ print('WAL checkpoint done')
 
 **Prävention:** Nach jedem Patch an fundamental_data.py den `finally`-Block prüfen.
 
-### 3. Technical Validator Crash
+### 3. Technical Validator / get_technical_score Crash
 
-**Symptom:** `technical_validator.py` crashes at line 287 with `ValueError: Unknown format code 'd' for object of type 'float'`.
+**Symptom:** `technical_validator.py` oder `watchlist_manager.py` crasht bei yfinance-Daten mit `ValueError: Unknown format code 'd' for object of type 'float'`.
 
 **Fix:** Change `{t['score']:+d}` to `{t['score']:+.1f}` or `int(t['score'])`.
 
@@ -281,9 +333,9 @@ con.commit()
 
 **Alternativ:** Wenn der falsche Ticker noch keinem korrekten Eintrag entspricht (kein UNIQUE-Konflikt), reicht `UPDATE ticker='...' WHERE ticker='...'`.
 
-### 12. Pipeline-Timing-Konflikt (llm_validator + nightly_eval crashen)
+### 12. Pipeline-Timing-Konflikt (llm_validator crasht noch, nightly_eval läuft)
 
-**Symptom:** llm_validator (04:50) und nightly_eval (05:00) scheitern mit `sqlite3.OperationalError: database is locked`, OBWOHL try/finally in allen Scripts korrekt eingebaut ist. Dashboard zeigt diese Jobs gelb/rot, Watchlist Update läuft durch.
+**Symptom:** llm_validator (04:50) scheitert mit `sqlite3.OperationalError: database is locked`, OBWOHL try/finally korrekt eingebaut ist. Dashboard zeigt llm_validator gelb/rot. Nightly_eval (05:00) läuft sauber (<5s).
 
 **Log-Muster:**
 ```
@@ -291,34 +343,23 @@ con.commit()
   File ".../llm_validator.py", line 121, in main
     con.execute(
 sqlite3.OperationalError: database is locked
-=== Wed Jun 10 05:00:01 CEST 2026 === nightly_eval START ===
-  File ".../nightly_eval.py", line 334, in main
-    con.execute(
-sqlite3.OperationalError: database is locked
 === 07:06:31 Watchlist Update DONE ===  ← erst ~3h später
 ```
 
-**Root Cause:** Die system crontab hat FESTE Zeiten für llm_validator (04:50) und nightly_eval (05:00). Die Pipeline (`trading_pipeline.py`) läuft aber von 04:00 bis ~07:10. Das Watchlist Update braucht 2-3 Stunden wegen:
-- yfinance API-Calls für Technical Scores (`get_technical_score`)
-- Grok X-Boost API-Calls (früher 50-100 Calls, seit 10.06. auf max 20 begrenzt)
-- company_validator.py (yfinance Search für unbekannte Firmen)
+**Root Cause:** Pipeline läuft 04:00–~07:10 (Watchlist Update 2-3h). llm_validator feuert um 04:50 während Pipeline noch aktiv in DB schreibt → DB Lock.
 
-Die system crontab feuert llm_validator + nightly_eval während die Pipeline noch aktiv in die DB schreibt → DB Lock. try/finally hilft nicht weil kein Script crasht — sie laufen parallel.
+**⚠ Status Juni 2026 - Fix NICHT angewendet:**
+- `llm_validator.py` ist **weiterhin** in der crontab bei 04:50
+- Pipeline läuft durch (✅ Technical Analysis, ✅ Signal Manager), aber llm_validator crasht regelmäßig
+- Sollte aus crontab entfernt und als letzter Schritt in `trading_pipeline.py` orchestriert werden
 
-**Kurzfristiger Fix (10.06.2026):** Grok X-Boost reduziert:
-- Schwelle von 0.70 auf 0.80
-- Max 20 Calls pro Lauf (vorher unbegrenzt, typ. 50-100)
-- Counter `_grok_counter` wird vor der Mention-Schleife initialisiert
-- Spart ~30-45 Min Laufzeit, löst Timing aber nicht garantiert
-
-**Vollständiger Fix — Orchestrierung in trading_pipeline.py:**
-1. `llm_validator.py` und `nightly_eval.py` AUS der system crontab entfernen
-2. In `trading_pipeline.py` ALS LETZTE SCHRITTE nach Signal Manager einfügen
+**Fix — Orchestrierung in trading_pipeline.py:**
+1. `llm_validator.py` AUS der system crontab entfernen
+2. In `trading_pipeline.py` ALS LETZTER SCHRITT nach Signal Manager einfügen
 
 **Diagnose Timing:**
 ```bash
 grep -E "TRADING PIPELINE DONE|trading_pipeline START" /root/.hermes/profiles/hermes_trading/skills/trading/data/cron.log | tail -2
-grep -E "🐦 Grok:" /root/.hermes/profiles/hermes_trading/skills/trading/data/cron.log | tail -5
 grep -E "database is locked|ERROR|Traceback" /root/.hermes/profiles/hermes_trading/skills/trading/data/cron.log | tail -10
 ```
 
@@ -335,7 +376,25 @@ grep -E "database is locked|ERROR|Traceback" /root/.hermes/profiles/hermes_tradi
 
 **Bei Bedarf anpassen:** `_grok_counter < 20` und `conviction >= 0.80` in der `if`-Bedingung ändern.
 
-### 11. xsearch_helper Import Collision (Hermes Agent vs Trading utils)
+### 14. Dashboard Ghost Entries (Gelbe Status für absorbierte Scripts)
+
+**Symptom:** Ein Eintrag im Dashboard Cron-Tab zeigt gelb/strike (`–`) obwohl der Pipeline-Schritt sauber läuft (✅ im TRADING PIPELINE DONE Report).
+
+**Root Cause:** `dashboard.py` `get_cron_jobs()` iteriert die system crontab und filtert nach fest codierten Script-Namen. Wenn ein Script in `trading_pipeline.py` absorbiert wurde (kein eigener Cron-Job mehr) UND der Eintrag noch in `descriptions` steht, zeigt das Dashboard den Status "–" → gelb (#ffd740).
+
+**Angewendeter Fix (11.06.2026) für technical_validator:**
+- `technical_validator` aus `descriptions`-Dict entfernt (durch Kommentar ersetzt)
+- `technical_validator` aus dem crontab-Filter-String entfernt (Zeile 164)
+- Dashboard neugestartet (kill + restart)
+
+**Bei neuen Absorptionen:** IMMER beide Stellen in `dashboard.py` patchen:
+1. `descriptions`-Dict (ca. Zeile 133): Eintrag löschen oder kommentieren
+2. Crontab-Filter-String (ca. Zeile 164): Script-Namen entfernen
+3. Dashboard neustarten: `kill $(pgrep -f dashboard.py) && cd /root/.hermes/profiles/hermes_trading/skills/trading && venv/bin/python scripts/dashboard.py &`
+
+**Diagnose:** Wenn ein Schritt gelb "–" zeigt, aber die Pipeline ✅ im Report → Ghost Entry.
+
+### 15. xsearch_helper Import Collision (Hermes Agent vs Trading utils)
 
 **Symptom:** Signal Manager läuft durch, aber zeigt `x_search Fehler: cannot import name 'base_url_hostname' from 'utils'`. Der Grok-X-Boost (`conviction_boost`, `breaking_news_check`) fällt aus.
 
@@ -349,65 +408,45 @@ grep -E "database is locked|ERROR|Traceback" /root/.hermes/profiles/hermes_tradi
 
 **Vorteil:** Null sys.path-Manipulation im Hauptprozess. Keine Nebenwirkungen auf nachfolgende Trading-Imports.
 
-### 12. Pipeline-Timing-Konflikt (llm_validator + nightly_eval crashen)
-
-**Symptom:** llm_validator (04:50) und nightly_eval (05:00) scheitern mit `sqlite3.OperationalError: database is locked`, OBWOHL try/finally in allen Scripts korrekt eingebaut ist. Dashboard zeigt diese Jobs gelb/rot, Watchlist Update läuft durch.
-
-**Log-Muster:**
-```
-=== 04:19:50 Watchlist Update START ===
-  File ".../llm_validator.py", line 121, in main
-    con.execute(
-sqlite3.OperationalError: database is locked
-=== Wed Jun 10 05:00:01 CEST 2026 === nightly_eval START ===
-  File ".../nightly_eval.py", line 334, in main
-    con.execute(
-sqlite3.OperationalError: database is locked
-=== 07:06:31 Watchlist Update DONE ===  ← erst 3h später
-```
-
-**Root Cause:** Die system crontab hat FESTE Zeiten für llm_validator (04:50) und nightly_eval (05:00). Die Pipeline (`trading_pipeline.py`) läuft aber von 04:00 bis ~07:10. Das Watchlist Update braucht 2-3 Stunden wegen:
-- yfinance API-Calls für Technical Scores
-- Grok X-Boost API-Calls (High-Conviction-Kandidaten)
-- company_validator.py (yfinance Search für unbekannte Firmen)
-
-Die system crontab feuert llm_validator + nightly_eval während die Pipeline noch aktiv in die DB schreibt → DB Lock. try/finally hilft nicht weil kein Script crasht — sie laufen parallel.
-
-**Fix — Orchestrierung in trading_pipeline.py:**
-1. `llm_validator.py` und `nightly_eval.py` AUS der system crontab ENTFERNEN
-2. In `trading_pipeline.py` ALS LETZTE SCHRITTE nach Signal Manager einfügen:
-```python
-import subprocess, sys
-scripts_dir = os.path.dirname(os.path.abspath(__file__))
-print("=== LLM Validator START ===", flush=True)
-subprocess.run([sys.executable, os.path.join(scripts_dir, "llm_validator.py")], check=False)
-print("=== LLM Validator DONE ===", flush=True)
-print("=== Nightly Eval START ===", flush=True)
-subprocess.run([sys.executable, os.path.join(scripts_dir, "nightly_eval.py")], check=False)
-print("=== Nightly Eval DONE ===", flush=True)
-```
-3. Hermes-Cron für nightly Telegram-Report (z.B. 05:15, no_agent, script das eval_metrics per Telegram sendet)
-
-**Diagnose Timing:**
-```bash
-grep -E "TRADING PIPELINE DONE|trading_pipeline START" /root/.hermes/profiles/hermes_trading/skills/trading/data/cron.log | tail -2
-grep -E "(START|DONE)" /root/.hermes/profiles/hermes_trading/skills/trading/data/cron.log | grep -E "(YouTube|KI Analyse|Watchlist Update|Technical Analysis|Signal Manager)" | tail -12
-grep -E "database is locked|ERROR|Traceback" /root/.hermes/profiles/hermes_trading/skills/trading/data/cron.log | tail -10
-```
+### 15. xsearch_helper Import Collision
 
 ## Monitoring & Auto-Diagnose
 
 Bei Abweichung vom Dashboard-Status **grün** (gelb oder rot für Pipeline-Schritte) IMMER automatisch Fehleranalyse durchführen:
 
 1. **Status erfassen:** Dashboard Cron & Logs Tab checken (http://localhost:8081/cron) oder direkt cron.log
-2. **Log-Muster erkennen:** `database is locked` ≠ Orphaned-Connection → check ob Timing-Konflikt (Punkt 12). `Traceback` + `KeyError`/`ImportError` → Config-Fehler (Punkt 7).
-3. **eval_metrics auf Aktualität prüfen:** Letzter Eintrag sollte vom heutigen Datum sein. Stale Daten → nightly_eval läuft nicht sauber.
-4. **Pipeline-Laufzeit messen:** `grep TRADING PIPELINE DONE` → wenn > 1h, liegt Timing-Konflikt nahe (Watchlist Update zu langsam).
-5. **Lösungsvorschlag mit Aufwandsschätzung** immer direkt mitsenden — keine Rückfrage ob Analyse erwünscht ist.
+2. **Log-Muster erkennen:** `database is locked` → Orphaned-Connection (Pitfall 2) oder Timing-Konflikt (Pitfall 12). `Traceback` + `KeyError`/`ImportError` → Config-Fehler (Pitfall 7).
+**Achtung Ghost-Einträge:** Wenn ein Schritt im Dashboard-Cron gelb "–" zeigt, obwohl die Pipeline ✅ meldet → Script wurde absorbiert, Dashboard sucht noch in crontab. Fix in Pitfall 14.
+4. **eval_metrics auf Aktualität prüfen:** Letzter Eintrag sollte vom heutigen Datum sein. Stale Daten → nightly_eval läuft nicht sauber.
+5. **Pipeline-Laufzeit messen:** `grep TRADING PIPELINE DONE` → wenn > 1h, liegt Timing-Konflikt nahe (Watchlist Update zu langsam).
+6. **Short-Kandidaten prüfen:** `sqlite3 $DB \"SELECT name, ticker, conviction_score_bear, mention_count FROM watchlist WHERE tech_direction='SHORT' AND status='watching' ORDER BY conviction_score_bear DESC LIMIT 10;\"` → wenn keine trotz änderungen, check ob tech_score berechnet wurde (Pitfall 14: ghost entry)
+7. **Lösungsvorschlag mit Aufwandsschätzung** immer direkt mitsenden — keine Rückfrage ob Analyse erwünscht ist.
+
+## Dokumentation pflegen
+
+Bei JEDER Pipeline-Änderung MÜSSEN beide Dokumentationen aktualisiert werden:
+
+| Datei | Zielgruppe | Pfad |
+|-------|-----------|------|
+| `trading-pipeline` Skill (diese Datei) | Agent (autonome Sessions) | `~/.hermes/skills/data-science/trading-pipeline/SKILL.md` |
+| `Erklaerung.md` | User (Obsidian Vault) | `/root/obsidian-vault/Trading/Erklaerung.md` |
+
+**Checkliste nach Änderungen (seit 11.06.2026):**
+- [ ] Pipeline-Struktur geändert? → §2 Tagesablauf + §11 Code-Architektur
+- [ ] Neue Konfig-Parameter? → §13 Konfiguration
+- [ ] Neue Quellen? → §9 Quellen-Management
+- [ ] Neue Strategie-Richtung (Short)? → §3 Step 5 + ggf. neue Subsection
+- [ ] Neue Metriken/Indikatoren? → §8 Datenbankstruktur
+- [ ] Externe Dienste geändert? → §12 Externe Dienste
+- [ ] Datum im Header aktualisiert (`*Stand: ...*`)
+
+**Erklaerung.md-Pflege-Muster:**
+```
+# Nach Code-Änderung → IMMER auch Erklaerung.md patchen
+# Sonst entsteht Dokumentations-Schuld die keiner mehr nachholt
+```
 
 ## Quick Debug
-
-See `references/cron-log-format.md` for details on parsing the two log formats.
 
 See `references/cron-log-format.md` for details on parsing the two log formats.
 

@@ -135,7 +135,7 @@ def get_cron_jobs():
         "yt_channel_monitor":  "YouTube Kanäle scannen (11 Kanäle)",
         "signal_extractor":    "KI-Analyse Transkripte (Gemini)",
         "watchlist_manager":   "Watchlist + Conviction Score",
-        "technical_validator": "Technische Analyse (EMA/RSI/MACD)",
+        # technical_validator läuft embedded in trading_pipeline
         "signal_manager":      "Signale + Portfolio Management",
         "strategy_optimizer":  "Selbstverbesserung Grid Search (Sonntag)",
         "fundamental_data":    "FRED Makro + SEC Insider + PCR",
@@ -161,7 +161,7 @@ def get_cron_jobs():
         for line in output.splitlines():
             line = line.strip()
             if not line or line.startswith("#"): continue
-            if not any(k in line for k in ["yt_channel","signal_","technical_validator",
+            if not any(k in line for k in ["yt_channel","signal_",
                 "watchlist_manager","strategy_optimizer","trading_db","fundamental_data",
                 "social_scanner","export_watchlist","active_exit_check","trading_pipe","nightly_eval"]): continue
             parts = line.split()

@@ -90,6 +90,27 @@
       "enabled": true,
       "weight": 1.0,
       "language": "de"
+    },
+    {
+      "name": "ZeroHedge",
+      "url": "https://www.zerohedge.com/rss.xml",
+      "enabled": true,
+      "weight": 1.5,
+      "language": "en"
+    },
+    {
+      "name": "MishTalk",
+      "url": "https://mimikater.net/feed/",
+      "enabled": true,
+      "weight": 1.2,
+      "language": "en"
+    },
+    {
+      "name": "HighShortInterest",
+      "url": "https://highshortinterest.com/rss/",
+      "enabled": true,
+      "weight": 1.8,
+      "language": "en"
     }
   ],
   "twitter_accounts": [

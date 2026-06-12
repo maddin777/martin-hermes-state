@@ -291,6 +291,109 @@ def get_benchmark_data(con):
         pass
     return None
 
+
+def update_segment_performance(con):
+    """
+    Loop 1: Post-Trade Learner
+    Aggregiert geschlossene Positionen nach (sector, conviction_tier, tech_direction, regime)
+    und schreibt/updatet segment_performance-Tabelle.
+    """
+    try:
+        rows = con.execute("""
+            SELECT 
+                COALESCE(c.sector, 'Other') as sector,
+                CASE 
+                    WHEN p.entry_conviction_score >= 0.8 THEN 'HIGH'
+                    WHEN p.entry_conviction_score >= 0.6 THEN 'NORMAL'
+                    ELSE 'LOW'
+                END as conviction_tier,
+                p.direction as tech_direction,
+                COALESCE(rh.regime, 'sideways') as regime_at_entry,
+                COUNT(*) as trades_total,
+                SUM(CASE WHEN p.pnl_eur > 0 THEN 1 ELSE 0 END) as trades_won,
+                SUM(CASE WHEN p.pnl_eur < 0 THEN 1 ELSE 0 END) as trades_lost,
+                ROUND(SUM(p.pnl_eur), 2) as sum_pnl_eur,
+                ROUND(AVG(p.pnl_pct), 2) as avg_pnl_pct,
+                ROUND(AVG(
+                    julianday(COALESCE(p.exit_date, datetime('now'))) - julianday(p.entry_date)
+                ), 1) as avg_holding_days
+            FROM positions p
+            LEFT JOIN companies c ON c.ticker = p.ticker
+            LEFT JOIN regime_history rh ON rh.date = DATE(p.entry_date)
+            WHERE p.status = 'closed'
+              AND p.entry_conviction_score IS NOT NULL
+            GROUP BY sector, conviction_tier, tech_direction, regime_at_entry
+        """).fetchall()
+
+        updated = 0
+        for r in rows:
+            total = r['trades_total']
+            won = r['trades_won']
+            if total == 0:
+                continue
+            win_rate = round(won / total, 3)
+            con.execute("""
+                INSERT INTO segment_performance
+                    (sector, conviction_tier, tech_direction, regime_at_entry,
+                     trades_total, trades_won, trades_lost, sum_pnl_eur,
+                     avg_pnl_pct, avg_holding_days, win_rate, updated_at)
+                VALUES (?,?,?,?,?,?,?,?,?,?,?,datetime('now'))
+                ON CONFLICT(sector, conviction_tier, tech_direction, regime_at_entry)
+                DO UPDATE SET
+                    trades_total=excluded.trades_total,
+                    trades_won=excluded.trades_won,
+                    trades_lost=excluded.trades_lost,
+                    sum_pnl_eur=excluded.sum_pnl_eur,
+                    avg_pnl_pct=excluded.avg_pnl_pct,
+                    avg_holding_days=excluded.avg_holding_days,
+                    win_rate=excluded.win_rate,
+                    updated_at=excluded.updated_at
+            """, (r['sector'], r['conviction_tier'], r['tech_direction'],
+                  r['regime_at_entry'], total, won, r['trades_lost'],
+                  r['sum_pnl_eur'], r['avg_pnl_pct'], r['avg_holding_days'],
+                  win_rate))
+            updated += 1
+
+        con.commit()
+        print(f"\n🔄 Segment-Performance aktualisiert: {updated} Segmente", flush=True)
+    except Exception as e:
+        print(f"  ⚠ segment_performance Fehler: {e}", flush=True)
+
+
+def calibrate_conviction(con):
+    """
+    Loop 2: Adaptive Conviction Calibration
+    Prüft ob die Conviction-Tiers gut kalibriert sind (HIGH ≥ 70%, NORMAL ≥ 55%, LOW ≥ 40%).
+    Gibt Warnung aus bei systematischer Abweichung.
+    """
+    try:
+        tiers = {'HIGH': 0.70, 'NORMAL': 0.55, 'LOW': 0.40}
+        print("\n📐 Conviction-Kalibrierung:", flush=True)
+        for tier, expected_wr in tiers.items():
+            row = con.execute("""
+                SELECT COUNT(*) as cnt,
+                       ROUND(AVG(win_rate), 3) as avg_wr,
+                       ROUND(AVG(avg_pnl_pct), 2) as avg_pnl
+                FROM segment_performance
+                WHERE conviction_tier = ?
+                  AND trades_total >= 3
+            """, (tier,)).fetchone()
+            if not row or row['cnt'] == 0:
+                print(f"  {tier}: noch keine Daten", flush=True)
+                continue
+            delta = row['avg_wr'] - expected_wr
+            icon = "✅" if abs(delta) < 0.10 else ("⚠️" if delta < 0 else "📈")
+            adj = ""
+            if delta < -0.10:
+                adj = " → Prior erhöhen (konservativer)"
+            elif delta > 0.10:
+                adj = " → Prior senken (aggressiver)"
+            print(f"  {icon} {tier}: WR {row['avg_wr']:.0%} (erwartet {expected_wr:.0%}, Δ{delta:+.0%})"
+                  f" | {row['cnt']} Segmente | Ø {row['avg_pnl']:+.1f}%{adj}", flush=True)
+    except Exception as e:
+        print(f"  ⚠ calibration Fehler: {e}", flush=True)
+
+
 def main():
     print(f"📊 Nightly Eval {'(Woche)' if IS_SUNDAY else '(täglich)'} [{datetime.now().strftime('%Y-%m-%d %H:%M')}]", flush=True)
     con = sqlite3.connect(DB_PATH)
@@ -400,6 +503,11 @@ def main():
 
         send_telegram(msg)
         check_half_life_calibration(con)
+
+        # Closed-Loop: Post-Trade Learning + Conviction Calibration
+        update_segment_performance(con)
+        calibrate_conviction(con)
+
         print("\n✅ Nightly Eval abgeschlossen", flush=True)
     finally:
         con.close()

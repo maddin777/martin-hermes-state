@@ -191,6 +191,45 @@ def adapt_strategy(cfg, con):
     save_config(cfg)
     return cfg
 
+
+def check_segment_performance(con, ticker, direction, conviction_score):
+    """
+    Loop 3: Pre-Entry Validation Gate
+    Prüft ob der Setup-Typ (sector + conviction_tier + direction) historisch akzeptabel performt.
+    Gibt (ok, reason) zurück.
+    """
+    try:
+        sector_row = con.execute(
+            "SELECT sector FROM companies WHERE ticker=?", (ticker,)
+        ).fetchone()
+        sector = (sector_row["sector"] if sector_row else "Other") or "Other"
+
+        tier = "HIGH" if (conviction_score or 0) >= 0.8 else "NORMAL" if (conviction_score or 0) >= 0.6 else "LOW"
+
+        row = con.execute("""
+            SELECT trades_total, win_rate, avg_pnl_pct
+            FROM segment_performance
+            WHERE sector = ? AND conviction_tier = ? AND tech_direction = ?
+            ORDER BY updated_at DESC
+            LIMIT 1
+        """, (sector, tier, direction)).fetchone()
+
+        if not row or row["trades_total"] < 3:
+            return True, None  # Zu wenig Daten → durchlassen
+
+        win_rate = row["win_rate"]
+        avg_pnl = row["avg_pnl_pct"]
+
+        if win_rate < 0.30 and row["trades_total"] >= 5:
+            return False, f"Segment (Sektor={sector}, {tier}, {direction}) WR {win_rate:.0%} bei {row['trades_total']} Trades – unter 30%-Schwelle"
+        if win_rate < 0.35 and avg_pnl < -3.0 and row["trades_total"] >= 5:
+            return False, f"Segment (Sektor={sector}, {tier}, {direction}) WR {win_rate:.0%} + Ø {avg_pnl:+.1f}% – negativ"
+
+        return True, None
+    except Exception:
+        return True, None  # Bei Fehler durchlassen (fail open)
+
+
 def has_upcoming_earnings(ticker, days_ahead=5):
     """Prüft ob Earnings innerhalb der nächsten N Tage anstehen."""
     try:
@@ -676,8 +715,8 @@ def open_new_positions(con, cfg):
             AND w.tech_direction = 'SHORT'
             AND w.ticker IS NOT NULL
         """, (
-            cfg.get("min_confidence_short", 0.65),
-            cfg.get("min_mentions", 2)
+            cfg.get("min_confidence_short", 0.5),
+            cfg.get("min_mentions_short", 1)
         )).fetchall()
 
     all_candidates = []
@@ -787,6 +826,12 @@ def open_new_positions(con, cfg):
         # Earnings-Blackout
         if has_upcoming_earnings(ticker, cfg.get("earnings_blackout_days", 5)):
             print(f"  📅 {c['name']}: Earnings in <{cfg.get('earnings_blackout_days', 5)} Tagen – überspringe")
+            continue
+
+        # Loop 3: Pre-Entry Validation Gate – Segment-Historie prüfen
+        seg_ok, seg_reason = check_segment_performance(con, ticker, direction, c.get("conviction_score") or 0)
+        if not seg_ok:
+            print(f"  🚫 {c['name']}: {seg_reason}")
             continue
 
         # Grok Breaking-News-Check: Negative Breaking News → kein Entry
