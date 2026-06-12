@@ -56,6 +56,7 @@ DEFAULT_CONFIG = {
     "commission_eur":      1.0,
     "min_liquidity_eur":   500000,
     "earnings_blackout_days": 5,
+    "max_correlation":    0.70,
     "consecutive_wins":    0,
     "consecutive_losses":  0,
     "total_trades":        0,
@@ -566,6 +567,74 @@ def check_short_thesis(con, ticker: str, conviction_bear: float, cfg: dict) -> t
     return score, reasons
 
 
+# ── Correlation Cache ─────────────────────────────────────────────────────
+_CORR_CACHE: dict = {}  # frozenset(t1,t2) → correlation
+_CORR_TTL = 1800        # 30 Minuten
+
+def get_correlation(t1: str, t2: str) -> float | None:
+    """Pearson-Korrelation der Tagesrenditen (letzte 60 Tage). Gecached 30min."""
+    key = frozenset([t1, t2])
+    now = datetime.now().timestamp()
+    if key in _CORR_CACHE:
+        ts, val = _CORR_CACHE[key]
+        if now - ts < _CORR_TTL:
+            return val
+    try:
+        import pandas as pd
+        import numpy as np
+        import yfinance as yf
+        df = yf.download([t1, t2], period="60d", interval="1d",
+                         progress=False, auto_adjust=True)
+        if df is None or df.empty or len(df) < 20:
+            return None
+
+        # yfinance MultiIndex: columns = (Price, Ticker) — Close ist level 0
+        if isinstance(df.columns, pd.MultiIndex):
+            close = df["Close"]
+        else:
+            close = df[["Close"]] if "Close" in df else df
+        if close.shape[1] < 2:
+            return None
+
+        r1 = close.iloc[:, 0].pct_change().dropna()
+        r2 = close.iloc[:, 1].pct_change().dropna()
+        if len(r1) < 15 or len(r2) < 15:
+            return None
+        corr = float(r1.corr(r2))
+        _CORR_CACHE[key] = (now, corr)
+        return corr
+    except Exception as e:
+        log.debug(f"Correlation failed {t1}/{t2}: {e}")
+        return None
+
+
+def check_correlation_with_open(con, ticker: str, direction: str, cfg: dict) -> tuple[bool, str]:
+    """Prüft ob der neue Ticker zu stark mit offenen Positionen korreliert.
+    Returns (ok: bool, reason: str)."""
+    max_corr = cfg.get("max_correlation", 0.70)
+    open_positions = con.execute(
+        "SELECT ticker, name, direction FROM positions WHERE status='open'"
+    ).fetchall()
+    if not open_positions:
+        return True, ""
+
+    # Nur gleichgerichtete Positionen prüfen (LONG korreliert mit LONG, SHORT mit SHORT)
+    relevant = [p for p in open_positions if p["direction"] == direction]
+    if not relevant:
+        return True, ""
+
+    correlated_with = []
+    for pos in relevant:
+        corr = get_correlation(ticker, pos["ticker"])
+        if corr is not None and abs(corr) > max_corr:
+            correlated_with.append((pos["name"], pos["ticker"], corr))
+
+    if correlated_with:
+        names = ", ".join(f"{n} ({t}: {c:.2f})" for n, t, c in correlated_with)
+        return False, f"Korrelation > {max_corr} mit: {names}"
+    return True, ""
+
+
 def open_new_positions(con, cfg):
     """Öffnet neue Positionen aus der Watchlist (LONG + SHORT)."""
     # ── Drawdown-Notbremse ────────────────────────────────────────────────
@@ -816,6 +885,12 @@ def open_new_positions(con, cfg):
         if sector_counts.get(ticker_sector, 0) >= MAX_POSITIONS_PER_SECTOR:
             print(f"  🏭 {c['name']}: Sektor '{ticker_sector}' bereits voll "
                   f"({sector_counts[ticker_sector]}/{MAX_POSITIONS_PER_SECTOR})")
+            continue
+
+        # Correlation Filter: Kein Einstieg wenn zu stark korreliert mit offenen Positionen
+        corr_ok, corr_reason = check_correlation_with_open(con, ticker, direction, cfg)
+        if not corr_ok:
+            print(f"  🔗 {c['name']}: {corr_reason}")
             continue
 
         # Liquiditätsfilter

@@ -124,6 +124,7 @@ Zusätzlich:
 10. Krypto-Filter: -USD/-USDT-Ticker geblockt
 11. Liquiditätsfilter: Tagesvolumen ≥ 500.000€
 12. Earnings-Blackout: 5 Tage vor Earnings
+13. **Correlation-Filter:** Kein Entry wenn Pearson-Korrelation > 0.70 mit einer offenen Position gleicher Richtung (60-Tage-Renditen, gecached 30min)
 ```
 
 **Position Sizing (Vola-bereinigt / Risk-Parity):**
