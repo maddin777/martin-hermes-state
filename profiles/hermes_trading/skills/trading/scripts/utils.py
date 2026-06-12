@@ -260,14 +260,17 @@ def get_technical_score(ticker):
 
         # 6. Weekly Trend — Gewicht 1: Resample daily series locally
         close_w = close.resample('W').last()
+        weekly_trend = "neutral"
         if len(close_w) > 20:
             ema20_w = ta.ema(close_w, length=20)
             if ema20_w is not None and not ema20_w.empty and close_w.iloc[-1] > ema20_w.iloc[-1]:
                 score += 1
                 reasons.append("Weekly Trend bullish ✓")
+                weekly_trend = "bullish"
             elif ema20_w is not None and not ema20_w.empty:
                 score -= 1
                 reasons.append("Weekly Trend bearish ✗")
+                weekly_trend = "bearish"
 
         # 7. ADX (Trendstärke)
         try:
@@ -298,6 +301,7 @@ def get_technical_score(ticker):
             "ema20":      round(float(ema20.iloc[-1]), 2),
             "ema50":      round(float(ema50.iloc[-1]), 2),
             "rsi":        round(float(rsi_val), 1),
+            "weekly_trend": weekly_trend,
         }
 
     except Exception as e:

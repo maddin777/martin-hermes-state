@@ -329,6 +329,8 @@ def main():
         cols = [row[1] for row in con.execute("PRAGMA table_info(watchlist)")]
         if "conviction_score_bear" not in cols:
             con.execute("ALTER TABLE watchlist ADD COLUMN conviction_score_bear REAL DEFAULT 0")
+        if "weekly_trend" not in cols:
+            con.execute("ALTER TABLE watchlist ADD COLUMN weekly_trend TEXT DEFAULT 'neutral'")
     
         # Migration: bestehende channel-Namen in watchlist_mentions normalisieren (einmalig)
         # Behebt den "der aktionaer" vs "der Aktionaer" Source-Case-Bug
@@ -598,9 +600,9 @@ def main():
                 tech_score = tech["confidence"]
                 direction  = tech["direction"]
                 con.execute("""
-                    UPDATE watchlist SET tech_score=?, tech_direction=?
+                    UPDATE watchlist SET tech_score=?, tech_direction=?, weekly_trend=?
                     WHERE name=?
-                """, (tech_score, direction, c["name"]))
+                """, (tech_score, direction, tech["weekly_trend"], c["name"]))
                 is_short_candidate = c["ticker"] in {x["ticker"] for x in candidates_short}
                 print(f"  {'🔻' if is_short_candidate else '  '} {c['name']:25} {c['ticker']:10} "
                       f"Conv:{c['conviction_score']:.2f} "

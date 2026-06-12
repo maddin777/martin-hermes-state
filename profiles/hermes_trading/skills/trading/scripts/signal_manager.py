@@ -867,6 +867,15 @@ def open_new_positions(con, cfg):
                 continue
             print(f"  ✅ SHORT-Thesis {short_score}/4: {', '.join(short_reasons)}", flush=True)
 
+        # Weekly Trend Filter: Don't fight the tape
+        wt = c.get("weekly_trend", "neutral")
+        if wt == "bearish" and direction == "LONG":
+            print(f"  📉 {c['name']}: Weekly Trend BEARISH → LONG geblockt")
+            continue
+        if wt == "bullish" and direction == "SHORT":
+            print(f"  📈 {c['name']}: Weekly Trend BULLISH → SHORT geblockt")
+            continue
+
         # Allokations-Limit pro Richtung
         if direction == "LONG" and long_invested >= max_long:
             print(f"  💰 LONG-Allokation voll ({long_invested:.0f}€/{max_long:.0f}€)")
