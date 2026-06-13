@@ -905,7 +905,7 @@ def open_new_positions(con, cfg):
             print(f"  ✅ SHORT-Thesis {short_score}/4: {', '.join(short_reasons)}", flush=True)
 
         # Weekly Trend Filter: Don't fight the tape
-        wt = c.get("weekly_trend", "neutral")
+        wt = c["weekly_trend"] if "weekly_trend" in c.keys() else "neutral"
         if wt == "bearish" and direction == "LONG":
             print(f"  📉 {c['name']}: Weekly Trend BEARISH → LONG geblockt")
             continue
@@ -950,7 +950,7 @@ def open_new_positions(con, cfg):
             continue
 
         # Loop 3: Pre-Entry Validation Gate – Segment-Historie prüfen
-        seg_ok, seg_reason = check_segment_performance(con, ticker, direction, c.get("conviction_score") or 0)
+        seg_ok, seg_reason = check_segment_performance(con, ticker, direction, c["conviction_score"] or 0)
         if not seg_ok:
             print(f"  🚫 {c['name']}: {seg_reason}")
             continue
