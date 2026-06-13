@@ -116,7 +116,7 @@ KNOWN_TICKERS = {
 
 # Indizes, Krypto, ETFs, Newsletter-/Depot-Namen — nicht handelbar als Einzelaktie
 import re
-from config import DB_PATH, SIGNALS_PATH, SIGNALS_VALIDATED_PATH
+from config import DB_PATH, SIGNALS_PATH, SIGNALS_VALIDATED_PATH, db_connect
 OUTPUT_PATH = SIGNALS_VALIDATED_PATH
 
 _NOT_TRADABLE_PATTERNS = [
@@ -153,7 +153,7 @@ def _load_ticker_cache():
         return dict(KNOWN_TICKERS)
 
     try:
-        con = sqlite3.connect(DB_PATH)
+        con = db_connect()
         cur = con.cursor()
         cur.execute("""
             SELECT a.alias, a.ticker, c.status

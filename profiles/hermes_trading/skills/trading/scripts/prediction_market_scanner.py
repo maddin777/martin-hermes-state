@@ -23,8 +23,7 @@ PM_MIN_24H = 0  # 5_000
 
 
 def _db_connect():
-    con = sqlite3.connect(DB_PATH)
-    con.row_factory = sqlite3.Row
+    con = db_connect()
     return con
 
 

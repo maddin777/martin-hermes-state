@@ -8,7 +8,7 @@ import sys
 sys.path.insert(0, "/root/.hermes/profiles/hermes_trading/skills/trading")
 import env_loader  # noqa: F401  (side-effect: laedt .env)
 from datetime import datetime
-from config import DB_PATH
+from config import DB_PATH, db_connect
 
 OPENROUTER_KEY = os.environ.get("OPENROUTER_API_KEY")
 VALIDATION_MODEL = "deepseek/deepseek-v4-flash"
@@ -72,11 +72,8 @@ def main():
         print("⚠ OPENROUTER_API_KEY nicht gesetzt – überspringe LLM-Validierung")
         return
 
-    con = sqlite3.connect(DB_PATH)
+    con = db_connect()
     try:
-        con.execute("PRAGMA busy_timeout=30000")
-        con.row_factory = sqlite3.Row
-
         candidates = con.execute("""
             SELECT w.name, w.ticker, w.conviction_score, w.mention_count,
                    w.bullish_count, w.bearish_count, w.channels,

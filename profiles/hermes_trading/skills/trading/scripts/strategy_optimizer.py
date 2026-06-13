@@ -15,7 +15,7 @@ import pandas_ta as ta
 from datetime import datetime, timedelta
 import requests
 import itertools
-from config import DB_PATH, SIGNALS_PATH, STRATEGY_CONFIG_PATH, OPTIMIZATION_REPORT_PATH, SOURCES_CONFIG_PATH
+from config import DB_PATH, SIGNALS_PATH, STRATEGY_CONFIG_PATH, OPTIMIZATION_REPORT_PATH, SOURCES_CONFIG_PATH, db_connect
 
 
 TELEGRAM_TOKEN   = os.environ.get("TELEGRAM_BOT_TOKEN")
@@ -221,9 +221,7 @@ def run_grid_search(trades, current_config):
 
 def main():
     print("🔬 Strategy Optimizer gestartet", flush=True)
-    con = sqlite3.connect(DB_PATH)
-    con.row_factory = sqlite3.Row
-
+    con = db_connect()
     # Abgeschlossene Trades laden (letzte 60 Tage)
     cutoff = (datetime.now() - timedelta(days=60)).strftime("%Y-%m-%d")
     trades = con.execute("""
@@ -436,9 +434,7 @@ _original_main = main
 
 def main():
     print("🔧 Strategy Optimizer v2 (mit eval_metrics + Source Weights)", flush=True)
-    con = sqlite3.connect(DB_PATH)
-    con.row_factory = sqlite3.Row
-
+    con = db_connect()
     cfg = load_config()
     all_changes = []
 

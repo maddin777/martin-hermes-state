@@ -15,7 +15,7 @@ import sqlite3, os, sys, json, requests
 sys.path.insert(0, "/root/.hermes/profiles/hermes_trading/skills/trading")
 import env_loader  # noqa
 from datetime import datetime
-from config import DB_PATH
+from config import DB_PATH, db_connect
 from utils import get_price_data_cached, get_logger
 
 log = get_logger("breaking_news")
@@ -113,9 +113,7 @@ def _send_telegram(msg: str):
 
 def main():
     log.info("Breaking News Monitor gestartet")
-    con = sqlite3.connect(DB_PATH)
-    con.row_factory = sqlite3.Row
-
+    con = db_connect()
     positions = con.execute(
         "SELECT * FROM positions WHERE status='open'"
     ).fetchall()

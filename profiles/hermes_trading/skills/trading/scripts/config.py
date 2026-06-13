@@ -9,6 +9,7 @@ Alle anderen Module importieren von hier:
 Pfad-Anpassung bei Server-Migration: nur hier ändern.
 """
 import os
+import sqlite3
 
 # ── Basis-Verzeichnisse ───────────────────────────────────────────────────────
 
@@ -73,3 +74,16 @@ MAX_POSITION_PCT  = 0.20     # Max 20% in einer einzelnen Position
 
 SLIPPAGE_PCT     = 0.001   # 0,1% pro Seite
 COMMISSION_EUR   = 1.0     # Trade Republic: 1€ pro Trade
+
+
+# ── Zentrale DB-Connection ─────────────────────────────────────────────────────
+def db_connect(path=None):
+    """Einheitliche DB-Connection mit WAL mode + busy_timeout + Row-Factory.
+    Alle Scripts nutzen diese Funktion statt raw sqlite3.connect()."""
+    if path is None:
+        path = DB_PATH
+    con = sqlite3.connect(path)
+    con.execute("PRAGMA journal_mode=WAL;")
+    con.execute("PRAGMA busy_timeout=30000;")
+    con.row_factory = sqlite3.Row
+    return con

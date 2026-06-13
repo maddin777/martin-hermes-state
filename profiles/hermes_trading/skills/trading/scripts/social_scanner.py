@@ -15,7 +15,7 @@ import locale
 import requests
 import feedparser
 from datetime import datetime, timedelta, timezone
-from config import DB_PATH, SOURCES_CONFIG_PATH
+from config import DB_PATH, SOURCES_CONFIG_PATH, db_connect
 from utils import retry, get_logger
 log = get_logger("social_scanner")
 
@@ -220,12 +220,8 @@ def get_active_twitter_accounts(con):
 
 def main():
     print("📡 Social Scanner gestartet", flush=True)
-    con = sqlite3.connect(DB_PATH)
+    con = db_connect()
     try:
-        con.execute("PRAGMA journal_mode=WAL;")
-        con.execute("PRAGMA busy_timeout=30000")
-        con.row_factory = sqlite3.Row
-
         # Quellen aus DB laden (Fallback zu sources.json)
         try:
             rss_feeds = get_active_rss_feeds(con)

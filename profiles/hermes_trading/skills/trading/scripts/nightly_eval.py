@@ -9,7 +9,7 @@ import sys
 sys.path.insert(0, "/root/.hermes/profiles/hermes_trading/skills/trading")
 import env_loader  # noqa: F401  (side-effect: laedt .env)
 from datetime import datetime, timedelta
-from config import DB_PATH, STRATEGY_CONFIG_PATH, SIGNALS_VALIDATED_PATH
+from config import DB_PATH, STRATEGY_CONFIG_PATH, SIGNALS_VALIDATED_PATH, db_connect
 
 TG_TOKEN   = os.environ.get("TELEGRAM_BOT_TOKEN")
 TG_CHAT    = os.environ.get("TELEGRAM_HOME_CHANNEL")
@@ -396,10 +396,8 @@ def calibrate_conviction(con):
 
 def main():
     print(f"📊 Nightly Eval {'(Woche)' if IS_SUNDAY else '(täglich)'} [{datetime.now().strftime('%Y-%m-%d %H:%M')}]", flush=True)
-    con = sqlite3.connect(DB_PATH)
+    con = db_connect()
     try:
-        con.execute("PRAGMA busy_timeout=30000")
-        con.row_factory = sqlite3.Row
         today = datetime.now().strftime("%Y-%m-%d")
         yesterday = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
 

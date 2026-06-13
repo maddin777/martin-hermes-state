@@ -19,7 +19,7 @@ AUSFÜHREN (einmalig):
 import sqlite3, re, sys
 sys.path.insert(0, "/root/.hermes/profiles/hermes_trading/skills/trading/scripts")
 import env_loader  # noqa
-from config import DB_PATH
+from config import DB_PATH, db_connect
 
 
 # Muster 1: "R XYZ123.DE" am Ende (Ticker-Artefakt)
@@ -40,9 +40,7 @@ def main():
     parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args()
 
-    con = sqlite3.connect(DB_PATH)
-    con.row_factory = sqlite3.Row
-
+    con = db_connect()
     # watchlist
     wl_rows = con.execute("SELECT id, name FROM watchlist").fetchall()
     wl_fixes = [(r["id"], r["name"], clean_name(r["name"]))

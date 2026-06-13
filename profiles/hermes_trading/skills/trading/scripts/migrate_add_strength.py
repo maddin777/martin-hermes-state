@@ -15,12 +15,12 @@ AUSFÜHREN (einmalig):
 import sqlite3
 import sys
 sys.path.insert(0, "/root/.hermes/profiles/hermes_trading/skills/trading/scripts")
-from config import DB_PATH
+from config import DB_PATH, db_connect
 
 
 def main():
     print("=== migrate_add_strength: strength-Spalte zu watchlist_mentions ===\n")
-    con = sqlite3.connect(DB_PATH)
+    con = db_connect()
 
     cols = [r[1] for r in con.execute("PRAGMA table_info(watchlist_mentions)").fetchall()]
     print(f"   Aktuelle Spalten: {cols}")

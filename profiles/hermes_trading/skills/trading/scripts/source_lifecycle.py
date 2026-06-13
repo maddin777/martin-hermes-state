@@ -17,7 +17,7 @@ import sys
 sys.path.insert(0, "/root/.hermes/profiles/hermes_trading/skills/trading")
 import env_loader  # noqa: F401  (side-effect: laedt .env)
 from datetime import datetime, timedelta
-from config import DB_PATH, SOURCES_CONFIG_PATH
+from config import DB_PATH, SOURCES_CONFIG_PATH, db_connect
 
 # SOURCES_CONFIG_PATH → SOURCES_CONFIG_PATH aus config.py
 OPENROUTER_KEY = os.environ.get("OPENROUTER_API_KEY")
@@ -453,8 +453,7 @@ def generate_source_report(con):
 
 
 def main():
-    con = sqlite3.connect(DB_PATH)
-    con.row_factory = sqlite3.Row
+    con = db_connect()
     ensure_schema(con)
     migrate_existing_sources(con)
     evaluate_active_sources(con)

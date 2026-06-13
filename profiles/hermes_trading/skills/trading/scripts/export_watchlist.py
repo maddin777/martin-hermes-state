@@ -8,12 +8,10 @@ from datetime import datetime
 
 
 import os
-from config import DB_PATH, OBSIDIAN_WATCHLIST_PATH
+from config import DB_PATH, OBSIDIAN_WATCHLIST_PATH, db_connect
 os.makedirs(os.path.dirname(OBSIDIAN_WATCHLIST_PATH), exist_ok=True)
 
-con = sqlite3.connect(DB_PATH)
-con.row_factory = sqlite3.Row
-
+con = db_connect()
 # ── Canonical Ticker Map laden ─────────────────────────────────────────
 ct_map = {}
 try:

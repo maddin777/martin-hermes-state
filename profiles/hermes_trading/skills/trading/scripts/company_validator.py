@@ -25,7 +25,7 @@ import yfinance as yf
 import sys
 sys.path.insert(0, '/root/.hermes/profiles/hermes_trading/skills/trading/scripts')
 from technical_validator import _strip_suffixes
-from config import DB_PATH, VALIDATION_REJECTS_LOG
+from config import DB_PATH, VALIDATION_REJECTS_LOG, db_connect
 from utils import retry
 
 # ── Canonical Ticker Map ─────────────────────────────────────────────
@@ -36,8 +36,7 @@ def _load_canonical_map():
     if not Path(DB_PATH).is_file():
         return result
     try:
-        con = sqlite3.connect(DB_PATH)
-        con.execute("PRAGMA journal_mode=WAL;")
+        con = db_connect()
         for row in con.execute("SELECT source_ticker, target_ticker FROM canonical_tickers"):
             result[row[0]] = row[1]
         con.close()
@@ -86,9 +85,7 @@ def _is_known(name: str):
     if not Path(DB_PATH).is_file():
         return None
     try:
-        con = sqlite3.connect(DB_PATH)
-        con.execute("PRAGMA journal_mode=WAL;")
-        con.execute("PRAGMA busy_timeout=5000;")
+        con = db_connect()
         cur = con.cursor()
         # 1. Voller Name
         key = name.lower().strip()
@@ -318,9 +315,7 @@ def validate_and_register(name: str) -> dict:
     alias   = name.lower().strip()
 
     try:
-        con = sqlite3.connect(DB_PATH)
-        con.execute("PRAGMA journal_mode=WAL;")
-        con.execute("PRAGMA busy_timeout=5000;")
+        con = db_connect()
         con.execute("PRAGMA foreign_keys = ON")
         cur = con.cursor()
 

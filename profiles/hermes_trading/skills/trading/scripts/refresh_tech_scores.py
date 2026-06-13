@@ -16,7 +16,7 @@ import sys
 import argparse
 sys.path.insert(0, "/root/.hermes/profiles/hermes_trading/skills/trading/scripts")
 import env_loader  # noqa
-from config import DB_PATH
+from config import DB_PATH, db_connect
 from utils import get_technical_score
 
 
@@ -28,9 +28,7 @@ def main():
                         help="Alle Einträge neu berechnen, auch dropped")
     args = parser.parse_args()
 
-    con = sqlite3.connect(DB_PATH)
-    con.row_factory = sqlite3.Row
-
+    con = db_connect()
     status_filter = "status IN ('watching','bought')" if not args.all else "1=1"
     candidates = con.execute(f"""
         SELECT name, ticker, conviction_score, tech_score, status

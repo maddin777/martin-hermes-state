@@ -16,7 +16,7 @@ import sqlite3
 import sys
 import argparse
 sys.path.insert(0, "/root/.hermes/profiles/hermes_trading/skills/trading/scripts")
-from config import DB_PATH
+from config import DB_PATH, db_connect
 
 
 TABLES_TO_DROP = [
@@ -32,7 +32,7 @@ def main():
                         help="Nur anzeigen, nichts löschen")
     args = parser.parse_args()
 
-    con = sqlite3.connect(DB_PATH)
+    con = db_connect()
 
     existing = {r[0] for r in con.execute(
         "SELECT name FROM sqlite_master WHERE type='table'"

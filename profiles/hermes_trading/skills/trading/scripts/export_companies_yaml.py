@@ -5,7 +5,7 @@ export_companies_yaml.py – Exportiert companies + aliases als YAML für git.
 import sqlite3, os, sys
 sys.path.insert(0, "/root/.hermes/profiles/hermes_trading/skills/trading")
 import env_loader  # noqa
-from config import DB_PATH, SCRIPTS_DIR
+from config import DB_PATH, SCRIPTS_DIR, db_connect
 
 OUTPUT_PATH = os.path.join(SCRIPTS_DIR, "companies.yaml")
 
@@ -21,8 +21,7 @@ def _yaml_val(val):
     return s
 
 def main():
-    con = sqlite3.connect(DB_PATH)
-    con.row_factory = sqlite3.Row
+    con = db_connect()
     companies = con.execute("""
         SELECT ticker, canonical_name, sector, industry, country,
                currency, isin, status, source, notes

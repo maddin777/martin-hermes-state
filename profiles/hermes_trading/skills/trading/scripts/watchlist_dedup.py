@@ -18,7 +18,7 @@ from company_normalizer import (
     normalize_company_name, NORMALIZE_ALIASES,
     LEGAL_SUFFIX_RE, BRACKET_NOTE_RE
 )
-from config import DB_PATH
+from config import DB_PATH, db_connect
 
 # Spalten die beim Zusammenführen summiert werden (nur Zähler, keine Scores)
 MERGE_COLS = [
@@ -224,9 +224,7 @@ def dedup_by_name(con):
 
 def main():
     print("🧹 Watchlist Dedup gestartet", flush=True)
-    con = sqlite3.connect(DB_PATH)
-    con.row_factory = sqlite3.Row
-
+    con = db_connect()
     # Bestand vorher
     before = con.execute(
         "SELECT COUNT(*) FROM watchlist WHERE status='watching'"

@@ -4,7 +4,7 @@ from collections import deque
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from urllib.parse import parse_qs, urlparse
 from datetime import datetime
-from config import DB_PATH, SCRIPTS_DIR, CRON_LOG_PATH, SOURCES_CONFIG_PATH, STRATEGY_CONFIG_PATH, THEMATIC_LOG_PATH
+from config import DB_PATH, SCRIPTS_DIR, CRON_LOG_PATH, SOURCES_CONFIG_PATH, STRATEGY_CONFIG_PATH, THEMATIC_LOG_PATH, db_connect
 
 # Aliase für dashboard.py (abweichende Namen im Skript)
 CONFIG_PATH = STRATEGY_CONFIG_PATH
@@ -227,8 +227,7 @@ def get_thematic_log_lines():
 # ─── Data ────────────────────────────────────────────────────────────────────
 
 def get_data():
-    con = sqlite3.connect(DB_PATH)
-    con.row_factory = sqlite3.Row
+    con = db_connect()
     cfg = load_config()
     portfolio = con.execute("SELECT * FROM portfolio WHERE id=1").fetchone()
     open_pos  = con.execute("SELECT * FROM positions WHERE status='open' ORDER BY entry_date DESC").fetchall()
@@ -1326,7 +1325,7 @@ class Handler(BaseHTTPRequestHandler):
                 queue_id = int(params.get("queue_id", 0))
                 decision = params.get("decision", "")
                 if queue_id > 0 and decision:
-                    con = sqlite3.connect(DB_PATH)
+                    con = db_connect()
                     if decision == "merge":
                         from dashboard_thematic import db_connect
                         con2 = db_connect()

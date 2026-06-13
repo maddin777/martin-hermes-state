@@ -13,7 +13,7 @@ import env_loader  # noqa: F401  (side-effect: laedt .env)
 import requests
 import yfinance as yf
 from datetime import datetime, timedelta
-from config import DB_PATH, MACRO_SIGNAL_PATH, STRATEGY_CONFIG_PATH
+from config import DB_PATH, MACRO_SIGNAL_PATH, STRATEGY_CONFIG_PATH, db_connect
 from utils import retry, get_logger
 log = get_logger("fundamental_data")
 
@@ -480,12 +480,7 @@ def update_benchmark(con):
 
 def main():
     print("📡 Fundamental Data Collector gestartet", flush=True)
-    con = sqlite3.connect(DB_PATH)
-    con.execute("PRAGMA journal_mode=WAL;")
-    con.execute("PRAGMA busy_timeout=30000")
-    con.row_factory = sqlite3.Row
-    con.execute("PRAGMA busy_timeout=30000;")  # 30s Timeout für Lock-Konflikte
-
+    con = db_connect()
     try:
         config = load_config()
 

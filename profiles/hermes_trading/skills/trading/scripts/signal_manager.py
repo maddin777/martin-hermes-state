@@ -22,7 +22,7 @@ from datetime import datetime, timedelta
 from utils import passes_liquidity_filter, apply_slippage, COMMISSION_EUR, get_price_data_cached, prefetch_prices
 from utils import get_logger
 log = get_logger("signal_manager")
-from config import DB_PATH, SIGNALS_VALIDATED_PATH, STRATEGY_CONFIG_PATH, MACRO_SIGNAL_PATH
+from config import DB_PATH, SIGNALS_VALIDATED_PATH, STRATEGY_CONFIG_PATH, MACRO_SIGNAL_PATH, db_connect
 CONFIG_PATH = STRATEGY_CONFIG_PATH
 
 
@@ -1160,10 +1160,7 @@ def main(mode="full"):
         sys.exit(0)  # kein Fehler-Exit, Pipeline soll weiterlaufen
 
     try:
-        con = sqlite3.connect(DB_PATH)
-        con.execute("PRAGMA journal_mode=WAL;")
-        con.execute("PRAGMA busy_timeout=30000;")  # 30s statt 5s
-        con.row_factory = sqlite3.Row
+        con = db_connect()
         init_db(con)
 
         cfg = load_config()

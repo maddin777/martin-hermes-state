@@ -9,7 +9,7 @@ import shutil
 import time
 import sys
 from datetime import datetime, timedelta, timezone
-from config import DB_PATH
+from config import DB_PATH, db_connect
 
 DAYS = 10  # Erhöht von 5 auf 10 — deckt auch Wochenenden und kurze Pausen ab
 SLEEP_BETWEEN_VIDEOS = 120
@@ -87,10 +87,7 @@ def get_active_channels(con):
     return CHANNELS_FALLBACK
 
 def init_db():
-    con = sqlite3.connect(DB_PATH)
-    con.row_factory = sqlite3.Row
-    con.execute("PRAGMA journal_mode=WAL;")
-    con.execute("PRAGMA busy_timeout=30000;")
+    con = db_connect()
     con.execute("""
         CREATE TABLE IF NOT EXISTS videos (
             video_id    TEXT PRIMARY KEY,

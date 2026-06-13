@@ -13,7 +13,7 @@ import env_loader  # noqa: F401  (side-effect: laedt .env)
 from datetime import datetime
 from utils import get_logger, retry
 log = get_logger("signal_extractor")
-from config import DB_PATH, SIGNALS_PATH
+from config import DB_PATH, SIGNALS_PATH, db_connect
 
 OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY")
 MODEL = "deepseek/deepseek-v4-flash"
@@ -182,11 +182,7 @@ def analyze(transcript, channel, title, date):
 
 
 def main():
-    con = sqlite3.connect(DB_PATH)
-    con.execute("PRAGMA journal_mode=WAL;")
-    con.execute("PRAGMA busy_timeout=5000;")
-    con.row_factory = sqlite3.Row
-
+    con = db_connect()
     pending = con.execute(
         "SELECT * FROM videos WHERE status='pending' ORDER BY upload_date DESC"
     ).fetchall()

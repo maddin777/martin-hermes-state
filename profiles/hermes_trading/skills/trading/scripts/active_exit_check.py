@@ -24,7 +24,7 @@ TELEGRAM_HOME_CHANNEL = os.environ.get("TELEGRAM_HOME_CHANNEL")
 
 import json
 from utils import get_logger
-from config import DB_PATH, STRATEGY_CONFIG_PATH
+from config import DB_PATH, STRATEGY_CONFIG_PATH, db_connect
 from utils import get_price_data_cached, prefetch_prices
 def load_config():
     with open(STRATEGY_CONFIG_PATH) as f:
@@ -78,10 +78,7 @@ def get_tech_status(ticker):
 
 def main():
     print(f"🔍 Aktiver Exit-Check [{datetime.now().strftime('%H:%M')}]", flush=True)
-    con = sqlite3.connect(DB_PATH)
-    con.execute("PRAGMA journal_mode=WAL;")
-    con.execute("PRAGMA busy_timeout=5000;")
-    con.row_factory = sqlite3.Row
+    con = db_connect()
     cfg = load_config()
 
     positions = con.execute(

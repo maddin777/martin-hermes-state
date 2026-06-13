@@ -4,7 +4,7 @@ Backtest-Engine mit OHLC-Pfad-Simulation + Walk-Forward Optimierung.
 import sqlite3, json, os, math, yfinance as yf, pandas_ta as ta
 from datetime import datetime, timedelta
 from statistics import median
-from config import DB_PATH, BACKTEST_REPORT_PATH
+from config import DB_PATH, BACKTEST_REPORT_PATH, db_connect
 
 
 def load_config():
@@ -172,8 +172,7 @@ def walk_forward_optimize(trades, n_folds=4):
 
 def main():
     print("🔬 Backtester gestartet", flush=True)
-    con = sqlite3.connect(DB_PATH)
-    con.row_factory = sqlite3.Row
+    con = db_connect()
     trades = [dict(t) for t in con.execute(
         "SELECT * FROM positions WHERE status='closed' ORDER BY entry_date ASC"
     ).fetchall()]

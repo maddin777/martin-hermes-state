@@ -29,7 +29,7 @@ from company_normalizer import (                   # war lokale Kopie
 from utils import get_logger
 log = get_logger("watchlist_manager")
 from config import (DB_PATH, SIGNALS_PATH, WATCHLIST_DAYS, MIN_MENTIONS, MIN_CONVICTION,
-                    CONVICTION_HALF_LIFE_DAYS, CONVICTION_PRIOR_NEUTRAL)
+                    CONVICTION_HALF_LIFE_DAYS, CONVICTION_PRIOR_NEUTRAL, db_connect)
 
 def get_channel_weights(con):
     """
@@ -318,13 +318,8 @@ def normalize_mentions(con):
 
 def main():
     print("📋 Watchlist Manager gestartet", flush=True)
-    con = sqlite3.connect(DB_PATH)
+    con = db_connect()
     try:
-        con.execute("PRAGMA busy_timeout=30000")
-        con.execute("PRAGMA journal_mode=WAL;")
-        con.execute("PRAGMA busy_timeout=30000;")  # 30s statt 5s
-        con.row_factory = sqlite3.Row
-
         # Migration: conviction_score_bear Spalte hinzufügen
         cols = [row[1] for row in con.execute("PRAGMA table_info(watchlist)")]
         if "conviction_score_bear" not in cols:

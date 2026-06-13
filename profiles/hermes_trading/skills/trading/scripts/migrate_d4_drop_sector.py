@@ -41,9 +41,7 @@ def main():
     shutil.copy2(DB_PATH, BACKUP_PATH)
     print(f"✅ Backup: {BACKUP_PATH}")
 
-    con = sqlite3.connect(DB_PATH)
-    con.row_factory = sqlite3.Row
-
+    con = db_connect()
     # 2. Prüfen ob sector-Spalte noch existiert
     cols = [r["name"] for r in con.execute("PRAGMA table_info(watchlist)").fetchall()]
     print(f"   Aktuelle Spalten: {cols}")
