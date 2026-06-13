@@ -10,6 +10,24 @@ description: >-
 
 # Trading Pipeline
 
+## Allgemeine Prinzipien
+
+### Vorschläge immer am System-Kontext messen
+
+Bevor du eine Änderung am Trading-System vorschlägst, prüfe ob sie zu unserem tatsächlichen Betrieb passt:
+
+| Prüfpunkt | Fragen |
+|-----------|--------|
+| **Haltedauer** | Wir halten 5-14 Tage. Passt der Vorschlag zu multi-day, nicht intraday? |
+| **Pipeline-Takt** | Pipeline läuft 1x täglich morgens (04:00). Kein Markt-Daemon. |
+| **Hebel** | Paper-Trading mit 1x Hebel + TR-Gebühren (1€/Trade). Intraday-Edge wird killt. |
+| **Datenquellen** | yfinance (täglich), YouTube/RSS/Twitter (morgens). Kein Echtzeit-Feed. |
+| **Modell-Kosten** | Grok nur für Conviction-Boost (max 20 Calls). Rest via yfinance. |
+
+**Faustregel:** Wenn der Vorschlag klingt wie ein HFT- Intraday- oder Hebel-Strategie → nein. Wenn er den daily/weekly Trendfilter verbessert oder bessere Entry-Qualität bei gleicher Haltedauer bringt → ja.
+
+**Nicht vergessen:** n8n läuft auf dem Server (Python-Prozesse + n8n-Workflows parallel möglich). YouTube-Faceless-Pipelines etc. sind infra-seitig möglich.
+
 ## System Architecture
 
 The pipeline runs under **profile `hermes_trading`** with its own
@@ -110,6 +128,12 @@ Prüft ob HIGH ≥ 70%, NORMAL ≥ 55%, LOW ≥ 40% Win-Rate erreichen. Meldet F
 
 ### Loop 3: Pre-Entry Gate (`signal_manager.py → check_segment_performance()`)
 Blockiert Entry wenn Segment WR < 30% (≥5 Trades) oder WR < 35% + PnL < -3%.
+
+**Correlation Filter:** Seit 11.06.2026 prüft `signal_manager.py` vor jedem Entry die Pearson-Korrelation (60d Renditen) mit offenen Positionen gleicher Richtung. Bei >0.70 wird der Entry geblockt — schützt vor gehebelter Exposure durch korrelierte Assets (z.B. AAPL+MSFT). Cache 30min. Details: `references/correlation-filter.md`.
+
+**Weekly Trend Filter:** Seit 11.06.2026 blockt `signal_manager.py` Entries die gegen den weekly Trend laufen. Weekly EMA20 (via `utils.get_technical_score()`) wird in der watchlist-Tabelle gespeichert und als hartes Entry-Gate genutzt: bearish weekly → keine LONGs, bullish weekly → keine SHORTs. Details: `references/weekly-trend-filter.md`.
+
+**Architektur-Entscheidung:** Statt 15min Intraday-Strategie (die nicht zu unserer 5-14 Tage Haltedauer passt) wird der weekly Trend als **hierarchischer Filter** eingesetzt: daily = Entry-Signal, weekly = Trendrichtung. Das ist die einzig sinnvolle Multi-Timeframe-Erweiterung für unser System.
 
 **Key Commands:**
 ```bash
@@ -226,6 +250,17 @@ r"=== \w+ \w+\s+(\d+) ..."
 
 **Root Cause 3 — Pipeline-interne Jobnamen mit Timestamp:**
 Phase-2 matched `=== 05:03:16 Technical Analysis DONE ===` und extrahiert `pjob = "05:03:16 Technical Analysis"`, aber Phase-1 hat den Eintrag unter `"Technical Analysis"`.
+
+**Fix:** Timestamp aus pjob entfernen vor Status-Vergleich:
+```python
+pjob_parts = parts[0].split(" ", 1)
+pjob = pjob_parts[1] if len(pjob_parts) > 1 else pjob_parts[0]
+```
+
+**Root Cause 4 — Fehlender Monats-Check (seit 12.06.2026):**
+`cron_health.py` Phase 1 verglich nur `TODAY.day` mit dem Tag im Log. Log enthält Einträge von mehreren Monaten (Mai + Juni). Gleicher Tag in verschiedenen Monaten → doppelte Einträge für `fundamental_data`, `social_scanner` etc.
+
+**Fix:** Monat aus dem Log extrahieren (`=== Wochentag MONAT Tag ...`) und mit `TODAY.month` vergleichen. Siehe `~/.hermes/scripts/cron_health.py` für den vollständigen Fix. Regex von `r"=== \\w+ \\w+\\s+(\\d+) ..."` auf `r"=== \\w+ (\\w+) (\\d+) ..."` geändert, Monatsnamen via Dict gemappt.
 
 **Fix:** Timestamp aus pjob entfernen vor Status-Vergleich:
 ```python

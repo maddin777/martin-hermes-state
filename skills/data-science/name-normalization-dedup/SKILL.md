@@ -175,6 +175,16 @@ After normalizing the mentions table, the aggregated `watchlist` table often has
 - **Case variants**: "Nvidia" and "NVIDIA" are different after normalize unless you have a case-normalizing alias. Either add `"nvidia": "NVIDIA"` to aliases, or handle case generically
 - **Watchlist/Rollup tables**: After normalizing the source table (mentions), old duplicate rows in the aggregated table (e.g., watchlist) remain stale. They get cleaned up on the next full aggregation run. For a deeper clean specific to the trading pipeline, see the `trading-pipeline` skill's `references/watchlist-table-dedup.md` (three-phase script: ticker-variant, ticker, name).
 - **Canonical name selection**: Prefer the normalized form's exact match, then the shortest name. **Bug to avoid**: do NOT reset the canonical after selecting it — old code had `canonical = min(originals, key=len)` that overwrote the preferred selection.
+- **`WHERE id=?` bricht bei NULL-Primärschlüsseln**: SQLite-Tabellen können `id=NULL` haben (z.B. watchlist-Tabelle mit 166/373 Einträgen ohne PRIMARY-KEY-Wert). Ein `UPDATE ... WHERE id=?` mit NULL-id matcht KEINE Zeilen. `DELETE FROM table WHERE id=?` mit NULL-id ist ebenso wirkungslos. **Fix: `rowid` als Fallback verwenden.** SQLite hat immer eine implizite `rowid`-Spalte (außer bei `WITHOUT ROWID`-Tabellen):
+  ```python
+  # Statt:
+  con.execute("UPDATE watchlist SET status='dropped' WHERE id=?", (entry_id,))
+  # rowid als Fallback:
+  rid = row.get("rowid") or row.get("id")
+  if rid:
+      con.execute("UPDATE watchlist SET status='dropped' WHERE rowid=?", (rid,))
+  ```
+  **Prävention**: SELECT immer `rowid, *` statt nur `*` wenn die Tabelle später per id gemerged werden soll. `rowid` ist in SQLite immer verfügbar und nie NULL. Betrifft insbesondere Tabellen die per `INSERT ... ON CONFLICT DO NOTHING` befüllt werden (wie `watchlist`), weil fehlgeschlagene INSERTS keinen Primärschlüssel vergeben.
 
 ## Verification
 

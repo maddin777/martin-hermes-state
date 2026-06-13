@@ -101,14 +101,14 @@
     "archived_at": null,
     "created_at": "2026-05-25T16:25:51.199575+00:00",
     "created_by": "agent",
-    "last_patched_at": "2026-06-01T00:22:08.881693+00:00",
-    "last_used_at": "2026-06-08T01:04:40.008346+00:00",
-    "last_viewed_at": "2026-06-08T01:04:39.994862+00:00",
-    "patch_count": 7,
+    "last_patched_at": "2026-06-12T05:49:00.164262+00:00",
+    "last_used_at": "2026-06-12T05:48:27.119655+00:00",
+    "last_viewed_at": "2026-06-12T05:48:27.112968+00:00",
+    "patch_count": 8,
     "pinned": false,
     "state": "active",
-    "use_count": 14,
-    "view_count": 14
+    "use_count": 15,
+    "view_count": 15
   },
   "telegram-voice-stt": {
     "archived_at": null,
@@ -126,13 +126,26 @@
     "archived_at": null,
     "created_at": "2026-05-27T06:29:36.528930+00:00",
     "created_by": "agent",
-    "last_patched_at": "2026-06-11T16:01:36.699836+00:00",
-    "last_used_at": "2026-06-11T16:00:48.465486+00:00",
-    "last_viewed_at": "2026-06-11T16:00:48.462067+00:00",
-    "patch_count": 56,
+    "last_patched_at": "2026-06-12T08:58:35.551424+00:00",
+    "last_used_at": "2026-06-12T08:58:41.825808+00:00",
+    "last_viewed_at": "2026-06-12T08:58:41.822636+00:00",
+    "patch_count": 63,
     "pinned": false,
     "state": "active",
-    "use_count": 51,
-    "view_count": 49
+    "use_count": 63,
+    "view_count": 61
+  },
+  "trading-scan": {
+    "archived_at": null,
+    "created_at": "2026-06-12T08:57:55.815003+00:00",
+    "created_by": null,
+    "last_patched_at": null,
+    "last_used_at": "2026-06-12T08:57:55.821028+00:00",
+    "last_viewed_at": "2026-06-12T08:57:55.815034+00:00",
+    "patch_count": 0,
+    "pinned": false,
+    "state": "active",
+    "use_count": 1,
+    "view_count": 1
   }
 }

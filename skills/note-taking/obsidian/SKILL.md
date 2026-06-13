@@ -81,7 +81,111 @@ Nutze Cross-Vault-Pfade (`[[../Other/Note]]`) für thematische Überschneidungen
 6. **Wikilinks setzen** — In `## Verknüpfungen`-Sektion pro Datei. Für große Batches (50+ Dateien): execute_code mit loop + read_file + write_file
 7. **Bestehende Notizen patchen** — Rücklinks von bestehenden Dateien zu den neuen setzen
 
-### Cross-Vault Linking (ordnerübergreifend)
+### Vault Curation — Vollständiger Pipeline-Workflow
+
+Nachdem neue Dateien ins Vault gelangt sind (Clippings, Syncs, manuelle Ergänzungen):
+
+### 1. Scan & Duplicate Detection
+
+```bash
+# Alle Dateien + MD5 + Datum in Zielordnern
+VAULT="/root/obsidian-vault"
+find "$VAULT/Clippings" "$VAULT/hermes" "$VAULT/Geldverdienen" -name "*.md" -type f | \
+  xargs md5sum | sort > /tmp/vault_files.txt
+
+# Suche nach ` 1`-Suffix-Duplikaten (häufigster Fall)
+find . -name "* 1.md" -type f
+# Prüfe ob korrespondierende Datei ohne ` 1` existiert
+# Neuere behalten, ältere löschen, ` 1` aus Name entfernen
+```
+
+**Bekannte Duplikat-Muster:**
+
+| Muster | Beispiel | Entscheidung |
+|--------|----------|-------------|
+| `Name.md` + `Name 1.md` | Gleicher Inhalt, ` 1`-Suffix | Neuere behalten → ` 1` löschen, umbenennen |
+| Gleicher Name in 2 Ordnern | `Clippings/` + `hermes/` | MD5 vergleichen. Identisch → einen löschen. Unterschiedlich → beide behalten |
+| Gleicher Inhalt, anderer Name | `Praxisbeispiel Verein.md` vs `Verein - Praxisbeispiel.md` | Deskriptiveren Namen behalten |
+
+**Vergleichslogik:** `md5sum datei1 datei2` — unterschiedliche MD5 = unterschiedliche Versionen, nie blind löschen.
+
+### 2. Alle neuen Dateien lesen
+
+Für jede neue Datei: `read_file` um Inhalt, Frontmatter (tags, source, author, published), und Kernaussage zu verstehen.
+
+### 3. Relevanz klassifizieren
+
+Dreistufiges Schema — in den Morning Report oder direkt ans User-Feedback:
+
+| Stufe | Label | Bedeutung | Aktion |
+|-------|-------|-----------|--------|
+| 🔥 High | Direkt relevant | Enthält umsetzbare Ideen/Code/Patterns für aktive Projekte | Wiki-Seite anlegen, ggf. Handlungsoption vorschlagen |
+| 📌 Medium | Kontext | Erweitert Verständnis, aber kein Sofort-Handlungsbedarf | In bestehende Wiki-Seite einarbeiten oder als Referenz notieren |
+| ⏹ Low | Gelesen | Kein Handlungsbedarf (anderer Fokus, schon bekannt, zu vage) | Nur vermerken, keine Wiki-Seite |
+
+### 4. Wiki-Seiten erstellen (für 🔥 + 📌)
+
+Pro relevanter Quelle: neue Wiki-Seite in `wiki/concepts/` anlegen.
+
+**Template:**
+
+```markdown
+[[wiki/concepts|concepts]] → [[Seitenname]]
+
+---
+created: {{YYYY-MM-DD}}
+updated: {{YYYY-MM-DD}}
+tags: [concept, tag1, tag2]
+type: enriched
+source: {{Quellenangabe}} — {{Author}}
+---
+
+# Seitenname
+
+Kurze Definition / 1-2 Sätze Kernaussage.
+
+## Abschnitt 1
+...
+## Abschnitt 2
+...
+## Quellen
+- [[../../Ordner/Quelldatei]] — Kontext
+```
+
+**Dabei beachten:**
+- `source`-Frontmatter mit Link zur Original-Clipping-Datei
+- `tags` passend setzen (concept + themenspezifisch)
+- Backlink-Navigation (`[[wiki/concepts|concepts]] → [[Seitenname]]`)
+- `## Quellen`-Sektion mit vollem Pfad zur Quelldatei
+- Wikilinks zu verwandten Konzepten setzen
+
+### 5. Bestehende Wiki-Seiten patchen
+
+Wenn neue Inhalte ein bestehendes Konzept erweitern:
+- `patch` auf die bestehende Wiki-Seite
+- Neuen Abschnitt einfügen
+- Quelle in `## Quellen` verlinken
+- `updated`-Datum im Frontmatter aktualisieren
+
+### 6. Index updaten
+
+`wiki/concepts/index.md` und `wiki/index.md`:
+- Neue Seiten eintragen mit Kurzbeschreibung
+- Neue Quellen-Links in bestehenden Seiten ergänzen
+
+### Pitfalls
+
+- **Nicht nur Datum prüfen:** Dateien können durch Sync unterschiedliche Timestamps haben. MD5 ist der verlässliche Duplikat-Indikator.
+- **` 1`-Suffixe prüfen:** Bei Obsidian-Clipping-Imports entstehen oft ` 1`-Duplikate (gleicher Name, neuere Version). Immer MD5 vergleichen.
+- **Cross-Dir-Duplikate:** Gleicher Dateiname in `/Clippings/` und `/hermes/` = nicht automatisch Duplikat. Inhalt prüfen.
+- **Wiki nicht aufblähen:** ⏹-Dateien brauchen keine Wiki-Seite. Nur 🔥- und 📌-Inhalte landen im Wiki.
+- **Backlinks nicht vergessen:** Neue Wiki-Seiten in die `## Quellen`-Sektion bestehender Seiten verlinken, sonst sind sie Orphans.
+
+Referenz: `references/vault-curation-2026-06-11.md` für ein vollständiges Durchlaufbeispiel (13 Dateien, 8 Duplikate, 7 Wiki-Änderungen).
+
+---
+
+## Cross-Vault Linking (ordnerübergreifend)
 
 Nach dem Batch-Import: gezielt die thematischen Überschneidungen zu bestehenden Ordnern suchen:
 

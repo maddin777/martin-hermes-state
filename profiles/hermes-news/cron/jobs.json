@@ -18,15 +18,15 @@
       "schedule_display": "0 6 * * *",
       "repeat": {
         "times": null,
-        "completed": 75
+        "completed": 76
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-04-22T11:01:16.073546+02:00",
-      "next_run_at": "2026-06-12T06:00:00+02:00",
-      "last_run_at": "2026-06-11T06:00:49.919620+02:00",
+      "next_run_at": "2026-06-13T06:00:00+02:00",
+      "last_run_at": "2026-06-12T06:00:59.357005+02:00",
       "last_status": "error",
       "last_error": "RuntimeError: Error code: 403 - {'code': 'personal-team-blocked:spending-limit', 'error': 'You have run out of credits or need a Grok subscription. Add credits at https://grok.com/?_s=usage or upgrade at https://grok.com/supergrok.'}",
       "last_delivery_error": null,
@@ -34,5 +34,5 @@
       "origin": null
     }
   ],
-  "updated_at": "2026-06-11T06:00:49.920372+02:00"
+  "updated_at": "2026-06-12T06:00:59.357801+02:00"
 }

@@ -29,77 +29,74 @@ def merge_group(con, rows, key, key_label):
     """Merge eine Gruppe von Duplikaten in einen kanonischen Eintrag.
     rows: Liste von sqlite3.Row-Dicts (alle mit status='watching')
     key: Beschriftung für Logging
+    Nutzt rowid statt id, da viele Watchlist-Einträge id=NULL haben.
     """
     if len(rows) <= 1:
         return 0
 
     # 1. Kanonischen Namen bestimmen
     names = [r["name"] for r in rows]
-    # Bevorzuge kürzesten Namen der NICHT auf legal-Suffix endet
     canon = min(names, key=lambda n: (
         len(n) if not any(n.lower().endswith(s) for s in
                           ["inc", "inc.", "corp", "corp.", "ltd", "ltd.", "ag",
                            "se", "plc", "llc", "gmbh", "nv", "sa", "ab", "oy",
                            "holdings", "group", "plc", "co.", "company"])
-        else len(n) + 1000,  # penalize suffixed names
-        names.index(n)  # tie-breaker: first appearance
+        else len(n) + 1000,
+        names.index(n)
     ))
-    # Nochmal check: falls ein Name den normalisierten Namen exakt matcht, den nehmen
     norm = normalize_company_name(canon)
     for n in names:
         if n.lower() == norm.lower():
             canon = n
             break
 
+    # rowid des kanonischen Eintrags ermitteln
+    canon_row = next((r for r in rows if r["name"] == canon), rows[0])
+    canon_rowid = canon_row["rowid"] or canon_row["id"]
+
     # 2. Stats aggregieren
     merged = {}
     for col in MERGE_COLS:
         merged[col] = sum(r[col] or 0 for r in rows)
-
-    # Channels: union aller Channels
     all_channels = set()
     for r in rows:
         chans = json.loads(r["channels"]) if r["channels"] else []
         all_channels.update(chans)
     merged["channels"] = json.dumps(sorted(all_channels))
-
-    # Date range: earliest first_seen, latest last_seen
     merged["first_seen"] = min(r["first_seen"] for r in rows if r["first_seen"])
     merged["last_seen"]  = max(r["last_seen"] for r in rows if r["last_seen"])
-
-    # Ticker: prefer the one that actually resolves (not a weird alternative)
     tickers = [r["ticker"] for r in rows if r["ticker"]]
     merged["ticker"] = tickers[0] if tickers else None
-
-    # Conviction: MAX (nicht Sum – Score > 1.0 macht keinen Sinn)
     merged["conviction_score"]      = max(r["conviction_score"]      or 0 for r in rows)
     merged["conviction_score_bear"] = max(r["conviction_score_bear"] or 0 for r in rows)
     merged["conviction_score_aged"] = max(r["conviction_score_aged"] or 0 for r in rows)
 
-    # Canonical row für id-basierte Updates
-    canon_row = next((r for r in rows if r["name"] == canon), rows[0])
-    canon_id  = canon_row["id"]
-
-    # 3. Canonical Eintrag updaten (per id – robust gegen Namens-Änderungen)
+    # 3. Canonical per rowid updaten (robust gegen id=NULL)
     update_cols = MERGE_COLS + [
         "conviction_score", "conviction_score_bear", "conviction_score_aged",
         "channels", "first_seen", "last_seen", "ticker",
     ]
     set_parts = [f"{col}=?" for col in update_cols] + ["name=?", "status=?"]
-    params    = [merged[col] for col in update_cols] + [canon, "watching", canon_id]
+    params    = [merged[col] for col in update_cols] + [canon, "watching", canon_rowid]
 
-    con.execute(f"UPDATE watchlist SET {', '.join(set_parts)} WHERE id=?", params)
+    if canon_rowid:
+        con.execute(f"UPDATE watchlist SET {', '.join(set_parts)} WHERE rowid=?", params)
+    else:
+        con.execute(f"UPDATE watchlist SET {', '.join(set_parts)} WHERE name=? AND ticker=?",
+                    params[:-1] + [canon_row["ticker"]])
 
-    # 4. Duplikate droppen
+    # 4. Duplikate per rowid droppen
     dropped = 0
     for r in rows:
-        if r["id"] == canon_id:
+        rid = r["rowid"] or r["id"]
+        if rid == canon_rowid:
             continue
-        con.execute(
-            "UPDATE watchlist SET status='dropped', notes=? WHERE id=?",
-            (f"merged into '{canon}' (watchlist_dedup)", r["id"])
-        )
-        dropped += 1
+        if rid:
+            con.execute(
+                "UPDATE watchlist SET status='dropped', notes=? WHERE rowid=?",
+                (f"merged into '{canon}' (watchlist_dedup)", rid)
+            )
+            dropped += 1
 
     print(f"  🔗 {len(rows)} → '{canon}'  ({key_label}: {key})  "
           f"Conv:{merged['conviction_score']:.2f} Mentions:{merged['mention_count']} "
@@ -111,7 +108,7 @@ def merge_group(con, rows, key, key_label):
 def dedup_ticker(con):
     """Phase 1: Gleicher Ticker → merge."""
     rows = con.execute("""
-        SELECT * FROM watchlist
+        SELECT rowid, * FROM watchlist
         WHERE status='watching' AND ticker IS NOT NULL
         ORDER BY ticker, mention_count DESC
     """).fetchall()
@@ -128,7 +125,7 @@ def dedup_ticker(con):
 def dedup_name(con):
     """Phase 2: Normalisierter Name → merge (für Einträge OHNE Ticker)."""
     rows = con.execute("""
-        SELECT * FROM watchlist
+        SELECT rowid, * FROM watchlist
         WHERE status='watching' AND ticker IS NULL
         ORDER BY mention_count DESC
     """).fetchall()
@@ -144,90 +141,86 @@ def dedup_name(con):
     con.commit()
     return total
 
-def dedup_ticker_variants(con):
+def _ticker_priority(ticker):
     """
-    Phase 3: Einträge mit unterschiedlichen Tickern, die aber die gleiche
-    Firma repräsentieren (z.B. NVDA + NVD.DE, SAP.DE + SAP).
-    Nur konkrete bekannte Varianten mergen.
+    Bewertet einen Ticker nach Börsen-Herkunft.
+    Rückgabe: Zahl (niedriger = besser)
+    0 = US-Primär (kein Suffix, kurz)
+    1 = US-ADR (endet auf Y)
+    2 = EU-Primär (.DE, .PA, .AS, .HE etc.)
+    3 = London (.L, .IL)
+    4 = Sonstige (.MU, .F, .SG, .BE etc.)
+    5 = Strukturierte Produkte / ISIN-WKN-Konstrukte
     """
-    # Manuelle Paare von tickern die die gleiche Firma sind
-    TICKER_GROUPS = {
-        "NVDA": ["NVDA", "NVD.DE", "NVD.F"],
-        "META": ["META"],
-        "GOOGL": ["GOOGL", "GOOG", "ABEA.F"],
-        "AMZN": ["AMZN"],
-        "MSFT": ["MSFT"],
-        "AAPL": ["AAPL"],
-        "SAP.DE": ["SAP.DE", "SAP"],
-        "IFX.DE": ["IFX.DE"],
-        "MTX.DE": ["MTX.DE"],
-        "SIE.DE": ["SIE.DE"],
-        "ALV.DE": ["ALV.DE"],
-        "CBK.DE": ["CBK.DE"],
-        "DBK.DE": ["DBK.DE"],
-        "BAYN.DE": ["BAYN.DE"],
-        "BAS.DE": ["BAS.DE"],
-        "TTWO": ["TTWO"],
-        "PLTR": ["PLTR"],
-        "AMD": ["AMD"],
-        "INTC": ["INTC"],
-        "QCOM": ["QCOM"],
-        "MSTR": ["MSTR"],
-        "CRWD": ["CRWD"],
-        "NU": ["NU"],
-        "UBER": ["UBER"],
-        # Quantum Computing: Zertifikate/strukturierte Produkte auf QUBT
-        "QUBT": ["QUBT", "DE000SL0FUQ7.SG"],
-    }
-
-    # Automatische Erkennung: Ticker mit Exchange-Suffix (.SG, .MU, .F, .DE, .L etc.)
-    # die ISIN/WKN-artige Basis haben (>6 Zeichen vor dem Punkt = strukturiertes Produkt)
+    if not ticker:
+        return 99
     import re
-    STRUCTURED_PRODUCT_RE = re.compile(
-        r'^([A-Z]{2}[0-9A-Z]{10,})\.(SG|MU|F|DE|L|PA|SW|VI|AS)$'
-    )
-    structured = con.execute("""
-        SELECT ticker FROM watchlist
+    # Strukturierte Produkte: ISIN-ähnlich (2 Buchstaben + 10+ Zeichen) + Exchange-Suffix
+    if re.match(r'^[A-Z]{2}[0-9A-Z]{10,}\.(SG|MU|F|DE|L|PA|SW|VI|AS)$', ticker):
+        return 5
+    # ISIN-ähnlich ohne Punkt
+    if re.match(r'^[A-Z]{2}[0-9A-Z]{10,}$', ticker):
+        return 5
+    # Exchange-Suffix erkennen
+    suffix = ticker.split('.')[-1] if '.' in ticker else ''
+    if not suffix:
+        # Kein Suffix → US-Primär (TRI, TGT, BLK) oder japanisch/koreanisch (.T/.KS ohne Punkt?)
+        if ticker.isalpha() and len(ticker) <= 5:
+            return 0
+        # Zahlen-Dominiert (006400.KS, 6752.T) — asiatisch
+        if ticker[0].isdigit():
+            return 4
+        return 1
+    suffix = suffix.upper()
+    # US ADRs enden oft auf Y
+    if suffix == 'Y' and len(ticker) <= 5:
+        return 1
+    # EU-Primärbörsen
+    if suffix in ('DE', 'PA', 'AS', 'HE', 'BR', 'VI', 'SW', 'ST', 'CO'):
+        return 2
+    # London
+    if suffix in ('L', 'IL'):
+        return 3
+    # Deutsche Nebenbörsen / Sonstige
+    if suffix in ('MU', 'F', 'SG', 'BE', 'DU', 'BM', 'HA', 'HM'):
+        return 4
+    # Toronto / Australien / andere
+    if suffix in ('TO', 'V', 'AX', 'XA'):
+        return 4
+    return 4
+
+
+def dedup_by_name(con):
+    """
+    Phase 3 (ersetzt statische TICKER_GROUPS):
+    Findet Watchlist-Einträge mit gleichem Namen aber unterschiedlichen Tickern.
+    Merged sie und behält den Ticker mit der höchsten Priorität (US > EU > LSE > Strukturiert).
+    """
+    rows = con.execute("""
+        SELECT rowid, * FROM watchlist
         WHERE status='watching' AND ticker IS NOT NULL
+        ORDER BY name, mention_count DESC
     """).fetchall()
-    for row in structured:
-        t = row["ticker"]
-        m = STRUCTURED_PRODUCT_RE.match(t)
-        if m:
-            # Strukturiertes Produkt erkannt — in dropped überführen (kein echter Aktien-Ticker)
-            dropped = con.execute("""
-                UPDATE watchlist SET status='dropped', notes=?
-                WHERE ticker=? AND status='watching'
-            """, (f"strukturiertes Produkt / Zertifikat erkannt: {t}", t)).rowcount
-            if dropped:
-                print(f"  🗑 Strukturiertes Produkt entfernt: {t}", flush=True)
-    con.commit()
-    total = 0
-    for canonical_ticker, variants in TICKER_GROUPS.items():
-        if len(variants) <= 1:
+
+    groups = {}
+    for r in rows:
+        groups.setdefault(r["name"], []).append(r)
+
+    total_dropped = 0
+    for name, group in groups.items():
+        if len(group) <= 1:
             continue
-        rows = con.execute("""
-            SELECT * FROM watchlist
-            WHERE status='watching' AND ticker IN ({})
-            ORDER BY mention_count DESC
-        """.format(",".join("?" for _ in variants)), variants).fetchall()
-        if len(rows) <= 1:
-            continue
-        # Ticker auf canonical setzen vor merge
-        for r in rows:
-            if r["ticker"] != canonical_ticker:
-                con.execute("UPDATE watchlist SET ticker=? WHERE id=?", (canonical_ticker, r["id"]))
-        con.commit()
-        # Erneutes Laden mit einheitlichem Ticker
-        rows = con.execute("""
-            SELECT * FROM watchlist
-            WHERE status='watching' AND ticker=?
-            ORDER BY mention_count DESC
-        """, (canonical_ticker,)).fetchall()
-        if len(rows) > 1:
-            total += merge_group(con, rows, canonical_ticker, "ticker-variant")
+        # Ticker-Priorität bestimmen
+        best = min(group, key=lambda r: _ticker_priority(r["ticker"]))
+        if all(r["ticker"] == best["ticker"] for r in group):
+            continue  # Alle haben den gleichen besten Ticker → kein Merge nötig
+
+        print(f"  🔗 {name}: {[r['ticker'] for r in group]} → {best['ticker']} "
+              f"(Prio:{_ticker_priority(best['ticker'])})", flush=True)
+        dropped = merge_group(con, group, name, "name")
+        total_dropped += dropped
     con.commit()
-    return total
+    return total_dropped
 
 def main():
     print("🧹 Watchlist Dedup gestartet", flush=True)
@@ -242,9 +235,9 @@ def main():
     print(f"  Vorher: {before} watching entries", flush=True)
 
     total = 0
-    total += dedup_ticker_variants(con)  # erst ticker-varianten angleichen
-    total += dedup_ticker(con)           # dann ticker-basiert mergen
-    total += dedup_name(con)             # dann name-basiert (ohne ticker)
+    total += dedup_by_name(con)            # Phase 3: Name-basiert (US > EU > LSE)
+    total += dedup_ticker(con)             # Phase 1: Ticker-basiert mergen
+    total += dedup_name(con)               # Phase 2: Name-basiert (ohne ticker)
 
     # Nachher
     after = con.execute(
