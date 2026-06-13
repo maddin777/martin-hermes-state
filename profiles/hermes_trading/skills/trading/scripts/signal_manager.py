@@ -11,6 +11,7 @@ Script 4: Signal Manager + Portfolio Manager
 """
 import sqlite3
 import json
+import math
 import os
 import sys
 sys.path.insert(0, "/root/.hermes/profiles/hermes_trading/skills/trading")
@@ -20,47 +21,55 @@ import yfinance as yf
 import pandas_ta as ta
 from datetime import datetime, timedelta
 from utils import passes_liquidity_filter, apply_slippage, COMMISSION_EUR, get_price_data_cached, prefetch_prices
-from utils import get_logger
+from utils import get_logger, price_to_eur, position_size_in_shares
 log = get_logger("signal_manager")
 from config import DB_PATH, SIGNALS_VALIDATED_PATH, STRATEGY_CONFIG_PATH, MACRO_SIGNAL_PATH, db_connect
 CONFIG_PATH = STRATEGY_CONFIG_PATH
 
 
-TELEGRAM_TOKEN   = os.environ.get("TELEGRAM_BOT_TOKEN")
-TELEGRAM_HOME_CHANNEL = os.environ.get("TELEGRAM_HOME_CHANNEL")
+TELEGRAM_TOKEN        = os.environ.get("TELEGRAM_BOT_TOKEN")
+TELEGRAM_HOME_CHANNEL = os.environ.get("TELEGRAM_HOME_CHANNEL") \
+                        or os.environ.get("TELEGRAM_CHAT_ID")
 
 DEFAULT_CONFIG = {
-    "starting_capital":    10000.0,
-    "max_position_pct":    0.15,
-    "max_position_pct_high": 0.20,
-    "max_position_pct_low":  0.10,
-    "max_positions":       8,
+    "starting_capital":       10000.0,
+    "max_position_pct":       0.15,
+    "max_position_pct_high":  0.20,
+    "max_position_pct_low":   0.10,
+    "max_positions":          8,
     "max_portfolio_allocation": 0.70,
-    "min_cash_reserve":    1500.0,
-    "max_long_allocation": 0.70,
-    "max_short_allocation": 0.30,
-    "conviction_high":     0.80,
-    "conviction_low":      0.60,
-    "atr_sl_multiplier":   1.5,
-    "atr_tp_multiplier":   2.5,
-    "min_confidence":      0.60,
-    "min_confidence_short": 0.65,
-    "min_conviction":      0.60,
-    "min_mentions":        2,
-    "partial_tp_enabled":  True,
-    "partial_tp_atr":      1.5,
-    "partial_tp_pct":      0.50,
-    "profit_lock_atr":     2.0,
-    "trailing_step_atr":   0.5,
-    "slippage_pct":        0.001,
-    "commission_eur":      1.0,
-    "min_liquidity_eur":   500000,
+    "min_cash_reserve":       1500.0,
+    "max_long_allocation":    0.70,
+    "max_short_allocation":   0.30,
+    "conviction_high":        0.80,
+    "conviction_low":         0.60,
+    "atr_sl_multiplier":      1.5,
+    "atr_tp_multiplier":      2.5,
+    "min_confidence":         0.60,
+    "min_confidence_short":   0.65,   # BUGFIX: war 0.5 im Query, Default jetzt konsistent
+    "min_conviction":         0.60,
+    "min_mentions":           2,
+    "min_mentions_short":     2,
+    "partial_tp_enabled":     True,
+    "partial_tp_atr":         1.5,
+    "partial_tp_pct":         0.50,
+    "profit_lock_atr":        2.0,
+    "trailing_step_atr":      0.5,
+    "slippage_pct":           0.001,
+    "commission_eur":         1.0,
+    "min_liquidity_eur":      500000,
     "earnings_blackout_days": 5,
-    "max_correlation":    0.70,
-    "consecutive_wins":    0,
-    "consecutive_losses":  0,
-    "total_trades":        0,
-    "winning_trades":      0,
+    "max_correlation":        0.70,
+    # Risiko-Parity: Zielrisiko pro Trade als % des Portfolios
+    "risk_pct_per_trade":     0.015,  # 1.5% – jetzt konfigurierbar
+    # Drawdown-Cooldown: N Handelstage nach close_all blockiert
+    "drawdown_cooldown_days": 7,
+    "drawdown_close_all_date": None,  # ISO-Datum letzter close_all
+    # Performance-Tracking
+    "consecutive_wins":       0,
+    "consecutive_losses":     0,
+    "total_trades":           0,
+    "winning_trades":         0,
 }
 
 def load_config():
@@ -113,6 +122,7 @@ def init_db(con):
             id           INTEGER PRIMARY KEY,
             cash         REAL,
             total_value  REAL,
+            ath_value    REAL,
             updated_at   TEXT
         )
     """)
@@ -120,10 +130,19 @@ def init_db(con):
     if not existing:
         cfg = load_config()
         con.execute("""
-            INSERT INTO portfolio (id, cash, total_value, updated_at)
-            VALUES (1, ?, ?, ?)
+            INSERT INTO portfolio (id, cash, total_value, ath_value, updated_at)
+            VALUES (1, ?, ?, ?, ?)
         """, (cfg["starting_capital"], cfg["starting_capital"],
-              datetime.now().isoformat()))
+              cfg["starting_capital"], datetime.now().isoformat()))
+    else:
+        # Migration: ath_value für bestehende DBs
+        port_cols = [row[1] for row in con.execute("PRAGMA table_info(portfolio)")]
+        if "ath_value" not in port_cols:
+            con.execute("ALTER TABLE portfolio ADD COLUMN ath_value REAL")
+            con.execute(
+                "UPDATE portfolio SET ath_value = total_value WHERE id=1 AND ath_value IS NULL"
+            )
+            print("  📝 portfolio: Spalte ath_value hinzugefügt", flush=True)
 
     # Migration: neue Spalten hinzufügen wenn nicht vorhanden
     cols = [row[1] for row in con.execute("PRAGMA table_info(positions)")]
@@ -133,6 +152,28 @@ def init_db(con):
         con.execute("ALTER TABLE positions ADD COLUMN lowest_price REAL DEFAULT 0")
     if "partial_exit_done" not in cols:
         con.execute("ALTER TABLE positions ADD COLUMN partial_exit_done INTEGER DEFAULT 0")
+    if "thesis_current_status" not in cols:
+        con.execute("ALTER TABLE positions ADD COLUMN thesis_current_status TEXT DEFAULT 'no_thesis'")
+    if "thesis_theme_id" not in cols:
+        con.execute("ALTER TABLE positions ADD COLUMN thesis_theme_id INTEGER")
+
+    # Migration: watchlist – conviction_score_raw (Audit-Trail vor LLM-Validierung)
+    wl_cols = [row[1] for row in con.execute("PRAGMA table_info(watchlist)")]
+    if "conviction_score_raw" not in wl_cols:
+        con.execute(
+            "ALTER TABLE watchlist ADD COLUMN conviction_score_raw REAL"
+        )
+        con.execute(
+            "UPDATE watchlist SET conviction_score_raw = conviction_score "
+            "WHERE conviction_score_raw IS NULL"
+        )
+        print("  📝 watchlist: Spalte conviction_score_raw hinzugefügt", flush=True)
+    if "llm_verdict" not in wl_cols:
+        con.execute("ALTER TABLE watchlist ADD COLUMN llm_verdict TEXT")
+        print("  📝 watchlist: Spalte llm_verdict hinzugefügt", flush=True)
+    if "llm_verdict_at" not in wl_cols:
+        con.execute("ALTER TABLE watchlist ADD COLUMN llm_verdict_at TEXT")
+        print("  📝 watchlist: Spalte llm_verdict_at hinzugefügt", flush=True)
 
     # Migration: canonical_tickers Tabelle (Duplikat-Merge + Fehlklassifikation)
     con.execute("""
@@ -255,23 +296,33 @@ def check_segment_performance(con, ticker, direction, conviction_score):
 
 
 def has_upcoming_earnings(ticker, days_ahead=5):
-    """Prüft ob Earnings innerhalb der nächsten N Tage anstehen."""
+    """Prüft ob Earnings innerhalb der nächsten N Tage anstehen.
+    BUGFIX: yfinance gibt date-Objekte zurück, kein datetime – Subtraktion mit
+    datetime.now() würde TypeError werfen. Beide auf date normalisieren.
+    """
     try:
+        from datetime import date as _date
         t = yf.Ticker(ticker)
         cal = t.calendar
-        if cal is not None and "Earnings Date" in cal:
-            earnings_date = cal["Earnings Date"]
-            if isinstance(earnings_date, list):
-                earnings_date = earnings_date[0]
-            days_until = (earnings_date - datetime.now()).days
-            return 0 <= days_until <= days_ahead
-    except:
-        pass
-    return False
+        if cal is None:
+            return False
+        earnings_date = cal.get("Earnings Date")
+        if not earnings_date:
+            return False
+        if isinstance(earnings_date, (list, tuple)):
+            earnings_date = earnings_date[0]
+        # Normalisierung auf date-Objekt (robust gegen date und datetime)
+        if hasattr(earnings_date, "date"):
+            earnings_date = earnings_date.date()
+        today = _date.today()
+        days_until = (earnings_date - today).days
+        return 0 <= days_until <= days_ahead
+    except Exception:
+        return False  # Bei Fehler kein Blackout (fail open)
 
 def check_open_positions(con, cfg):
     """Prüft offene Positionen auf SL/TP, Trailing Stop und Partial TP."""
-        # Batch-Preisabfrage vorab (befüllt Cache für alle open positions)
+    # Batch-Preisabfrage vorab (befüllt Cache für alle open positions)
     positions = con.execute(
         "SELECT * FROM positions WHERE status='open'"
     ).fetchall()
@@ -279,7 +330,6 @@ def check_open_positions(con, cfg):
     # Batch-Download aller Position-Kurse in einem Aufruf (TTL-Cache)
     if positions:
         prefetch_prices([p["ticker"] for p in positions if p["ticker"]])
-
 
     portfolio = con.execute("SELECT * FROM portfolio WHERE id=1").fetchone()
     cash = portfolio["cash"]
@@ -290,11 +340,17 @@ def check_open_positions(con, cfg):
         if not current_price:
             continue
 
-        entry  = pos["entry_price"]
-        sl     = pos["stop_loss"]
-        tp     = pos["take_profit"]
-        shares = pos["shares"]
+        if math.isnan(current_price):
+            continue
+
+        entry     = pos["entry_price"]
+        sl        = pos["stop_loss"]
+        tp        = pos["take_profit"]
+        shares    = pos["shares"]
         direction = pos["direction"]
+        # Snapshot der originalen Positionsgröße BEVOR Partial-TP sie verändern kann.
+        # Verhindert Doppelbuchung wenn Partial-TP und SL/TP im selben Tick zünden.
+        original_position_size = pos["position_size"]
 
         if direction == "LONG":
             pnl_pct = (current_price - entry) / entry
@@ -305,7 +361,7 @@ def check_open_positions(con, cfg):
             hit_sl  = current_price >= sl
             hit_tp  = current_price <= tp
 
-        pnl_eur = pnl_pct * pos["position_size"] - COMMISSION_EUR
+        pnl_eur = pnl_pct * original_position_size - COMMISSION_EUR
 
         # --- Partial Take-Profit ---
         if cfg.get("partial_tp_enabled") and not pos["partial_exit_done"] and atr:
@@ -415,7 +471,8 @@ def check_open_positions(con, cfg):
             exit_reason = "TARGET_HIT"
 
         if exit_reason:
-            cash += pos["position_size"] + pnl_eur
+            # Cash-Rückbuchung mit original_position_size (vor Partial-TP-Reduktion)
+            cash += original_position_size + pnl_eur
             con.execute("""
                 UPDATE positions SET
                     status='closed', exit_price=?, exit_date=?,
@@ -473,7 +530,7 @@ def get_macro_signal():
         with open(macro_file) as f:
             data = _json.load(f)
         return data.get("signal", "neutral"), data.get("regime", "sideways")
-    except:
+    except Exception:
         return "neutral", "sideways"
 
 def apply_regime_filter(conviction, direction, regime):
@@ -504,8 +561,8 @@ def check_drawdown(con):
     if not portfolio:
         return 0.0, "ok"
 
-    total   = portfolio["total_value"] or 0
-    ath     = portfolio["ath_value"]   or total
+    total = portfolio["total_value"] or 0
+    ath   = portfolio["ath_value"]   or total
 
     # ATH aktualisieren wenn neues Hoch
     if total > ath:
@@ -524,6 +581,68 @@ def check_drawdown(con):
         return drawdown, "no_entry"
     else:
         return drawdown, "ok"
+
+
+def _is_drawdown_cooldown_active(cfg) -> bool:
+    """Prüft ob nach einem close_all-Event noch Cooldown-Sperre aktiv ist."""
+    close_all_date_str = cfg.get("drawdown_close_all_date")
+    if not close_all_date_str:
+        return False
+    try:
+        from datetime import date as _date
+        close_all_date = datetime.fromisoformat(close_all_date_str).date()
+        days_elapsed = (_date.today() - close_all_date).days
+        cooldown = cfg.get("drawdown_cooldown_days", 7)
+        if days_elapsed < cooldown:
+            print(f"  🕐 Drawdown-Cooldown aktiv: noch {cooldown - days_elapsed} Handelstage gesperrt",
+                  flush=True)
+            return True
+    except Exception:
+        pass
+    return False
+
+
+def _emergency_close_all(con, cfg):
+    """Schließt alle offenen Positionen (Drawdown-Notbremse) und bucht Cash zurück."""
+    positions = con.execute(
+        "SELECT * FROM positions WHERE status='open'"
+    ).fetchall()
+    total_recovered = 0.0
+    for pos in positions:
+        ticker    = pos["ticker"]
+        direction = pos["direction"]
+        entry     = pos["entry_price"]
+        current_price, _ = get_current_price_and_atr(ticker)
+        if not current_price:
+            current_price = entry  # Fallback: keine Bewegung angenommen
+
+        if direction == "LONG":
+            pnl_pct = (current_price - entry) / entry
+        else:
+            pnl_pct = (entry - current_price) / entry
+
+        pnl_eur = pnl_pct * pos["position_size"] - COMMISSION_EUR
+        total_recovered += pos["position_size"] + pnl_eur
+
+        con.execute("""
+            UPDATE positions SET
+                status='closed', exit_price=?, exit_date=?,
+                exit_reason='DRAWDOWN_EMERGENCY', pnl_eur=?, pnl_pct=?
+            WHERE id=?
+        """, (round(current_price, 2), datetime.now().isoformat(),
+              round(pnl_eur, 2), round(pnl_pct * 100, 2), pos["id"]))
+
+    # Portfolio zurücksetzen
+    con.execute(
+        "UPDATE portfolio SET cash=?, total_value=?, updated_at=? WHERE id=1",
+        (round(total_recovered, 2), round(total_recovered, 2), datetime.now().isoformat())
+    )
+    con.commit()
+    # Cooldown-Datum setzen
+    cfg["drawdown_close_all_date"] = datetime.now().isoformat()
+    save_config(cfg)
+    print(f"  🚨 {len(positions)} Positionen geschlossen. Cash zurück: {total_recovered:.2f}€",
+          flush=True)
 
 
 
@@ -674,6 +793,10 @@ def get_canonical_ticker(con, ticker: str) -> str:
 
 def open_new_positions(con, cfg):
     """Öffnet neue Positionen aus der Watchlist (LONG + SHORT)."""
+    # ── Drawdown-Cooldown ─────────────────────────────────────────────────
+    if _is_drawdown_cooldown_active(cfg):
+        return
+
     # ── Drawdown-Notbremse ────────────────────────────────────────────────
     drawdown_pct, dd_action = check_drawdown(con)
     if dd_action == "close_all":
@@ -767,10 +890,10 @@ def open_new_positions(con, cfg):
     """).fetchall():
         sector_counts[r["sector"]] = r["cnt"]
 
-    # Heute bereits gehandelte Ticker
-    yesterday = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
+    # Heute bereits gehandelte Ticker (24h-Sperre korrekt per datetime)
+    cutoff_24h = (datetime.now() - timedelta(hours=24)).strftime("%Y-%m-%d %H:%M")
     recent_tickers = {r["ticker"] for r in con.execute(
-        "SELECT ticker FROM positions WHERE entry_date >= ?", (yesterday,)
+        "SELECT ticker FROM positions WHERE entry_date >= ?", (cutoff_24h,)
     ).fetchall()}
 
     # Aktuell investierte Anteile nach Richtung
@@ -821,8 +944,8 @@ def open_new_positions(con, cfg):
             AND w.tech_direction = 'SHORT'
             AND w.ticker IS NOT NULL
         """, (
-            cfg.get("min_confidence_short", 0.5),
-            cfg.get("min_mentions_short", 1)
+            cfg.get("min_confidence_short", 0.65),   # BUGFIX: war 0.5, jetzt konsistent
+            cfg.get("min_mentions_short", 2)
         )).fetchall()
 
     all_candidates = []
@@ -846,7 +969,7 @@ def open_new_positions(con, cfg):
             last_seen = datetime.strptime(c["last_seen"], "%Y-%m-%d")
             days_ago  = (datetime.now() - last_seen).days
             recency   = max(0, 1 - days_ago / 30)
-        except:
+        except Exception:
             recency = 0
 
         score = (
@@ -905,7 +1028,7 @@ def open_new_positions(con, cfg):
             print(f"  ✅ SHORT-Thesis {short_score}/4: {', '.join(short_reasons)}", flush=True)
 
         # Weekly Trend Filter: Don't fight the tape
-        wt = c["weekly_trend"] if "weekly_trend" in c.keys() else "neutral"
+        wt = c.get("weekly_trend", "neutral")
         if wt == "bearish" and direction == "LONG":
             print(f"  📉 {c['name']}: Weekly Trend BEARISH → LONG geblockt")
             continue
@@ -950,7 +1073,7 @@ def open_new_positions(con, cfg):
             continue
 
         # Loop 3: Pre-Entry Validation Gate – Segment-Historie prüfen
-        seg_ok, seg_reason = check_segment_performance(con, ticker, direction, c["conviction_score"] or 0)
+        seg_ok, seg_reason = check_segment_performance(con, ticker, direction, c.get("conviction_score") or 0)
         if not seg_ok:
             print(f"  🚫 {c['name']}: {seg_reason}")
             continue
@@ -973,9 +1096,22 @@ def open_new_positions(con, cfg):
         if not current_price or not atr:
             continue
 
-        import math
         if math.isnan(current_price) or math.isnan(atr):
             continue
+
+        # VIX-Halving: Bei VIX > 30 Positionsgröße halbieren
+        vix_factor = 1.0
+        try:
+            vix_row = con.execute("""
+                SELECT value FROM macro_data
+                WHERE indicator_id='vix' ORDER BY date DESC LIMIT 1
+            """).fetchone()
+            if vix_row and vix_row["value"] and float(vix_row["value"]) > 30:
+                vix_factor = 0.5
+                print(f"  ⚠️  VIX={vix_row['value']:.0f} > 30 → Positionsgröße halbiert",
+                      flush=True)
+        except Exception:
+            pass
 
         # Position Sizing
         conviction = c["conviction_score"] or 0
@@ -991,22 +1127,28 @@ def open_new_positions(con, cfg):
             pct = cfg.get("max_position_pct", 0.15)
             sizing_label = "NORMAL"
 
+        # VIX-Faktor anwenden (vor allen weiteren Caps)
+        pct = pct * vix_factor
+
         # Volatilitätsbereinigtes Positionsgrößensystem (Risk-Parity)
-        # Risiko pro Trade capped auf 1.5% des Gesamtportfolios
-        risk_pct = 0.015
-        risk_amount = portfolio_value * risk_pct
-        sl_multiplier = cfg.get("atr_sl_multiplier", 1.5)
-        
-        # SL-Abstand in EUR
-        sl_distance = sl_multiplier * atr
-        
-        if sl_distance > 0:
-            vol_position_size = (risk_amount / sl_distance) * current_price
-            # Cap mit klassischem prozentualen Limit, Cash und Budget
+        # Risiko pro Trade capped auf risk_pct_per_trade % des Gesamtportfolios
+        risk_pct       = cfg.get("risk_pct_per_trade", 0.015)
+        risk_amount    = portfolio_value * risk_pct
+        sl_multiplier  = cfg.get("atr_sl_multiplier", 1.5)
+        # ATR in EUR umrechnen (FX-aware) für korrektes Sizing
+        atr_eur        = price_to_eur(atr, ticker)
+        sl_distance_eur = sl_multiplier * atr_eur
+
+        if sl_distance_eur > 0:
+            vol_position_size = (risk_amount / sl_distance_eur) * price_to_eur(current_price, ticker)
             position_size = min(vol_position_size, pct * portfolio_value, cash, remaining_budget)
-            sizing_label += f" | Vol-Adjusted (Risk: {risk_pct:.1%})"
+            sizing_label += f" | Vol-Adj (Risk: {risk_pct:.1%})"
         else:
             position_size = min(pct * portfolio_value, cash, remaining_budget)
+
+        # Cash-Reserve intra-loop sichern (recheck nach vorangegangenen Eröffnungen)
+        if cash - position_size < min_cash:
+            position_size = max(0, cash - min_cash)
 
         print(f"  💰 Position Sizing: {sizing_label} = {position_size:.0f}€", flush=True)
         if position_size < 200:
@@ -1015,9 +1157,9 @@ def open_new_positions(con, cfg):
         # Slippage auf Entry anwenden
         effective_entry = apply_slippage(current_price, direction, is_entry=True)
 
-        # Commission abziehen
+        # Commission abziehen und Stückzahl FX-korrekt berechnen
         position_size_after_commission = position_size - COMMISSION_EUR
-        shares = position_size_after_commission / effective_entry
+        shares = position_size_in_shares(position_size_after_commission, effective_entry, ticker)
 
         # SL/TP berechnen
         if direction == "LONG":
@@ -1165,6 +1307,21 @@ def main(mode="full"):
 
         cfg = load_config()
         print(f"📊 Signal Manager gestartet (Modus: {mode})", flush=True)
+
+        # Telegram-Konfiguration prüfen (einmalig beim Start)
+        if TELEGRAM_TOKEN and TELEGRAM_HOME_CHANNEL:
+            try:
+                resp = requests.get(
+                    f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/getMe",
+                    timeout=5
+                )
+                if not resp.json().get("ok"):
+                    log.warning("⚠ Telegram-Token ungültig (getMe fehlgeschlagen) – "
+                                "Benachrichtigungen werden nicht zugestellt!")
+            except Exception as tg_exc:
+                log.warning("⚠ Telegram nicht erreichbar: %s", tg_exc)
+        elif not TELEGRAM_TOKEN:
+            log.warning("⚠ TELEGRAM_BOT_TOKEN nicht gesetzt – keine Benachrichtigungen")
 
         # Immer: Offene Positionen prüfen (SL/TP/Trailing)
         print("\n1. Prüfe offene Positionen...", flush=True)

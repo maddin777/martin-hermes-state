@@ -12,7 +12,7 @@ from datetime import datetime, timedelta
 from config import DB_PATH, STRATEGY_CONFIG_PATH, SIGNALS_VALIDATED_PATH, db_connect
 
 TG_TOKEN   = os.environ.get("TELEGRAM_BOT_TOKEN")
-TG_CHAT    = os.environ.get("TELEGRAM_HOME_CHANNEL")
+TG_CHAT    = os.environ.get("TELEGRAM_HOME_CHANNEL") or os.environ.get("TELEGRAM_CHAT_ID", "")
 IS_SUNDAY  = datetime.now().weekday() == 6
 
 def send_telegram(msg):
@@ -24,7 +24,7 @@ def send_telegram(msg):
             json={"chat_id": TG_CHAT, "text": msg, "parse_mode": "HTML"},
             timeout=10
         )
-    except: pass
+    except Exception: pass
 
 def calc_signal_metrics(con, today, yesterday):
     # FIX: Use the latest two mention_dates in the DB instead of datetime.now()

@@ -233,8 +233,8 @@ def main():
     print(f"  Vorher: {before} watching entries", flush=True)
 
     total = 0
+    total += dedup_ticker(con)             # Phase 1: Ticker-basiert mergen (zuerst)
     total += dedup_by_name(con)            # Phase 3: Name-basiert (US > EU > LSE)
-    total += dedup_ticker(con)             # Phase 1: Ticker-basiert mergen
     total += dedup_name(con)               # Phase 2: Name-basiert (ohne ticker)
 
     # Nachher

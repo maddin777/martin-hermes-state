@@ -13,10 +13,10 @@ import pandas_ta as ta
 import pandas as pd
 import sqlite3
 from pathlib import Path
-# get_technical_score() zentral aus utils (DRY – war lokale Kopie)
+# get_technical_score() und FX-Funktionen zentral aus utils (DRY)
 import sys as _sys
 _sys.path.insert(0, '/root/.hermes/profiles/hermes_trading/skills/trading/scripts')
-from utils import get_technical_score  # noqa: E402
+from utils import get_technical_score, passes_liquidity_filter  # noqa: E402
 
 
 # Bekannte Mappings für häufige deutsche Unternehmen

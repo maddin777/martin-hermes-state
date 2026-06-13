@@ -1,14 +1,20 @@
 """
 Gemeinsame Hilfsfunktionen für das Trading System.
-- Liquiditätsfilter
+- Logging-Setup
+- FX-Umrechnung (EUR-Referenzkurse via Frankfurter API + GBp-Handling)
+- Liquiditätsfilter (nutzt TTL-Cache)
 - Slippage-Modell
 - Commission-Berechnung
+- Technischer Confluence Score (get_technical_score)
+- Preis-Cache & Batch-Download (get_price_data_cached / prefetch_prices)
+- Retry-Decorator
 """
 
 # ── Logging-Setup ─────────────────────────────────────────────────────────────
 import logging
 import logging.handlers
 import os as _os
+import time as _time
 
 def _setup_logging():
     """
@@ -48,7 +54,7 @@ def _setup_logging():
 def get_logger(name: str) -> logging.Logger:
     """
     Gibt einen konfigurierten Logger zurück.
-    
+
     Verwendung in jedem Modul:
         from utils import get_logger
         log = get_logger(__name__)
@@ -59,30 +65,203 @@ def get_logger(name: str) -> logging.Logger:
     _setup_logging()
     return logging.getLogger(name)
 
+
+# ── Imports ───────────────────────────────────────────────────────────────────
+import functools as _functools
+import requests as _requests
 import yfinance as yf
+import pandas_ta as ta
 
-SLIPPAGE_PCT = 0.001  # 0,1% pro Seite (konservativ für liquide Titel)
-COMMISSION_EUR = 1.0  # Trade Republic: 1€ pro Trade
 
+# ── Konstanten ────────────────────────────────────────────────────────────────
+SLIPPAGE_PCT   = 0.001   # 0,1% pro Seite (konservativ für liquide Titel)
+COMMISSION_EUR = 1.0     # Trade Republic: 1€ pro Trade
+
+
+# ── FX-Umrechnung ─────────────────────────────────────────────────────────────
+_fx_cache: dict = {}
+_fx_cache_date = None
+
+_FX_FALLBACK = {
+    "EUR": 1.0, "USD": 1.08, "JPY": 156.0,
+    "GBP": 0.85, "NOK": 11.5, "CHF": 0.95,
+    "SEK": 11.2, "DKK": 7.46, "CAD": 1.47,
+    "AUD": 1.65, "HKD": 8.43, "SGD": 1.44,
+}
+
+
+def _fetch_fx_rates() -> dict:
+    """Holt EUR-Referenzkurse von Frankfurter API (kostenlos, kein Key)."""
+    global _fx_cache, _fx_cache_date
+    from datetime import date
+    today = date.today()
+    if _fx_cache and _fx_cache_date == today:
+        return _fx_cache
+    try:
+        resp = _requests.get("https://api.frankfurter.app/latest", timeout=10)
+        resp.raise_for_status()
+        data = resp.json()
+        rates = data.get("rates", {})
+        rates["EUR"] = 1.0
+        _fx_cache = rates
+        _fx_cache_date = today
+        return rates
+    except Exception as e:
+        _log = get_logger("utils.fx")
+        _log.warning("FX-Rates nicht abrufbar (%s) – nutze Fallback", e)
+        return _fx_cache or _FX_FALLBACK.copy()
+
+
+def get_fx_rate_to_eur(currency: str) -> float:
+    """
+    Gibt Kurs zurück um einen Betrag VON 'currency' IN EUR umzurechnen.
+    Beispiel: get_fx_rate_to_eur("USD") → ~0.926 (= 1/1.08)
+    """
+    currency = currency.upper()
+    if currency == "EUR":
+        return 1.0
+    rates = _fetch_fx_rates()
+    eur_per_unit = rates.get(currency)
+    if not eur_per_unit or eur_per_unit <= 0:
+        return 1.0
+    # rates ist EUR → currency, wir wollen currency → EUR
+    return 1.0 / eur_per_unit
+
+
+def ticker_to_currency(ticker: str) -> str:
+    """
+    Leitet die Handelswährung eines Tickers aus dem Börsensuffix ab.
+
+    Wichtig: Londoner Börse (.L) handelt in GBp (Pence), nicht GBP.
+    yfinance liefert für .L-Ticker Preise in GBp → Faktor 100 nötig.
+    Alle anderen Preise kommen in der nativen Währung der Primärbörse.
+
+    Rückgabe: Währungs-Code (z.B. "USD", "EUR", "GBP", "GBp", "CHF", …)
+    """
+    if not ticker:
+        return "EUR"
+    ticker = ticker.upper()
+
+    # Krypto/FX-Paare früh raus
+    if ticker.endswith(("-USD", "-EUR", "-USDT", "-BTC")):
+        return "USD"
+
+    suffix = ticker.split(".")[-1] if "." in ticker else ""
+
+    suffix_map = {
+        # EUR-Börsen
+        "DE": "EUR", "PA": "EUR", "AS": "EUR", "HE": "EUR",
+        "BR": "EUR", "VI": "EUR", "MI": "EUR", "SW": "CHF",
+        "ST": "SEK", "CO": "DKK", "MX": "EUR",
+        # Deutsche Nebenbörsen – ebenfalls EUR
+        "MU": "EUR", "F": "EUR", "SG": "EUR", "BE": "EUR",
+        "DU": "EUR", "BM": "EUR", "HA": "EUR", "HM": "EUR",
+        # London: Preise in GBp (Pence!) → Umrechnung: GBp / 100 = GBP
+        "L": "GBp", "IL": "GBp",
+        # Sonstige
+        "TO": "CAD", "V": "CAD", "AX": "AUD", "T": "JPY",
+        "KS": "KRW", "HK": "HKD", "SI": "SGD",
+    }
+
+    if suffix in suffix_map:
+        return suffix_map[suffix]
+
+    # Kein Suffix → US-Börse
+    if ticker.isalpha() and len(ticker) <= 5:
+        return "USD"
+
+    return "USD"  # konservativer Default
+
+
+def price_to_eur(price: float, ticker: str) -> float:
+    """
+    Rechnet einen yfinance-Preis in EUR um.
+
+    Berücksichtigt GBp (London): Preise werden durch 100 geteilt bevor
+    die GBP→EUR-Konversion angewandt wird.
+    """
+    currency = ticker_to_currency(ticker)
+    if currency == "EUR":
+        return price
+    if currency == "GBp":
+        # London Preise kommen in Pence → erst in GBP umrechnen
+        price_gbp = price / 100.0
+        return price_gbp * get_fx_rate_to_eur("GBP")
+    return price * get_fx_rate_to_eur(currency)
+
+
+def position_size_in_shares(position_eur: float, price: float, ticker: str) -> float:
+    """
+    Rechnet eine Positionsgröße in EUR in Stückzahl um.
+    Berücksichtigt FX damit price_in_native_currency korrekt skaliert wird.
+    """
+    price_eur = price_to_eur(price, ticker)
+    if price_eur <= 0:
+        return 0.0
+    return position_eur / price_eur
+
+
+def turnover_to_eur(price: float, volume: float, ticker: str) -> float:
+    """Tagesumsatz (Preis × Volumen) in EUR."""
+    return price_to_eur(price, ticker) * volume
+
+
+# ── Retry-Decorator ───────────────────────────────────────────────────────────
+
+def retry(max_attempts: int = 3, backoff: float = 2.0, exceptions=(Exception,)):
+    """
+    Decorator für Retry mit exponenziellem Backoff.
+
+    Verwendung:
+        @retry(max_attempts=3, backoff=2.0, exceptions=(requests.RequestException,))
+        def call_api():
+            ...
+    """
+    def decorator(func):
+        @_functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            last_exc = None
+            for attempt in range(1, max_attempts + 1):
+                try:
+                    return func(*args, **kwargs)
+                except exceptions as e:
+                    last_exc = e
+                    if attempt < max_attempts:
+                        wait = backoff ** (attempt - 1)
+                        _time.sleep(wait)
+                    else:
+                        raise
+            raise last_exc
+        return wrapper
+    return decorator
+
+
+# ── Liquiditätsfilter ────────────────────────────────────────────────────────
 
 def passes_liquidity_filter(ticker, min_avg_volume_eur=500_000):
     """
     Filtert Ticker mit zu geringem Handelsvolumen.
-    min_avg_volume_eur: Mindest-Tagesumsatz in EUR (Preis × Volumen).
-    500k EUR = sinnvoller Mindestwert für realistisches Paper-Trading.
+    Nutzt TTL-Cache (get_price_data_cached) um doppelte yf.download-Calls zu vermeiden.
+    Umsatz wird in EUR umgerechnet (FX + GBp-Handling).
     """
     try:
-        df = yf.download(ticker, period="30d", interval="1d",
-                         progress=False, auto_adjust=True)
-        if df.empty or len(df) < 10:
+        _, _, df = get_price_data_cached(ticker)
+        if df is None or df.empty or len(df) < 10:
             return False
-        close = df["Close"].iloc[:, 0]
-        volume = df["Volume"].iloc[:, 0]
-        avg_daily_turnover = (close * volume).mean()
+        close  = df["Close"].iloc[:, 0] if df["Close"].ndim > 1 else df["Close"]
+        volume = df["Volume"].iloc[:, 0] if df["Volume"].ndim > 1 else df["Volume"]
+        # Umsatz in Heimwährung, dann in EUR
+        avg_daily_turnover = turnover_to_eur(
+            float(close.tail(20).mean()), float(volume.tail(20).mean()), ticker
+        )
         return avg_daily_turnover >= min_avg_volume_eur
-    except:
+    except Exception as exc:
+        _log = get_logger("utils.liquidity")
+        _log.warning("Liquiditätsfilter Fehler (%s): %s", ticker, exc)
         return False
 
+
+# ── Slippage-Modell ───────────────────────────────────────────────────────────
 
 def apply_slippage(price, direction, is_entry=True):
     """
@@ -107,14 +286,15 @@ def apply_slippage(price, direction, is_entry=True):
 def calc_pnl_with_costs(entry_price, exit_price, position_size, direction):
     """
     Berechnet PnL in EUR inklusive Slippage und Commission (pro Seite).
+    entry_price / exit_price müssen bereits in EUR übergeben werden.
     """
     if direction == "LONG":
         effective_entry = entry_price * (1 + SLIPPAGE_PCT)
-        effective_exit = exit_price * (1 - SLIPPAGE_PCT)
+        effective_exit  = exit_price  * (1 - SLIPPAGE_PCT)
         pnl_pct = (effective_exit - effective_entry) / effective_entry
     else:  # SHORT
         effective_entry = entry_price * (1 - SLIPPAGE_PCT)
-        effective_exit = exit_price * (1 + SLIPPAGE_PCT)
+        effective_exit  = exit_price  * (1 + SLIPPAGE_PCT)
         pnl_pct = (effective_entry - effective_exit) / effective_entry
 
     pnl_eur = pnl_pct * position_size - COMMISSION_EUR
@@ -122,67 +302,30 @@ def calc_pnl_with_costs(entry_price, exit_price, position_size, direction):
 
 
 # ── Technische Analyse ────────────────────────────────────────────────────────
-# Zentrale Implementierung von get_technical_score() – war dreifach vorhanden in
-# technical_validator.py, watchlist_manager.py und active_exit_check.py (dort
-# als get_tech_status mit abweichendem Rückgabeformat – bleibt eigenständig).
-
-import pandas_ta as ta  # noqa: E402 (nach dem Guard unten sicher)
-
-
-
-# ── Retry-Decorator ───────────────────────────────────────────────────────────
-import functools as _functools
-
-def retry(max_attempts: int = 3, backoff: float = 2.0, exceptions=(Exception,)):
-    """
-    Decorator für Retry mit exponenziellem Backoff.
-    
-    Verwendung:
-        @retry(max_attempts=3, backoff=2.0, exceptions=(requests.RequestException,))
-        def call_api():
-            ...
-    """
-    def decorator(func):
-        @_functools.wraps(func)
-        def wrapper(*args, **kwargs):
-            last_exc = None
-            for attempt in range(1, max_attempts + 1):
-                try:
-                    return func(*args, **kwargs)
-                except exceptions as e:
-                    last_exc = e
-                    if attempt < max_attempts:
-                        wait = backoff ** (attempt - 1)
-                        _time.sleep(wait)
-                    else:
-                        raise
-            raise last_exc
-        return wrapper
-    return decorator
+# Zentrale Implementierung von get_technical_score().
 
 def get_technical_score(ticker):
     """
     Berechnet den technischen Confluence Score für einen Ticker.
 
     Rückgabe: Dict mit folgenden Keys (oder None bei Fehler / zu wenig Daten):
-        ticker, last_price, score, max_score, confidence (0.0–1.0),
-        direction (LONG/SHORT/NEUTRAL), reasons, ema20, ema50, rsi
+        ticker, last_price, last_price_eur, score, max_score,
+        confidence (0.0–1.0), direction (LONG/SHORT/NEUTRAL),
+        reasons, ema20, ema50, rsi, weekly_trend
 
     Wird genutzt von:
         - technical_validator.py  (liest das komplette Dict)
         - watchlist_manager.py    (liest nur confidence + direction)
     """
     try:
-        df = yf.download(ticker, period="2y", interval="1d",
-                         progress=False, auto_adjust=True)
-        df = df.dropna()
-        if df.empty or len(df) < 50:
+        _, _, df = get_price_data_cached(ticker)
+        if df is None or df.empty or len(df) < 50:
             return None
 
-        close = df["Close"].iloc[:, 0]
-        high  = df["High"].iloc[:, 0]
-        low   = df["Low"].iloc[:, 0]
-        vol   = df["Volume"].iloc[:, 0]
+        close = df["Close"].iloc[:, 0] if df["Close"].ndim > 1 else df["Close"]
+        high  = df["High"].iloc[:, 0]  if df["High"].ndim  > 1 else df["High"]
+        low   = df["Low"].iloc[:, 0]   if df["Low"].ndim   > 1 else df["Low"]
+        vol   = df["Volume"].iloc[:, 0] if df["Volume"].ndim > 1 else df["Volume"]
 
         score     = 0
         max_score = 10
@@ -290,39 +433,44 @@ def get_technical_score(ticker):
         confidence = max(0.0, min(1.0, confidence))
         direction  = "LONG" if score >= 2 else "SHORT" if score <= -2 else "NEUTRAL"
 
+        last_price_eur = price_to_eur(float(last_close), ticker)
+
         return {
-            "ticker":     ticker,
-            "last_price": round(float(last_close), 2),
-            "score":      score,
-            "max_score":  max_score,
-            "confidence": confidence,
-            "direction":  direction,
-            "reasons":    reasons,
-            "ema20":      round(float(ema20.iloc[-1]), 2),
-            "ema50":      round(float(ema50.iloc[-1]), 2),
-            "rsi":        round(float(rsi_val), 1),
-            "weekly_trend": weekly_trend,
+            "ticker":        ticker,
+            "last_price":    round(float(last_close), 4),
+            "last_price_eur": round(last_price_eur, 2),
+            "score":         score,
+            "max_score":     max_score,
+            "confidence":    confidence,
+            "direction":     direction,
+            "reasons":       reasons,
+            "ema20":         round(float(ema20.iloc[-1]), 4),
+            "ema50":         round(float(ema50.iloc[-1]), 4),
+            "rsi":           round(float(rsi_val), 1),
+            "weekly_trend":  weekly_trend,
         }
 
     except Exception as e:
-        print(f"     ✗ Technische Analyse Fehler ({ticker}): {e}", flush=True)
+        _log = get_logger("utils.tech")
+        _log.warning("Technische Analyse Fehler (%s): %s", ticker, e)
         return None
 
 
 # ── Preis-Cache & Batch-Download ─────────────────────────────────────────────
 
-import time as _time
-
 _price_cache: dict = {}   # ticker → (timestamp, close, atr, df)
 _PRICE_TTL = 300          # 5 Minuten
+
 
 def _cache_key(ticker: str) -> str:
     return ticker.upper()
 
+
 def get_price_data_cached(ticker: str):
     """
-    Gibt (close, atr, df) für einen Ticker zurück – mit 5-min TTL-Cache.
-    Ersetzt direkte yf.download()-Aufrufe in signal_manager, active_exit_check etc.
+    Gibt (close_native, atr_native, df) für einen Ticker zurück – mit 5-min TTL-Cache.
+    close_native / atr_native sind in der Heimwährung des Tickers (nicht EUR-umgerechnet).
+    Für EUR-Beträge price_to_eur() verwenden.
     """
     key = _cache_key(ticker)
     now = _time.time()
@@ -337,16 +485,17 @@ def get_price_data_cached(ticker: str):
         df = df.dropna()
         if df.empty or len(df) < 20:
             return None, None, None
-        close_s = df["Close"].iloc[:, 0]
-        high_s  = df["High"].iloc[:, 0]
-        low_s   = df["Low"].iloc[:, 0]
+        close_s = df["Close"].iloc[:, 0] if df["Close"].ndim > 1 else df["Close"]
+        high_s  = df["High"].iloc[:, 0]  if df["High"].ndim  > 1 else df["High"]
+        low_s   = df["Low"].iloc[:, 0]   if df["Low"].ndim   > 1 else df["Low"]
         atr_s   = ta.atr(high_s, low_s, close_s, length=14)
         close_val = float(close_s.iloc[-1])
         atr_val   = float(atr_s.iloc[-1])
         _price_cache[key] = (now, close_val, atr_val, df)
         return close_val, atr_val, df
     except Exception as e:
-        print(f"     ⚠ Preisfehler ({ticker}): {e}", flush=True)
+        _log = get_logger("utils.price")
+        _log.warning("Preisfehler (%s): %s", ticker, e)
         return None, None, None
 
 
@@ -355,10 +504,6 @@ def prefetch_prices(tickers: list):
     Lädt Kursdaten für mehrere Ticker in einem Batch-Download.
     Befüllt den Cache vorab – danach sind get_price_data_cached()-Aufrufe
     sofort (aus dem Cache) beantwortet.
-
-    Aufruf z.B. am Anfang von signal_manager.main():
-        from utils import prefetch_prices
-        prefetch_prices([p["ticker"] for p in open_positions])
     """
     tickers = [t for t in tickers if t]
     if not tickers:
@@ -379,13 +524,9 @@ def prefetch_prices(tickers: list):
                 df = df.dropna()
                 if df.empty or len(df) < 20:
                     continue
-                close_s = df["Close"]
-                high_s  = df["High"]
-                low_s   = df["Low"]
-                if hasattr(close_s, 'iloc') and close_s.ndim > 1:
-                    close_s = close_s.iloc[:, 0]
-                    high_s  = high_s.iloc[:, 0]
-                    low_s   = low_s.iloc[:, 0]
+                close_s = df["Close"].iloc[:, 0] if df["Close"].ndim > 1 else df["Close"]
+                high_s  = df["High"].iloc[:, 0]  if df["High"].ndim  > 1 else df["High"]
+                low_s   = df["Low"].iloc[:, 0]   if df["Low"].ndim   > 1 else df["Low"]
                 atr_s     = ta.atr(high_s, low_s, close_s, length=14)
                 close_val = float(close_s.iloc[-1])
                 atr_val   = float(atr_s.iloc[-1])
@@ -394,4 +535,5 @@ def prefetch_prices(tickers: list):
                 pass  # Einzelner Fehler überspringen, andere laufen weiter
         print(f"  ✅ Cache befüllt: {len(_price_cache)} Einträge", flush=True)
     except Exception as e:
-        print(f"  ⚠ Batch-Download Fehler: {e} – falle auf Einzelabfragen zurück", flush=True)
+        _log = get_logger("utils.prefetch")
+        _log.warning("Batch-Download Fehler: %s – falle auf Einzelabfragen zurück", e)

@@ -5,6 +5,7 @@ Nur für Kandidaten mit conviction >= 0.70.
 """
 import json, os, requests, sqlite3
 import sys
+from datetime import datetime
 sys.path.insert(0, "/root/.hermes/profiles/hermes_trading/skills/trading")
 import env_loader  # noqa: F401  (side-effect: laedt .env)
 from datetime import datetime
@@ -106,19 +107,30 @@ def main():
             if verdict == "CONFIRMED":
                 boost = min(0.10, 0.05 * (c["mention_count"] / 5))
                 new_conv = min(1.0, c["conviction_score"] + boost)
-                print(f"  ✅ {c['name']:25} CONFIRMED (+{boost:.2f}) → {new_conv:.2f}")
+                delta_str = f"+{boost:.2f}"
+                print(f"  ✅ {c['name']:25} CONFIRMED ({delta_str}) → {new_conv:.2f}")
             elif verdict == "CONTRADICTED":
                 penalty = 0.15
                 new_conv = max(0.0, c["conviction_score"] - penalty)
-                print(f"  ❌ {c['name']:25} CONTRADICTED (-{penalty:.2f}) → {new_conv:.2f}")
+                delta_str = f"-{penalty:.2f}"
+                print(f"  ❌ {c['name']:25} CONTRADICTED ({delta_str}) → {new_conv:.2f}")
             else:
                 new_conv = c["conviction_score"]
+                delta_str = "0.00"
                 print(f"  ❓ {c['name']:25} UNCERTAIN (unverändert)")
 
-            con.execute(
-                "UPDATE watchlist SET conviction_score=? WHERE name=?",
-                (round(new_conv, 3), c["name"])
-            )
+            # conviction_score_raw bleibt unangetastet (channel-basierter Rohwert).
+            # conviction_score enthält den LLM-validierten Wert.
+            # llm_verdict + llm_delta für Dashboard-Diagnose (Migration via init_db in signal_manager).
+            con.execute("""
+                UPDATE watchlist
+                SET conviction_score=?,
+                    llm_verdict=?,
+                    llm_verdict_at=?
+                WHERE ticker=? AND name=?
+            """, (round(new_conv, 3), f"{verdict} ({delta_str})",
+                  datetime.now().strftime("%Y-%m-%d %H:%M"),
+                  c["ticker"], c["name"]))
 
         con.commit()
         print("✅ LLM-Validierung abgeschlossen", flush=True)

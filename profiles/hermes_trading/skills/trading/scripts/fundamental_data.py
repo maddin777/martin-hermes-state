@@ -349,7 +349,7 @@ def detect_market_regime(con):
         try:
             with open(macro_file) as f:
                 macro = _json.load(f)
-        except:
+        except Exception:
             macro = {}
 
         macro["regime"]        = current_regime

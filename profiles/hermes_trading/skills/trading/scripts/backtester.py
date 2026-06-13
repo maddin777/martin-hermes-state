@@ -57,7 +57,7 @@ def simulate_trade_with_path(entry_price, direction, sl, tp, ticker, entry_date,
         pnl = ((final - entry_price) / entry_price * 100) if direction == "LONG" \
               else ((entry_price - final) / entry_price * 100)
         return final, str(df.index[-1])[:10], "MAX_HOLD", pnl
-    except:
+    except Exception:
         return entry_price, entry_date, "ERROR", 0.0
 
 def calculate_metrics(trades):

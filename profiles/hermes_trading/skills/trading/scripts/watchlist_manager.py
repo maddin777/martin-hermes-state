@@ -440,7 +440,7 @@ def main():
     
             try:
                 mention_date = datetime.strptime(str(date), "%Y%m%d").strftime("%Y-%m-%d")
-            except:
+            except Exception:
                 mention_date = datetime.now().strftime("%Y-%m-%d")
     
             for company in signal.get("companies", []):
@@ -565,26 +565,32 @@ def main():
             con.execute("""
                 INSERT INTO watchlist (name, ticker, first_seen, last_seen,
                     mention_count, bullish_count, bearish_count, neutral_count,
-                    conviction_score, conviction_score_bear, conviction_score_aged,
+                    conviction_score, conviction_score_raw,
+                    conviction_score_bear, conviction_score_aged,
                     channels, status)
-                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
+                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)
                 ON CONFLICT(ticker) DO NOTHING
             """, (canonical_name, ticker, m["first_seen"], m["last_seen"],
                   m["mention_count"], m["bullish"], m["bearish"], m["neutral"],
-                  conviction, conviction_bear, conviction_aged,
+                  conviction, conviction,  # raw = channel-basierter Wert vor LLM-Boost
+                  conviction_bear, conviction_aged,
                   json.dumps(channels_list), "watching"))
     
             # UPDATE: existierenden Eintrag aktualisieren (auch dropped -> watching reaktivieren)
+            # conviction_score_raw wird auf den rohen Kanalwert zurueckgesetzt (LLM-Validator kommt danach)
             con.execute("""
                 UPDATE watchlist SET
                     name=?, last_seen=?, mention_count=?,
                     bullish_count=?, bearish_count=?, neutral_count=?,
-                    conviction_score=?, conviction_score_bear=?,
+                    conviction_score=?, conviction_score_raw=?,
+                    conviction_score_bear=?,
                     conviction_score_aged=?, channels=?, status='watching'
                 WHERE ticker=? AND status IN ('watching', 'dropped')
             """, (canonical_name, m["last_seen"], m["mention_count"],
                   m["bullish"], m["bearish"], m["neutral"],
-                  conviction, conviction_bear, conviction_aged,
+                  conviction, conviction,  # raw = aktueller Kanalwert
+                  conviction_bear,
+                  conviction_aged,
                   json.dumps(channels_list), ticker))
         con.commit()
     

@@ -17,7 +17,7 @@ DB_PATH = os.path.join(
 )
 
 TELEGRAM_TOKEN = os.environ["TELEGRAM_BOT_TOKEN"]
-TELEGRAM_CHAT_ID = os.environ["TELEGRAM_HOME_CHANNEL"]
+TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_HOME_CHANNEL") or os.environ.get("TELEGRAM_CHAT_ID", "")
 
 
 def _db_connect():

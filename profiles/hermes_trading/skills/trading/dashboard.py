@@ -53,7 +53,7 @@ def get_yt_channels():
             pairs = re.findall(r'\("([^"]+)",\s*"([^"]+)"\)', block)
             for name, url in pairs:
                 channels.append({"name": name, "url": url, "enabled": True})
-    except:
+    except Exception:
         pass
     return channels
 
@@ -92,7 +92,7 @@ def remove_yt_channel(name):
         with open(YT_MONITOR, "w") as f:
             f.write(content)
         return True
-    except:
+    except Exception:
         return False
 
 # ─── Cron ────────────────────────────────────────────────────────────────────
@@ -126,7 +126,7 @@ def get_last_run(script_name):
         if last_start_ts and not last_done_ts:
             return last_start_ts, "Fehler"
         return last_done_ts, last_status
-    except:
+    except Exception:
         return None, "Fehler"
 
 def get_cron_jobs():
@@ -203,7 +203,7 @@ def get_cron_jobs():
                        "📅 Wöchentlich": 2, "🗄 System": 3, "⏰ Sonstige": 4}
         jobs.sort(key=lambda x: (group_order.get(x.get("group","⏰ Sonstige"), 4), x["sort_key"]))
         return jobs
-    except:
+    except Exception:
         return []
 
 def get_log_lines():
@@ -213,7 +213,7 @@ def get_log_lines():
             for line in f:
                 if line.strip(): lines.append(line.rstrip('\n'))
         return list(lines)
-    except: return ["Log nicht verfügbar"]
+    except Exception: return ["Log nicht verfügbar"]
 
 def get_thematic_log_lines():
     try:
@@ -222,7 +222,7 @@ def get_thematic_log_lines():
             for line in f:
                 if line.strip(): lines.append(line.rstrip('\n'))
         return list(lines)
-    except: return ["Thematic Log nicht verfügbar — noch kein Run heute"]
+    except Exception: return ["Thematic Log nicht verfügbar — noch kein Run heute"]
 
 # ─── Data ────────────────────────────────────────────────────────────────────
 
@@ -246,7 +246,7 @@ def get_data():
             LEFT JOIN companies c ON c.ticker = w.ticker
             ORDER BY w.conviction_score DESC
         """).fetchall()]
-    except: watchlist = []
+    except Exception: watchlist = []
 
     # Watchlist Mentions pro Kanal (für Sources-Seite)
     try:
@@ -259,7 +259,7 @@ def get_data():
         """).fetchall()
         for r in rows:
             channel_stats[r["channel"]] = {"count": r["cnt"], "last": r["last_date"]}
-    except: channel_stats = {}
+    except Exception: channel_stats = {}
 
     # Benchmark-Daten (Phase 5)
     try:
@@ -267,7 +267,7 @@ def get_data():
             SELECT * FROM benchmark ORDER BY date DESC LIMIT 90
         """).fetchall()]
         benchmark_latest = benchmark_rows[0] if benchmark_rows else {}
-    except:
+    except Exception:
         benchmark_rows = []
         benchmark_latest = {}
 
@@ -281,7 +281,7 @@ def get_data():
             ORDER BY b.date ASC
             LIMIT 180
         """).fetchall()]
-    except:
+    except Exception:
         equity_rows = []
 
     # Qualitäts-Metriken (vor con.close())
@@ -290,7 +290,7 @@ def get_data():
             SELECT * FROM eval_metrics
             ORDER BY date DESC LIMIT 7
         """).fetchall()]
-    except: eval_rows = []
+    except Exception: eval_rows = []
 
     try:
         source_rows = [dict(r) for r in con.execute("""
@@ -298,13 +298,13 @@ def get_data():
             WHERE date = (SELECT MAX(date) FROM source_quality)
             ORDER BY quality_score DESC
         """).fetchall()]
-    except: source_rows = []
+    except Exception: source_rows = []
 
     try:
         regime_row = dict(con.execute("""
             SELECT * FROM regime_history ORDER BY date DESC LIMIT 1
         """).fetchone() or {})
-    except: regime_row = {}
+    except Exception: regime_row = {}
 
     con.close()
 
@@ -714,7 +714,7 @@ def build_html(data):
                 eur = pct * p['position_size']
                 pc  = "color:#00e676" if eur >= 0 else "color:#ff5252"
                 cur = f"{cp:.2f}"; pnl_e = f"{eur:+.2f}€"; pnl_p = f"{pct*100:+.1f}%"
-        except: pass
+        except Exception: pass
         open_rows += f"""<tr>
             <td>{p['name']}</td><td>{p['ticker']}</td><td>{dl}</td>
             <td>{p['entry_price']:.2f}</td>

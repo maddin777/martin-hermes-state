@@ -1,34 +1,43 @@
 """
-Aktiver Exit-Check (2x täglich 10:00 + 15:30)
+Aktiver Exit-Check (2x täglich 09:30 + 15:30)
 - Technische Verschlechterung erkennen → frühzeitiger Ausstieg
 - Profit-Sicherung bei +2x ATR → TP aggressiv nachziehen
 - Trailing Stop alle 0.5x ATR nachziehen
 - Slippage + Commission bei PnL-Berechnung
+- BUGFIX: Cash & Portfolio-Value bei jedem Exit aktualisieren
 """
 import sqlite3
+import json
+import math
 import os
 import sys
-sys.path.insert(0, "/root/.hermes/profiles/hermes_trading/skills/trading")
-import env_loader  # noqa: F401  (side-effect: laedt .env)
-import math
 import requests
-import yfinance as yf
 import pandas_ta as ta
 from datetime import datetime
-from utils import get_logger, SLIPPAGE_PCT, COMMISSION_EUR
+
+sys.path.insert(0, "/root/.hermes/profiles/hermes_trading/skills/trading")
+import env_loader  # noqa: F401  (side-effect: laedt .env)
+
+from utils import (
+    get_logger, SLIPPAGE_PCT, COMMISSION_EUR,
+    get_price_data_cached, prefetch_prices,
+)
+from config import DB_PATH, STRATEGY_CONFIG_PATH, db_connect
 
 log = get_logger("active_exit_check")
 
-TELEGRAM_TOKEN   = os.environ.get("TELEGRAM_BOT_TOKEN")
-TELEGRAM_HOME_CHANNEL = os.environ.get("TELEGRAM_HOME_CHANNEL")
+TELEGRAM_TOKEN        = os.environ.get("TELEGRAM_BOT_TOKEN")
+TELEGRAM_HOME_CHANNEL = os.environ.get("TELEGRAM_HOME_CHANNEL") \
+                        or os.environ.get("TELEGRAM_CHAT_ID")
 
-import json
-from utils import get_logger
-from config import DB_PATH, STRATEGY_CONFIG_PATH, db_connect
-from utils import get_price_data_cached, prefetch_prices
+
 def load_config():
-    with open(STRATEGY_CONFIG_PATH) as f:
-        return json.load(f)
+    try:
+        with open(STRATEGY_CONFIG_PATH) as f:
+            return json.load(f)
+    except Exception:
+        return {}
+
 
 def send_telegram(msg):
     if not TELEGRAM_TOKEN or not TELEGRAM_HOME_CHANNEL:
@@ -38,10 +47,11 @@ def send_telegram(msg):
         requests.post(
             f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage",
             json={"chat_id": TELEGRAM_HOME_CHANNEL, "text": msg, "parse_mode": "HTML"},
-            timeout=10
+            timeout=10,
         )
-    except:
-        pass
+    except Exception as exc:
+        log.warning("Telegram-Fehler: %s", exc)
+
 
 def get_tech_status(ticker):
     """Prüft ob technisches Setup noch intakt ist (nutzt utils-Cache)."""
@@ -50,31 +60,63 @@ def get_tech_status(ticker):
         if df is None or len(df) < 50:
             return None, None, None
 
-        close  = df["Close"].iloc[:, 0]
-        high   = df["High"].iloc[:, 0]
-        low    = df["Low"].iloc[:, 0]
+        close = df["Close"].iloc[:, 0] if df["Close"].ndim > 1 else df["Close"]
+        high  = df["High"].iloc[:, 0]  if df["High"].ndim  > 1 else df["High"]
+        low   = df["Low"].iloc[:, 0]   if df["Low"].ndim   > 1 else df["Low"]
 
-        ema20  = ta.ema(close, length=20)
-        ema50  = ta.ema(close, length=50)
-        macd   = ta.macd(close)
-        atr    = ta.atr(high, low, close, length=14)
-
+        ema20    = ta.ema(close, length=20)
+        ema50    = ta.ema(close, length=50)
+        macd     = ta.macd(close)
+        atr_s    = ta.atr(high, low, close, length=14)
         hist_col = [c for c in macd.columns if "MACDh" in c][0]
 
         current_price = float(close.iloc[-1])
-        atr_val       = float(atr.iloc[-1])
+        atr_val       = float(atr_s.iloc[-1])
 
-        ema_bullish  = ema20.iloc[-1] > ema50.iloc[-1]
-        macd_rising  = macd[hist_col].iloc[-1] > macd[hist_col].iloc[-2]
-        price_above  = current_price > float(ema50.iloc[-1])
+        ema_bullish = ema20.iloc[-1] > ema50.iloc[-1]
+        macd_rising = macd[hist_col].iloc[-1] > macd[hist_col].iloc[-2]
+        price_above = current_price > float(ema50.iloc[-1])
 
         bull_count = sum([ema_bullish, macd_rising, price_above])
         status = "intact" if bull_count >= 2 else "degraded" if bull_count == 1 else "broken"
-
         return current_price, atr_val, status
 
-    except Exception as e:
+    except Exception as exc:
+        log.warning("get_tech_status Fehler (%s): %s", ticker, exc)
         return None, None, None
+
+
+def _close_position(con, pos, current_price, pnl_eur, pnl_pct_net, reason):
+    """
+    Schließt eine Position und aktualisiert Cash + Portfolio-Value konsistent.
+    Wird von TECH_BROKEN und SL/TP-Hit genutzt.
+    """
+    con.execute("""
+        UPDATE positions SET
+            status='closed', exit_price=?, exit_date=?,
+            exit_reason=?, pnl_eur=?, pnl_pct=?
+        WHERE id=?
+    """, (round(current_price, 2), datetime.now().isoformat(),
+          reason, round(pnl_eur, 2), round(pnl_pct_net, 2), pos["id"]))
+
+    # Cash-Rückbuchung: ursprüngliche Positionsgröße + PnL
+    portfolio = con.execute(
+        "SELECT cash FROM portfolio WHERE id=1"
+    ).fetchone()
+    if portfolio:
+        new_cash = portfolio["cash"] + pos["position_size"] + pnl_eur
+        still_invested = sum(
+            r["position_size"] for r in con.execute(
+                "SELECT position_size FROM positions WHERE status='open' AND id != ?",
+                (pos["id"],)
+            ).fetchall()
+        )
+        new_total = new_cash + still_invested
+        con.execute(
+            "UPDATE portfolio SET cash=?, total_value=?, updated_at=? WHERE id=1",
+            (round(new_cash, 2), round(new_total, 2), datetime.now().isoformat())
+        )
+
 
 def main():
     print(f"🔍 Aktiver Exit-Check [{datetime.now().strftime('%H:%M')}]", flush=True)
@@ -85,7 +127,7 @@ def main():
         "SELECT * FROM positions WHERE status='open'"
     ).fetchall()
     if positions:
-        prefetch_prices([p['ticker'] for p in positions if p['ticker']])
+        prefetch_prices([p["ticker"] for p in positions if p["ticker"]])
 
     print(f"  Offene Positionen: {len(positions)}", flush=True)
     actions = []
@@ -108,19 +150,19 @@ def main():
             continue
 
         if direction == "LONG":
-            pnl_atr  = (current_price - entry) / atr
+            pnl_atr = (current_price - entry) / atr
         else:
-            pnl_atr  = (entry - current_price) / atr
+            pnl_atr = (entry - current_price) / atr
 
         # PnL mit Slippage + Commission
         if direction == "LONG":
             effective_entry = entry * (1 + SLIPPAGE_PCT)
-            effective_exit = current_price * (1 - SLIPPAGE_PCT)
-            pnl_pct_net = (effective_exit - effective_entry) / effective_entry * 100
+            effective_exit  = current_price * (1 - SLIPPAGE_PCT)
+            pnl_pct_net     = (effective_exit - effective_entry) / effective_entry * 100
         else:
             effective_entry = entry * (1 - SLIPPAGE_PCT)
-            effective_exit = current_price * (1 + SLIPPAGE_PCT)
-            pnl_pct_net = (effective_entry - effective_exit) / effective_entry * 100
+            effective_exit  = current_price * (1 + SLIPPAGE_PCT)
+            pnl_pct_net     = (effective_entry - effective_exit) / effective_entry * 100
 
         pnl_eur = pnl_pct_net / 100 * pos["position_size"] - COMMISSION_EUR
 
@@ -130,7 +172,6 @@ def main():
         # --- AKTION 0: Thesis BROKEN → SL enger ziehen (kein sofortiger Exit) ---
         thesis_status = pos["thesis_current_status"] or "no_thesis"
         if thesis_status.upper() == "BROKEN":
-            # Letzten Thesis-Log-Eintrag holen
             thesis_log = con.execute("""
                 SELECT rationale, confidence, check_date
                 FROM thesis_status_log
@@ -138,10 +179,9 @@ def main():
                 ORDER BY id DESC LIMIT 1
             """, (ticker,)).fetchone()
 
-            # SL auf 0.5×ATR vom aktuellen Preis setzen (statt 1.5×ATR Standard)
             if direction == "LONG":
                 tight_sl = current_price - (0.5 * atr)
-                if tight_sl > sl:  # Nur enger ziehen, nie lockern
+                if tight_sl > sl:
                     con.execute(
                         "UPDATE positions SET stop_loss=?, trailing_sl=? WHERE id=?",
                         (round(tight_sl, 2), round(tight_sl, 2), pos["id"])
@@ -175,16 +215,8 @@ def main():
         # --- AKTION 1: Tech-Verschlechterung → Exit ---
         if tech_status == "broken" and pnl_pct_net < 5:
             print("    🚨 Tech BROKEN + kein großer Gewinn → frühzeitiger Exit", flush=True)
-            con.execute("""
-                UPDATE positions SET
-                    status='closed', exit_price=?, exit_date=?,
-                    exit_reason='TECH_BROKEN',
-                    pnl_eur=?, pnl_pct=?
-                WHERE id=?
-            """, (round(current_price, 2), datetime.now().isoformat(),
-                  round(pnl_eur, 2),
-                  round(pnl_pct_net, 2), pos["id"]))
-
+            _close_position(con, pos, current_price, pnl_eur, pnl_pct_net, "TECH_BROKEN")
+            con.commit()
             emoji = "✅" if pnl_pct_net > 0 else "❌"
             actions.append(
                 f"{emoji} <b>Exit (Tech degradiert): {pos['name']}</b>\n"
@@ -221,7 +253,7 @@ def main():
         # --- AKTION 3: Trailing Stop alle 0.5x ATR nachziehen ---
         trailing_step = cfg.get("trailing_step_atr", 0.5)
         if direction == "LONG":
-            ideal_sl = current_price - (cfg.get("atr_sl_multiplier", 1.5) * atr)
+            ideal_sl      = current_price - (cfg.get("atr_sl_multiplier", 1.5) * atr)
             next_sl_level = sl + (trailing_step * atr)
             if ideal_sl > next_sl_level and ideal_sl > sl:
                 con.execute(
@@ -233,7 +265,7 @@ def main():
                 print(f"    📈 Trailing SL → {ideal_sl:.2f} "
                       f"(Preis: {current_price:.2f})", flush=True)
 
-        # SL/TP Hit Check
+        # --- SL/TP Hit Check ---
         if direction == "LONG":
             hit_sl = current_price <= sl
             hit_tp = current_price >= tp
@@ -243,14 +275,8 @@ def main():
 
         if hit_sl or hit_tp:
             reason = "TARGET_HIT" if hit_tp else "SL_HIT"
-            con.execute("""
-                UPDATE positions SET
-                    status='closed', exit_price=?, exit_date=?,
-                    exit_reason=?, pnl_eur=?, pnl_pct=?
-                WHERE id=?
-            """, (round(current_price, 2), datetime.now().isoformat(),
-                  reason, round(pnl_eur, 2), round(pnl_pct_net, 2), pos["id"]))
-
+            _close_position(con, pos, current_price, pnl_eur, pnl_pct_net, reason)
+            con.commit()
             emoji = "🎯" if hit_tp else "🛑"
             actions.append(
                 f"{emoji} <b>{reason}: {pos['name']}</b>\n"
@@ -262,13 +288,13 @@ def main():
     con.commit()
 
     if actions:
-        msg = "\n\n".join(actions)
-        send_telegram(msg)
+        send_telegram("\n\n".join(actions))
     else:
         print("  ✓ Keine Aktionen notwendig", flush=True)
 
     con.close()
     print("\n✅ Exit-Check abgeschlossen", flush=True)
+
 
 if __name__ == "__main__":
     main()

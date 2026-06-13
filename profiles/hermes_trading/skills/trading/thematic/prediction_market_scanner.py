@@ -4,8 +4,13 @@ Market-Klassifikation via LLM, Verknuepfung mit Themes/Tickers.
 """
 import json
 import os
+import sys
 import sqlite3
 from datetime import date, datetime
+
+# thematic/ liegt unter skills/trading/, nicht unter scripts/
+sys.path.insert(0, "/root/.hermes/profiles/hermes_trading/skills/trading")
+
 from thematic.lib import polymarket_client, llm_client, prompt_loader
 
 DB_PATH = os.path.join(
@@ -18,8 +23,7 @@ PM_MIN_24H = 0  # 5_000
 
 
 def _db_connect():
-    con = sqlite3.connect(DB_PATH)
-    con.row_factory = sqlite3.Row
+    con = db_connect()
     return con
 
 

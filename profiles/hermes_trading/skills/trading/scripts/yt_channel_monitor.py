@@ -97,9 +97,14 @@ def init_db():
             transcript  TEXT,
             status      TEXT DEFAULT 'pending',
             created_at  TEXT DEFAULT (datetime('now')),
-            analyzed_at TEXT
+            analyzed_at TEXT,
+            error_count INTEGER DEFAULT 0
         )
     """)
+    # Migration: error_count für bestehende DBs
+    cols = [row[1] for row in con.execute("PRAGMA table_info(videos)")]
+    if "error_count" not in cols:
+        con.execute("ALTER TABLE videos ADD COLUMN error_count INTEGER DEFAULT 0")
     con.commit()
     return con
 

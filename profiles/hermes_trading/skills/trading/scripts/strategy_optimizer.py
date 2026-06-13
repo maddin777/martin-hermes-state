@@ -19,7 +19,7 @@ from config import DB_PATH, SIGNALS_PATH, STRATEGY_CONFIG_PATH, OPTIMIZATION_REP
 
 
 TELEGRAM_TOKEN   = os.environ.get("TELEGRAM_BOT_TOKEN")
-TELEGRAM_HOME_CHANNEL = os.environ.get("TELEGRAM_HOME_CHANNEL")
+TELEGRAM_HOME_CHANNEL = os.environ.get("TELEGRAM_HOME_CHANNEL") or os.environ.get("TELEGRAM_CHAT_ID", "")
 
 MIN_TRADES       = 10      # Mindestanzahl Trades für Optimierung
 IMPROVEMENT_THRESHOLD = 0.10  # 10% Verbesserung nötig
@@ -345,7 +345,7 @@ def adjust_source_weights(con):
     try:
         with open(SOURCES_PATH) as f:
             sources = _json.load(f)
-    except:
+    except Exception:
         print("  ⚠ sources.json nicht gefunden", flush=True)
         return []
 
@@ -505,15 +505,15 @@ def main():
         )
 
     import requests as _req
-    import os as _os
     try:
         _req.post(
-            f"https://api.telegram.org/bot{_os.environ.get('TELEGRAM_BOT_TOKEN')}/sendMessage",
-            json={"chat_id": _os.environ.get("TELEGRAM_HOME_CHANNEL"),
+            f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage",
+            json={"chat_id": TELEGRAM_HOME_CHANNEL,
                   "text": msg, "parse_mode": "HTML"},
             timeout=10
         )
-    except: pass
+    except Exception:
+        pass
 
     con.close()
     print("\n✅ Strategy Optimizer v2 abgeschlossen", flush=True)

@@ -22,7 +22,7 @@ log = get_logger("breaking_news")
 
 TAVILY_KEY        = os.environ.get("TAVILY_API_KEY")
 TELEGRAM_TOKEN    = os.environ.get("TELEGRAM_BOT_TOKEN")
-TELEGRAM_CHANNEL  = os.environ.get("TELEGRAM_CHAT_ID")
+TELEGRAM_CHANNEL  = os.environ.get("TELEGRAM_HOME_CHANNEL") or os.environ.get("TELEGRAM_CHAT_ID", "")
 OPENROUTER_KEY    = os.environ.get("OPENROUTER_API_KEY")
 
 NEWS_NEGATIVE_THRESHOLD = 0.65   # Tavily-Score: ab hier als negativ werten

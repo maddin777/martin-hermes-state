@@ -57,7 +57,7 @@ Wenn keine Unternehmen: leeres Array."""
         data = r.json()
         content_str = data["choices"][0]["message"]["content"].strip()
         return json.loads(content_str)
-    except:
+    except Exception:
         return {"companies": [], "market_outlook": "neutral"}
 
 def fetch_rss_feeds(con, feeds):
@@ -143,7 +143,7 @@ def fetch_twitter(con, accounts):
                         pub_str = pub_dt.strftime("%Y-%m-%d %H:%M")
                     finally:
                         locale.setlocale(locale.LC_TIME, old_locale)
-                except:
+                except Exception:
                     pub_str = datetime.now().strftime("%Y-%m-%d %H:%M")
                 result = extract_companies(text, "", acc["name"])
                 companies_json = json.dumps(result.get("companies", []), ensure_ascii=False)
@@ -189,7 +189,7 @@ def inject_into_watchlist(con):
                       sentiment, f"Quelle: {m[0]}",
                       m[3][:10] if m[3] else datetime.now().strftime("%Y-%m-%d")))
                 injected += 1
-        except:
+        except Exception:
             pass
     con.commit()
     print(f"  ✓ {injected} externe Mentions in Watchlist injiziert", flush=True)

@@ -51,7 +51,10 @@ OBSIDIAN_WATCHLIST_PATH = "/root/obsidian-vault/Trading/Watchlist.md"
 # ── Telegram ──────────────────────────────────────────────────────────────────
 
 TELEGRAM_TOKEN        = os.environ.get("TELEGRAM_BOT_TOKEN", "")
-TELEGRAM_HOME_CHANNEL = os.environ.get("TELEGRAM_CHAT_ID", "")   # Haupt-Chat-ID
+# TELEGRAM_HOME_CHANNEL: primär aus TELEGRAM_HOME_CHANNEL, Fallback auf TELEGRAM_CHAT_ID
+# (Abwärtskompatibilität — alle Module nutzen diese config-Konstante statt direkt os.environ)
+TELEGRAM_HOME_CHANNEL = os.environ.get("TELEGRAM_HOME_CHANNEL") \
+                        or os.environ.get("TELEGRAM_CHAT_ID", "")
 TELEGRAM_CHAT_ID      = TELEGRAM_HOME_CHANNEL  # Alias für Rückwärtskompatibilität
 
 # ── Sentiment-Aging ───────────────────────────────────────────────────────────

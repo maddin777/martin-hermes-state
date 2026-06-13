@@ -100,31 +100,39 @@ def call_api(chunk, channel, title, date, chunk_num, total_chunks):
         return text.strip()
 
     def _try_parse(text):
-        """JSON parsen, bei Fehler regex-repair versuchen."""
+        """JSON parsen, bei Fehler konservative Reparatur versuchen."""
         try:
             return json.loads(text)
         except json.JSONDecodeError:
-            # Regex-repair: ersetze einfache Anführungszeichen, trailing commas, etc.
             import re
-            fixed = re.sub(r",\s*}", "}", text)  # trailing comma vor }
-            fixed = re.sub(r",\s*]", "]", fixed)  # trailing comma vor ]
-            fixed = re.sub(r"(?<!\\)'(?=[^']*':)", '"', fixed)  # 'key': -> "key":
-            fixed = re.sub(r":\s*'([^']*)'", r': "\1"', fixed)  # : 'value' -> : "value"
-            # Entferne Steuerzeichen
+            fixed = text
+            # Nur strukturelle Fehler reparieren, keine Strings manipulieren
+            fixed = re.sub(r",\s*}", "}", fixed)    # trailing comma vor }
+            fixed = re.sub(r",\s*]", "]", fixed)    # trailing comma vor ]
+            # Steuerzeichen entfernen (außer \t \n \r die in JSON legal sind)
             fixed = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f]', '', fixed)
+            # KEIN Apostrophen-Ersatz: würde Macy's, L'Oréal, etc. zerstören.
+            # Stattdessen: beim Retry das Modell explizit zu reinem JSON drängen.
             try:
                 return json.loads(fixed)
             except json.JSONDecodeError:
                 raise
 
-    # Versuch 1: DeepSeek mit max_tokens=4000
+    # Versuch 1: DeepSeek
     try:
         content = _request(MODEL)
         return _try_parse(content)
     except json.JSONDecodeError:
-        print("     ⚠ JSON Fehler DeepSeek, versuche gpt-4o-mini...", flush=True)
+        print("     ⚠ JSON Fehler DeepSeek, retry mit strengerem Prompt...", flush=True)
 
-    # Versuch 2: Fallback auf gpt-4o-mini (liefert sehr verlässliches JSON)
+    # Versuch 2: DeepSeek mit explizitem JSON-only Hinweis im System-Prompt
+    try:
+        content = _request(MODEL, system_extra="\n\nWICHTIG: Antworte AUSSCHLIESSLICH mit validem JSON. Keine Markdown-Blöcke, kein Text davor oder danach. Alle Strings in doppelten Anführungszeichen.")
+        return _try_parse(content)
+    except json.JSONDecodeError:
+        print("     ⚠ JSON Fehler DeepSeek Retry, versuche gpt-4o-mini...", flush=True)
+
+    # Versuch 3: Fallback auf gpt-4o-mini (liefert sehr verlässliches JSON)
     try:
         content = _request(FALLBACK_MODEL)
         return _try_parse(content)
@@ -212,6 +220,19 @@ def main():
             print("  ⏭ Bereits analysiert (DB-Cache)", flush=True)
             continue
 
+        # Transiente Fehler: nach 3 Fehler-Versuchen dauerhaft skippen
+        try:
+            error_count = row["error_count"] or 0
+        except (IndexError, KeyError):
+            error_count = 0
+        try:
+            row_status = row["status"]
+        except (IndexError, KeyError):
+            row_status = "pending"
+        if row_status == "error" and error_count >= 3:
+            print(f"  ⏭ Zu viele Fehler ({error_count}x) – dauerhaft übersprungen", flush=True)
+            continue
+
         try:
             result = analyze(row['transcript'], row['channel'], row['title'], row['upload_date'])
             result["source"] = {
@@ -223,7 +244,7 @@ def main():
             companies = result.get('companies', [])
             print(f"  ✓ {len(companies)} Unternehmen: {[c['name'] for c in companies]}", flush=True)
             con.execute(
-                "UPDATE videos SET status='done', analyzed_at=? WHERE video_id=?",
+                "UPDATE videos SET status='done', analyzed_at=?, error_count=0 WHERE video_id=?",
                 (datetime.now().isoformat(), row['video_id'])
             )
             con.commit()
@@ -231,10 +252,21 @@ def main():
 
         except Exception as e:
             print(f"  ✗ Fehler: {e}", flush=True)
-            con.execute("UPDATE videos SET status='error' WHERE video_id=?", (row['video_id'],))
+            new_error_count = error_count + 1
+            con.execute(
+                "UPDATE videos SET status='error', error_count=? WHERE video_id=?",
+                (new_error_count, row['video_id'])
+            )
             con.commit()
 
     os.makedirs(os.path.dirname(SIGNALS_PATH), exist_ok=True)
+    # Rolling: nur Einträge der letzten 30 Tage behalten (verhindert unbegrenztes Wachstum)
+    from datetime import timedelta
+    cutoff_date = (datetime.now() - timedelta(days=30)).strftime("%Y-%m-%d")
+    all_signals = [
+        s for s in all_signals
+        if (s.get("source") or {}).get("date", "9999") >= cutoff_date
+    ]
     with open(SIGNALS_PATH, "w", encoding="utf-8") as f:
         json.dump(all_signals, f, ensure_ascii=False, indent=2)
 
