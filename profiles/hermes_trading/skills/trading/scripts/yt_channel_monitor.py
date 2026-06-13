@@ -88,7 +88,9 @@ def get_active_channels(con):
 
 def init_db():
     con = sqlite3.connect(DB_PATH)
-    con.row_factory = sqlite3.Row  # ermöglicht Zugriff per Spaltenname in get_active_channels
+    con.row_factory = sqlite3.Row
+    con.execute("PRAGMA journal_mode=WAL;")
+    con.execute("PRAGMA busy_timeout=30000;")
     con.execute("""
         CREATE TABLE IF NOT EXISTS videos (
             video_id    TEXT PRIMARY KEY,

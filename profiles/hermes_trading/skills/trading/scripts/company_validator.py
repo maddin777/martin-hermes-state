@@ -28,6 +28,25 @@ from technical_validator import _strip_suffixes
 from config import DB_PATH, VALIDATION_REJECTS_LOG
 from utils import retry
 
+# ── Canonical Ticker Map ─────────────────────────────────────────────
+def _load_canonical_map():
+    """Lädt canonical_tickers-Mapping aus DB.
+    Gibt dict zurück: {source_ticker: target_ticker}."""
+    result = {}
+    if not Path(DB_PATH).is_file():
+        return result
+    try:
+        con = sqlite3.connect(DB_PATH)
+        con.execute("PRAGMA journal_mode=WAL;")
+        for row in con.execute("SELECT source_ticker, target_ticker FROM canonical_tickers"):
+            result[row[0]] = row[1]
+        con.close()
+    except Exception:
+        pass
+    return result
+
+_CANONICAL_MAP = _load_canonical_map()
+
 # --- Konfiguration ---
 # VALIDATION_REJECTS_LOG → VALIDATION_REJECTS_LOG aus config.py
 
@@ -206,6 +225,12 @@ def validate(name: str) -> dict:
         ticker = cand.get("symbol")
         if not ticker:
             continue
+
+        # Canonical Override: Falsch aufgelöste Ticker korrigieren (z.B. ARMK → ARM)
+        canonical = _CANONICAL_MAP.get(ticker)
+        if canonical:
+            print(f"  ↪ Canonical Override: {ticker} → {canonical} ({cand.get('symbol') or ''})", flush=True)
+            ticker = canonical
 
         try:
             @retry(max_attempts=2, backoff=1.5, exceptions=(Exception,))

@@ -134,6 +134,29 @@ def init_db(con):
     if "partial_exit_done" not in cols:
         con.execute("ALTER TABLE positions ADD COLUMN partial_exit_done INTEGER DEFAULT 0")
 
+    # Migration: canonical_tickers Tabelle (Duplikat-Merge + Fehlklassifikation)
+    con.execute("""
+        CREATE TABLE IF NOT EXISTS canonical_tickers (
+            source_ticker TEXT PRIMARY KEY,
+            target_ticker TEXT NOT NULL,
+            reason TEXT
+        )
+    """)
+    # Seed: bekannte Mappings (nur bei leerer Tabelle)
+    existing_ct = con.execute("SELECT COUNT(*) FROM canonical_tickers").fetchone()[0]
+    if existing_ct == 0:
+        ct_seed = [
+            ("YDX.MU", "NBIS", "Nebius Group: Frankfurter Mirror → NASDAQ"),
+            ("639.F",  "SPOT", "Spotify: Frankfurter Mirror → NYSE"),
+            ("6MK.F",  "MRK",  "Merck & Co: Frankfurter Mirror → NYSE"),
+            ("ARMK",   "ARM",  "ARM Holdings: yfinance löst ARM fälschlich auf ARMK auf"),
+        ]
+        con.executemany(
+            "INSERT INTO canonical_tickers (source_ticker, target_ticker, reason) VALUES (?, ?, ?)",
+            ct_seed
+        )
+        print(f"  📝 canonical_tickers: {len(ct_seed)} Mappings angelegt", flush=True)
+
     con.commit()
 
 def get_current_price_and_atr(ticker):
@@ -633,6 +656,20 @@ def check_correlation_with_open(con, ticker: str, direction: str, cfg: dict) -> 
         names = ", ".join(f"{n} ({t}: {c:.2f})" for n, t, c in correlated_with)
         return False, f"Korrelation > {max_corr} mit: {names}"
     return True, ""
+
+
+# ── Canonical Ticker Lookup ────────────────────────────────────────────
+def get_canonical_ticker(con, ticker: str) -> str:
+    """Prüft ob ein Ticker ein kanonisches Mapping hat (Duplikat/Fork).
+    Z.B. YDX.MU → NBIS, ARMK → ARM. Gibt target_ticker zurück oder
+    den Original-Ticker wenn kein Mapping existiert."""
+    row = con.execute(
+        "SELECT target_ticker FROM canonical_tickers WHERE source_ticker=?",
+        (ticker,)
+    ).fetchone()
+    if row:
+        return row["target_ticker"]
+    return ticker
 
 
 def open_new_positions(con, cfg):

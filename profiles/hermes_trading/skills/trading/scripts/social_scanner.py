@@ -222,6 +222,7 @@ def main():
     print("📡 Social Scanner gestartet", flush=True)
     con = sqlite3.connect(DB_PATH)
     try:
+        con.execute("PRAGMA journal_mode=WAL;")
         con.execute("PRAGMA busy_timeout=30000")
         con.row_factory = sqlite3.Row
 

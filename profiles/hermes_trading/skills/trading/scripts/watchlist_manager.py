@@ -331,6 +331,29 @@ def main():
             con.execute("ALTER TABLE watchlist ADD COLUMN conviction_score_bear REAL DEFAULT 0")
         if "weekly_trend" not in cols:
             con.execute("ALTER TABLE watchlist ADD COLUMN weekly_trend TEXT DEFAULT 'neutral'")
+
+        # canonical_tickers Tabelle + Seed (idempotent)
+        con.execute("""
+            CREATE TABLE IF NOT EXISTS canonical_tickers (
+                source_ticker TEXT PRIMARY KEY,
+                target_ticker TEXT NOT NULL,
+                reason TEXT
+            )
+        """)
+        existing_ct = con.execute("SELECT COUNT(*) FROM canonical_tickers").fetchone()[0]
+        if existing_ct == 0:
+            ct_seed = [
+                ("YDX.MU", "NBIS", "Nebius Group: Frankfurter Mirror → NASDAQ"),
+                ("639.F",  "SPOT", "Spotify: Frankfurter Mirror → NYSE"),
+                ("6MK.F",  "MRK",  "Merck & Co: Frankfurter Mirror → NYSE"),
+                ("ARMK",   "ARM",  "ARM Holdings: yfinance löst ARM fälschlich auf ARMK auf"),
+            ]
+            con.executemany(
+                "INSERT INTO canonical_tickers (source_ticker, target_ticker, reason) VALUES (?, ?, ?)",
+                ct_seed
+            )
+            print(f"  📝 canonical_tickers: {len(ct_seed)} Mappings angelegt", flush=True)
+        con.commit()
     
         # Migration: bestehende channel-Namen in watchlist_mentions normalisieren (einmalig)
         # Behebt den "der aktionaer" vs "der Aktionaer" Source-Case-Bug
