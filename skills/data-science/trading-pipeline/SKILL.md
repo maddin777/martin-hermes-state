@@ -24,9 +24,26 @@ Bevor du eine Änderung am Trading-System vorschlägst, prüfe ob sie zu unserem
 | **Datenquellen** | yfinance (täglich), YouTube/RSS/Twitter (morgens). Kein Echtzeit-Feed. |
 | **Modell-Kosten** | Grok nur für Conviction-Boost (max 20 Calls). Rest via yfinance. |
 
-**Faustregel:** Wenn der Vorschlag klingt wie ein HFT- Intraday- oder Hebel-Strategie → nein. Wenn er den daily/weekly Trendfilter verbessert oder bessere Entry-Qualität bei gleicher Haltedauer bringt → ja.
+### DB-First-Prinzip
+
+Martin lehnt hardgecodete Mappings in Python-Code ab. ALLE Konfigurationen, Mappings und Lookup-Tabellen gehören in die SQLite-Datenbank:
+
+| Hardcode (abgelehnt) | DB (gewünscht) |
+|----------------------|----------------|
+| `KNOWN_TICKERS`-Dict in `technical_validator.py` | `company_aliases`-Tabelle |
+| `ISIN_TICKER_MAP` in `company_validator.py` | `canonical_tickers`-Tabelle |
+| Ticker-Merge-Map in `export_watchlist.py` | `canonical_tickers`-Tabelle |
+| ARM→ARMK Korrektur im Code | `canonical_tickers` mit ARMK→ARM |
+
+**Migration-Pattern:** Neue Tabellen in `watchlist_manager.py` oder `signal_manager.py` anlegen (beide haben Migration-Blöcke mit `PRAGMA table_info` + `CREATE TABLE IF NOT EXISTS`). Seed-Daten im selben Block per `COUNT(*) = 0`-Check, nur bei leerer Tabelle.
 
 **Nicht vergessen:** n8n läuft auf dem Server (Python-Prozesse + n8n-Workflows parallel möglich). YouTube-Faceless-Pipelines etc. sind infra-seitig möglich.
+
+**Faustregel:** Wenn der Vorschlag klingt wie ein HFT- Intraday- oder Hebel-Strategie → nein. Wenn er den daily/weekly Trendfilter verbessert oder bessere Entry-Qualität bei gleicher Haltedauer bringt → ja.
+
+### DB-Connection: Immer `config.db_connect()` statt raw sqlite3
+
+Seit 12.06.2026 gibt es `config.db_connect()` — eine zentrale Funktion die WAL mode + busy_timeout + row_factory setzt. Alle 25 Pipeline-Scripts wurden umgestellt. Prüfung ob ein neues Script korrekt ist: `grep -c "sqlite3.connect" scripts/*.py` sollte 0 ergeben.
 
 ## System Architecture
 
@@ -163,11 +180,13 @@ if len(last_dates) >= 2:
     yesterday = last_dates[1][0]
 ```
 
-### 2. Orphaned-DB-Connection Cascade (Crash → Hours-Long Lock)
+### 2. Orphaned-DB-Connection Cascade (Crash → Hours-Long Lock) — GELÖST via db_connect()
 
-**Symptom:** ALLE nachfolgenden Cron-Jobs (social_scanner, YouTube Scan, Watchlist Update, Signal Manager) schlagen fehl mit `sqlite3.OperationalError: database is locked`. Pipeline-Report zeigt ❌ für 3-5 Jobs. Erstes Script (02:00 fundamental_data) failed, die nächsten 4 auch — das ist der Hinweis.
+**Status:** Seit 12.06.2026 durch `config.db_connect()` **dauerhaft gelöst**. Alle 25 Pipeline-Scripts nutzen die zentrale Funktion statt eigenem `sqlite3.connect()`. Kein per-Script-PRAGMA mehr nötig.
 
-**Log-Muster:**
+**Zur Historie — Symptom:** ALLE nachfolgenden Cron-Jobs (social_scanner, YouTube Scan, Watchlist Update, Signal Manager) schlugen fehl mit `sqlite3.OperationalError: database is locked`. Pipeline-Report zeigte ❌ für 3-5 Jobs.
+
+**Log-Muster (historisch):**
 ```
 === Mon Jun  8 02:00:01 CEST 2026 === fundamental_data START ===
 📡 Fundamental Data Collector gestartet
@@ -178,36 +197,40 @@ KeyError: 'fred_indicators'
 📡 Social Scanner gestartet
 📰 RSS Feeds...
   ✗ Seeking Alpha: database is locked
-  ✗ Bloomberg Markets: database is locked
   ...
-=== Mon Jun  8 04:00:01 CEST 2026 === trading_pipeline START ===
-=== 04:00:03 YouTube Scan START ===
-=== 04:00:08 YouTube Scan ERROR (exit 1) ===  ← 5s! kein echter Laufversuch
 ```
 
-**Root Cause:** Ein frühes Pipeline-Script (meist `fundamental_data.py` um 02:00) crasht mit einer Exception (z.B. `KeyError`, `ImportError`). Die `sqlite3.connect()`-Connection wurde geöffnet aber nie geschlossen (`con.close()` wird nie erreicht). Diese orphaned Connection hält einen Write-Lock auf der WAL-Datei — für Stunden. Der `busy_timeout` hilft nicht, weil die tote Connection nie commit/rollback ausführt.
+**Root Cause (historisch):** Ein frühes Script crashed mit Exception → `con.close()` nie erreicht → orphaned Connection hält Write-Lock auf WAL-Datei für Stunden.
 
-**Diagnose:**
+**Architektur-Lösung (seit 12.06.2026):**
+```python
+# config.py — eine zentrale Funktion, 25 Scripts nutzen sie
+def db_connect(path=None):
+    if path is None:
+        path = DB_PATH
+    con = sqlite3.connect(path)
+    con.execute("PRAGMA journal_mode=WAL;")
+    con.execute("PRAGMA busy_timeout=30000;")
+    con.row_factory = sqlite3.Row
+    return con
+```
+
+Jedes Script importiert `db_connect` aus `config.py` (das ohnehin jedes Script importiert). Kein einziges `sqlite3.connect(DB_PATH)` mehr im gesamten Codebase.
+
+**Diagnose (falls trotzdem DB-Lock auftritt):**
 ```bash
-grep -E "ERROR|Traceback|database is locked" \
-  /root/.hermes/profiles/hermes_trading/skills/trading/data/cron.log | tail -10
+grep -E "ERROR|Traceback|database is locked" cron.log | tail -10
 
 # Lock manuell lösen (WAL-Checkpoint)
 python3 -c "
-import sqlite3
-con = sqlite3.connect('/root/.hermes/profiles/hermes_trading/skills/trading/data/trading.db')
+from config import db_connect
+con = db_connect()
 con.execute('PRAGMA wal_checkpoint(TRUNCATE)')
 con.close()
-print('WAL checkpoint done')
 "
 ```
 
-**Fix (3 Teile):**
-1. Config-Fehler beheben: `grep "KeyError" cron.log` → fehlenden Key in `strategy_config.json` ergänzen
-2. `con.close()` im `finally`-Block für ALLE Pipeline-Scripts
-3. `PRAGMA busy_timeout=30000` in fundamental_data (war default 5000ms)
-
-**Prävention:** Nach jedem Patch an fundamental_data.py den `finally`-Block prüfen.
+**Prävention:** Neue Scripts MÜSSEN `from config import db_connect` importieren und `con = db_connect()` nutzen. Kein `sqlite3.connect()` direkt. Prüfung: `grep -c \"sqlite3.connect\" scripts/*.py` sollte 0 ergeben.
 
 ### 3. Technical Validator / get_technical_score Crash
 
@@ -443,7 +466,73 @@ grep -E "database is locked|ERROR|Traceback" /root/.hermes/profiles/hermes_tradi
 
 **Vorteil:** Null sys.path-Manipulation im Hauptprozess. Keine Nebenwirkungen auf nachfolgende Trading-Imports.
 
-### 15. xsearch_helper Import Collision
+### 15. xsearch_helper Import Collision (geduplikated — siehe 15a)
+
+## Monitoring & Auto-Diagnose
+
+### 16. sqlite3.Row has no .get() — nur Index-Zugriff
+
+**Symptom:** `AttributeError: 'sqlite3.Row' object has no attribute 'get'` beim Zugriff auf Datenbankzeilen.
+
+**Root Cause:** `sqlite3.Row` unterstützt Dikt-Zugriff `row["key"]` und `key in row.keys()`, aber NICHT `row.get("key", default)`. Das ist ein häufiger Fehler weil Row dict-ähnlich ist aber nicht vollständig dict-kompatibel.
+
+**Fix:** Immer Index-Zugriff oder expliziten Check:
+```python
+# FALSCH — crasht mit AttributeError
+wt = c.get("weekly_trend", "neutral")
+
+# RICHTIG
+wt = c["weekly_trend"] if "weekly_trend" in c.keys() else "neutral"
+
+# ODER (wenn sicher dass Spalte existiert — z.B. nach Migration)
+wt = c["weekly_trend"] or "neutral"
+```
+
+**Kontext:** Dieser Bug trat am 13.06.2026 im neuen `weekly_trend` Filter auf. Die Spalte wurde per `ALTER TABLE` hinzugefügt, aber der `.get()`-Zugriff crashte weil `sqlite3.Row` kein dict ist.
+
+**Prävention:** Bei neuem Code IMMER `row["key"]` statt `row.get("key")` für `sqlite3.Row`-Objekte. Nur echte dicts (cfg, DEFAULT_CONFIG, channel_weights) haben `.get()`.
+
+### 17. Hardcoded Mappings vs canonical_tickers
+
+### Einleitung
+
+Seit 12.06.2026 gibt es die `canonical_tickers`-Tabelle in der trading.db:
+```sql
+CREATE TABLE IF NOT EXISTS canonical_tickers (
+    source_ticker TEXT PRIMARY KEY,
+    target_ticker TEXT NOT NULL,
+    reason TEXT
+);
+```
+
+### Seed-Daten
+
+| source_ticker | target_ticker | Grund |
+|---|---|---|
+| YDX.MU | NBIS | Nebius Frankfurter Mirror → NASDAQ |
+| 639.F | SPOT | Spotify Frankfurter Mirror → NYSE |
+| 6MK.F | MRK | Merck & Co Frankfurter Mirror → NYSE |
+| ARMK | ARM | ARM Holdings: yfinance löst ARM fälschlich auf ARMK auf |
+
+### Seed-Logik
+
+Sowohl `signal_manager.py` (init_db) als auch `watchlist_manager.py` (main → migration block) haben CREATE TABLE + Seed. Beide prüfen mit `SELECT COUNT(*) FROM canonical_tickers` ob die Tabelle leer ist — Seed läuft nur einmal.
+
+### Verwendung
+
+1. **company_validator.py** → `_CANONICAL_MAP` wird beim Import geladen. Wenn yfinance einen Ticker auflöst der in canonical_tickers als source_ticker existiert, wird target_ticker stattdessen verwendet. Z.B. ARMK→ARM.
+2. **export_watchlist.py** → Ladet canonical_tickers beim Start. Merged Watchlist-Einträge die denselben target_ticker haben: höherer Conviction gewinnt, Mentions werden addiert, Channels vereinigt. Markiert gemergte Einträge mit `*` hinter dem Ticker.
+3. **signal_manager.py** → Bietet `get_canonical_ticker(con, ticker)` für zukünftige Nutzung.
+
+### Neue Mappings hinzufügen
+
+Hardcode ist verboten. Per SQL:
+```sql
+INSERT INTO canonical_tickers (source_ticker, target_ticker, reason)
+VALUES ('FOO.MU', 'BAR', 'Grund für das Mapping');
+```
+
+### 15. xsearch_helper Import Collision (geduplikated — siehe 15a)
 
 ## Monitoring & Auto-Diagnose
 

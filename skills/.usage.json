@@ -126,26 +126,26 @@
     "archived_at": null,
     "created_at": "2026-05-27T06:29:36.528930+00:00",
     "created_by": "agent",
-    "last_patched_at": "2026-06-12T08:58:35.551424+00:00",
-    "last_used_at": "2026-06-12T08:58:41.825808+00:00",
-    "last_viewed_at": "2026-06-12T08:58:41.822636+00:00",
-    "patch_count": 63,
+    "last_patched_at": "2026-06-13T10:27:23.041398+00:00",
+    "last_used_at": "2026-06-13T10:27:10.713145+00:00",
+    "last_viewed_at": "2026-06-13T10:27:10.709091+00:00",
+    "patch_count": 71,
     "pinned": false,
     "state": "active",
-    "use_count": 63,
-    "view_count": 61
+    "use_count": 68,
+    "view_count": 66
   },
   "trading-scan": {
     "archived_at": null,
     "created_at": "2026-06-12T08:57:55.815003+00:00",
     "created_by": null,
     "last_patched_at": null,
-    "last_used_at": "2026-06-12T08:57:55.821028+00:00",
-    "last_viewed_at": "2026-06-12T08:57:55.815034+00:00",
+    "last_used_at": "2026-06-13T10:08:09.215452+00:00",
+    "last_viewed_at": "2026-06-13T10:08:09.210068+00:00",
     "patch_count": 0,
     "pinned": false,
     "state": "active",
-    "use_count": 1,
-    "view_count": 1
+    "use_count": 2,
+    "view_count": 2
   }
 }

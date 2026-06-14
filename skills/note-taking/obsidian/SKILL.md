@@ -173,6 +173,115 @@ Wenn neue Inhalte ein bestehendes Konzept erweitern:
 - Neue Seiten eintragen mit Kurzbeschreibung
 - Neue Quellen-Links in bestehenden Seiten ergänzen
 
+---
+
+## Health Check (Broken Links, Orphans, Stale Pages)
+
+Durchführung für den `vault-self-write-health` Cron (Sa 03:00):
+
+### Broken Link Detection — Noise-Filter-Technik
+
+Nicht jeder `[[Wikilink]]` der auf keine Seite zeigt ist ein Broken Link. MOC-Pages enthalten Navigation-Links wie `[[wiki]]`, `[[wiki/concepts]]`, `[[wiki/entities]]`, `[[wiki/index]]` — das sind **Selbstreferenzen** der Navigationsleiste, keine Broken Links.
+
+**Filter-Schritte:**
+
+1. Alle `[[target]]`-Links aus Wiki-Dateien extrahieren
+2. Build a set of all existing wiki page names (without `.md`, with and without path prefix)
+3. **Noise-Prefixe rausfiltern:** `wiki`, `wiki/`, `wiki/concepts`, `wiki/entities`, `wiki/sources`, `wiki/index`
+4. Übrige Links prüfen: existiert ein Wiki-Page mit dem Namen (exakt oder als Dateiname ohne Pfad)?
+5. Bei `../../`-Links: vom Datei-Pfad aus auflösen — `os.path.normpath(os.path.join(os.path.dirname(fpath), target))` — und prüfen ob die Datei existiert
+
+**Häufige False Positives:**
+- `[[../../Trading/Watchlist]]` → Datei existiert, nur relativer Pfad — kein Broken Link
+- `[[../../hermes/dateiname]]` → Datei existiert im hermes/ Ordner — prüfen vor Meldung
+- `[[../Trading/Erklaerung]]` → Auflösung von wiki/ aus funktioniert (wiki/../Trading/ = Trading/)
+
+**Echte Broken Links sind:**
+- Wikilinks zu nicht-existierenden Wiki-Seiten (z.B. `[[KI-Sicherheit]]`, `[[Aktien (KI Zulieferer)]]` → kein Konzept angelegt)
+- `../../`-Links deren Datei nicht existiert (z.B. falscher Zielordner, falscher Dateiname)
+- `../skills/...` Links aus Wiki-Seiten (skills/ ist kein Wiki-Ordner)
+
+### Orphan Detection
+
+Orphans = Dateien >30 Tage alt, in relevanten Dirs (Geldverdienen/, boerse/, hermes/, Trading/, Clippings/, raw/), die von KEINER Wiki-Seite verlinkt sind.
+
+**Prüfung:** Für jede Kandidaten-Datei: suche in allen Wiki-Dateien nach `[[../../path/to/datei]]` (mit und ohne `.md`). Wenn kein Treffer → Orphan.
+
+**Nicht scannen:** `.obsidian/`, `Projekte/Buecher/`, `CACHE.txt`, sowie persönliche Ordner (Rezepte, Lernen, Reisen, Sport, Exil, System, Tools, Personen, etc.)
+
+### Stale Source Detection
+
+Quellen in `wiki/sources/` die von keinem Wiki-Concept/Entity verlinkt werden. Kapitel-Dateien aus Manuskript-Projekten (Kapitel_X, Verleger-Gutachten, Änderungsprotokoll etc.) zählen nicht — sie sind Archiv, keine Wissensquellen.
+
+---
+
+## Gap Detection — Fehlende Wiki-Seiten aus Rohdaten
+
+Nachdem der Health Check läuft: welche Konzepte tauchen in Rohdaten auf, haben aber keine Wiki-Seite?
+
+### Extraktions-Technik
+
+1. Finde Dateien aus den letzten 7 Tagen in hermes/, boerse/, Geldverdienen/, Trading/, Clippings/
+2. Extrahiere aus jeder Datei: **Headings** (`^#{1,3}\s+(.+)`) und **bold terms** (`\*\*(.+?)\*\*`)
+3. Normalisiere und dedupliziere die Terme
+4. Kreuze gegen existierende `wiki/concepts/` und `wiki/entities/` an (case-insensitive Dateiname ohne `.md`)
+5. Übrig: Kandidaten für neue Wiki-Seiten
+
+### Seiten-Anlage-Kriterien
+
+- **Max 2 neue Seiten** pro Durchlauf
+- **Nur anlegen wenn genug Substanz:** 3+ Absätze Content möglich (nicht nur "[...] ist ein Tool")
+- **Concept oder Entity?** Abstrakte Idee → `concepts/`. Konkrete Sache (Modell, Person, Tool, Ort) → `entities/`
+- **Template:** Frontmatter (`created`, `updated`, `tags`, `type`, `source`) + `[[wiki/concepts|concepts]] → [[Seitenname]]` Navigation + Body + `## Quellen`-Sektion mit vollen Pfaden zu Quellen
+
+---
+
+## Synthesis — Übergreifende Analyse / MOC
+
+Wenn 3+ verwandte Quellen zu einem Thema existieren, die noch keine übergreifende Analyse haben, eine MOC-Seite anlegen.
+
+### Kriterien für MOC
+
+- **3+ unabhängige Quellen** (nicht Duplikate, nicht unterschiedliche Versionen derselben Quelle)
+- **Thematischer Cluster** vorhanden (alle handeln vom selben Konzept)
+- **Noch keine übergreifende Seite** die den Cluster synthetisiert
+
+### MOC-Format
+
+Die MOC ist ein Concept-Page das die Quellen synthetisiert:
+- Kern-These oder Definition
+- Vergleichstabelle (wenn unterschiedliche Ansätze/Meinungen)
+- Strukturierte Abschnitte die die Quellen zusammenführen
+- `## Quellen` mit allen 3+ Quellen
+- `## Verbindungen` zu bestehenden Wiki-Seiten
+
+**Ziel:** Ein Leser der nur die MOC liest, versteht das Thema vollständig ohne alle Quellen einzeln lesen zu müssen.
+
+---
+
+## Backward Integration — Neue Verbindungen aus Rohdaten
+
+Nachdem neue Dateien ins Wiki eingepflegt wurden: fehlende Rücklinks in bestehenden Wiki-Seiten ergänzen.
+
+### Ansatz
+
+1. Neue/geänderte Dateien der letzten 7 Tage in relevanten Dirs scannen
+2. Themen/Hauptaussagen extrahieren (Titel + Headings reichen meist)
+3. Prüfen welche bestehenden Wiki-Seiten darauf verweisen sollten
+4. **Max 5 Änderungen** pro Durchlauf — nur die wertvollsten/missingsten Ergänzungen
+5. Priorisierung: Konzepte/Entities mit erkennbarer Lücke > Perfektionismus
+
+### Typische Muster
+
+| Rohdaten-Thema | Sollte verlinkt werden von |
+|----------------|---------------------------|
+| Trading-System-Doku | `Trading Pipeline Architecture` |
+| Neue Prompt-Vorlagen | `prompt.md` / `Hermes Prompt Recipes` |
+| Fable 5 / Claude 5 | `prompt.md` / agent.md |
+| Obsidian-Theorie | `entities/Obsidian.md` |
+| Agent-Loops / Autonomy | `agent.md` / `Automation.md` |
+| MCP-Setup | `MCP Trading Setup` |
+
 ### Pitfalls
 
 - **Nicht nur Datum prüfen:** Dateien können durch Sync unterschiedliche Timestamps haben. MD5 ist der verlässliche Duplikat-Indikator.

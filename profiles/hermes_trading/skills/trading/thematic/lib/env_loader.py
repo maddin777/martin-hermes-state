@@ -1,33 +1,34 @@
 """
 Zentraler .env-Loader fuer Trading-Skill.
-Wird beim ersten Import beliebiger Client-Module ausgefuehrt.
-Cron-safe: arbeitet unabhaengig von Shell-Environment.
+Import: `import env_loader` (one-shot side-effect).
+Cron-safe, kein PYTHONPATH-Setup noetig.
 """
 import os
 from pathlib import Path
 
 _LOADED = False
 
-def load() -> None:
+def _load() -> None:
     global _LOADED
     if _LOADED:
         return
     try:
         from dotenv import load_dotenv
+        for p in (Path("/root/.hermes/profiles/hermes_trading/.env"),
+                  Path("/root/.hermes/.env")):
+            if p.is_file():
+                load_dotenv(p, override=False)
     except ImportError:
-        _LOADED = True
-        return
-
-    # Reihenfolge: profil-spezifisch ueberschreibt global NICHT (override=False)
-    candidates = (
-        Path("/root/.hermes/profiles/hermes_trading/.env"),
-        Path("/root/.hermes/.env"),
-    )
-    for env_path in candidates:
-        if env_path.is_file():
-            load_dotenv(env_path, override=False)
+        # Fallback: minimaler Parser wie in xsearch_helper.py
+        for p in ("/root/.hermes/profiles/hermes_trading/.env",
+                  "/root/.hermes/.env"):
+            if os.path.exists(p):
+                with open(p) as f:
+                    for line in f:
+                        line = line.strip()
+                        if line and not line.startswith("#") and "=" in line:
+                            k, v = line.split("=", 1)
+                            os.environ.setdefault(k.strip(), v.strip())
     _LOADED = True
 
-
-# Beim Import sofort laden
-load()
+_load()
