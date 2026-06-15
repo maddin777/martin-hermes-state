@@ -109,9 +109,28 @@ except urllib.error.HTTPError as e:
 7. **Gateway restart after changes:** Always `systemctl restart hermes-gateway-<profile>` after `.env`, `config.yaml`, or `jobs.json` changes.
 8. **Response truncated: avoid delegate_task in cron prompts.** Models with low output-token limits (e.g. `openai/gpt-oss-120b:free`) can fail with `RuntimeError: Response truncated due to output length limit` when the cron prompt uses `delegate_task` — subagent output aggregates into the main response, exceeding the length check. Fix: remove `delegate_task`, compact prompt (max 10-12 items, bulletpoints), or use a model with higher output capacity.
 
-9. **Model selection for cron jobs:** If truncation persists (even without `delegate_task`), switch to a model with higher output capacity. `openrouter/owl-alpha` (free, 1M context, agentic-workload-optimized) resolved the truncation issue for Martin's `hermes-news` daily briefing. Set `model: "openrouter/owl-alpha"` and `provider: "openrouter"` in the cron job config. Owl Alpha is on the same OpenRouter routing tier -- no additional API key needed.
+10. **Model selection for cron jobs:** If truncation persists (even without `delegate_task`), switch to a model with higher output capacity. `openrouter/owl-alpha` (free, 1M context, agentic-workload-optimized) resolved the truncation issue for Martins `hermes-news` daily briefing. Set `model: "openrouter/owl-alpha"` and `provider: "openrouter"` in the cron job config. Owl Alpha is on the same OpenRouter routing tier -- no additional API key needed.
 
-11. **The cronjob tool only works for the main Hermes cron, NOT profile cron jobs.** Profile cron jobs are managed exclusively via `hermes --profile <name> cron <command>` or by editing `~/.hermes/profiles/<name>/cron/jobs.json` directly. Attempting cronjob(action='update', job_id=...) on a profile job returns "Job with ID '...' not found". Always use the profile-specific CLI for profile cron operations.
+11. **xai-oauth 403 (spending limit) — switch provider entirely:** When xAI Grok tokens run out, the cron job returns HTTP 403 `personal-team-blocked:spending-limit`. The fix is NOT model-only — the entire provider must change:
+    - Cron job: change both `model` (to e.g. `openrouter/owl-alpha`) AND `provider` (to `openrouter`)
+    - x_search config in `config.yaml`: stays on `xai-oauth` (separate from cron model)
+    - Cron prompt stays unchanged — the model swap is invisible to the LLM
+    - When Grok credits are restored, switch back by reversing both fields
+    - Do NOT set a `fallback_model` in config.yaml — the xai-oauth provider simply 403s and fallback doesn't help because the primary provider is wrong. Change the cron jobs provider directly.
+
+12. **Profile cron `hermes cron run` may not execute immediately:** When you update `jobs.json` and restart the gateway, then trigger `hermes --profile <name> cron run <id>`, the job might NOT fire on the next scheduler tick if:
+    - The NEW gateway (after restart) needs time to initialize its scheduler
+    - The old gateways memory still has a cached copy of `jobs.json` from before the file was updated
+    - The scheduler tick interval is longer than expected (varies by profile)
+    
+    **Consequence:** The `next_run_at` in `jobs.json` updates (showing the triggered run), but the run never actually executes. No output file appears, no log entry.
+    
+    **Fix:** Instead of relying on `cron run` immediately after a restart, either:
+    - Wait for the next scheduled run (e.g. next 06:00 for news briefing)
+    - Restart the gateway AGAIN after the `cron run` trigger, so it picks up the modified jobs.json fresh
+    - Check `journalctl -u hermes-gateway-<profile> --since "5 min ago"` to see if the scheduler tick actually fired
+
+13. **The cronjob tool only works for the main Hermes cron, NOT profile cron jobs.**
 
 12. **xAI OAuth als Cron-Provider.** Der xAI-OAuth-Eintrag in der Credential-Pool (`hermes auth list` zeigt `xai-oauth (1 credentials)`) wird im Cron-Job so konfiguriert:
     ```json
@@ -174,7 +193,7 @@ When a user says "I don't like the output" of a cron job, the fix is almost alwa
    ```
    See pitfall #13 below for why `patch`-tool fails on Sonderzeichen.
 
-6. **Update reference files** — if a skill has a `references/` file documenting this cron's format (e.g. `vault-insights-daily/references/daily-news-briefing-format.md`), update it in sync.
+6. **Update reference files** — if a skill has a `references/` file documenting this crones format (e.g. `references/news-briefing-prompt-template.md` for the daily briefing), update it in sync with the new prompt version. The reference file stores the stable source list and the last-approved prompt text, so future edits start from the right baseline.
 
 7. **Verify** — confirm the JSON is valid and the cron job is recognized:
    ```bash
@@ -396,52 +415,105 @@ See `devops/gateway-watchdog` skill for automatic recovery.
 **Profile gateway conflicts**
 Profile gateways sharing the same Telegram bot token — only ONE can run at a time.
 
-## 3. Gateway Watchdog — Proactive Monitoring
+## 3. Gateway Loop Healthcheck — Proactive Monitoring
 
-Set up two-tier gateway protection: systemd restart limits + a cron-based watchdog for intelligent recovery.
+Three-layer protection: aggressive systemd auto-restart + a tight cron watchdog + weekly proactive restart.
 
 ### Architecture
 
-**Tier 1 — systemd restart limits (dumb protection)**
-- `Restart=on-failure` instead of `always`
+**Layer 1 — systemd auto-restart (always-on recovery)**
+- `Restart=always` (not `on-failure` — catches planned stops too)
+- `RestartSec=10` — restart within 10s instead of 60s
+- `TimeoutStopSec=20` — SIGKILL after 20s (was 90s, preventing lengthy hangs)
 - `StartLimitBurst=3` / `StartLimitIntervalSec=600` — max 3 restarts in 10min
-- Prevents infinite restart loops on permanent failures
+- This means: the gateway is back within ~10s of any exit, planned or unplanned
 
-**Tier 2 — Cron Watchdog (intelligent recovery)**
-- Every 30min via `no_agent=True` cron
+**Layer 2 — Cron Watchdog (intelligent recovery, every 5min)**
+- Every 5min via `no_agent=True` cron (was 30min)
 - Script: `~/.hermes/scripts/gateway-watchdog.py`
 - Checks: Is the service active? Does the Telegram API respond (`getMe`)?
 - Both OK → silent exit (no log, no message)
 - Failure → service restart + log entry
 - Same error >2x in 60min → CRITICAL (no restart, manual intervention required)
 
-### Setting Up the Watchdog
+**Layer 3 — Weekly Proactive Restart (prevents stale bytecode cache)**
+- Every Sunday 04:00 via `no_agent=True` cron
+- Script: `~/.hermes/scripts/weekly-gateway-restart.sh`
+- Calls `systemctl restart`, then waits up to 24s for active state
+- Must match `TimeoutStopSec` — the restart script's wait loop should be slightly longer than the stop timeout
+
+### Setting Up the Healthcheck
 
 ```bash
-# 1. systemd Drop-In for restart limits
+# 1. systemd Drop-In for restart limits + fast recovery
 mkdir -p /etc/systemd/system/hermes-gateway.service.d
 cat > /etc/systemd/system/hermes-gateway.service.d/99-restart-limit.conf << 'CONF'
 [Service]
-Restart=on-failure
+Restart=always
+RestartSec=10
 StartLimitBurst=3
 StartLimitIntervalSec=600
+TimeoutStopSec=20
 CONF
 systemctl daemon-reload
-systemctl restart hermes-gateway.service
+# No restart needed — changes apply on next service stop/start
 ```
 
 2. Write the watchdog script at `~/.hermes/scripts/gateway-watchdog.py`
-3. Create the cron job (`no_agent=True`, every 30min, deliver: local)
-4. Log file: `/root/.hermes/logs/gateway-watchdog.log`
+3. Create the cron job (`no_agent=True`, `every 5m`, deliver: local)
+4. Create the weekly restart script at `~/.hermes/scripts/weekly-gateway-restart.sh`
+5. Log file: `/root/.hermes/logs/gateway-watchdog.log`
+
+### Gateway Shutdown Diagnosis
+
+When Martin sees a "gateway shutting down" message, determine if it's planned or a problem:
+
+**Planned shutdowns (no action needed):**
+- Weekly restart (Sunday 04:00) — `journalctl` shows `signal=SIGTERM` + `parent_cmdline=/sbin/init`
+- Gateway stop via systemctl — same SIGTERM signature
+- Check: `journalctl -u hermes-gateway.service --since "1 hour ago" | grep -i "shutdown\|SIGTERM"`
+
+**Unplanned shutdowns (investigate):**
+- Crashes with traceback — `journalctl` shows Python exceptions before SIGTERM
+- OOM kill — `journalctl` shows `code=killed, status=9/KILL` without prior SIGTERM
+- Telegram API errors — `get_updates` failures during graceful shutdown (harmless but noisy)
+- Check: `journalctl -u hermes-gateway.service -n 50 | grep -E "ERROR|CRITICAL|Traceback|killed"`
+
+**Graceful shutdown Telegram error (harmless):**
+```
+Error while calling `get_updates` one more time to mark all fetched updates.
+Suppressing error to ensure graceful shutdown.
+```
+This is a Telegram Python library quirk — occurs when getting one last poll during shutdown. Not critical.
+
+**Verify config change was applied:**
+```bash
+systemctl show hermes-gateway.service | grep -E "Restart=|RestartUSec|TimeoutStopUSec"
+```
+- `Restart=always` ✅
+- `RestartUSec=10s` ✅
+- `TimeoutStopUSec=20s` ✅
+
+### Why TimeoutStopSec Matters
+
+Old 90s value caused:
+- Weekly restart hung for 90s before SIGKILL
+- During that time, the gateway was "deactivating" — cron jobs backed up
+- Users saw the "shutting down" message and couldn't tell if it was planned
+
+New 20s value:
+- Quick enough that the restart feels instant
+- Still plenty of time for graceful Telegram shutdown
+- Paired with `RestartSec=10s` → gateway is back within 30s total
 
 ### Escalation Procedure
 
-When the log shows **CRITICAL** (same error >2x in 60min):
+When the watchdog log shows **CRITICAL** (same error >2x in 60min):
 
 ```bash
 systemctl status hermes-gateway.service
 cat ~/.hermes/logs/gateway-watchdog.log | tail -10
-cat ~/.hermes/logs/gateway.log | tail -20
+journalctl -u hermes-gateway.service -n 50
 ```
 
 After fixing the root cause, reset tracking:
@@ -484,7 +556,21 @@ systemctl start hermes-gateway-{profil}.service
 
 The regenerated unit has correct `TimeoutStopSec`.
 
-### Post-Reboot Health Check
+**After regeneration, re-apply the custom Drop-In** with aggressive settings:
+```bash
+cat > /etc/systemd/system/hermes-gateway-{profil}.service.d/99-restart-limit.conf << 'CONF'
+[Service]
+Restart=always
+RestartSec=10
+StartLimitBurst=3
+StartLimitIntervalSec=600
+TimeoutStopSec=20
+CONF
+systemctl daemon-reload
+systemctl restart hermes-gateway-{profil}.service
+```
+
+`hermes gateway service install --replace` regenerates the **main unit file**, resetting `TimeoutStopSec` to upstream default. Always re-apply the Drop-In afterward.
 
 After LXC/VM restart, verify all gateway services started:
 

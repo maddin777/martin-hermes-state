@@ -107,7 +107,98 @@ ls -la /root/obsidian-vault/00-CAPTURE/
 hermes cron list | grep -E "weekly-review|vault-self-write"
 ```
 
-### Pitfalls
+## 3. Running the Weekly Review (Sunday 19:00 Cron)
+
+The weekly review runs as a Hermes cron job (`weekly-review`, beb26022a5d9, schedule `0 19 * * 0`). It checks vault health, trading pipeline, project progress, and infrastructure. No user present — fully autonomous.
+
+### Step 1: Vault Scan — Files Modified in Last 7 Days
+
+```bash
+find /root/obsidian-vault/ -type f -name '*.md' -newer /root/obsidian-vault/ -mtime -7 \
+  | grep -v '.obsidian/' \
+  | grep -v 'Projekte/Buecher/' \
+  | sort
+```
+
+Categorize results into:
+- **wiki/concepts/** — new conceptual pages (most valuable signal)
+- **wiki/entities/** — new entity pages
+- **Trading/** — watchlist, documentation changes
+- **Clippings/** — new web clippings ingested
+- **hermes/** — agent-related notes
+- **Lernen/Polnisch/** — language learning progress
+- **Other** — Stuff/, raw/, etc.
+
+### Step 2: Trading Check
+
+Read the Watchlist head to verify freshness:
+```bash
+head -5 /root/obsidian-vault/Trading/Watchlist.md
+```
+Key metrics to extract: Gesamt count, ≥76% Conviction count, export date.
+Also check `Trading/Erklaerung.md` version line for documentation updates.
+
+### Step 3: Cron Health
+
+List all Hermes cron jobs and verify last-run status:
+```bash
+hermes cron list
+```
+Check specifically:
+- `f5eb3bfaf65e` (obsidian-vault-bisync-nightly) — last run date + `ok`/`error`
+- `53f222b00811` (vault-insights-daily) — ran today?
+- All other jobs should show status and recent `ok` run
+
+### Step 4: Project Status
+
+Map changes against known project inventory from the Mission Map:
+- **🟢 Active** — pipeline running, wiki growing, learning progressing
+- **🟡 Stalled** — content ingested but no execution
+- **🔴 Paused** — intentionally paused (don't flag as problem)
+
+### Step 5: Generate Report
+
+Format: Kurz, strukturiert, Terminal-Style. Keine Prosa. Emoji sections.
+
+Layout:
+```
+── WEEKLY REVIEW — KW <number> (<date>) ──────────
+📂 VAULT (<count> Files geändert letzte 7 Tage)
+  • wiki/concepts/ — bullet list of new concepts
+  • Clippings — count + key themes
+  • Other notable changes
+📈 TRADING
+  • Watchlist: stats, export date
+  • Pipeline crons: ✅/❌
+  • Notable signals
+🏥 VAULT-HEALTH (N Cron Jobs)
+  • f5eb3bfaf65e: last run status
+  • All N jobs: ✅/❌ summary
+📊 PROJEKT-STATUS
+  • 🟢/🟡/🔴 per project with 1-liner
+⚠️ PROBLEME
+  • Any broken syncs, failed crons, errors
+🎯 EMPFEHLUNGEN für KW <next>
+  1. Suggestion with effort estimate
+  2. ...
+  3. ...
+```
+
+### Critical Pitfall — Cron Mode
+
+**`execute_code()` is BLOCKED in cron mode** (security restriction). Use direct `terminal()` calls for Python-like logic and `read_file()`/`search_files()` for data extraction. Do NOT attempt `execute_code()`.
+
+### Pitfalls — Weekly Review
+
+- Watchlist.md may be long (150+ lines) — use `head` and pattern matching, not full read
+- `find -mtime -7` counts from the start of the day, not from exact 7*24h ago — close enough for weekly review
+- Some files may be modified by the vault-insights pipeline at 02:45 — this is expected, not a concern
+- Gateway-watchdog runs every 5 min and its `ok` status is expected — brief Telegram timeout errors in trading/errors.log are NOT critical (polling noise)
+- [SILENT]: If nothing changed (no new files, no trading updates, no cron failures), respond with exactly `[SILENT]` to suppress delivery
+
+---
+
+### Pitfalls (General)
 
 - SOUL.md too long/abstract → keep concrete with examples
 - MEMORY.md filled with transient data → prohibited, only durable facts

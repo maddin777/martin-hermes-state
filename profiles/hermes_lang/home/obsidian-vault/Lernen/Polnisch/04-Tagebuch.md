@@ -115,3 +115,55 @@ Lektion #17 abgeschlossen.
 10. **pijemy**
 
 Lektion #18 abgeschlossen.
+
+## Lektion #19
+
+### 1. Słownictwo (Top 500)
+**rok** `Jahr`, **człowiek** `Mensch`, **wieczór** `Abend`, **książka** `Buch`, **oko** `Auge`, **stół** `Tisch`, **drzwi** `Tür`, **noga** `Bein`, **słowo** `Wort`, **pytanie** `Frage`
+
+### 2. Sentence Mining (n+1)
+**Ten rok jest długi.** `Dieses Jahr ist lang.`
+**Ten człowiek jest miły.** `Dieser Mensch ist nett.`
+**Dobre wieczory są ważne.** `Gute Abende sind wichtig.`
+**Czytam nową książkę.** `Ich lese ein neues Buch.`
+**Widzę twoje oko.** `Ich sehe dein Auge.`
+**Stół stoi w kuchni.** `Der Tisch steht in der Küche.`
+**Otwórz drzwi.** `Öffne die Tür.`
+**Moja noga boli.** `Mein Bein tut weh.`
+**To jest trudne słowo.** `Das ist ein schwieriges Wort.`
+**Mam pytanie.** `Ich habe eine Frage.`
+
+### 3. Gramatyka (Aspekt & Przypadki)
+**Czasowniki (Aspekt):**
+- **pisać** `schreiben` / **napisać** `schreiben (perf)`
+- **brać** `nehmen` / **wziąć** `nehmen (perf)`
+
+**Rzeczowniki (Przypadki):**
+- **rok** `Jahr` (Gen: **roku**)
+- **książka** `Buch` (Akk: **książkę**)
+
+### 4. Quiz (Lückentext)
+1. Ten ___ jest długi.
+2. To jest dobry ___.
+3. Lubię ten ___.
+4. Czytam ___.
+5. Widzę twoje ___.
+6. ______ stoi w kuchni.
+7. Otwórz ______.
+8. Moja ______ boli.
+9. To jest trudne ______.
+10. Mam ______.
+
+### 5. Rozwiązania
+1. **rok**
+2. **człowiek**
+3. **wieczór**
+4. **książkę**
+5. **oko**
+6. **Stół**
+7. **drzwi**
+8. **noga**
+9. **słowo**
+10. **pytanie**
+
+Lektion #19 abgeschlossen.
