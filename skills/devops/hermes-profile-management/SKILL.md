@@ -385,6 +385,24 @@ Cron jobs created with `skills: [profile-spezifischer-skill]` can disappear from
 6. Gateway logs? Check `journalctl -u hermes-gateway-<profile> --no-pager -n 20`.
 7. Profile .env has OPENROUTER_API_KEY and correct TELEGRAM_BOT_TOKEN?
 
+### 429 Rate-Limit Cascade (Missing Toolset)
+
+When a cron job fails with `HTTP 429: Provider returned error`, the root cause is often NOT the rate limit itself — it is a cascade from a missing `web` toolset:
+
+```
+Profile has toolsets: [hermes-cli, x_search] (no web)
+  → Agent calls web_search → "Tool does not exist"
+  → Falls back to browser_navigate
+  → Bot detection walls on news/paywall sites (DataDome, Cloudflare)
+  → Wasted tokens + retries → OpenRouter free-tier 429
+```
+
+**Diagnosis:** Check `request_dump` in profile's sessions dir → check `config.yaml` for `toolsets` → check model (free tier?). **Also compare `jobs.json` model override vs `config.yaml` default — they can drift apart.** A DM test run may work but the cron fail because the profile has a different model/toolset than your session.
+
+**Fix:** Add `web` to toolsets, switch from free model to paid, and sync config.yaml default with cron override to prevent future confusion.
+
+Full recipe: `references/cron-429-toolset-diagnosis.md`
+
 ---
 
 ## 2. Gateway Troubleshooting

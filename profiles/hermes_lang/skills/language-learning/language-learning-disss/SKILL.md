@@ -22,9 +22,16 @@ Identify the high-frequency core of the target language. Use existing knowledge 
 
 ### Step 2: Sequence Generation
 Create a syllabus that organizes the selected content into daily, manageable lessons.
+## Implementation Workflow
 
 ### Step 3: Lesson Production
-Every lesson MUST follow a strict structure to ensure cognitive load is optimized:
+
+Every lesson MUST follow a strict structure to ensure cognitive load is optimized. 
+
+**Formatting Requirements:**
+- **Polish** terms must be **bolded**.
+- `German` translations must be in `monospace`.
+
 1.  **Vocabulary (Top 500)**: 10 high-frequency words.
 2.  **n+1 Sentence Mining**: Contextual sentences using new vocabulary + previously learned structures.
 3.  **Grammar Focus**: One specific grammatical hook (e.g., verb aspect, noun case).
@@ -33,11 +40,6 @@ Every lesson MUST follow a strict structure to ensure cognitive load is optimize
 
 ## Automation & Tracking
 
-- **Progress Tracking**: Use Obsidian (or similar) to maintain a daily log and determine the next lesson number.
-- **Cron-Job Integration**: This workflow is designed to be executed autonomously via scheduled tasks.
+...
 
-## References & Specialized Workflows
-
-Specific implementations of this framework can be found in the references directory.
-
-- `references/polish-disss-implementation.md`: Detailed implementation for Polish language learning.
+- `references/polish-lesson-log.md`: Automated Polish lesson generation log and vocabulary tracking.

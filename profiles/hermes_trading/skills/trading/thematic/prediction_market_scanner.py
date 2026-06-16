@@ -12,6 +12,7 @@ from datetime import date, datetime
 sys.path.insert(0, "/root/.hermes/profiles/hermes_trading/skills/trading")
 
 from thematic.lib import polymarket_client, llm_client, prompt_loader
+from config import db_connect
 
 DB_PATH = os.path.join(
     os.path.dirname(os.path.dirname(__file__)),

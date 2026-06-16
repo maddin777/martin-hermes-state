@@ -1,0 +1,423 @@
+{
+  "jobs": [
+    {
+      "id": "f5eb3bfaf65e",
+      "name": "obsidian-vault-bisync-nightly",
+      "prompt": "Obsidian Vault Bisync \u2014 l\u00e4uft via no_agent Script obsidian-bisync.sh",
+      "skills": [],
+      "skill": null,
+      "model": null,
+      "provider": null,
+      "base_url": null,
+      "script": "obsidian-bisync.sh",
+      "schedule": {
+        "kind": "cron",
+        "expr": "0 2 * * *",
+        "display": "0 2 * * *"
+      },
+      "schedule_display": "0 2 * * *",
+      "repeat": {
+        "times": null,
+        "completed": 56
+      },
+      "enabled": true,
+      "state": "scheduled",
+      "paused_at": null,
+      "paused_reason": null,
+      "created_at": "2026-04-21T23:30:01.012140+02:00",
+      "next_run_at": "2026-06-16T02:00:00+02:00",
+      "last_run_at": "2026-06-15T02:00:45.802730+02:00",
+      "last_status": "ok",
+      "last_error": null,
+      "last_delivery_error": null,
+      "deliver": "local",
+      "origin": null,
+      "no_agent": true
+    },
+    {
+      "id": "eec953aecbd8",
+      "name": "gateway-watchdog",
+      "prompt": "",
+      "skills": [],
+      "skill": null,
+      "model": null,
+      "provider": null,
+      "base_url": null,
+      "script": "gateway-watchdog.py",
+      "no_agent": true,
+      "context_from": null,
+      "schedule": {
+        "kind": "interval",
+        "minutes": 5,
+        "display": "every 5m"
+      },
+      "schedule_display": "every 5m",
+      "repeat": {
+        "times": null,
+        "completed": 1777
+      },
+      "enabled": true,
+      "state": "scheduled",
+      "paused_at": null,
+      "paused_reason": null,
+      "created_at": "2026-05-11T13:12:20.006963+02:00",
+      "next_run_at": "2026-06-15T03:11:31.503630+02:00",
+      "last_run_at": "2026-06-15T03:06:31.503630+02:00",
+      "last_status": "ok",
+      "last_error": null,
+      "last_delivery_error": null,
+      "deliver": "local",
+      "origin": null,
+      "enabled_toolsets": null,
+      "workdir": null
+    },
+    {
+      "id": "53f222b00811",
+      "name": "vault-insights-daily",
+      "prompt": "[IMPORTANT: You are running as a scheduled cron job. DELIVERY: Your final response will be automatically delivered to the user \u2014 do NOT use send_message or try to deliver the output yourself. Just produce your report/output as your final response and the system handles the rest. SILENT: If there is genuinely nothing new to report, respond with exactly \"[SILENT]\" (nothing else) to suppress delivery. Never combine [SILENT] with content \u2014 either report your findings normally, or say [SILENT] and nothing more.]\n\nDu hast Zugriff auf den Obsidian Vault unter /root/obsidian-vault/. Der n\u00e4chtliche GDrive-Sync war vor ~30 Minuten abgeschlossen (Cron 02:00). \n\nDeine Aufgaben:\n\n## A \u2014 Wiki pflegen (h\u00f6chste Priorit\u00e4t)\nScanne ob es neue/ge\u00e4nderte Dateien im Vault gibt (seit letztem Sync mit `find /root/obsidian-vault/ -maxdepth 5 -type f -newer /tmp/vault-last-sync -name \"*.md\" -not -path \"*/wiki/*\" -not -path \"*/.*\"` nachdem du /tmp/vault-last-sync per touch aktualisiert hast).\n\n**Wichtig:** `-maxdepth 5` ist n\u00f6tig weil Dateien in `Projekte/MarineIT/` (Tiefe 4) sonst nicht gefunden werden.\n\n**Proaktive Watchlist-Wartung:** Pr\u00fcf ob `Trading/Watchlist.md` aktualisiert wurde. Wenn ja:\n- Aktualisiere `wiki/entities/Watchlist.md` mit neuen Metriken (Anzahl Eintr\u00e4ge, Paper-Positionen, Quellenverteilung, Data Quality Issues)\n- Tracke ob die Exit-Management-Quelldatei `Trading/Erklaerung.md` neuer ist als `wiki/concepts/Exit Management.md`. Wenn ja, aktualisiere die Exit Management Seite mit dem aktuellen Stand.\n\n**Sonstige neue/ge\u00e4nderte Dateien:** Kaufe neue Konzepte, Entit\u00e4ten oder Quellen als Wiki-Seiten ein:\n- Trading-relevante Dateien aus boerse/, Trading/, Geldverdienen/ (Trading-Anteil) \u2192 wiki/concepts/ oder wiki/entities/\n- Hermes-relevante Dateien \u2192 wiki/concepts/ (z.B. Automation, Agent, Prompt)\n- Reise/Orte \u2192 wiki/entities/ (Berlin, M\u00fcnchen, Krakau, Prag, etc.)\n- Tools/KI \u2192 wiki/entities/ (Claude, ChatGPT, Gemini, Google, etc.)\n- **Projekte/ Dateien** (z.B. MarineIT/Zeeslogger*): Wenn relevant, lege eine Wiki-Seite unter wiki/concepts/ oder wiki/entities/ an und verlinke sie im trading-index.md\n- Verlinke jede neue Seite im trading-index.md unter der richtigen Kategorie\n\n## B \u2014 Intention weiterdenken\nLies neue/ge\u00e4nderte Dateien. Was ist der Kern? \u00dcbersetze ihn in konkrete n\u00e4chste Schritte f\u00fcr Martins Infrastruktur. Schreib eine \"Weitergedacht\"-Sektion in deinen Report. Wenn die Watchlist neue auff\u00e4llige Muster zeigt (Duplikate, fehlende Ticker, Quellenverschiebung), analysiere die m\u00f6glichen Auswirkungen auf das Trading-System.\n\n## C \u2014 Proaktive Vorschl\u00e4ge (max 3)\nWenn dir etwas auff\u00e4llt was Martin \u00fcbersehen hat: maximal 3 Vorschl\u00e4ge, jeder mit:\n- Konkretem n\u00e4chstem Schritt\n- Aufwandssch\u00e4tzung\n- Der Frage \"Soll ich das jetzt umsetzen?\"\n\n**Wichtig:** Pr\u00fcfe bei Watchlist-\u00c4nderungen ob die Exit Management Page noch aktuell ist.\n\n## D \u2014 Exit Management Auto-Refresh\nNachdem du Wiki-Seiten aktualisiert hast: pr\u00fcfe die Timestamps von `Trading/Erklaerung.md` vs `wiki/concepts/Exit Management.md`. Wenn die Quelle neuer ist, aktualisiere die Exit Management Seite. Tracke diesen Check im Report.\n\nLiefere deinen Report als strukturierte Telegram-Nachricht mit Sektionen: Wiki-Updates, Weitergedacht, Proaktive Vorschl\u00e4ge, Exit-Management-Check.",
+      "skills": [],
+      "skill": null,
+      "model": null,
+      "provider": null,
+      "base_url": null,
+      "script": null,
+      "no_agent": false,
+      "context_from": null,
+      "schedule": {
+        "kind": "cron",
+        "expr": "45 2 * * *",
+        "display": "45 2 * * *"
+      },
+      "schedule_display": "45 2 * * *",
+      "repeat": {
+        "times": null,
+        "completed": 36
+      },
+      "enabled": true,
+      "state": "scheduled",
+      "paused_at": null,
+      "paused_reason": null,
+      "created_at": "2026-05-11T15:27:25.229495+02:00",
+      "next_run_at": "2026-06-16T02:45:00+02:00",
+      "last_run_at": "2026-06-15T02:47:26.492942+02:00",
+      "last_status": "ok",
+      "last_error": null,
+      "last_delivery_error": null,
+      "deliver": "telegram",
+      "origin": null,
+      "enabled_toolsets": [
+        "file",
+        "terminal",
+        "web"
+      ],
+      "workdir": null
+    },
+    {
+      "id": "beb26022a5d9",
+      "name": "weekly-review",
+      "prompt": "F\u00fchre ein Weekly Review durch (Sonntag 19:00).\n\n1. **Vault-Check**: Scanne /root/obsidian-vault/ nach Dateien die in den letzten 7 Tagen ge\u00e4ndert wurden (ausser .obsidian/, Projekte/Buecher/). Neue Inhalte erkennen.\n2. **Trading-Check**: Pr\u00fcfe /root/obsidian-vault/Trading/Watchlist.md auf \u00c4nderungen. Schau ob es neue Trading-Signale gab.\n3. **Vault-Health**: Pr\u00fcfe ob der GDrive-Sync in den letzten 7 Tagen erfolgreich war (letzte Run-Time des Cron-Jobs f5eb3bfaf65e).\n4. **Projekt-Status**: Welche Projekte haben Fortschritt gemacht? Was ist liegengeblieben?\n5. **Empfehlungen**: Max 3 konkrete Vorschl\u00e4ge f\u00fcr die kommende Woche mit Aufwandssch\u00e4tzung.\n6. **Probleme**: Irgendwas kaputt? Sync ausgefallen? Cron nicht gelaufen? Cron-Jobs pr\u00fcfen (cronjob action=list).\n\nFormat: Kurz, strukturiert, Terminal-Style. Keine Prosa. Liefer als Telegram-Nachricht.",
+      "skills": [],
+      "skill": null,
+      "model": null,
+      "provider": null,
+      "base_url": null,
+      "script": null,
+      "no_agent": false,
+      "context_from": null,
+      "schedule": {
+        "kind": "cron",
+        "expr": "0 19 * * 0",
+        "display": "0 19 * * 0"
+      },
+      "schedule_display": "0 19 * * 0",
+      "repeat": {
+        "times": null,
+        "completed": 4
+      },
+      "enabled": true,
+      "state": "scheduled",
+      "paused_at": null,
+      "paused_reason": null,
+      "created_at": "2026-05-23T08:18:41.805414+02:00",
+      "next_run_at": "2026-06-21T19:00:00+02:00",
+      "last_run_at": "2026-06-14T19:01:49.951634+02:00",
+      "last_status": "ok",
+      "last_error": null,
+      "last_delivery_error": null,
+      "deliver": "origin",
+      "origin": {
+        "platform": "telegram",
+        "chat_id": "216051232",
+        "chat_name": "Martin",
+        "thread_id": null
+      },
+      "enabled_toolsets": null,
+      "workdir": null
+    },
+    {
+      "id": "326343c87149",
+      "name": "vault-self-write-health",
+      "prompt": "F\u00fchre Vault Self-Write Maintenance durch \u2014 l\u00e4uft Samstag 03:00 nach dem GDrive-Sync.\n\nDeine 4 Aufgaben parallel:\n\n**1. HEALTH CHECK \u2014 Defekte Links & veraltete Pages**\n- Scanne /root/obsidian-vault/wiki/ auf broken Wikilinks [[...]] die auf nicht-existente Seiten verweisen\n- Finde Dateien \u00e4lter als 30 Tage die nie verlinkt wurden (Orphans) \u2014 ausgeschlossen: .obsidian/, Projekte/Buecher/, CACHE.txt\n- Pr\u00fcfe ob source-Eintr\u00e4ge in wiki/sources/ auf existierende Dateien verweisen\n- Erstelle Report: X broken links, Y orphaned files, Z stale pages\n\n**2. BACKWARD INTEGRATION \u2014 Neue Verbindungen pr\u00fcfen**\n- Scanne neue/ge\u00e4nderte Dateien (letzte 7 Tage) in: Geldverdienen/, boerse/, hermes/, Trading/, Clippings/, raw/\n- Pr\u00fcfe ob bestehende wiki/concepts/, wiki/entities/, wiki/sources/ Seiten darauf verweisen sollten\n- Erg\u00e4nze fehlende Wikilinks in bestehenden Wiki-Seiten (max 5 \u00c4nderungen)\n\n**3. GAP DETECTION \u2014 Fehlendes Wissen**\n- Welche Konzepte tauchen in Rohdaten auf haben aber KEINE Wiki-Seite?\n- Max 2 neue Wiki-Seiten anlegen wenn n\u00f6tig (wiki/concepts/ oder wiki/entities/)\n- Nicht anlegen: Seiten ohne Substanz \u2014 nur wenn genug Content f\u00fcr 3+ Abs\u00e4tze\n\n**4. SYNTHESIS \u2014 \u00dcbergreifende Analyse**\n- Gibt es 3+ verwandte Quellen zu einem Thema die noch keine \u00fcbergreifende Analyse haben?\n- Wenn ja: max 1 Synthesis-Seite anlegen (wiki/concepts/ als MOC)\n\nOutput: Kurzer Report pro Aufgabe. Falls nix zu tun: [SILENT] (keine Nachricht senden).",
+      "skills": [],
+      "skill": null,
+      "model": null,
+      "provider": null,
+      "base_url": null,
+      "script": null,
+      "no_agent": false,
+      "context_from": null,
+      "schedule": {
+        "kind": "cron",
+        "expr": "0 3 * * 6",
+        "display": "0 3 * * 6"
+      },
+      "schedule_display": "0 3 * * 6",
+      "repeat": {
+        "times": null,
+        "completed": 3
+      },
+      "enabled": true,
+      "state": "scheduled",
+      "paused_at": null,
+      "paused_reason": null,
+      "created_at": "2026-05-23T08:19:14.921845+02:00",
+      "next_run_at": "2026-06-20T03:00:00+02:00",
+      "last_run_at": "2026-06-13T03:04:54.965237+02:00",
+      "last_status": "ok",
+      "last_error": null,
+      "last_delivery_error": null,
+      "deliver": "local",
+      "origin": {
+        "platform": "telegram",
+        "chat_id": "216051232",
+        "chat_name": "Martin",
+        "thread_id": null
+      },
+      "enabled_toolsets": null,
+      "workdir": null
+    },
+    {
+      "id": "736b150caef2",
+      "name": "hermes-state-github-sync",
+      "prompt": "",
+      "skills": [],
+      "skill": null,
+      "model": null,
+      "provider": null,
+      "base_url": null,
+      "script": "hermes-state-sync.sh",
+      "no_agent": true,
+      "context_from": null,
+      "schedule": {
+        "kind": "cron",
+        "expr": "0 3 * * *",
+        "display": "0 3 * * *"
+      },
+      "schedule_display": "0 3 * * *",
+      "repeat": {
+        "times": null,
+        "completed": 22
+      },
+      "enabled": true,
+      "state": "scheduled",
+      "paused_at": null,
+      "paused_reason": null,
+      "created_at": "2026-05-24T22:49:04.140156+02:00",
+      "next_run_at": "2026-06-16T03:00:00+02:00",
+      "last_run_at": "2026-06-15T03:00:30.942469+02:00",
+      "last_status": "ok",
+      "last_error": null,
+      "last_delivery_error": null,
+      "deliver": "local",
+      "origin": {
+        "platform": "telegram",
+        "chat_id": "216051232",
+        "chat_name": "Martin",
+        "thread_id": null
+      },
+      "enabled_toolsets": [
+        "terminal",
+        "file"
+      ],
+      "workdir": null
+    },
+    {
+      "id": "b0b06693e8f9",
+      "name": "cron-health-daily",
+      "prompt": "",
+      "skills": [],
+      "skill": null,
+      "model": null,
+      "provider": null,
+      "base_url": null,
+      "script": "cron_health.py",
+      "no_agent": true,
+      "context_from": null,
+      "schedule": {
+        "kind": "cron",
+        "expr": "0 8 * * *",
+        "display": "0 8 * * *"
+      },
+      "schedule_display": "0 8 * * *",
+      "repeat": {
+        "times": null,
+        "completed": 20
+      },
+      "enabled": true,
+      "state": "scheduled",
+      "paused_at": null,
+      "paused_reason": null,
+      "created_at": "2026-05-26T07:54:00.434041+02:00",
+      "next_run_at": "2026-06-15T08:00:00+02:00",
+      "last_run_at": "2026-06-14T08:00:45.054187+02:00",
+      "last_status": "ok",
+      "last_error": null,
+      "last_delivery_error": null,
+      "deliver": "telegram",
+      "origin": {
+        "platform": "telegram",
+        "chat_id": "216051232",
+        "chat_name": "Martin",
+        "thread_id": null
+      },
+      "enabled_toolsets": null,
+      "workdir": null
+    },
+    {
+      "id": "472ace6fe18a",
+      "name": "Watchlist Dedup (weekly)",
+      "prompt": "Run the weekly watchlist dedup. Execute: python3 /root/.hermes/scripts/watchlist_dedup.py\n\nReport the results briefly \u2014 how many duplicates dropped, before/after counts. If there's an error, say what went wrong.",
+      "skills": [
+        "trading-pipeline"
+      ],
+      "skill": "trading-pipeline",
+      "model": null,
+      "provider": null,
+      "base_url": null,
+      "script": null,
+      "no_agent": false,
+      "context_from": null,
+      "schedule": {
+        "kind": "cron",
+        "expr": "30 5 * * 0",
+        "display": "30 5 * * 0"
+      },
+      "schedule_display": "30 5 * * 0",
+      "repeat": {
+        "times": null,
+        "completed": 3
+      },
+      "enabled": true,
+      "state": "scheduled",
+      "paused_at": null,
+      "paused_reason": null,
+      "created_at": "2026-05-28T07:47:50.291030+02:00",
+      "next_run_at": "2026-06-21T05:30:00+02:00",
+      "last_run_at": "2026-06-14T05:30:42.392524+02:00",
+      "last_status": "ok",
+      "last_error": null,
+      "last_delivery_error": null,
+      "deliver": "origin",
+      "origin": {
+        "platform": "telegram",
+        "chat_id": "216051232",
+        "chat_name": "Martin",
+        "thread_id": null
+      },
+      "enabled_toolsets": null,
+      "workdir": null
+    },
+    {
+      "id": "b99c78a79959",
+      "name": "ttwo-catalyst-alarm",
+      "prompt": "TTWO Katalysator-Alarm (w\u00f6chentlich)\n\nF\u00fchre den TTWO-Katalysator-Alarm aus:\n\n1. **State laden**: Lies /root/.hermes/state/ttwo_catalyst_state.json (JSON mit last_catalyst, last_earnings, last_checked, gta6_trailer_found, pre_order_found)\n\n2. **GTA6 Launch-Check**: Heute ist $(date +%Y-%m-%d). GTA6 Launch ist am 2026-11-19. Berechne Tage bis Launch. Wenn \u2264 90 Tage, alarmiere. Wenn heute >= Launch, alarmiere.\n\n3. **Web-Suche**: Suche nach aktuellen TTWO/ Take-Two Interactive News:\n   - \"Take-Two Interactive earnings date 2026\"\n   - \"GTA 6 trailer 2026\" (pr\u00fcfe ob neuer Trailer ver\u00f6ffentlicht wurde)\n   - \"GTA 6 pre-order 2026\" (pr\u00fcfe ob Pre-Orders gestartet sind)\n\n4. **Vergleich**: Vergleiche Ergebnisse mit dem State-File. Nur neue/ge\u00e4nderte Ereignisse melden.\n\n5. **State aktualisieren**: Schreibe neuen State mit den aktuellen Daten.\n\n6. **Report**: Wenn neue Katalysatoren gefunden wurden, sende einen strukturierten Report mit:\n   - Was sich ge\u00e4ndert hat\n   - Trade-Implication f\u00fcr TTWO (bullish/bearish)\n   - Kontext f\u00fcr die Watchlist\n\nWenn nichts Neues: \"TTWO: Keine neuen Katalysatoren diese Woche.\"",
+      "skills": [
+        "trading-pipeline"
+      ],
+      "skill": "trading-pipeline",
+      "model": null,
+      "provider": null,
+      "base_url": null,
+      "script": null,
+      "no_agent": false,
+      "context_from": null,
+      "schedule": {
+        "kind": "cron",
+        "expr": "0 10 * * 0",
+        "display": "0 10 * * 0"
+      },
+      "schedule_display": "0 10 * * 0",
+      "repeat": {
+        "times": null,
+        "completed": 1
+      },
+      "enabled": true,
+      "state": "scheduled",
+      "paused_at": null,
+      "paused_reason": null,
+      "created_at": "2026-06-09T09:03:36.625002+02:00",
+      "next_run_at": "2026-06-21T10:00:00+02:00",
+      "last_run_at": "2026-06-14T10:03:09.276072+02:00",
+      "last_status": "ok",
+      "last_error": null,
+      "last_delivery_error": null,
+      "deliver": "origin",
+      "origin": {
+        "platform": "telegram",
+        "chat_id": "216051232",
+        "chat_name": "Martin",
+        "thread_id": null
+      },
+      "enabled_toolsets": [
+        "web",
+        "terminal",
+        "file"
+      ],
+      "workdir": null
+    },
+    {
+      "id": "fbc802343226",
+      "name": "weekly-gateway-restart",
+      "prompt": "",
+      "skills": [],
+      "skill": null,
+      "model": null,
+      "provider": null,
+      "base_url": null,
+      "script": "weekly-gateway-restart.sh",
+      "no_agent": true,
+      "context_from": null,
+      "schedule": {
+        "kind": "cron",
+        "expr": "0 4 * * 0",
+        "display": "0 4 * * 0"
+      },
+      "schedule_display": "0 4 * * 0",
+      "repeat": {
+        "times": null,
+        "completed": 0
+      },
+      "enabled": true,
+      "state": "scheduled",
+      "paused_at": null,
+      "paused_reason": null,
+      "created_at": "2026-06-09T19:45:43.852511+02:00",
+      "next_run_at": "2026-06-21T04:00:00+02:00",
+      "last_run_at": null,
+      "last_status": null,
+      "last_error": null,
+      "last_delivery_error": null,
+      "deliver": "local",
+      "origin": {
+        "platform": "telegram",
+        "chat_id": "216051232",
+        "chat_name": "Martin",
+        "thread_id": null
+      },
+      "enabled_toolsets": null,
+      "workdir": null,
+      "profile": null
+    }
+  ],
+  "updated_at": "2026-06-15T03:06:31.503972+02:00"
+}

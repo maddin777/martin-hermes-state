@@ -53,7 +53,7 @@ terminal:
 web:
   backend: ''
   search_backend: ddgs
-  extract_backend: firecrawl
+  extract_backend: ''
 browser:
   inactivity_timeout: 120
   command_timeout: 30

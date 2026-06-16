@@ -1,9 +1,9 @@
 {
-  "last_report_path": "/root/.hermes/logs/curator/20260608-010350",
-  "last_run_at": "2026-06-08T01:03:50.778609+00:00",
-  "last_run_duration_seconds": 114.270536,
-  "last_run_summary": "auto: no changes; llm: Now let me write the complete structured summary.\n\n## Consolidation Analysis — Summary\n\n**The 3 active agent-created skills are already correctly scoped as class-level umbrellas, with no prefix clusters to merge.**\n\nEach skill occupies a di…",
+  "last_report_path": "/root/.hermes/logs/curator/20260615-010831",
+  "last_run_at": "2026-06-15T01:08:31.531221+00:00",
+  "last_run_duration_seconds": 132.427128,
+  "last_run_summary": "auto: no changes; llm: ## Curation Report — 2026-06-15\n\n### Full analysis\n\n**3 agent-created skills examined.** All are already class-level umbrellas in their respective domains:\n\n| Skill | Category | Verdict |\n|-------|----------|---------|\n| **hermes-x-integrat…",
   "last_run_summary_shown_at": "2026-05-24T23:43:04.598615+00:00",
   "paused": false,
-  "run_count": 5
+  "run_count": 6
 }
