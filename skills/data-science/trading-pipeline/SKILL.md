@@ -80,11 +80,17 @@ Database is at:
 - Dashboard-Watchdog: Cron d1c92b5337c5, no_agent alle 15min, Script `~/.hermes/scripts/dashboard-watchdog.sh`
 
 ### Thematic Pipeline
-- Läuft **nicht** in system crontab — orchestriert von trading_pipeline.py
-- Log: `data/thematic.log`
+- Läuft via **eigener system crontab** (nicht orchestriert von trading_pipeline.py):
+  - `30 2 * * 1-5` — prediction_market_scanner.py (PM Scanner)
+  - `0 3 * * 1-5` — thematic_pipeline.py (Haupt-Pipeline)
+  - `0 10 * * 1-5` — drawdown_monitor.py
+  - `30 15 * * 1-5` — thesis_monitor.py
+  - `0 8 * * 0` — weekly_review.py
+  - `0 4 * * 0` — news_cleanup.py
 - Scripts: `skills/trading/thematic/`
 - Externe APIs: Finnhub, Polymarket
 - Finnhub-Key in `~/.hermes/profiles/hermes_trading/.env` — bei 403 siehe `references/finnhub-api-key-management.md`
+- PM Scanner Fehler: `NameError: name 'db_connect' is not defined` → `from config import db_connect` fehlt in `prediction_market_scanner.py` (siehe `references/thematic-pipeline-pitfalls.md`)
 
 ## Data Flow & Pitfalls
 
@@ -100,11 +106,31 @@ Details siehe `references/` im Skill-Verzeichnis sowie die Erläuterung.md im Ob
 | Short-Strategy | `references/short-strategy-setup.md` |
 | Correlation Filter | `references/correlation-filter.md` |
 | Weekly Trend Filter | `references/weekly-trend-filter.md` |
+| sqlite3.Row .get() Falle | `references/sqlite3-row-get-pitfall.md` |
 | Watchlist Dedup | `references/watchlist-table-dedup.md` |
 | Closed-Loop Architecture | `references/closed-loop-architecture.md` |
 | Dashboard Ghost Entries | `references/dashboard-cron-ghost-entries.md` |
 
-### Quick Debug
+### Diagnose: Pipeline läuft nicht
+
+**Erster Check bei Pipeline-Ausfall:**
+```bash
+# 1. Läuft trading_pipeline.py überhaupt?
+ls /root/.hermes/profiles/hermes_trading/skills/trading/scripts/trading_pipeline.py
+# Falls nicht da → in trading/ suchen und zurück ins scripts/ verschieben
+
+# 2. Letzte Pipeline-Logs
+grep "TRADING PIPELINE START\\|DONE\\|can't open file\|❌" /root/.hermes/profiles/hermes_trading/skills/trading/data/cron.log | tail -10
+
+# 3. Signal Manager crasht mit sqlite3.Row.get()?
+grep -B3 "AttributeError\|'sqlite3.Row' object has no attribute 'get'" \
+  /root/.hermes/profiles/hermes_trading/skills/trading/data/cron.log | tail -20
+# → Fix in references/sqlite3-row-get-pitfall.md, dann manuell neu starten:
+cd /root/.hermes/profiles/hermes_trading/skills/trading && \
+  PYTHONPATH=. python3 scripts/signal_manager.py full
+```
+
+## Quick Debug
 
 ```bash
 # Last pipeline run

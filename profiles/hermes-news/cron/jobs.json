@@ -1,38 +1,4 @@
 {
-  "jobs": [
-    {
-      "id": "999fe77b345a",
-      "name": "daily-news-briefing",
-      "prompt": "Du bist mein News-Agent. Erstelle ein t\u00e4gliches Morgen-Briefing (06:00).\n\n\u2550\u2550\u2550 ARBEITSSCHRITTE (Reihenfolge einhalten) \u2550\u2550\u2550\n\n1. WEB-RECHERCHE: Nutze web_search INTENSIV f\u00fcr JEDE Sektion.\n   Quellen (deutsch):\n   Tagesschau, NZZ, Handelsblatt, Reuters, AP, DW, NDR,\n   Ostsee-Zeitung, Welt\n   Quellen (international):\n   SVT (Schweden), DR (D\u00e4nemark), YLE (Finnland),\n   Gazeta Wyborcza (Polen), Financial Times, Wallstreet Journal,\n   New York Times, TechCrunch, The Verge, heise online, Golem,\n   Table.Media\n\n2. X-RECHERCHE: Nutze x_search parallel f\u00fcr Breaking News und\n   regionale Entwicklungen. Markiere X-Quellen mit [X].\n\n3. DEDUP: Identische Meldungen aus verschiedenen Quellen NUR EINMAL.\n   Gib IMMER die Quelle(n) an.\n\n4. \u00dcBERSETZUNG: ALLE News auf Deutsch \u2014 auch internationale Quellen\n   (FT, WSJ, NYT, SVT, DR, YLE, Gazeta Wyborcza etc.)\n   \u00fcbersetzt und sinngem\u00e4\u00df auf Deutsch wiedergeben.\n\n\u2550\u2550\u2550 SEKTIONEN \u2550\u2550\u2550\n\nPro Sektion: Top 5 Meldungen. Meldungen aus Schritt 1/2 einsortieren.\n\n### \ud83c\udf0d Politik & Internationales\nGlobale Politik, internationale Konflikte, EU, UN, G7/G20,\nOsteuropa/USA/China\n\n### \ud83d\udcc8 Finanzen & Wirtschaft\nGlobale M\u00e4rkte (DAX, Dow, Nasdaq, Nikkei, \u00d6l, Gold, Bitcoin),\nKonjunktur, Zinsen, Unternehmen. FT, WSJ, Handelsblatt priorisieren.\n\n### \ud83d\udcbb IT & KI\nAI-News: Modelle, Releases, Regulation. Tech: Cybersecurity, Cloud,\nHalbleiter. TechCrunch, The Verge, heise, Golem priorisieren.\n\n### \ud83c\udde9\ud83c\uddea Deutschland & Nordeuropa\n- Bundespolitik, Wirtschaft DE\n- SH + MV: Landespolitik, Kommunales\n- Skandinavien (Schweden, D\u00e4nemark, Norwegen, Finnland)\n  \u2192 SVT, DR, YLE als Quellen nutzen\n- Polen (Politik, Wirtschaft, Au\u00dfenbeziehungen)\n  \u2192 Gazeta Wyborcza als Quelle nutzen\n\n\u2550\u2550\u2550 WETTER & WASSER \u2550\u2550\u2550\n\nWetter (DWD, wetter.com, wetteronline.de):\n- Ratzeburg: Max/Min-Temp, Bew\u00f6lkung, Niederschlags-wkt.\n- Schwerin: Max/Min-Temp, Bew\u00f6lkung, Niederschlags-wkt.\n\nWassertemperaturen (seatemperature.org, wassertemperatur.org, DWD):\n- Schweriner See: XX.X \u00b0C\n- Ostsee bei L\u00fcbeck/Trave: XX.X \u00b0C\n- Ostsee bei Wismar: XX.X \u00b0C\n- Ostsee bei Rostock/Warnem\u00fcnde: XX.X \u00b0C\n\n\u2550\u2550\u2550 AUSGABE \u2550\u2550\u2550\n\n- Pro News: **\u00dcberschrift** (max 10 W\u00f6rter) + 1-2 S\u00e4tze + Quellenlink\n- N\u00fcchtern, sachlich, Fakten pur\n- Bei ruhiger Lage: k\u00fcrzere Sektion statt \u201eKeine Meldungen\"\n- Pro Telegram-Nachricht: max 3000 Zeichen\n- Das Briefing DARF \u00fcber bis zu 5 Telegram-Nachrichten verteilt sein\n  (1-2 Sektionen pro Nachricht, Wetter+Wasser an letzter ranh\u00e4ngen)\n- Gesamtbudget: ~15000 Zeichen",
-      "skills": [],
-      "skill": null,
-      "model": "openrouter/owl-alpha",
-      "provider": "openrouter",
-      "base_url": null,
-      "script": null,
-      "schedule": {
-        "kind": "cron",
-        "expr": "0 6 * * *",
-        "display": "0 6 * * *"
-      },
-      "schedule_display": "0 6 * * *",
-      "repeat": {
-        "times": null,
-        "completed": 80
-      },
-      "enabled": true,
-      "state": "scheduled",
-      "paused_at": null,
-      "paused_reason": null,
-      "created_at": "2026-04-22T11:01:16.073546+02:00",
-      "next_run_at": "2026-06-16T06:00:00+02:00",
-      "last_run_at": "2026-06-15T06:09:04.504131+02:00",
-      "last_status": "error",
-      "last_error": "RuntimeError: HTTP 429: Provider returned error",
-      "last_delivery_error": null,
-      "deliver": "telegram",
-      "origin": null
-    }
-  ],
-  "updated_at": "2026-06-15T06:09:04.505012+02:00"
+  "jobs": [],
+  "updated_at": "2026-06-16T07:50:00.000000+02:00"
 }

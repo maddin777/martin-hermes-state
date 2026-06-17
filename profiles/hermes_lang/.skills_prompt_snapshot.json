@@ -177,6 +177,10 @@
       1778496350698585718,
       13683
     ],
+    "language-learning/language-learning-disss/SKILL.md": [
+      1781550449838295704,
+      2117
+    ],
     "mcp/native-mcp/SKILL.md": [
       1778496350699585729,
       12365
@@ -260,18 +264,6 @@
     "productivity/airtable/SKILL.md": [
       1778496350702585763,
       11302
-    ],
-    "productivity/daily-europe-news-aggregation/SKILL.md": [
-      1780891379334916626,
-      11540
-    ],
-    "productivity/daily-news-aggregation/SKILL.md": [
-      1780459345931150463,
-      13364
-    ],
-    "productivity/daily-news-compiler/SKILL.md": [
-      1778302413716826527,
-      4031
     ],
     "productivity/google-workspace/SKILL.md": [
       1778496350703585775,
@@ -1233,6 +1225,19 @@
       }
     },
     {
+      "skill_name": "language-learning-disss",
+      "category": "language-learning",
+      "frontmatter_name": "language-learning-disss",
+      "description": "Comprehensive workflow for language acquisition using the...",
+      "platforms": [],
+      "conditions": {
+        "fallback_for_toolsets": [],
+        "requires_toolsets": [],
+        "fallback_for_tools": [],
+        "requires_tools": []
+      }
+    },
+    {
       "skill_name": "native-mcp",
       "category": "mcp",
       "frontmatter_name": "native-mcp",
@@ -1562,45 +1567,6 @@
         "macos",
         "windows"
       ],
-      "conditions": {
-        "fallback_for_toolsets": [],
-        "requires_toolsets": [],
-        "fallback_for_tools": [],
-        "requires_tools": []
-      }
-    },
-    {
-      "skill_name": "daily-europe-news-aggregation",
-      "category": "productivity",
-      "frontmatter_name": "daily-europe-news-aggregation",
-      "description": "Aggregiert die wichtigsten politischen und wirtschaftlich...",
-      "platforms": [],
-      "conditions": {
-        "fallback_for_toolsets": [],
-        "requires_toolsets": [],
-        "fallback_for_tools": [],
-        "requires_tools": []
-      }
-    },
-    {
-      "skill_name": "daily-news-aggregation",
-      "category": "productivity",
-      "frontmatter_name": "daily-news-aggregation",
-      "description": "Automatisierte tägliche Erstellung eines Nachrichten‑Dige...",
-      "platforms": [],
-      "conditions": {
-        "fallback_for_toolsets": [],
-        "requires_toolsets": [],
-        "fallback_for_tools": [],
-        "requires_tools": []
-      }
-    },
-    {
-      "skill_name": "daily-news-compiler",
-      "category": "productivity",
-      "frontmatter_name": "daily-news-compiler",
-      "description": "Automatisierte tägliche Zusammenstellung von Nachrichten ...",
-      "platforms": [],
       "conditions": {
         "fallback_for_toolsets": [],
         "requires_toolsets": [],

@@ -1,18 +1,46 @@
-# Lessons from 03.06.2026 morning briefing cron run
+# Lessons from 16.06.2026 morning briefing cron run
 
-## Research realities observed
-- Direct RSS feeds frequently blocked or outdated; browser_navigate + browser_snapshot proved far more reliable for identifying true top stories across Tagesschau, Spiegel, FAZ, Welt, Handelsblatt, NDR.
-- Many "top stories" in June 2026 centered on renewed Iran–US/Israel escalation (drone/raketen attacks on Gulf targets, US counterstrikes) and German UN Security Council candidacy — these aggregated cleanly into 2 Politik themes.
-- Regional signal (Offshore-Wind "Windanker" in Mukran) was genuine and fitted the priority list (Energie/Infrastruktur + MV relevance).
-- Weather/water data: wassertemperatur.org delivered concrete values (Schweriner See 19.0 °C, Ostsee ~15–16 °C). wetter.com/wetteronline.de provided usable forecasts despite some URL redirects.
+## Water temperature data — new reliable source found
 
-## Refined workflow additions (already patched into main SKILL.md)
-- Always open multiple major news sites in parallel via browser_navigate early.
-- Use browser_snapshot (full=false for speed) to quickly surface dominant headlines before any synthesis.
-- For weather: prefer wetteronline.de or wetter.com with realistic User-Agent; fall back to DWD or wassertemperatur.org for water temps.
-- Strict adherence to the exact output template (no explanations, no [SILENT] + text mix, German only, nüchtern-sachlich tone) is non-negotiable for this cron job.
+**Open-Meteo Marine API** (working, free, no auth required):
+```
+curl -s "https://marine-api.open-meteo.com/v1/marine?latitude=54.17&longitude=12.08&daily=sea_surface_temperature_max&timezone=Europe/Berlin&forecast_days=1"
+```
+Returns JSON with `daily.sea_surface_temperature_max` in °C. Confirmed working for:
+- Rostock/Warnemünde (54.17, 12.08) → 16.4 °C
+- Wismar (53.89, 11.46) → 17.5 °C
+- Travemünde/Lübeck (53.95, 10.87) → 16.9 °C
 
-## Pitfall avoided this run
-- Did not output "keine Messung verfügbar" — persistent digging yielded usable numbers.
+**Inland lakes (Schweriner See):** Open-Meteo marine API returns `null` for inland coordinates. Use `wassertemperatur.org` root page as fallback — it lists multiple lake temps in plain HTML. Schweriner See was 20 °C on 16.06.2026.
 
-This reference file should be consulted when the main skill is next updated. It records the exact conditions and successful patterns from the 03 June 2026 execution.
+**Failed water temp sources (confirmed again this run):**
+- seatemperature.org — renders temp via JS only, raw HTML has no usable data
+- wassertemperatur-ostsee.de — returns only CSS/JS, no data in raw HTML
+- DWD Kühlwassertemperatur page — 404 on the specific URL tried
+
+## Weather data — Open-Meteo forecast API (confirmed reliable)
+```
+curl -s "https://api.open-meteo.com/v1/forecast?latitude=53.85&longitude=10.71&daily=temperature_2m_max,temperature_2m_min,weathercode,precipitation_sum,windspeed_10m_max&timezone=Europe/Berlin&forecast_days=1"
+```
+Weather code 3 = "Bedeckt" (overcast). Both Ratzeburg and Schwerin: code 3, no precipitation.
+
+## Bot detection updates (newly confirmed blocked)
+- wetteronline.de → 403 (CloudFront)
+- finanzen.net → Access Denied
+- wetter.de city pages → 404 (URL structure changed)
+- Yahoo Finance → consent wall (EU cookie banner)
+- Gazeta Wyborcza → SSL certificate error
+- Ostsee-Zeitung → DataDome bot protection
+- ZEIT online → SSL certificate error
+
+## Research realities
+- Tagesschau article URLs (e.g. /ausland/iran-usa-abkommen-100.html) return 404 — content has limited dwell time per Rundfunkstaatsvertrag. Always use the homepage or section pages.
+- FAZ liveblog pages are reliable for real-time Iran/G7 updates.
+- NZZ requires cookie consent but the Deutschland section is accessible.
+- DR (Denmark) shows cookie wall but content is accessible behind it.
+- SVT (Sweden) works without consent issues for headline extraction.
+
+## Refined workflow for water temperatures
+1. Try Open-Meteo marine API for sea locations (Warnemünde, Wismar, Travemünde)
+2. For inland lakes (Schweriner See), try wassertemperatur.org root page
+3. If both fail, note the last known value and flag it — never output "keine Messung verfügbar"

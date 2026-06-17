@@ -41,7 +41,7 @@ Rückgabe: Neues Feld `weekly_trend` im Dict (zusätzlich zu score/confidence/di
 ### Schritt 3: Filter in `open_new_positions()` (signal_manager.py)
 
 ```python
-wt = c.get("weekly_trend", "neutral")
+wt = c["weekly_trend"] if "weekly_trend" in c.keys() else "neutral"
 if wt == "bearish" and direction == "LONG":
     print(f"  📉 {c['name']}: Weekly Trend BEARISH → LONG geblockt")
     continue
@@ -49,6 +49,8 @@ if wt == "bullish" and direction == "SHORT":
     print(f"  📈 {c['name']}: Weekly Trend BULLISH → SHORT geblockt")
     continue
 ```
+
+**⚠️ Achtung `sqlite3.Row`:** `c` ist ein `sqlite3.Row`-Objekt, KEIN dict. `c.get("key")` crasht mit `AttributeError`. Siehe `references/sqlite3-row-get-pitfall.md`.
 
 ## Platz in der Entry-Hierarchie
 

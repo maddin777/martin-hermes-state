@@ -319,7 +319,7 @@ def main():
         # Sources sammeln (unique nach video_id, Reihenfolge stabil)
         sources_seen, sources_list = set(), []
         for c in candidates:
-            s = c.get("source")
+            s = c["source"] if "source" in c.keys() else None
             if not s:
                 continue
             # Eindeutiger Schluessel: video_id wenn dict, sonst Fallback auf String-Repr
