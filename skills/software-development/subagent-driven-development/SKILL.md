@@ -342,6 +342,101 @@ Catch issues early
 
 **Quality is not an accident. It's the result of systematic process.**
 
+## General Delegation Pitfalls (Beyond Code)
+
+These pitfalls apply to ANY delegated task, not just software development.
+
+### Content Quality: Subagent Delivered Empty Sections
+
+**Symptom:** A subagent was asked to generate a daily news briefing. It delivered only section headers with no content — the text was empty between headings.
+
+**Root cause:** The subagent was told to research AND write. Its `web_search` tool had no credits (Firecrawl exhausted). It couldn't fetch any data, so it produced a skeleton with no substance. Because the subagent's output was a self-report (not verified against the actual channel), the controller didn't detect the empty output until the user complained.
+
+**Prevention: Pre-collect data, then delegate formatting.**
+- Before delegating a content generation task, gather the raw data yourself via fallback methods (curl for RSS feeds, browser for websites, Open-Meteo for weather)
+- Package the structured data into the subagent's `context` parameter
+- The subagent's only job: format the data into the required output and deliver it
+- This eliminates tool-failure risk from the subagent
+
+**Prevention: Set toolsets to what the subagent actually needs.**
+- If the subagent only needs to format and deliver: use `toolsets=['terminal', 'file']` only
+- Don't include `'web'` if you already collected the data — this wastes tokens and introduces failure risk from unavailable external services
+- When a subagent DOES need external data but Firecrawl is unavailable: include `'browser'` in toolsets as a fallback, and instruct it to use curl for RSS feeds if web_search fails
+
+**Prevention: Verify subagent output externally.**
+- A subagent's self-report ("✅ Nachricht gesendet") is NOT sufficient proof of quality
+- After a content-delivery subagent completes: check the actual delivery target (Telegram channel, API response, file contents)
+- For Telegram: verify message IDs were returned and content length is reasonable
+- For files: `read_file` the output before declaring success
+
+**Diagnosis chain for empty/partial subagent output:**
+1. Did the subagent's `web_search` or `web_extract` calls succeed? → Check Firecrawl credit status
+2. If Firecrawl is empty → Use curl for RSS feeds (Google News RSS works), Open-Meteo for weather
+3. Re-delegate with pre-collected data in `context`, exclude `'web'` from toolsets
+4. Verify the output landed as expected (check the target channel/message IDs, read the file)
+
+**Reliable data sources when Firecrawl is empty:**
+
+| Need | Fallback Method |
+|------|----------------|
+| German news headlines | `curl -s "https://news.google.com/rss?hl=de&gl=DE&ceid=DE:de"` — parse with Python xml.etree.ElementTree |
+| Finance news | `curl -s "https://news.google.com/rss/search?q=DAX+%C3%96l+Gold+Bitcoin&hl=de"` |
+| Regional/Local news | Same pattern with different search terms |
+| Weather forecast | `curl -s "https://api.open-meteo.com/v1/forecast?latitude=XX&longitude=YY&daily=..."` — free, no key |
+| Water temperatures | Browser on wassertemperatur.org (browser_navigate + browser_snapshot) |
+| General web content | Browser fallback (browser_navigate) — but many portals block without residential proxy |
+
+**Concrete example (Daily News Briefing, Firecrawl credits = 0):**
+
+```python
+# WRONG: Subagent researches + writes (fails when tools are down)
+delegate_task(
+    goal="Create daily news briefing",
+    context="Recherchiere aktuelle Nachrichten und erstelle ein Briefing",
+    toolsets=['web', 'terminal', 'file']  # web_search fails → empty content
+)
+
+# RIGHT: You collect data, subagent only formats
+# Step 1: Collect data via curl/browser
+curl -s "https://news.google.com/rss?hl=de&gl=DE"  # → structured output
+curl -s "https://api.open-meteo.com/v1/forecast?..."  # → weather data
+
+# Step 2: Subagent formats + delivers
+delegate_task(
+    goal="Format collected data into briefing and send to Telegram",
+    context=f"""
+    RAW DATA - Politik & Internationales:
+    1. [Headline] - [Source] - [Description]
+    2. ...
+    
+    RAW DATA - Wetter:
+    Ratzeburg: 22°C / 8°C
+    
+    Send via Telegram API using source .env and curl.
+    """,
+    toolsets=['terminal', 'file']  # no web tools needed — data already collected
+)
+```
+
+### Factual Accuracy: Don't Invent Model Details
+
+**Symptom:** When asked about a car model's special editions, I claimed the Renault Twingo 1 had "Running" and "Extreme" models with higher ground clearance. These do not exist.
+
+**Root cause:** I combined fragmented memory of different Sondermodelle (Twingo "Air", "Pack", "L'Espace") with the general concept of a "higher trim" and fabricated a name and specification. I didn't verify before stating as fact.
+
+**Prevention:**
+- For product/model/specification questions: ONLY state facts you are confident about
+- If memory is fuzzy: say "Ich glaube aber lass mich kurz checken" and verify via web search or external source
+- After a correction from the user: acknowledge the error explicitly, don't deflect
+- Niche automotive knowledge (special editions, production years, specific engine codes) is HIGH-RISK for hallucination — always verify
+
+### Tool Availability Assumptions
+
+- **Never assume `web_search` or `web_extract` will work** — Firecrawl credits can be empty at any time (refresh cycle, billing issues)
+- **Always include fallback instructions** when a subagent needs external data: "If web_search fails, use curl for RSS feeds or browser_navigate"
+- **Prefer `terminal` + `curl` over `web_search`** for reliable data retrieval — RSS feeds, Open-Meteo APIs, and similar endpoints work without Firecrawl credits
+- **Verify subagent output yourself** — a subagent that says "✅ Nachricht gesendet" may have sent empty content. Check the actual delivery target
+
 ## Further reading (load when relevant)
 
 When the orchestration involves significant context usage, long review loops, or complex validation checkpoints, load these references for the specific discipline:

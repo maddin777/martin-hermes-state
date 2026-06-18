@@ -151,6 +151,54 @@ except urllib.error.HTTPError as e:
     ```
     Das erhält Umlaute und Sonderzeichen lesbar und escaped automatisch notwendige Zeichen.
 
+14. **Cross-Profile Cron Delivery Bot Mismatch (CRITICAL).** Wenn du einen Cron-Job im **main Hermes Scheduler** anlegst (`cronjob`-Tool oder `hermes cron create`) mit `profile: <name>`, dann läuft der **Agent im Profil-Kontext**, aber die **Zustellung (Delivery) geht über den main Gateway/Bot** — NICHT über den Bot des Profils.
+
+    **Symptom:** Der Job läuft erfolgreich (`last_status: ok`), aber die Zustellung scheitert mit `Chat not found` — weil der main-Bot nicht im Ziel-Channel ist. Der Profil-Bot wäre im Channel, wird aber nie für die Delivery verwendet.
+    
+    **Root Cause:** Der main Scheduler nutzt seinen eigenen Bot-Token für Delivery. Der `profile:` Parameter steuert nur die Runtime-Umgebung (`.env`, `config.yaml`), nicht den Delivery-Bot.
+    
+    **Fix — Job direkt ins Profil `cron/jobs.json` schreiben:**
+    ```python
+    import json
+    path = '/root/.hermes/profiles/<profil>/cron/jobs.json'
+    data = json.load(open(path))
+    data['jobs'].append({
+        'name': 'job-name',
+        'prompt': '...',  # Vollständiger Prompt
+        'skills': [],
+        'model': {'model': 'openrouter/owl-alpha', 'provider': 'openrouter'},
+        'schedule': {'kind': 'cron', 'expr': '0 6 * * *', 'display': '0 6 * * *'},
+        'state': 'scheduled',
+        'deliver': 'origin',  # KEY: 'origin' im Profil-Kontext = TELEGRAM_HOME_CHANNEL über Profil-Bot
+        'no_agent': False
+    })
+    json.dump(data, open(path, 'w'), indent=2, ensure_ascii=False)
+    ```
+    Danach `systemctl restart hermes-gateway-<profil>`.
+    
+    **Warum `deliver: origin` im Profil funktioniert:**
+    - Im main Scheduler bedeutet `origin` "zurück zum Chat, der den Job erstellt hat"
+    - Im **Profil-Scheduler** resolved `origin` zum Profil-eigenen `TELEGRAM_HOME_CHANNEL` über den Profil-eigenen Bot
+    - Das ist der kanonische Weg, um durch das Profil-Gateway zuzustellen
+    
+    **Nicht versuchen:** curl-Befehle in den Cron-Prompt zu packen — der Hermes Prompt-Validator blockiert shell-basierte Delivery-Payloads als Exfiltrations-Risiko (`threat pattern 'exfil_curl_url'`).
+    
+    **Verifikation:**
+    ```bash
+    source /root/.hermes/profiles/<profil>/.env
+    curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+      -d "chat_id=${TELEGRAM_HOME_CHANNEL}" \
+      -d "text=Test" \
+      | python3 -c "import json,sys; print('✅' if json.load(sys.stdin).get('ok') else '❌')"
+    ```
+
+## Updating Cron Prompts
+    data["jobs"][0]["prompt"] = prompt_text
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=2, ensure_ascii=False)
+    ```
+    Das erhält Umlaute und Sonderzeichen lesbar und escaped automatisch notwendige Zeichen.
+
 ## Updating Cron Prompts in Response to User Feedback
 
 When a user says "I don't like the output" of a cron job, the fix is almost always in the prompt — not in the model or the schedule. The following workflow covers diagnosing the mismatch, rewriting the prompt, and applying it cleanly.
@@ -604,7 +652,24 @@ systemctl enable hermes-gateway-{profil}.service
 hermes cron list
 ```
 
-### Cron-Integration — Two-Tier System
+#### Dashboard Pipeline-Tab: Statische Einträge entfernen
+
+Das Trading-Dashboard (`dashboard.py` im `hermes_trading` Profil) hat einen `⏰ Cron & Logs` Tab mit einer Pipeline-Tabelle. Die Einträge kommen teils aus der System-Crontab, teils aus einem statischen Beschreibungs-Dict (`SCRIPT_DESCRIPTIONS`).
+
+Wenn ein Pipeline-Eintrag nie läuft (Status "–" / nie gelaufen), liegt es meist daran, dass:
+- Das Script nicht existiert (`export_watchlist` wurde z.B. nie implementiert)
+- Der Cron-Job gelöscht oder nie angelegt wurde
+- Der Eintrag nur Deko im Beschreibungs-Dict ist
+
+**Fix:** Beide Stellen im Code bereinigen:
+1. `SCRIPT_DESCRIPTIONS` Dict — den Eintrag löschen
+2. Filter-Liste in der `for line in output.splitlines()` Schleife — den Key entfernen
+3. Dashboard neustarten (zwei Wege):
+   - **Via 15-min Watchdog (sauberer):** `pkill -f dashboard.py` — der `dashboard-watchdog.sh` (Cron alle 15min) erkennt den Ausfall und startet neu
+   - **Sofort:** `cd /root/.hermes/profiles/hermes_trading/skills/trading && source venv/bin/activate && nohup python dashboard.py > /dev/null 2>&1 &` (wenn watchdog zu langsam ist)
+   - Verifikation: `curl -s -o /dev/null -w "%{http_code}" http://localhost:8081/` → `200`
+
+## Cron-Integration — Two-Tier System
 
 Hermes has two independent cron systems:
 - **Global scheduler** (`~/.hermes/cron/jobs.json`) — default profile
@@ -627,6 +692,25 @@ systemctl status hermes-gateway.service --no-pager
 tail -15 ~/.hermes/logs/agent.log
 journalctl -u hermes-gateway.service --no-pager -n 20
 ```
+
+### Health Check Response Protocol (User Preference)
+
+**CRITICAL RULE — When any job status is not green (ok/OK):**
+
+Do NOT just report the status to the user. IMMEDIATELY:
+
+1. Identify which specific job/slot is non-green
+2. Open the relevant logs (agent.log, errors.log, journalctl, pipeline log)
+3. Find the root cause — error message, exit code, timestamp
+4. Propose a concrete fix or diagnosis step
+5. Report: "X ist gelb/rot wegen Y. Fix: Z"
+
+**Never:**
+- "Job X ist gelb" ohne Kontext
+- "Soll ich mal schauen?" (mach es einfach)
+- Nur den Status auflisten ohne Ursachenforschung
+
+Diese Regel gilt für ALLE Status-Checks — Trading-Dashboard, Cron-Jobs, Pipeline-Logs, Gateway-Status. Wenn ein Indikator nicht grün ist, ist die erste Aktion immer Debugging, nicht Reporting.
 
 ### Systemd Unit Configuration Pitfalls
 

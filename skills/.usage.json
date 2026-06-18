@@ -1,4 +1,17 @@
 {
+  "daily-news-briefing": {
+    "archived_at": null,
+    "created_at": "2026-06-17T05:36:27.522356+00:00",
+    "created_by": "agent",
+    "last_patched_at": "2026-06-17T07:46:01.959318+00:00",
+    "last_used_at": "2026-06-17T07:45:20.431101+00:00",
+    "last_viewed_at": "2026-06-17T07:45:20.426767+00:00",
+    "patch_count": 3,
+    "pinned": false,
+    "state": "active",
+    "use_count": 3,
+    "view_count": 3
+  },
   "edge-tts-voice-discovery": {
     "archived_at": null,
     "created_at": "2026-05-10T22:17:10.909352+00:00",
@@ -38,14 +51,14 @@
   "hermes-profile-management": {
     "archived_at": null,
     "created_at": "2026-05-10T22:19:09.296101+00:00",
-    "last_patched_at": "2026-06-15T05:38:05.101048+00:00",
-    "last_used_at": "2026-06-16T05:56:24.655651+00:00",
-    "last_viewed_at": "2026-06-16T05:56:24.651184+00:00",
-    "patch_count": 31,
+    "last_patched_at": "2026-06-17T11:12:45.118618+00:00",
+    "last_used_at": "2026-06-17T11:12:05.904908+00:00",
+    "last_viewed_at": "2026-06-17T11:12:05.901565+00:00",
+    "patch_count": 37,
     "pinned": false,
     "state": "active",
-    "use_count": 42,
-    "view_count": 43
+    "use_count": 54,
+    "view_count": 55
   },
   "hermes-profile-news-cron": {
     "archived_at": null,
@@ -127,13 +140,13 @@
     "created_at": "2026-05-27T06:29:36.528930+00:00",
     "created_by": "agent",
     "last_patched_at": "2026-06-16T09:01:21.056231+00:00",
-    "last_used_at": "2026-06-16T09:01:25.921184+00:00",
-    "last_viewed_at": "2026-06-16T09:01:25.917536+00:00",
+    "last_used_at": "2026-06-17T07:46:20.305997+00:00",
+    "last_viewed_at": "2026-06-17T07:46:20.302200+00:00",
     "patch_count": 87,
     "pinned": false,
     "state": "active",
-    "use_count": 93,
-    "view_count": 89
+    "use_count": 94,
+    "view_count": 90
   },
   "trading-scan": {
     "archived_at": null,

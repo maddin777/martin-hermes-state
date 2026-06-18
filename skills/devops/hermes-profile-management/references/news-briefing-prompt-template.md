@@ -1,6 +1,11 @@
-# Daily News Briefing Prompt Template (v4.2 — June 14, 2026)
+# Daily News Briefing Prompt Template (v4.3 — June 17, 2026)
 
-Approved prompt for Martins `hermes-news` profile cron job `daily-news-briefing` (999fe77b345a).
+Approved prompt for Martins `hermes-news` profile cron job `daily-news-briefing`.
+
+**⚠️ Wichtig — Delivery-Bot Beachten:**
+Der Job läuft **direkt im hermes-news Profil** (in `cron/jobs.json`), NICHT als Cross-Profil-Job im main Scheduler.
+Die Zustellung geht über `@hermster_news_bot`, nicht über den main-Bot `@myhermster_bot`.
+Siehe Pitfall #14 in `hermes-profile-management` SKILL.md für Details zum Cross-Profile Delivery Bug.
 
 ## Model Setup
 
@@ -107,29 +112,77 @@ Wassertemperaturen (seatemperature.org, wassertemperatur.org, DWD):
 
 ## Scheduler / Cron Runner Note
 
-This cron runs under the `hermes-news` profile, NOT the main Hermes scheduler. Management commands:
+This cron runs under the `hermes-news` profile, NOT the main Hermes scheduler.
+The job is stored directly in `/root/.hermes/profiles/hermes-news/cron/jobs.json`.
 
-```bash
-# List
-hermes --profile hermes-news cron list
+**Management (immer via Python, nie via Shell-Quote):**
 
-# Update (via Python, never shell)
-python3 -c "
+```python
 import json
 path = '/root/.hermes/profiles/hermes-news/cron/jobs.json'
 data = json.load(open(path))
-data['jobs'][0]['prompt'] = new_text
+
+# Update prompt von Job 0
+data['jobs'][0]['prompt'] = """...neuer Prompt..."""
+
+# Oder neuen Job hinzufügen
+data['jobs'].append({...})
+
 json.dump(data, open(path, 'w'), indent=2, ensure_ascii=False)
-"
+```
 
-# Trigger test run
-hermes --profile hermes-news cron run 999fe77b345a
-
-# Gateway restart needed after jobs.json change
+**Nach jeder Änderung: Gateway neustarten:**
+```bash
 systemctl restart hermes-gateway-hermes-news
 ```
 
-**Warning:** `hermes cron run` schedules for the next scheduler tick — it does NOT execute immediately after a gateway restart. The old gateway may have cached `jobs.json` in memory. After restart + `cron run`, wait for the next scheduled run (06:00) or verify via `journalctl`.
+**Verifikation:**
+```bash
+# Test Delivery via Profil-Bot
+source /root/.hermes/profiles/hermes-news/.env
+curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+  -d "chat_id=${TELEGRAM_HOME_CHANNEL}" \
+  -d "text=✅ Cron-Job aktiv, Delivery über Profil-Bot" \
+  -d "parse_mode=Markdown"
+```
+
+**⚠️ Nicht `hermes cron create` im main-Profil verwenden** — das erzeugt einen Cross-Profil-Job,
+dessen Delivery über den main-Bot geht (-> `Chat not found`). Siehe Pitfall #14 in `hermes-profile-management`.
+
+## Manual Fallback: Briefing bei Cron-Ausfall
+
+Wenn der Cron-Job nicht triggert (Scheduler-Tick dauert zu lange, Gateway wurde gerade neugestartet) und Martin das Briefing sofort braucht:
+
+**Nicht:** Den vollen Prompt als `delegate_task` an einen Subagenten geben mit der Erwartung, dass der alles selbst recherchiert. Das führte zu leeren Sektions-Überschriften ohne Inhalt (der Subagent hatte keine Firecrawl-Credits und hat Browser-Scraping nicht zuverlässig hinbekommen).
+
+**Sondern:**
+1. Selbst die Rohdaten recherchieren (curl Google News RSS + Google Finanzen RSS + Open-Meteo API)
+2. Die strukturierten Rohdaten (Titel, Quelle, Kurzbeschreibung) dem Subagenten übergeben
+3. Subagent bekommt klare Anweisung: aus diesen Daten das Briefing schreiben + per Telegram-API senden (curl mit Bot-Token aus source .env)
+4. Klarstellen: KEINE leeren Überschriften, JEDE Section muss Inhalt haben
+
+**Sendekommando für Telegram (per terminal im Subagenten):**
+```bash
+source /root/.hermes/profiles/hermes-news/.env
+curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+  -d "chat_id=${TELEGRAM_HOME_CHANNEL}" \
+  -d "text=NACHRICHT" \
+  -d "parse_mode=Markdown"
+```
+
+**API-Fallback-Recherche (wenn Firecrawl/web_search keine Credits):**
+```bash
+# Deutsche Top-News via Google News RSS
+curl -s "https://news.google.com/rss?hl=de&gl=DE&ceid=DE:de"
+
+# Nach Kategorie
+curl -s "https://news.google.com/rss/search?q=KI+Artificial+Intelligence+Tech&hl=de&gl=DE&ceid=DE:de"
+
+# Wetter Open-Meteo (kostenlos, kein Key)
+curl -s "https://api.open-meteo.com/v1/forecast?latitude=53.70&longitude=10.75&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=auto"
+
+# Wassertemperaturen via Browser auf wassertemperatur.org (nur browser_navigate + snapshot)
+```
 
 ## Prompt Update History
 
@@ -137,4 +190,6 @@ systemctl restart hermes-gateway-hermes-news
 |------|---------|------------|
 | 2026-04-22 | v1 | Initial, generic RSS summary |
 | 2026-05-24 | v2 | Added local events, water temps, removed "nothing to report" |
-| 2026-06-14 | v3 (this) | Full multi-section rewrite, 4 explicit sections, dedup, translation, 5-message delivery, source list expanded |
+| 2026-06-14 | v3 | Full multi-section rewrite, 4 explicit sections, dedup, translation, 5-message delivery, source list expanded |
+| 2026-06-17 | v4 | **Delivery-Fix:** Job moved from main-scheduler (`profile: hermes-news`) to direct profile `cron/jobs.json`. Delivery now uses `@hermster_news_bot` instead of `@myhermster_bot`. |
+| 2026-06-17 | v4.3 | **Manual Fallback:** Added section for ad-hoc briefing execution when cron doesn't fire. Includes pre-researched-data delegation pattern (avoiding empty output) and API-fallback curl commands for Firecrawl-less scenarios. |

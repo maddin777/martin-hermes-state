@@ -140,7 +140,6 @@ def get_cron_jobs():
         "strategy_optimizer":  "Selbstverbesserung Grid Search (Sonntag)",
         "fundamental_data":    "FRED Makro + SEC Insider + PCR",
         "social_scanner":      "RSS Feeds + Twitter/X (24h)",
-        "export_watchlist":    "Watchlist Export Obsidian",
         "active_exit_check":   "Tech-Check + Profit-Sicherung",
         "db_backup":           "Datenbank Backup Obsidian",
         "nightly_eval":        "Tages-Metriken + Qualitäts-Report",
@@ -163,7 +162,7 @@ def get_cron_jobs():
             if not line or line.startswith("#"): continue
             if not any(k in line for k in ["yt_channel","signal_",
                 "watchlist_manager","strategy_optimizer","trading_db","fundamental_data",
-                "social_scanner","export_watchlist","active_exit_check","trading_pipe","nightly_eval"]): continue
+                "social_scanner","active_exit_check","trading_pipe","nightly_eval"]): continue
             parts = line.split()
             if len(parts) < 6: continue
             minute, hour, dow = parts[0], parts[1], parts[4]
