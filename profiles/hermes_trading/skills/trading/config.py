@@ -73,6 +73,69 @@ CASH_RESERVE_EUR  = 1500.0   # Immer liquide halten
 MAX_ALLOC_PCT     = 0.70     # Max 70% des Kapitals investiert
 MAX_POSITION_PCT  = 0.20     # Max 20% in einer einzelnen Position
 
+# ── Asset-Typ-Klassifizierung (dynamische Exit-Regeln) ─────────────────────────
+# Abgeleitet aus dem Sektor einer Position.
+# Siehe wiki/concepts/Exit Management.md für die vollständige Dokumentation.
+
+SECTOR_TO_ASSET_TYPE = {
+    # TECH — höhere Volatilität, brauchen mehr Raum
+    "Technology":            "TECH",
+    "Communication Services": "TECH",
+    # DEFENSIVE — niedrige Vola, enge Stops möglich
+    "Consumer Defensive":    "DEFENSIVE",
+    "Healthcare":            "DEFENSIVE",
+    "Utilities":             "DEFENSIVE",
+    # Alles andere → STANDARD
+}
+
+ASSET_TYPE_MULTIPLIERS = {
+    "STANDARD": {
+        "atr_sl": 1.5,
+        "atr_tp": 2.5,
+        "partial_atr": 1.5,
+        "partial_pct": 0.50,
+        "profit_lock_atr": 2.0,
+        "trailing_step": 0.5,
+    },
+    "TECH": {
+        "atr_sl": 2.0,
+        "atr_tp": 3.5,
+        "partial_atr": 2.0,
+        "partial_pct": 0.50,
+        "profit_lock_atr": 2.5,
+        "trailing_step": 0.75,
+    },
+    "DEFENSIVE": {
+        "atr_sl": 1.0,
+        "atr_tp": 2.0,
+        "partial_atr": 1.0,
+        "partial_pct": 0.50,
+        "profit_lock_atr": 1.5,
+        "trailing_step": 0.3,
+    },
+}
+
+DEFAULT_ASSET_TYPE = "STANDARD"
+
+
+def get_asset_type(sector: str) -> str:
+    """Leite den Asset-Typ aus dem Sektor ab."""
+    return SECTOR_TO_ASSET_TYPE.get(sector, DEFAULT_ASSET_TYPE)
+
+
+def get_asset_multipliers(asset_type: str = None, sector: str = None) -> dict:
+    """Hole die ATR-Multiplikatoren für einen Asset-Typ.
+    
+    Args:
+        asset_type: Direkter Typ (TECH/STANDARD/DEFENSIVE)
+        sector: Sektor-Name (alternativ, wird dann in asset_type umgerechnet)
+    """
+    if asset_type is None and sector is not None:
+        asset_type = get_asset_type(sector)
+    at = asset_type or DEFAULT_ASSET_TYPE
+    return ASSET_TYPE_MULTIPLIERS.get(at, ASSET_TYPE_MULTIPLIERS[DEFAULT_ASSET_TYPE])
+
+
 # ── Slippage & Kosten ─────────────────────────────────────────────────────────
 
 SLIPPAGE_PCT     = 0.001   # 0,1% pro Seite

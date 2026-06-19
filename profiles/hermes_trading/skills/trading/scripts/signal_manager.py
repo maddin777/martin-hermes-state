@@ -23,7 +23,7 @@ from datetime import datetime, timedelta
 from utils import passes_liquidity_filter, apply_slippage, COMMISSION_EUR, get_price_data_cached, prefetch_prices
 from utils import get_logger, price_to_eur, position_size_in_shares
 log = get_logger("signal_manager")
-from config import DB_PATH, SIGNALS_VALIDATED_PATH, STRATEGY_CONFIG_PATH, MACRO_SIGNAL_PATH, db_connect
+from config import DB_PATH, SIGNALS_VALIDATED_PATH, STRATEGY_CONFIG_PATH, MACRO_SIGNAL_PATH, db_connect, get_asset_type, get_asset_multipliers
 CONFIG_PATH = STRATEGY_CONFIG_PATH
 
 
@@ -156,6 +156,14 @@ def init_db(con):
         con.execute("ALTER TABLE positions ADD COLUMN thesis_current_status TEXT DEFAULT 'no_thesis'")
     if "thesis_theme_id" not in cols:
         con.execute("ALTER TABLE positions ADD COLUMN thesis_theme_id INTEGER")
+    if "asset_type" not in cols:
+        con.execute("ALTER TABLE positions ADD COLUMN asset_type TEXT DEFAULT 'STANDARD'")
+        print("  📝 positions: asset_type-Spalte hinzugefügt", flush=True)
+        for p in con.execute("SELECT id, name FROM positions WHERE asset_type='STANDARD'"):
+            sr = con.execute("SELECT sector FROM companies WHERE name=?", (p["name"],)).fetchone()
+            if sr and sr["sector"]:
+                from config import get_asset_type as _gat
+                con.execute("UPDATE positions SET asset_type=? WHERE id=?", (_gat(sr["sector"]), p["id"]))
 
     # Migration: watchlist – conviction_score_raw (Audit-Trail vor LLM-Validierung)
     wl_cols = [row[1] for row in con.execute("PRAGMA table_info(watchlist)")]
@@ -364,10 +372,14 @@ def check_open_positions(con, cfg):
         pnl_eur = pnl_pct * original_position_size - COMMISSION_EUR
 
         # --- Partial Take-Profit ---
+        # asset_type-spezifische Multiplikatoren für Exit-Regeln
+        pos_asset_type = pos.get("asset_type") or "STANDARD"
+        pos_mult = get_asset_multipliers(pos_asset_type)
+
         if cfg.get("partial_tp_enabled") and not pos["partial_exit_done"] and atr:
             pnl_atr = (current_price - entry) / atr if direction == "LONG" \
                       else (entry - current_price) / atr
-            if pnl_atr >= cfg.get("partial_tp_atr", 1.5):
+            if pnl_atr >= pos_mult["partial_atr"]:
                 partial_pct = cfg.get("partial_tp_pct", 0.50)
                 partial_pnl = pnl_pct * (pos["position_size"] * partial_pct)
 
@@ -409,7 +421,7 @@ def check_open_positions(con, cfg):
             if direction == "LONG":
                 prev_high = pos["highest_price"] or entry
                 new_high  = max(prev_high, current_price)
-                new_trailing_sl = new_high - (cfg["atr_sl_multiplier"] * atr)
+                new_trailing_sl = new_high - (pos_mult["atr_sl"] * atr)
 
                 if new_trailing_sl > sl:
                     was_breakeven = not pos["breakeven_set"] and new_trailing_sl >= entry
@@ -441,7 +453,7 @@ def check_open_positions(con, cfg):
             elif direction == "SHORT":
                 prev_low = pos["lowest_price"] or entry
                 new_low  = min(prev_low, current_price)
-                new_trailing_sl = new_low + (cfg["atr_sl_multiplier"] * atr)
+                new_trailing_sl = new_low + (pos_mult["atr_sl"] * atr)
 
                 if new_trailing_sl < sl:
                     con.execute(
@@ -1161,15 +1173,19 @@ def open_new_positions(con, cfg):
         position_size_after_commission = position_size - COMMISSION_EUR
         shares = position_size_in_shares(position_size_after_commission, effective_entry, ticker)
 
-        # SL/TP berechnen
+        # Asset-Typ bestimmen (für dynamische Exit-Regeln)
+        asset_type = get_asset_type(ticker_sector)
+        mult = get_asset_multipliers(asset_type)
+
+        # SL/TP berechnen (asset_type-abhängig)
         if direction == "LONG":
-            sl = effective_entry - (cfg["atr_sl_multiplier"] * atr)
-            tp = effective_entry + (cfg["atr_tp_multiplier"] * atr)
+            sl = effective_entry - (mult["atr_sl"] * atr)
+            tp = effective_entry + (mult["atr_tp"] * atr)
             # Sicherheitscheck: SL darf nicht über Entry liegen
             sl = min(sl, effective_entry * 0.995)
         else:  # SHORT
-            sl = effective_entry + (cfg["atr_sl_multiplier"] * atr)
-            tp = effective_entry - (cfg["atr_tp_multiplier"] * atr)
+            sl = effective_entry + (mult["atr_sl"] * atr)
+            tp = effective_entry - (mult["atr_tp"] * atr)
             # Sicherheitscheck: SL darf nicht unter Entry liegen
             sl = max(sl, effective_entry * 1.005)
 
@@ -1182,8 +1198,8 @@ def open_new_positions(con, cfg):
             (ticker, name, direction, entry_price, entry_date,
              stop_loss, take_profit, trailing_sl, position_size, shares,
              atr_at_entry, confidence, source_channel, reason,
-             highest_price, lowest_price)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+             highest_price, lowest_price, asset_type)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
         """, (
             ticker, c["name"], direction,
             round(effective_entry, 2),
@@ -1194,7 +1210,8 @@ def open_new_positions(con, cfg):
             ", ".join(set(channels[:3])),
             c["notes"] or "",
             effective_entry if direction == "LONG" else 0,
-            effective_entry if direction == "SHORT" else 0
+            effective_entry if direction == "SHORT" else 0,
+            asset_type
         ))
 
         # Watchlist Status updaten

@@ -111,6 +111,38 @@ Details siehe `references/` im Skill-Verzeichnis sowie die Erläuterung.md im Ob
 | Closed-Loop Architecture | `references/closed-loop-architecture.md` |
 | Dashboard Ghost Entries | `references/dashboard-cron-ghost-entries.md` |
 
+### Session-Start-Protokoll: Proaktiver Pipeline-Check
+
+**Regel (aus Martins Korrektur vom 18.06.2026):** Sobald Martin eine Session startet — bevor er irgendwas fragt — den Dashboard- und Cron-Status checken. Nicht warten bis er ein Problem meldet.
+
+```bash
+# 1. Dashboard erreichbar?
+curl -s -o /dev/null -w "%{http_code}" http://localhost:8081/
+
+# 2. Gelbe/rote Einträge im Cron-Tab?
+# Dashboard aufrufen und Cron-Tab visuell checken
+# Oder cron.log auf ERROR/Traceback durchsuchen
+grep -E "ERROR|Traceback|database is locked" \
+  /root/.hermes/profiles/hermes_trading/skills/trading/data/cron.log | tail -10
+
+# 3. Letzter Pipeline-Status
+grep "TRADING PIPELINE DONE" \
+  /root/.hermes/profiles/hermes_trading/skills/trading/data/cron.log | tail -3
+
+# 4. eval_metrics aktuell?
+sqlite3 /root/.hermes/profiles/hermes_trading/skills/trading/data/trading.db \
+  "SELECT date, open_positions, win_rate_30d FROM eval_metrics ORDER BY date DESC LIMIT 1;"
+```
+
+Bei Abweichung (gelb, rot, Fehler im Log, oder Pipelineschritt fehlt) sofort Fehleranalyse starten — nicht auf Nachfrage warten.
+
+**Bekannte Fehlermuster auf einen Blick:**
+- Gelber Ghost-Eintrag → Pitfall 14 (Dashboard Ghost Entries)
+- `database is locked` → Orphaned Connection (Pitfall 12) oder Timing-Konflikt
+- `sqlite3.Row` AttributeError → Pitfall 16
+- Pipeline läuft länger als 1h → Watchlist Update zu langsam (Grok/yfinance API)
+- `Finnhub 403` → API-Key abgelaufen oder limitiert (siehe `references/finnhub-api-key-management.md`)
+
 ### Diagnose: Pipeline läuft nicht
 
 **Erster Check bei Pipeline-Ausfall:**
@@ -130,6 +162,43 @@ cd /root/.hermes/profiles/hermes_trading/skills/trading && \
   PYTHONPATH=. python3 scripts/signal_manager.py full
 ```
 
+## Dynamische Exit-Regeln (seit 18.06.2026)
+
+**Konzept:** ATR-Multiplikatoren werden nicht mehr global, sondern abhängig vom **Asset-Typ** vergeben. Der Asset-Typ wird aus dem Sektor abgeleitet (siehe `config.py`).
+
+### Asset-Typ Mapping
+
+| Sektor | Asset-Typ | Begründung |
+|--------|-----------|------------|
+| Technology, Communication Services | **TECH** | Höhere Vola, mehr Raum nötig |
+| Consumer Defensive, Healthcare, Utilities | **DEFENSIVE** | Niedrige Vola, enge Stops |
+| Alle anderen | **STANDARD** | Default (1.5× ATR) |
+
+### Multiplikatoren pro Typ
+
+| Parameter | STANDARD | TECH | DEFENSIVE |
+|-----------|----------|------|-----------|
+| Stop-Loss | 1.5× ATR | 2.0× ATR | 1.0× ATR |
+| Take-Profit | 2.5× ATR | 3.5× ATR | 2.0× ATR |
+| Partial Exit | +1.5× ATR | +2.0× ATR | +1.0× ATR |
+| Breakeven | +2.0× ATR | +2.5× ATR | +1.5× ATR |
+| Trailing Step | 0.5× ATR | 0.75× ATR | 0.3× ATR |
+
+### Code-Struktur
+
+- **`config.py`** — `SECTOR_TO_ASSET_TYPE`, `ASSET_TYPE_MULTIPLIERS`, `get_asset_type()`, `get_asset_multipliers()`
+- **`signal_manager.py`** — Liest asset_type bei Entry (wird in DB gespeichert), nutzt asset_type-spezifische Multiplikatoren für SL/TP und Trailing Stop
+- **`active_exit_check.py`** — Nutzt asset_type-spezifische Multiplikatoren für Thesis-BROKEN und Trailing Stop
+- **DB:** `positions.asset_type`-Spalte (seit 18.06., per ALTER TABLE migriert)
+
+### SP500 SMA200 Cron-Job (Amumbo-Exit)
+
+- Cron `sp500-sma200-check` (1bbecc075d3e), Mo–Fr 10:00, no_agent
+- Script: `~/.hermes/scripts/sp500_sma200_check.py`
+- Prüft ob S&P 500 (Proxy MSCI USA) über/unter SMA200 → Entscheidung für Amumbo (A0X8ZS)
+- Output: `🟢 AMUMBO HALTEN` / `🔴 AMUMBO RAUS`
+- Doku: `wiki/concepts/Leveraged ETFs.md` (LETF-Exit-Modus)
+
 ## Quick Debug
 
 ```bash
@@ -148,4 +217,7 @@ crontab -l | grep trading
 
 # Finnhub test
 curl -s "https://finnhub.io/api/v1/stock/profile2?symbol=AAPL&token=$(grep FINNHUB_API_KEY /root/.hermes/profiles/hermes_trading/.env | cut -d= -f2)"
+
+# SP500 SMA200-Check (Amumbo-Exit)
+python3 /root/.hermes/scripts/sp500_sma200_check.py
 ```

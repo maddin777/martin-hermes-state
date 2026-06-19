@@ -292,6 +292,78 @@ These go in the `jobs.json` prompt, not in memory. Memory captures who Martin is
     - After one correct declaration: messages arrive in the profile's channel
     - Verify: `crontab -l | grep "^TELEGRAM_BOT_TOKEN="` shows exactly one line with the correct token
 
+### 🚨 CRITICAL: `cronjob create` with `profile:` Produces Broken Jobs
+
+**NEVER use the `cronjob` tool's `profile:` parameter to create a job that should run under a profile.**
+
+When you call `cronjob create` with `profile: hermes-news` (via the tool, not the CLI), the tool writes the job into the **profile's own cron/jobs.json** — but with **incomplete fields** that the scheduler cannot execute:
+
+| Required Field | Value Written | Problem |
+|---|---|---|
+| `id` | **missing** ❌ | Scheduler can't reference the job |
+| `enabled` | **missing (None)** ❌ | Treated as disabled |
+| `repeat` | **missing** ❌ | Won't repeat even if run once |
+| `last_run_at` | **missing** ❌ | No execution tracking |
+| `created_at` | **missing** ❌ | No creation timestamp |
+| `origin` | **missing** ❌ | Scheduler can't resolve `deliver: origin` |
+| `next_run_at` | set but **in past** ❌ | Already expired, never triggers |
+
+**Result:** The job sits dead in the profile DB. `cronjob list` (which reads the default DB) doesn't even show it. The user sees nothing, gets nothing.
+
+**Two correct approaches depending on delivery target:**
+
+#### Approach A: Default scheduler with profile routing (delivery via MAIN bot)
+
+Create the job in the **default** scheduler. The `profile:` parameter tells the scheduler to use the profile's `.env`/`config.yaml` at runtime, but delivery goes through the **main gateway's bot**:
+
+```python
+hermes cron create \
+  --name "my-job" \
+  --schedule "0 6 * * *" \
+  --prompt "..." \
+  --model openrouter/owl-alpha \
+  --provider openrouter \
+  --profile hermes-news  # runtime context, NOT delivery bot
+  --deliver origin       # → this DM (main bot)
+```
+
+Or via the tool:
+```json
+cronjob(action="create", name="my-job", schedule="0 6 * * *",
+        profile="hermes-news", deliver="origin",
+        model={"model": "openrouter/owl-alpha", "provider": "openrouter"})
+```
+
+**Use this when:** The job's output should come to the main DM, not to a profile channel.
+
+#### Approach B: Write directly to profile DB (delivery via PROFILE's bot)
+
+When the job must deliver through the **profile's own Telegram bot** (e.g. to a profile-specific channel), write directly into the profile's `cron/jobs.json` with ALL required fields. See pitfall #14 below for exact JSON structure.
+
+#### Diagnosis: Job not running
+
+If a user says "my cron job didn't run" and you created it with `profile:`:
+
+1. **Check both DBs:**
+   ```bash
+   python3 -c "import json; d=json.load(open('/root/.hermes/cron/jobs.json')); [print(j['name']) for j in d['jobs']]"
+   python3 -c "import json; d=json.load(open('/root/.hermes/profiles/<profil>/cron/jobs.json')); [print(j.get('name','?')) for j in d.get('jobs',[])]"
+   ```
+
+2. **If in profile DB but incomplete (no `id`, no `enabled`):**
+   - Delete from profile DB:
+     ```python
+     import json
+     with open(path) as f: d = json.load(f)
+     d['jobs'] = [j for j in d['jobs'] if j.get('name') != 'broken-job-name']
+     with open(path, 'w') as f: json.dump(d, f, indent=2)
+     ```
+   - Recreate in default scheduler (Approach A above)
+   - Verify: `cronjob action=list` shows the new job with `enabled: true` and valid `next_run_at`
+
+3. **If the job exists in default DB but delivery fails with "Chat not found":**
+   - The main bot isn't in the target channel → switch to Approach B (write directly to profile DB)
+
 ### Converting LLM-Driven Crons to no_agent
 
 Mechanical cron jobs (bisync, health checks, routine scraping) don't need an LLM every cycle. Converting them to `no_agent` scripts saves tokens, runs faster, and is more reliable.

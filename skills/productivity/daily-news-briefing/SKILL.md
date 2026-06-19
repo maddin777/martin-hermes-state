@@ -31,12 +31,34 @@ Each item: **Überschrift** (max 10 Wörter) + 1-2 Sätze + Quellenlink in Klamm
 
 ## Delivery Model (CRITICAL — Profile Cron)
 
-**Dieses Briefing läuft im hermes-news Profil, nicht im main Hermes Scheduler.**
+**Dieses Briefing läuft im default Scheduler mit `profile: hermes-news`.**
 
-- Der Job wird via `cron/jobs.json` im Profil-Verzeichnis definiert
-- `deliver: origin` im Profil-Scheduler = Delivery über den **Profil-eigenen Bot** an `TELEGRAM_HOME_CHANNEL`
-- KEIN curl/Telegram-Aufruf im Prompt — der Scheduler delivered automatisch
-- Wenn das Briefing manuell getriggert werden muss: `source .env` + `curl -X POST` (siehe references)
+Konfiguration:
+- Job in `/root/.hermes/cron/jobs.json` (default DB, nicht Profil-DB)
+- `profile: hermes-news` → Runtime nutzt das Profil `.env` und `config.yaml`
+- `deliver: origin` → Delivery geht über den **main Bot** an diesen Chat (DM)
+- `model: openrouter/owl-alpha` (provider: openrouter) als Override
+
+**Warum nicht in der Profil-DB?** `cronjob create` mit `profile:` schreibt unvollständige Jobs in die Profil-DB (fehlende `id`, `enabled`). Die korrekte Konfiguration ist der default Scheduler mit profile-Routing (siehe `hermes-profile-management` Skill, Pitfall #15).
+
+**Wenn Delivery über den Profil-Bot gewünscht ist** (z.B. in einen News-Channel): Job direkt in die Profil-DB schreiben mit allen Pflichtfeldern — siehe `hermes-profile-management` Skill, Pitfall #14.
+
+### Manuelles Triggern
+
+```bash
+# Verifikation: Bot im Channel?
+source /root/.hermes/profiles/hermes-news/.env
+curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+  -d "chat_id=${TELEGRAM_HOME_CHANNEL}" \
+  -d "text=Test" | python3 -c "import json,sys; print('✅' if json.load(sys.stdin).get('ok') else '❌')"
+```
+
+### Cron Job Lebenszyklus
+
+Der Job läuft täglich um 06:00. Nach jeder Änderung am Prompt oder Skill:
+1. Prompt in `/root/.hermes/cron/jobs.json` per Python-json.dump updaten
+2. Kein Gateway-Neustart nötig (default Scheduler liest live)
+3. Nächsten Lauf abwarten oder `hermes cron run <job_id>` triggern
 
 ## Workflow
 
@@ -157,17 +179,20 @@ Wenn du das Briefing nicht selbst erstellst sondern an einen Subagenten delegier
 | Deutschland & Nordeuropa | NDR, Ostsee-Zeitung, Welt, Nordkurier, SVT (Schweden), DR (Dänemark), YLE (Finnland), Gazeta Wyborcza (Polen) |
 | Wetter & Wasser | Open-Meteo API (wetter), wassertemperatur.org / seatemperature.org (Browser) |
 
-## Cron Job Constraints (Profil-Scheduler)
+## Cron Job Constraints (Default Scheduler + Profile Runtime)
 
-When running as a profile cron job (hermes-news Profil):
+This job runs in the **default Hermes scheduler** with `profile: hermes-news` for runtime context. Delivery goes through the **main DM bot**, NOT through a profile-specific bot.
+
+Key constraints for the agent running this cron:
 - `execute_code` is **blocked** in cron mode — do not attempt it
 - `web_search` / `web_extract` may fail due to Firecrawl credits — always have RSS fallback ready
 - `curl | python3` pipe is **safe in terminal() calls** (non-cron runs) but blocked in cron
 - In cron mode: save RSS to `/tmp/` then `read_file`
 - No user interaction possible — make autonomous decisions
-- Final response is auto-delivered via profile gateway — do NOT use `send_message`
-- Delivery goes through the **profile's own bot** (e.g. `@hermster_news_bot`), not the main DM bot
-- For verification: `source /root/.hermes/profiles/hermes-news/.env && curl -s https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage...`
+- Final response is auto-delivered by the scheduler — do NOT use `send_message` or `curl`-based Telegram API calls
+- **Delivery goes to this chat** (main DM), not to a profile channel
+- For profile-specific delivery (e.g. to a news channel): see `hermes-profile-management` Skill, §Cross-Profile Cron
+- For verification after manual trigger: `source /root/.hermes/profiles/hermes-news/.env && curl -s https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage...`
 
 ## Firecrawl Credit Exhaustion (Dauerzustand)
 

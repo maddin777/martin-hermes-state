@@ -22,7 +22,7 @@ from utils import (
     get_logger, SLIPPAGE_PCT, COMMISSION_EUR,
     get_price_data_cached, prefetch_prices,
 )
-from config import DB_PATH, STRATEGY_CONFIG_PATH, db_connect
+from config import DB_PATH, STRATEGY_CONFIG_PATH, db_connect, get_asset_type, get_asset_multipliers
 
 log = get_logger("active_exit_check")
 
@@ -138,6 +138,9 @@ def main():
         sl        = pos["stop_loss"]
         tp        = pos["take_profit"]
         atr_entry = pos["atr_at_entry"] or 0
+        # Asset-Typ für dynamische Exit-Regeln
+        pos_asset_type = pos.get("asset_type") or "STANDARD"
+        pos_mult = get_asset_multipliers(pos_asset_type)
         direction = pos["direction"]
 
         current_price, atr_now, tech_status = get_tech_status(ticker)
@@ -180,7 +183,7 @@ def main():
             """, (ticker,)).fetchone()
 
             if direction == "LONG":
-                tight_sl = current_price - (0.5 * atr)
+                tight_sl = current_price - (pos_mult["trailing_step"] * atr)
                 if tight_sl > sl:
                     con.execute(
                         "UPDATE positions SET stop_loss=?, trailing_sl=? WHERE id=?",
@@ -196,7 +199,7 @@ def main():
                         f"Grund: {rationale}"
                     )
             else:  # SHORT
-                tight_sl = current_price + (0.5 * atr)
+                tight_sl = current_price + (pos_mult["trailing_step"] * atr)
                 if tight_sl < sl:
                     con.execute(
                         "UPDATE positions SET stop_loss=?, trailing_sl=? WHERE id=?",
@@ -251,9 +254,9 @@ def main():
                 )
 
         # --- AKTION 3: Trailing Stop alle 0.5x ATR nachziehen ---
-        trailing_step = cfg.get("trailing_step_atr", 0.5)
+        trailing_step = pos_mult["trailing_step"]
         if direction == "LONG":
-            ideal_sl      = current_price - (cfg.get("atr_sl_multiplier", 1.5) * atr)
+            ideal_sl      = current_price - (pos_mult["atr_sl"] * atr)
             next_sl_level = sl + (trailing_step * atr)
             if ideal_sl > next_sl_level and ideal_sl > sl:
                 con.execute(

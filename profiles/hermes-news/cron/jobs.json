@@ -1,23 +1,4 @@
 {
-  "jobs": [
-    {
-      "name": "daily-news-briefing",
-      "prompt": "Du bist mein News-Agent. Erstelle ein tägliches Morgen-Briefing (06:00).\n\n═══ ARBEITSSCHRITTE (Reihenfolge einhalten) ═══\n\n1. WEB-RECHERCHE: Nutze web_search INTENSIV für JEDE Sektion.\n   Quellen (deutsch):\n   Tagesschau, NZZ, Handelsblatt, Reuters, AP, DW, NDR,\n   Ostsee-Zeitung, Welt\n   Quellen (international):\n   SVT (Schweden), DR (Dänemark), YLE (Finnland),\n   Gazeta Wyborcza (Polen), Financial Times, Wallstreet Journal,\n   New York Times, TechCrunch, The Verge, heise online, Golem,\n   Table.Media\n\n2. X-RECHERCHE: Nutze x_search parallel für Breaking News und\n   regionale Entwicklungen. Markiere X-Quellen mit [X].\n\n3. DEDUP: Identische Meldungen aus verschiedenen Quellen NUR EINMAL.\n   Gib IMMER die Quelle(n) an.\n\n4. ÜBERSETZUNG: ALLE News auf Deutsch — auch internationale Quellen\n   (FT, WSJ, NYT, SVT, DR, YLE, Gazeta Wyborcza etc.)\n   übersetzt und sinngemäß auf Deutsch wiedergeben.\n\n═══ SEKTIONEN ═══\n\nPro Sektion: Top 5 Meldungen. Meldungen aus Schritt 1/2 einsortieren.\n\n### 🌍 Politik & Internationales\nGlobale Politik, internationale Konflikte, EU, UN, G7/G20,\nOsteuropa/USA/China\n\n### 📈 Finanzen & Wirtschaft\nGlobale Märkte (DAX, Dow, Nasdaq, Nikkei, Öl, Gold, Bitcoin),\nKonjunktur, Zinsen, Unternehmen. FT, WSJ, Handelsblatt priorisieren.\n\n### 💻 IT & KI\nAI-News: Modelle, Releases, Regulation. Tech: Cybersecurity, Cloud,\nHalbleiter. TechCrunch, The Verge, heise, Golem priorisieren.\n\n### 🇩🇪 Deutschland & Nordeuropa\n- Bundespolitik, Wirtschaft DE\n- SH + MV: Landespolitik, Kommunales\n- Skandinavien (Schweden, Dänemark, Norwegen, Finnland)\n  → SVT, DR, YLE als Quellen nutzen\n- Polen (Politik, Wirtschaft, Außenbeziehungen)\n  → Gazeta Wyborcza als Quelle nutzen\n\n═══ WETTER & WASSER ═══\n\nWetter (DWD, wetter.com, wetteronline.de):\n- Ratzeburg: Max/Min-Temp, Bewölkung, Niederschlags-wkt.\n- Schwerin: Max/Min-Temp, Bewölkung, Niederschlags-wkt.\n\nWassertemperaturen (seatemperature.org, wassertemperatur.org, DWD):\n- Schweriner See: XX.X °C\n- Ostsee bei Lübeck/Trave: XX.X °C\n- Ostsee bei Wismar: XX.X °C\n- Ostsee bei Rostock/Warnemünde: XX.X °C\n\n═══ AUSGABE ═══\n\n- Pro News: **Überschrift** (max 10 Wörter) + 1-2 Sätze + Quellenlink\n- Nüchtern, sachlich, Fakten pur\n- Bei ruhiger Lage: kürzere Sektion statt „Keine Meldungen\"\n- Pro Telegram-Nachricht: max 3000 Zeichen\n- Das Briefing DARF über bis zu 5 Telegram-Nachrichten verteilt sein\n  (1-2 Sektionen pro Nachricht, Wetter+Wasser an letzter ranhängen)\n- Gesamtbudget: ~15000 Zeichen",
-      "skills": [],
-      "model": {
-        "model": "openrouter/owl-alpha",
-        "provider": "openrouter"
-      },
-      "schedule": {
-        "kind": "cron",
-        "expr": "0 6 * * *",
-        "display": "0 6 * * *"
-      },
-      "state": "scheduled",
-      "deliver": "origin",
-      "no_agent": false,
-      "next_run_at": "2026-06-17T07:35:00+02:00"
-    }
-  ],
+  "jobs": [],
   "updated_at": "2026-06-17T07:35:00.000000+02:00"
 }
