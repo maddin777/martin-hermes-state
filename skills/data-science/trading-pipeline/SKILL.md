@@ -136,12 +136,54 @@ sqlite3 /root/.hermes/profiles/hermes_trading/skills/trading/data/trading.db \
 
 Bei Abweichung (gelb, rot, Fehler im Log, oder Pipelineschritt fehlt) sofort Fehleranalyse starten — nicht auf Nachfrage warten.
 
+### 🔴 HARD RULE: KEIN `.get()` auf sqlite3.Row
+
+**Dieser Fehler trat am 19.06.2026 ZUM ZWEITEN MAL auf**, obwohl Pitfall 16 dokumentiert war. Signal Manager crashte mit `AttributeError: 'sqlite3.Row' object has no attribute 'get'`.
+
+**Warum passiert das immer wieder:** Du fügst eine neue Spalte via ALTER TABLE hinzu und willst beim Lesen elegant auf None prüfen -> greifst zu `row.get("new_col")`. Das crasht, weil `sqlite3.Row` KEIN dict ist.
+
+**Die Regel (MERKEN, nicht nur lesen):**
+```python
+# CRASHT IMMER - sqlite3.Row hat kein .get()
+pos.get("asset_type", "STANDARD")
+row.get("any_column", default)
+
+# FUNKTIONIERT IMMER - Keys-Check + Index-Zugriff
+pos["asset_type"] if "asset_type" in pos.keys() else "STANDARD"
+```
+
+**Wann passiert das?** Immer wenn du:
+- Eine neue Column via ALTER TABLE in `init_db()` hinzufügst
+- Dann in `check_open_positions()` oder `open_new_positions()` auf diese Column zugreifst
+- Dabei `.get("col", default)` statt `"col" in row.keys() else default` verwendest
+
+**Prävention:**
+- Nach JEDEM ALTER TABLE: prüfe ob irgendwo ein `.get()` auf Row-Objekte neu dazugekommen ist
+- Besser: direkt Index-Zugriff verwenden, wenn die Spalte existiert (nach Migration sicher)
+- NIE `row.get()` schreiben - es gibt kein Szenario wo das auf sqlite3.Row funktioniert
+
+### 🔴 WICHTIG — Proaktive Fehleranalyse (Pflicht)
+
+**Martin hat sich zweimal am 18.06. darüber beschwert, dass auf gelbe Status keine RCA kam.** Diese Regel ist NICHT optional:
+
+1. **Jede Abweichung = sofort analysieren.** Nicht warten bis Martin fragt. Nicht denken "das ist nur ein Ghost Entry". Nicht in andere Tasks abtauchen.
+2. **RCA innerhalb derselben Antwort liefern.** Nicht "ich schau mal" und dann später — direkt: Status erfassen → Log lesen → Ursache identifizieren → Fix vorschlagen.
+3. **Wenn die Ursache klar ist, sofort fixen.** Ghost Entry → aus descriptions entfernen. `.get()` Bug → patchen. DB Lock → WAL-Checkpoint. Keine "soll ich?"-Rückfrage bei klaren Fehlern.
+4. **Wenn die Ursache unklar ist, trotzdem liefern:** "Dashboard zeigt gelb für X. Log zeigt Y. Vermute Z, prüfe gerade A."
+
+**Checkliste beim Session-Start (Pflicht, bevor du irgendwas anderes tust):**
+- `curl -s http://localhost:8081/` — Dashboard erreichbar?
+- Dashboard Cron-Tab visuell checken: gibt es gelbe/rote Einträge?
+- `grep "ERROR\|Traceback\|database is locked" cron.log | tail -10`
+- `grep "TRADING PIPELINE DONE" cron.log | tail -3`
+
 **Bekannte Fehlermuster auf einen Blick:**
 - Gelber Ghost-Eintrag → Pitfall 14 (Dashboard Ghost Entries)
 - `database is locked` → Orphaned Connection (Pitfall 12) oder Timing-Konflikt
 - `sqlite3.Row` AttributeError → Pitfall 16
 - Pipeline läuft länger als 1h → Watchlist Update zu langsam (Grok/yfinance API)
-- `Finnhub 403` → API-Key abgelaufen oder limitiert (siehe `references/finnhub-api-key-management.md`)
+| `Finnhub 403` → API-Key abgelaufen oder limitiert (siehe `references/finnhub-api-key-management.md`)
+| `pos.get("asset_type")` → Pitfall 16 (sqlite3.Row) — `pos["asset_type"] if "asset_type" in pos.keys() else "STANDARD"` verwenden
 
 ### Diagnose: Pipeline läuft nicht
 

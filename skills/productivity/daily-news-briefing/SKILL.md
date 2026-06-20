@@ -36,12 +36,16 @@ Each item: **Überschrift** (max 10 Wörter) + 1-2 Sätze + Quellenlink in Klamm
 Konfiguration:
 - Job in `/root/.hermes/cron/jobs.json` (default DB, nicht Profil-DB)
 - `profile: hermes-news` → Runtime nutzt das Profil `.env` und `config.yaml`
-- `deliver: origin` → Delivery geht über den **main Bot** an diesen Chat (DM)
+- `deliver: telegram:-1003687061880` → Delivery über den **Profil-Bot** an den News-Channel
 - `model: openrouter/owl-alpha` (provider: openrouter) als Override
 
-**Warum nicht in der Profil-DB?** `cronjob create` mit `profile:` schreibt unvollständige Jobs in die Profil-DB (fehlende `id`, `enabled`). Die korrekte Konfiguration ist der default Scheduler mit profile-Routing (siehe `hermes-profile-management` Skill, Pitfall #15).
+**⚠️ PITFALL: deliver: origin vs deliver: chat_id**
+- `deliver: origin` schickt die Ausgabe an den Chat, in dem der Job erstellt wurde (meist DM)
+- `deliver: telegram:-1003687061880` schickt an den News-Kanal des Profil-Bots
+- Wenn der Job mit `profile: hermes-news` läuft, aber `deliver: origin` gesetzt ist, kommt das Briefing im DM anstatt im News-Kanal
+- Fix: `cronjob update` mit der korrekten deliver-Adresse
 
-**Wenn Delivery über den Profil-Bot gewünscht ist** (z.B. in einen News-Channel): Job direkt in die Profil-DB schreiben mit allen Pflichtfeldern — siehe `hermes-profile-management` Skill, Pitfall #14.
+**Warum nicht in der Profil-DB?** `cronjob create` mit `profile:` schrieb früher unvollständige Jobs in die Profil-DB (fehlende `id`, `enabled`). Der aktuelle Workaround: default Scheduler mit profile-Routing.
 
 ### Manuelles Triggern
 
@@ -153,6 +157,26 @@ Alternative: seatemperature.org via browser. Die Open-Meteo Lufttemperatur ist N
 - **Max 5 Items pro Sektion**
 - Übersetzte internationale Quellen (FT, WSJ, NYT, SVT, DR, YLE, Gazeta Wyborcza) auf Deutsch wiedergeben
 - Nüchtern, sachlich, Fakten pur — kein Marketing-Ton
+
+### 🔴 PREISANGABEN — Datum prüfen & validieren
+
+Martin hat sich explizit über veraltete Preisangaben beschwert ("Gold nahe Allzeithoch").
+
+**Pflicht-Regeln für ALLE Preis-/Kursangaben:**
+
+1. **RSS-Artikel-Datum prüfen:** Jeder RSS-Item hat ein `<pubDate>`-Element. Extrahiere es mit Python (cron) oder prüfe per regex. Ist der Artikel älter als 2 Tage? → NICHT für aktuelle Kurse verwenden, nur für Kontext
+
+2. **Aktuelle Kurse validieren:** Bei Preisangaben (Gold, Bitcoin, DAX, S&P 500, Öl) IMMER einen aktuellen Kurs per web_search abgleichen. Schema:
+   ```
+   Suche: "Goldpreis aktuell heute" oder "Bitcoin Kurs heute"
+   Ergebnis: Gold bei X€ (Datum: Y) — NICHT "nahe Allzeithoch" schreiben wenn der Artikel alt ist
+   ```
+
+3. **Formulierung:** Statt "Gold auf Allzeithoch" besser "Gold notierte laut Artikel vom [Datum] bei X€ — aktuell bei Y€". Bei Unsicherheit: "heute bei X€" statt Superlative.
+
+4. **Verboten:** Absolute Aussagen ohne zeitlichen Bezug ("Gold ist auf Allzeithoch", "Bitcoin explodiert"). Erlaubt: "Laut einem Artikel vom [Datum] lag Gold bei X€."
+
+5. **Keine veralteten Quellen priorisieren:** "Der Aktionär" und andere Finanzblogs haben oft allgemeine Marktkommentare ohne Datumsangabe. Wenn kein Datum im Feed → lieber weglassen als veraltet zu zitieren.
 
 ## Subagent Delegation (When running manually)
 

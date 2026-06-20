@@ -139,7 +139,7 @@ def main():
         tp        = pos["take_profit"]
         atr_entry = pos["atr_at_entry"] or 0
         # Asset-Typ für dynamische Exit-Regeln
-        pos_asset_type = pos.get("asset_type") or "STANDARD"
+        pos_asset_type = pos["asset_type"] if "asset_type" in pos.keys() else "STANDARD"
         pos_mult = get_asset_multipliers(pos_asset_type)
         direction = pos["direction"]
 

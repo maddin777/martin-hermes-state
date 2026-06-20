@@ -116,6 +116,22 @@ Für mehrere Nachrichten: curl mehrfach aufrufen mit verschiedenen Texten.
 | `web_extract` | ⚠️ Meist ohne Credits | RSS-Fallback |
 | `send_message` | ❌ Nicht nötig | Auto-Delivery via Profil-Gateway |
 
+## no_agent Scripts: Python Path
+
+**Wichtig:** no_agent Cron-Jobs (script-only) werden mit `sys.executable` des Schedulers ausgeführt = **Hermes Agent venv** (`/root/.hermes/hermes-agent/venv/bin/python`), nicht mit dem system Python3.
+
+**Konsequenz:** Pakete die im system Python (pyenv) installiert sind (yfinance, pandas, etc.) sind in der Hermes Agent venv NICHT verfügbar und müssen dort separat installiert werden.
+
+**Fix:** 
+```bash
+uv pip install <package> --python /root/.hermes/hermes-agent/venv/bin/python
+```
+
+**Oder:** Statt no_agent einen normalen agent-driven Cron-Job verwenden, der das Script per terminal() aufruft. Dann läuft es mit der Profil-Venv.
+
+**Betroffene Cron-Jobs (Stand 19.06.2026):**
+- `sp500-sma200-check` (1bbecc075d3e) — braucht yfinance in Hermes Agent venv
+
 ## Firecrawl Credit Reset
 
 Credits werden monatlich resettet. Datum merken und ggf. im MEMORY ablegen:

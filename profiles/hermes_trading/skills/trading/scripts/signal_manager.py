@@ -373,7 +373,7 @@ def check_open_positions(con, cfg):
 
         # --- Partial Take-Profit ---
         # asset_type-spezifische Multiplikatoren für Exit-Regeln
-        pos_asset_type = pos.get("asset_type") or "STANDARD"
+        pos_asset_type = pos["asset_type"] if "asset_type" in pos.keys() else "STANDARD"
         pos_mult = get_asset_multipliers(pos_asset_type)
 
         if cfg.get("partial_tp_enabled") and not pos["partial_exit_done"] and atr:
