@@ -3,14 +3,14 @@
     "archived_at": null,
     "created_at": "2026-06-17T05:36:27.522356+00:00",
     "created_by": "agent",
-    "last_patched_at": "2026-06-19T20:36:05.894560+00:00",
-    "last_used_at": "2026-06-19T20:35:57.701752+00:00",
-    "last_viewed_at": "2026-06-19T20:35:57.698089+00:00",
-    "patch_count": 7,
+    "last_patched_at": "2026-06-20T15:15:46.264767+00:00",
+    "last_used_at": "2026-06-20T15:15:19.546728+00:00",
+    "last_viewed_at": "2026-06-20T15:15:19.539528+00:00",
+    "patch_count": 8,
     "pinned": false,
     "state": "active",
-    "use_count": 11,
-    "view_count": 11
+    "use_count": 12,
+    "view_count": 12
   },
   "edge-tts-voice-discovery": {
     "archived_at": null,
@@ -47,6 +47,19 @@
     "state": "active",
     "use_count": 6,
     "view_count": 7
+  },
+  "hermes-profile-cron-troubleshooting": {
+    "archived_at": null,
+    "created_at": "2026-06-20T09:42:30.151568+00:00",
+    "created_by": "agent",
+    "last_patched_at": null,
+    "last_used_at": null,
+    "last_viewed_at": null,
+    "patch_count": 0,
+    "pinned": false,
+    "state": "active",
+    "use_count": 0,
+    "view_count": 0
   },
   "hermes-profile-management": {
     "archived_at": null,
@@ -115,13 +128,13 @@
     "created_at": "2026-05-25T16:25:51.199575+00:00",
     "created_by": "agent",
     "last_patched_at": "2026-06-12T05:49:00.164262+00:00",
-    "last_used_at": "2026-06-15T01:09:38.176656+00:00",
-    "last_viewed_at": "2026-06-15T01:09:38.172575+00:00",
+    "last_used_at": "2026-06-20T09:42:10.148323+00:00",
+    "last_viewed_at": "2026-06-20T09:42:10.143732+00:00",
     "patch_count": 8,
     "pinned": false,
     "state": "active",
-    "use_count": 19,
-    "view_count": 19
+    "use_count": 21,
+    "view_count": 21
   },
   "telegram-voice-stt": {
     "archived_at": null,
@@ -139,14 +152,14 @@
     "archived_at": null,
     "created_at": "2026-05-27T06:29:36.528930+00:00",
     "created_by": "agent",
-    "last_patched_at": "2026-06-19T20:35:47.388040+00:00",
-    "last_used_at": "2026-06-19T20:35:14.079087+00:00",
-    "last_viewed_at": "2026-06-19T20:35:14.071263+00:00",
-    "patch_count": 93,
+    "last_patched_at": "2026-06-20T09:43:05.319313+00:00",
+    "last_used_at": "2026-06-20T09:41:56.346819+00:00",
+    "last_viewed_at": "2026-06-20T09:41:56.340095+00:00",
+    "patch_count": 96,
     "pinned": false,
     "state": "active",
-    "use_count": 102,
-    "view_count": 98
+    "use_count": 103,
+    "view_count": 99
   },
   "trading-scan": {
     "archived_at": null,
@@ -160,5 +173,18 @@
     "state": "active",
     "use_count": 3,
     "view_count": 3
+  },
+  "vehicle-comparison": {
+    "archived_at": null,
+    "created_at": "2026-06-20T10:39:43.401821+00:00",
+    "created_by": "agent",
+    "last_patched_at": "2026-06-20T15:16:07.479154+00:00",
+    "last_used_at": "2026-06-20T15:15:59.431670+00:00",
+    "last_viewed_at": "2026-06-20T15:15:59.425259+00:00",
+    "patch_count": 3,
+    "pinned": false,
+    "state": "active",
+    "use_count": 2,
+    "view_count": 2
   }
 }

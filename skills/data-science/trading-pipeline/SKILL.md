@@ -110,6 +110,7 @@ Details siehe `references/` im Skill-Verzeichnis sowie die Erläuterung.md im Ob
 | Watchlist Dedup | `references/watchlist-table-dedup.md` |
 | Closed-Loop Architecture | `references/closed-loop-architecture.md` |
 | Dashboard Ghost Entries | `references/dashboard-cron-ghost-entries.md` |
+| Private Company OTHER-Klassifikation | `references/other-sector-private-companies.md` |
 
 ### Session-Start-Protokoll: Proaktiver Pipeline-Check
 
@@ -161,6 +162,17 @@ pos["asset_type"] if "asset_type" in pos.keys() else "STANDARD"
 - Nach JEDEM ALTER TABLE: prüfe ob irgendwo ein `.get()` auf Row-Objekte neu dazugekommen ist
 - Besser: direkt Index-Zugriff verwenden, wenn die Spalte existiert (nach Migration sicher)
 - NIE `row.get()` schreiben - es gibt kein Szenario wo das auf sqlite3.Row funktioniert
+
+### 🔴 OTHER-Sektor Fallback: Private Companies
+
+Wenn yfinance keinen Sektor liefert (Sektor = "OTHER"), landen private Companies bisher default auf STANDARD. Seit 20.06.2026 gibt es `references/other-sector-private-companies.md` mit einer manuell gepflegten Klassifikation bekannter Private Companies (OpenAI→TECH, SpaceX→STANDARD, Schwarz Gruppe→DEFENSIVE etc.).
+
+**Bei Sektor = "OTHER" immer prüfen:**
+1. Ist es eine bekannte Private Company aus der Referenz?
+2. Falls ja → korrekten Asset-Type zuweisen
+3. Falls nein → STANDARD (Default)
+
+Die Referenz enthält 23 klassifizierte Unternehmen plus Implementierungsvorschlag für `config.py`.
 
 ### 🔴 WICHTIG — Proaktive Fehleranalyse (Pflicht)
 

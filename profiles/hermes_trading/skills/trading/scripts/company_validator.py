@@ -52,6 +52,13 @@ _CANONICAL_MAP = _load_canonical_map()
 # Liquiditaets-Schwelle: avg_volume * price > 1M (Waehrung egal, FX-Konvertierung optional)
 MIN_LIQUIDITY = 1_000_000
 
+# Negativ-Cache: abgelehnte Namen merken, damit nicht jede Nacht erneut der teure
+# yfinance-Gauntlet (yf.Search + bis zu 5x .info) für denselben Müll-Namen läuft.
+REJECT_CACHE_TTL_DAYS = 21
+# Nur DETERMINISTISCHE Gründe cachen. Transiente (yf_error, empty_input) NICHT,
+# sonst würde ein einmaliger Netzwerkfehler einen validen Namen 21 Tage blockieren.
+_CACHEABLE_REJECTS = {"unknown", "not_equity", "name_mismatch", "low_liquidity"}
+
 # Adaptiver Name-Plausibilitaets-Threshold abhaengig von Input-Laenge
 # Bei kurzen Namen ('HP', 'MU') muss Yahoo-Name SEHR aehnlich sein, um Mehrdeutigkeit zu vermeiden.
 def _name_threshold(name: str) -> float:
@@ -123,6 +130,52 @@ def _name_similarity(a: str, b: str) -> float:
     return SequenceMatcher(None, a.lower(), b.lower()).ratio()
 
 
+def _check_reject_cache(name: str):
+    """
+    Negativ-Cache-Lookup. Returns ein rejected-Result-Dict bei Cache-Hit
+    (innerhalb TTL), sonst None. Degradiert still, falls Tabelle fehlt.
+    """
+    if not Path(DB_PATH).is_file():
+        return None
+    try:
+        key = name.lower().strip()
+        con = db_connect()
+        row = con.execute("""
+            SELECT reason, ticker FROM validation_rejects
+            WHERE name_key = ? AND rejected_at > datetime('now', ?)
+        """, (key, f"-{REJECT_CACHE_TTL_DAYS} days")).fetchone()
+        if row:
+            con.execute("UPDATE validation_rejects SET hit_count = hit_count + 1 "
+                        "WHERE name_key = ?", (key,))
+            con.commit()
+            con.close()
+            return {"status": "rejected", "ticker": row["ticker"],
+                    "reason": row["reason"], "details": {"cached": True}}
+        con.close()
+    except Exception:
+        pass  # Tabelle fehlt o.ä. -> normaler Pfad (kein Speedup, aber korrekt)
+    return None
+
+
+def _cache_reject(name: str, reason: str, ticker, details):
+    """Schreibt deterministische Rejects in den Negativ-Cache (transiente NICHT)."""
+    if reason not in _CACHEABLE_REJECTS:
+        return
+    try:
+        con = db_connect()
+        con.execute("""
+            INSERT INTO validation_rejects (name_key, reason, ticker, details, rejected_at, hit_count)
+            VALUES (?, ?, ?, ?, datetime('now'), 1)
+            ON CONFLICT(name_key) DO UPDATE SET
+                reason=excluded.reason, ticker=excluded.ticker,
+                details=excluded.details, rejected_at=datetime('now')
+        """, (name.lower().strip(), reason, ticker, str(details or {})[:200]))
+        con.commit()
+        con.close()
+    except Exception:
+        pass  # z.B. Tabelle noch nicht migriert -> still ignorieren
+
+
 # --- Public API ---
 # ── ISIN-Cross-Exchange-Mapping ────────────────────────────────────────────────
 # Bekannte ISIN-formatige Ticker wie "US4330001060.SG" → primärer US-Ticker
@@ -184,6 +237,11 @@ def validate(name: str) -> dict:
             "details": {"db_status": status},
         }
     # === Step 2: yf.Search ===
+    # Negativ-Cache zuerst: spart den teuren yfinance-Gauntlet für bereits
+    # abgelehnte Namen (Tippfehler, nicht-börsennotierte Entitäten etc.).
+    cached_reject = _check_reject_cache(name)
+    if cached_reject is not None:
+        return cached_reject
     try:
         results = yf.Search(name, max_results=5)  # mehr Kandidaten als bisher
         quotes = results.quotes or []
@@ -194,6 +252,7 @@ def validate(name: str) -> dict:
 
     if not quotes:
         _log_reject(name, None, "unknown", "yf.Search returned no quotes")
+        _cache_reject(name, "unknown", None, {"quotes_count": 0})
         return {"status": "rejected", "ticker": None, "reason": "unknown",
                 "details": {"quotes_count": 0}}
 
@@ -289,6 +348,7 @@ def validate(name: str) -> dict:
     # Kein Kandidat hat alle Checks bestanden -> Reject mit dem besten Fehlergrund
     _log_reject(name, rejection_ticker, rejection_reason or "unknown",
                 str(rejection_details or {})[:200])
+    _cache_reject(name, rejection_reason or "unknown", rejection_ticker, rejection_details)
     return {"status": "rejected",
             "ticker": rejection_ticker,
             "reason": rejection_reason or "unknown",
@@ -344,6 +404,9 @@ def validate_and_register(name: str) -> dict:
                     INSERT OR IGNORE INTO company_aliases (alias, ticker)
                     VALUES (?, ?)
                 """, (a, ticker))
+
+        # 3. Falls dieser Name früher mal abgelehnt war: Negativ-Cache bereinigen
+        cur.execute("DELETE FROM validation_rejects WHERE name_key = ?", (alias,))
 
         con.commit()
         con.close()

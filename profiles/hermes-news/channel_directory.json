@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-06-20T02:58:58.680692",
+  "updated_at": "2026-06-20T16:50:15.214403",
   "platforms": {
     "telegram": [
       {
@@ -7,10 +7,17 @@
         "name": "Martin",
         "type": "dm",
         "thread_id": null
+      },
+      {
+        "id": "-1003687061880",
+        "name": "Ch_hermster_news",
+        "type": "channel",
+        "thread_id": null
       }
     ],
     "discord": [],
     "whatsapp": [],
+    "whatsapp_cloud": [],
     "slack": [],
     "signal": [],
     "mattermost": [],
@@ -27,10 +34,13 @@
     "bluebubbles": [],
     "qqbot": [],
     "yuanbao": [],
+    "relay": [],
     "google_chat": [],
     "irc": [],
     "line": [],
     "ntfy": [],
+    "photon": [],
+    "raft": [],
     "simplex": [],
     "teams": []
   }

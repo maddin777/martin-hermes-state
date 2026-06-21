@@ -6,6 +6,7 @@ Verhindert Race Conditions zwischen den einzelnen Schritten.
 Reihenfolge (fachlich korrekt):
   1. YouTube Scan          – Transkripte holen
   2. KI Analyse            – LLM-Extraktion
+  2b. Screener Source      – deterministische Quelle (Momentum+Quality+Regime)
   3. Watchlist Update      – Conviction berechnen
   4. Watchlist Dedup       – Duplikate bereinigen
   5. Technical Analysis    – Tech-Score schreiben (nach Watchlist!)
@@ -56,6 +57,7 @@ def main():
     steps = [
         ("yt_channel_monitor.py",  "YouTube Scan"),
         ("signal_extractor.py",    "KI Analyse"),
+        ("screener_source.py",     "Screener Source"),   # NEU: deterministische Quelle VOR Watchlist
         ("watchlist_manager.py",   "Watchlist Update"),
         ("watchlist_dedup.py",     "Watchlist Dedup"),
         ("technical_validator.py", "Technical Analysis"),  # NACH watchlist_manager!

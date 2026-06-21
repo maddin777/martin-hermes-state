@@ -20,7 +20,7 @@ import sys as _sys
 _sys.path.insert(0, '/root/.hermes/profiles/hermes_trading/skills/trading/scripts')
 from company_validator import validate_and_register
 # DRY: zentrale Funktionen aus Shared-Modulen
-from utils import get_technical_score              # war lokale Kopie
+from utils import get_technical_score, prefetch_prices  # war lokale Kopie
 from company_normalizer import (                   # war lokale Kopie
 
     normalize_company_name, NORMALIZE_ALIASES,
@@ -617,6 +617,9 @@ def main():
 
         top_candidates = candidates_long + [c for c in candidates_short if c["ticker"] not in {x["ticker"] for x in candidates_long}]
         print(f"\n  Technische Analyse für {len(top_candidates)} Kandidaten (LONG:{len(candidates_long)} SHORT:{len(candidates_short)})...", flush=True)
+
+        # Preise gebündelt vorladen statt 40 Einzeldownloads in der Schleife
+        prefetch_prices([c["ticker"] for c in top_candidates if c["ticker"]])
 
         for c in top_candidates:
             tech = get_technical_score(c["ticker"])

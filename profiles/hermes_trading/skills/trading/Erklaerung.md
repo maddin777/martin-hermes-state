@@ -1,6 +1,6 @@
 # Hermes Trading Skill – Technische & Fachliche Dokumentation
 
-*Stand: Juni 2026 | System-Version nach Paketen A–D + Sprints 1–7 + Bugfix-Sprint*
+*Stand: Juni 2026 | System-Version nach Paketen A–D + Sprints 1–7 + Bugfix-Sprint + Screener-Source*
 
 ---
 
@@ -23,9 +23,10 @@ Das System läuft ohne menschliches Eingreifen, benachrichtigt aber per Telegram
 02:30  thematic/prediction_market_scanner.py  → Polymarket-Signale
 03:00  social_scanner.py          → RSS-Feeds + Twitter/X-Accounts
 03:00  thematic/thematic_pipeline.py          → Thematische Signale
-04:00  trading_pipeline.py        → Hauptpipeline (6 Scripts sequenziell):
+04:00  trading_pipeline.py        → Hauptpipeline (7 Scripts sequenziell):
          ├─ yt_channel_monitor.py      → YouTube-Transkripte holen
          ├─ signal_extractor.py        → LLM-Analyse (DeepSeek, GPT-4o-mini Fallback)
+         ├─ screener_source.py         → Deterministischer Screener (Momentum+Quality, Regime-Overlay)
          ├─ watchlist_manager.py       → Conviction berechnen + Watchlist aggregieren
          ├─ watchlist_dedup.py         → Duplikate bereinigen
          ├─ technical_validator.py     → Ticker-Auflösung + Tech-Score (NACH watchlist_manager!)
@@ -77,6 +78,21 @@ Analysiert `pending`-Videos mit **DeepSeek v4 Flash** (Fallback: GPT-4o-mini). F
 **LLM-Prompt-Regeln:** Vollständige Firmennamen, Mindestlänge 4 Zeichen, keine Ticker-Symbole im name-Feld. API-Calls haben Retry mit exponentiellem Backoff.
 
 **JSON-Rolling:** Die Signaldatei hält nur Einträge der letzten 30 Tage (verhindert unbegrenztes Wachstum).
+
+### Step 2b: Screener Source (`screener_source.py`)
+
+Zusätzliche, deterministische Kandidaten-Quelle **parallel zu YouTube/Twitter** — komplett kostenlos (nur yfinance). Läuft VOR dem Watchlist Manager und schreibt seine Treffer als Mentions einer eigenen Quelle (`channel='screener'`) in `watchlist_mentions`. Dadurch durchlaufen die Kandidaten dieselbe Conviction-Berechnung, das Tech-Scoring und den Signal Manager wie jede andere Quelle; die Quelle bekommt im `source_registry` ein eigenes Gewicht + Lifecycle-Tracking.
+
+**Ansatz** = Momentum + Trendstruktur + Katalysator, gehärtet für „best für dieses Setup":
+
+- **Technik-Gate (DRY):** nutzt `utils.get_technical_score()` (EMA-Stack, RSI, MACD, ADX, Volumen, Weekly Trend) — keine doppelte Indikator-Logik. Long verlangt `direction=LONG` + Confidence ≥ Schwelle, Short spiegelbildlich.
+- **52W-Distanz + relative Stärke:** Long nur ≤15 % unter 52W-Hoch und Outperformance vs. SPY (63d); Short spiegelbildlich nahe 52W-Tief.
+- **Quality-Gate (gegen Momentum-auf-Junk):** `quality_check()` aus yfinance-Fundamentals (ROE, Marge, Debt/Equity, Umsatzwachstum). `junk` (unprofitabel UND schrumpfend bzw. hoch verschuldet + Verlust) wird bei Longs verworfen; fehlende Daten (`unknown`, dünn gecoverte DE-Titel) ohne Penalty.
+- **Short-Seite QmJ-konform:** Spiegelbild der Long-Seite. Junk bestätigt den Short (+Bonus), hochwertige Namen bekommen einen Malus und werden ab `SHORT_MAX_QUALITY_BONUS` (Standard 1.0) ganz vom Shorten ausgeschlossen — genau die Titel, die die Long-Seite kauft. Zusätzlich werden Shorts nicht direkt am 52W-Tief eröffnet (`SHORT_MIN_PCT_ABOVE_LOW`, Standard 5 %; Squeeze-/Boden-Fishing-Schutz).
+- **Börsen-Filter:** nur handelbare Aktien (US + XETRA + West-EU via `ALLOWED_SUFFIXES`); Index-/Fonds-/Asia-Ticker aus der `companies`-Tabelle werden verworfen.
+- **Regime/Vol-Overlay (reuse):** liest das bestehende Regime aus `regime_history` (Fallback `macro_signal.json`). `bear`/High-VIX (>25) → weniger & strengere Longs, mehr Shorts; VIX >30 → Longs stark gedrosselt. Adressiert den Momentum-Crash als Hauptschwäche des Faktors.
+
+Treffer werden nach Composite-Score sortiert und auf `max_long`/`max_short` (regime-abhängig) gekappt; `strength` (strong/moderate/weak) steuert die Stärke-Gewichtung im Watchlist Manager. Ticker werden idempotent in `companies`/`company_aliases` registriert (gleiche Konvention wie `company_validator`), damit der Watchlist Manager sie wieder auflöst. Test: `python3 screener_source.py --dry-run`.
 
 ### Step 3: Watchlist Manager (`watchlist_manager.py`)
 
@@ -299,6 +315,8 @@ scripts/
 │
 ├── yt_channel_monitor.py  ← Step 1: YouTube
 ├── signal_extractor.py    ← Step 2: LLM (DeepSeek + Retry, Rolling JSON 30d)
+├── screener_source.py     ← Step 2b: Deterministischer Screener (Momentum+Quality+Regime),
+│                             schreibt Mentions als channel='screener'
 ├── watchlist_manager.py   ← Step 3: Conviction, Thesis-Boost, Stärke-Gewichtung
 ├── watchlist_dedup.py     ← Step 4: Dedup (Reihenfolge: Ticker → Name+Ticker → Name)
 ├── technical_validator.py ← Step 5: Tech-Score (NACH watchlist_manager)

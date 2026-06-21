@@ -36,14 +36,30 @@ Each item: **Überschrift** (max 10 Wörter) + 1-2 Sätze + Quellenlink in Klamm
 Konfiguration:
 - Job in `/root/.hermes/cron/jobs.json` (default DB, nicht Profil-DB)
 - `profile: hermes-news` → Runtime nutzt das Profil `.env` und `config.yaml`
-- `deliver: telegram:-1003687061880` → Delivery über den **Profil-Bot** an den News-Channel
+- `deliver: telegram` → Delivery über den **Home-Channel** des Profil-Bots
 - `model: openrouter/owl-alpha` (provider: openrouter) als Override
 
-**⚠️ PITFALL: deliver: origin vs deliver: chat_id**
-- `deliver: origin` schickt die Ausgabe an den Chat, in dem der Job erstellt wurde (meist DM)
-- `deliver: telegram:-1003687061880` schickt an den News-Kanal des Profil-Bots
-- Wenn der Job mit `profile: hermes-news` läuft, aber `deliver: origin` gesetzt ist, kommt das Briefing im DM anstatt im News-Kanal
-- Fix: `cronjob update` mit der korrekten deliver-Adresse
+**⚠️ PITFALL: KEINE explizite Chat-ID im deliver verwenden**
+- `deliver: telegram:-1003687061880` schlug mehrfach fehl mit "Chat not found"
+- Grund: Der Gateway des hermes-news Profils kennt den Kanal nur, wenn er in der
+  `channel_directory.json` des Profils eingetragen ist
+- **Fix 1:** `deliver: telegram` (nur Plattform, keine ID) — delivered in den
+  `TELEGRAM_HOME_CHANNEL` des Profils (hermes-news: auf `-1003687061880` gesetzt)
+- **Fix 2:** Falls explizite Chat-ID nötig: Channel in Profils `channel_directory.json`
+  eintragen + Gateway SIGHUP
+- Verifikation:
+  ```bash
+  source /root/.hermes/profiles/hermes-news/.env
+  curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+    -d "chat_id=${TELEGRAM_HOME_CHANNEL}" \
+    -d "text=Test" | python3 -c "import json,sys; print('✅' if json.load(sys.stdin).get('ok') else '❌')"
+  ```
+
+**⚠️ PITFALL: deliver: origin vs deliver: telegram**
+- `deliver: origin` schickt an den Erstellungs-Chat (meist DM)
+- `deliver: telegram` schickt an den Home-Channel des Profil-Bots
+- Mit `profile: hermes-news` + `deliver: origin` landet das Briefing im DM, nicht im
+  News-Kanal. Fix: `cronjob update deliver: telegram`
 
 **Warum nicht in der Profil-DB?** `cronjob create` mit `profile:` schrieb früher unvollständige Jobs in die Profil-DB (fehlende `id`, `enabled`). Der aktuelle Workaround: default Scheduler mit profile-Routing.
 

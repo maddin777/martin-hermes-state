@@ -10,6 +10,7 @@ toolsets:
 - hermes-cli
 - vision
 - web
+max_concurrent_sessions: null
 agent:
   max_turns: 90
   gateway_timeout: 1800
@@ -17,6 +18,11 @@ agent:
   api_max_retries: 3
   service_tier: ''
   tool_use_enforcement: auto
+  task_completion_guidance: true
+  parallel_tool_call_guidance: true
+  environment_probe: true
+  environment_hint: ''
+  coding_context: auto
   gateway_timeout_warning: 900
   clarify_timeout: 600
   gateway_notify_interval: 600
@@ -31,6 +37,7 @@ terminal:
   cwd: .
   timeout: 180
   env_passthrough: []
+  home_mode: auto
   shell_init_files: []
   auto_source_bashrc: true
   docker_image: nikolaik/python-nodejs:python3.11-nodejs20
@@ -39,7 +46,6 @@ terminal:
   singularity_image: docker://nikolaik/python-nodejs:python3.11-nodejs20
   modal_image: nikolaik/python-nodejs:python3.11-nodejs20
   daytona_image: nikolaik/python-nodejs:python3.11-nodejs20
-  vercel_runtime: node24
   container_cpu: 1
   container_memory: 5120
   container_disk: 51200
@@ -49,6 +55,7 @@ terminal:
   docker_extra_args: []
   docker_run_as_host_user: false
   persistent_shell: true
+  vercel_runtime: node24
   lifetime_seconds: 300
 web:
   backend: ''
@@ -69,6 +76,8 @@ browser:
     user_id: ''
     session_key: ''
     adopt_existing_tab: false
+    rewrite_loopback_urls: false
+    loopback_host_alias: host.docker.internal
 checkpoints:
   enabled: true
   max_snapshots: 50
@@ -78,7 +87,9 @@ checkpoints:
   retention_days: 7
   delete_orphans: true
   min_interval_hours: 24
+context_file_max_chars: null
 file_read_max_chars: 100000
+mcp_discovery_timeout: 1.5
 tool_output:
   max_bytes: 50000
   max_lines: 2000
@@ -102,6 +113,19 @@ compression:
   hygiene_hard_message_limit: 400
   protect_first_n: 3
   abort_on_summary_failure: false
+  codex_gpt55_autoraise: true
+kanban:
+  dispatch_in_gateway: true
+  dispatch_interval_seconds: 60
+  failure_limit: 2
+  worker_log_rotate_bytes: 2097152
+  worker_log_backup_count: 1
+  orchestrator_profile: ''
+  default_assignee: ''
+  max_in_progress_per_profile: null
+  auto_decompose: true
+  auto_decompose_per_tick: 3
+  dispatch_stale_timeout_seconds: 14400
 prompt_caching:
   cache_ttl: 5m
 openrouter:
@@ -170,6 +194,14 @@ auxiliary:
     api_key: ''
     timeout: 30
     extra_body: {}
+    language: ''
+  tts_audio_tags:
+    provider: auto
+    model: ''
+    base_url: ''
+    api_key: ''
+    timeout: 30
+    extra_body: {}
   triage_specifier:
     provider: auto
     model: ''
@@ -198,6 +230,13 @@ auxiliary:
     api_key: ''
     timeout: 600
     extra_body: {}
+  monitor:
+    provider: auto
+    model: ''
+    base_url: ''
+    api_key: ''
+    timeout: 60
+    extra_body: {}
   session_search:
     provider: auto
     model: ''
@@ -223,20 +262,27 @@ display:
   resume_max_assistant_lines: 3
   resume_skip_tool_only: true
   busy_input_mode: interrupt
+  interface: cli
   tui_auto_resume_recent: false
+  tui_agents_nudge: true
   bell_on_complete: false
   show_reasoning: false
+  memory_notifications: 'on'
   streaming: true
   timestamps: false
   final_response_markdown: strip
   persistent_output: true
   persistent_output_max_lines: 200
+  persist_prompts: true
   inline_diffs: true
   file_mutation_verifier: true
+  credits_notices: true
+  turn_completion_explainer: true
   show_cost: false
   skin: slate
   language: en
   tui_status_indicator: kaomoji
+  cli_refresh_interval: 1.0
   user_message_preview:
     first_lines: 2
     last_lines: 2
@@ -244,8 +290,13 @@ display:
   tool_progress_command: false
   tool_progress_overrides: {}
   tool_preview_length: 0
+  tool_progress_grouping: accumulate
   ephemeral_system_ttl: 0
-  platforms: {}
+  platforms:
+    telegram:
+      streaming: true
+    discord:
+      streaming: false
   runtime_footer:
     enabled: false
     fields:
@@ -258,6 +309,16 @@ display:
 dashboard:
   theme: default
   show_token_analytics: false
+  oauth:
+    client_id: ''
+    portal_url: ''
+  basic_auth:
+    username: ''
+    password_hash: ''
+    password: ''
+    secret: ''
+    session_ttl_seconds: 0
+  public_url: ''
 privacy:
   redact_pii: false
 tts:
@@ -270,6 +331,11 @@ tts:
   openai:
     model: gpt-4o-mini-tts
     voice: alloy
+  gemini:
+    model: gemini-2.5-flash-preview-tts
+    voice: Kore
+    audio_tags: false
+    persona_prompt_file: ''
   xai:
     voice_id: eve
     language: en
@@ -295,6 +361,11 @@ stt:
     model: whisper-1
   mistral:
     model: voxtral-mini-latest
+  elevenlabs:
+    model_id: scribe_v2
+    language_code: ''
+    tag_audio_events: false
+    diarize: false
 voice:
   record_key: ctrl+b
   max_recording_seconds: 120
@@ -311,6 +382,7 @@ context:
 memory:
   memory_enabled: true
   user_profile_enabled: true
+  write_approval: false
   memory_char_limit: 2200
   user_char_limit: 1375
   provider: holographic
@@ -327,6 +399,7 @@ delegation:
   child_timeout_seconds: 600
   reasoning_effort: ''
   max_concurrent_children: 3
+  max_async_children: 3
   max_spawn_depth: 1
   orchestrator_enabled: true
   subagent_auto_approve: false
@@ -343,6 +416,7 @@ skills:
   inline_shell: false
   inline_shell_timeout: 10
   guard_agent_created: false
+  write_approval: false
   creation_nudge_interval: 15
 curator:
   enabled: true
@@ -350,6 +424,8 @@ curator:
   min_idle_hours: 2
   stale_after_days: 30
   archive_after_days: 90
+  consolidate: false
+  prune_builtins: true
   backup:
     enabled: true
     keep: 5
@@ -374,11 +450,27 @@ discord:
   server_actions: ''
   allow_any_attachment: false
   max_attachment_bytes: 33554432
+  voice_fx:
+    enabled: false
+    ambient_enabled: true
+    ambient_path: ''
+    ambient_gain: 0.18
+    duck_gain: 0.06
+    speech_gain: 1.0
+    ack_enabled: true
+    ack_phrases:
+    - Let me look into that.
+    - One moment.
+    - Checking on that now.
+    - Give me a sec.
+    - On it.
 whatsapp: {}
 telegram:
   reactions: false
   channel_prompts: {}
   allowed_chats: ''
+  extra:
+    rich_messages: true
 mattermost:
   require_mention: true
   free_response_channels: ''
@@ -409,6 +501,7 @@ command_allowlist:
 - script execution via heredoc
 - in-place edit of system config
 quick_commands: {}
+platform_hints: {}
 hooks: {}
 hooks_auto_accept: false
 personalities: {}
@@ -426,23 +519,24 @@ security:
   acked_advisories: []
   allow_lazy_installs: true
 cron:
+  provider: ''
+  chronos:
+    portal_url: https://portal.nousresearch.com
+    callback_url: ''
+    expected_audience: ''
+    nas_jwks_url: ''
   wrap_response: true
   max_parallel_jobs: null
-kanban:
-  dispatch_in_gateway: true
-  dispatch_interval_seconds: 60
-  failure_limit: 2
-  worker_log_rotate_bytes: 2097152
-  worker_log_backup_count: 1
-  orchestrator_profile: ''
-  default_assignee: ''
-  auto_decompose: true
-  auto_decompose_per_tick: 3
-  dispatch_stale_timeout_seconds: 14400
 code_execution:
   mode: project
   max_tool_calls: 50
   timeout: 300
+tools:
+  tool_search:
+    enabled: auto
+    threshold_pct: 10
+    search_default_limit: 5
+    max_search_limit: 20
 logging:
   level: INFO
   max_size_mb: 5
@@ -453,14 +547,24 @@ logging:
 model_catalog:
   enabled: true
   url: https://hermes-agent.nousresearch.com/docs/api/model-catalog.json
-  ttl_hours: 24
+  ttl_hours: 1
   providers: {}
 network:
   force_ipv4: false
 gateway:
+  message_timestamps:
+    enabled: false
+  strict: false
   media_delivery_allow_dirs: []
   trust_recent_files: true
   trust_recent_files_seconds: 600
+streaming:
+  enabled: false
+  transport: auto
+  edit_interval: 0.8
+  buffer_threshold: 24
+  cursor: " \u2589"
+  fresh_final_after_seconds: 0.0
 sessions:
   auto_prune: false
   retention_days: 90
@@ -471,9 +575,11 @@ onboarding:
   seen:
     tool_progress_prompt: true
     busy_input_prompt: true
+  profile_build: ask
 updates:
   pre_update_backup: false
   backup_keep: 5
+  non_interactive_local_changes: stash
 lsp:
   enabled: true
   wait_mode: document
@@ -495,7 +601,8 @@ secrets:
     server_url: ''
 paste_collapse_threshold: 5
 paste_collapse_threshold_fallback: 0
-_config_version: 24
+paste_collapse_char_threshold: 2000
+_config_version: 30
 group_sessions_per_user: true
 platform_toolsets:
   cli:
@@ -542,8 +649,6 @@ session_reset:
   at_hour: 4
   idle_minutes: 1440
   mode: both
-streaming:
-  enabled: false
 known_plugin_toolsets:
   cli:
   - spotify
