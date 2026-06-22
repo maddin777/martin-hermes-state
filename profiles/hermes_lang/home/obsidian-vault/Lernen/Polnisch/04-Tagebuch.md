@@ -51,3 +51,64 @@
 10. **Tutaj**
 
 Lektion #20 abgeschlossen.
+
+
+### Lektion #21
+
+**1. Słownictwo (Top 500)**
+1. **człowiek** `Mensch`
+2. **czas** `Zeit`
+3. **rok** `Jahr`
+4. **wiedzieć** `wissen`
+5. **mówić** `sprechen`
+6. **dobry** `gut`
+7. **dom** `Haus`
+8. **życie** `Leben`
+9. **praca** `Arbeit`
+10. **miasto** `Stadt`
+
+**2. n+1 Sentence Mining**
+1. **Ten człowiek jest miły.** `Dieser Mensch ist nett.`
+2. **Mam mało czasu.** `Ich habe wenig Zeit.`
+3. **W tym roku jest ciepło.** `In diesem Jahr ist es warm.`
+4. **Ja nie wiem.** `Ich weiß nicht.`
+5. **On mówi po polsku.** `Er spricht Polnisch.`
+6. **To jest dobry dzień.** `Das ist ein guter Tag.`
+7. **Mój dom jest duży.** `Mein Haus ist groß.`
+8. **Życie jest piękne.** `Das Leben ist schön.`
+9. **Szukam pracy.** `Ich suche Arbeit.`
+10. **To jest duże miasto.** `Das ist eine große Stadt.`
+
+**3. Gramatyka (Aspekt & Przypadki)**
+*   **Aspekt (Czasowniki):**
+    *   **mówić** (imperf.) `sprechen` | **powiedzieć** (perf.) `sagen`
+    *   **pisać** (imperf.) `schreiben` | **napisać** (perf.) `schreiben (geschrieben)`
+*   **Przypadki (Rzeczowniki):**
+    *   **dom** (Bierlat / Genitiv): `do domu` `nach Hause`
+    *   **praca** (Lokativ): `w pracy` `bei der Arbeit`
+
+**4. Quiz (Lückentext)**
+1. **Ten ___ jest bardzo wysoki.** `Dieser Mensch ist sehr groß.`
+2. **Nie mam ___ na zabawę.** `Ich habe keine Zeit zum Spielen.`
+3. **To był bardzo dobry ___ .** `Das war ein sehr gutes Jahr.`
+4. **Czy ty to ___ ?** `Weißt du das?`
+5. **Ona ___ bardzo szybko.** `Sie spricht sehr schnell.`
+6. **To jest ___ prezent.** `Das ist ein guter Geschenkt.` (Wait, 'dobry prezent' - corrected: **To jest ___ prezent.** `Das ist ein guter Geschenkt.`)
+7. **Mieszkam w tym ___.** `Ich wohne in diesem Haus.`
+8. **Nasze ___ jest trudne.** `Unser Leben ist schwer.`
+9. **Gdzie jest Twoja ___ ?** `Wo ist deine Arbeit?`
+10. **Kocham to ___.** `Ich liebe diese Stadt.`
+
+**5. Rozwiązania**
+1. **człowiek**
+2. **czasu**
+3. **rok**
+4. **wiesz**
+5. **mówi**
+6. **dobry**
+7. **domu**
+8. **życie**
+9. **praca**
+10. **miasto**
+
+Lektion #21 abgeschlossen.

@@ -812,7 +812,7 @@ def build_html(data):
 
     return f"""<!DOCTYPE html>
 <html lang="de"><head>
-<meta charset="UTF-8"><meta http-equiv="refresh" content="60">
+<meta charset="UTF-8"><meta http-equiv="refresh" content="900">
 <title>Hermes Trading Dashboard</title>
 <style>
     :root {{ --bg:#0a0a12; --card:#151525; --border:#2a2a4a; --accent:#00d4ff; --text:#e0e0e0; }}

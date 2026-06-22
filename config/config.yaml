@@ -418,6 +418,10 @@ skills:
   guard_agent_created: false
   write_approval: false
   creation_nudge_interval: 15
+  disabled:
+  - claude-code
+  - codex
+  - pokemon-player
 curator:
   enabled: true
   interval_hours: 168

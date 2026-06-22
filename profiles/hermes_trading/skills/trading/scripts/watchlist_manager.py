@@ -522,7 +522,10 @@ def main():
             )
     
             # --- Validierungs-Pipeline (Paket B): Cache-Hit, neue Firma anlegen, oder skippen ---
-            result = validate_and_register(name)
+            # con wird durchgereicht -> alle DB-Zugriffe der Validierung laufen auf
+            # DERSELBEN Connection (kein Lock-Konflikt mit der offenen Loop-Transaktion,
+            # Negativ-Cache kann schreiben).
+            result = validate_and_register(name, con=con)
             if result["status"] == "rejected":
                 # Krypto, Indizes, abgeschnittene Namen, Mehrdeutigkeiten -> skip
                 continue

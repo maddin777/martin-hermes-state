@@ -196,6 +196,75 @@ Die Referenz enthält 23 klassifizierte Unternehmen plus Implementierungsvorschl
 - Pipeline läuft länger als 1h → Watchlist Update zu langsam (Grok/yfinance API)
 | `Finnhub 403` → API-Key abgelaufen oder limitiert (siehe `references/finnhub-api-key-management.md`)
 | `pos.get("asset_type")` → Pitfall 16 (sqlite3.Row) — `pos["asset_type"] if "asset_type" in pos.keys() else "STANDARD"` verwenden
+| **`cron_health.py` ❌ false-positive** → Timing-Konflikt: `cron-health-daily` und `strategy_optimizer` starten beide um 08:00 (Sonntag). Der Optimizer braucht ~2 Min, der Health-Check findet nur START ohne DONE → flagged als crashed. Fix: staggered Schedules (z.B. health um 08:30).
+| **Channel in CHANNELS_FALLBACK aber nicht in source_registry** → `yt_channel_monitor.py` liest Kanäle aus der `source_registry`-DB. Die `CHANNELS_FALLBACK` wird NUR genutzt wenn `source_registry` komplett leer ist. Ein Kanal der nur in der Fallback-Liste steht wird **stumm übersprungen** — kein "[Kanal] Scanning..." im Log. Fix: `INSERT OR IGNORE INTO source_registry (source_type, source_key, display_name, status, enabled) VALUES ('youtube', '<url>', '<name>', 'active', 1)`.
+
+### Manuelles Nachholen eines YouTube-Kanals (außerhalb der Pipeline)
+
+Wenn ein Kanal neu in die `source_registry` aufgenommen wurde, aber die Pipeline
+erst morgen früh um 04:00 läuft:
+
+1. **Videos scannen und in DB einfügen:**
+   ```python
+   from config import db_connect
+   from scripts.yt_channel_monitor import get_recent_video_ids, get_video_meta, get_transcript
+   
+   con = db_connect()
+   url = 'https://www.youtube.com/@Handle'
+   name = 'Kanalname'
+   
+   video_ids = get_recent_video_ids(url, 30)
+   for vid_id in video_ids:
+       existing = con.execute('SELECT video_id FROM videos WHERE video_id=?', (vid_id,)).fetchone()
+       if existing:
+           print(f'  ⏭ {vid_id} bereits in DB')
+           continue
+       date_str, title = get_video_meta(vid_id)
+       if not date_str or not title:
+           print(f'  ⚠ {vid_id} keine Metadaten')
+           continue
+       transcript = get_transcript(vid_id)
+       con.execute('INSERT OR IGNORE INTO videos (video_id, channel, title, upload_date, transcript, status) VALUES (?, ?, ?, ?, ?, ?)',
+           (vid_id, name, title, date_str, transcript, 'new'))
+       print(f'  📹 {title} ({date_str})')
+   con.commit()
+   ```
+
+2. **Signal-Extraktion für die neuen Videos triggern:**
+   ```python
+   from config import db_connect
+   from scripts.signal_extractor import analyze
+   
+   con = db_connect()
+   videos = con.execute(
+       "SELECT * FROM videos WHERE channel = '<Name>' AND status = 'new' ORDER BY upload_date DESC"
+   ).fetchall()
+   
+   for row in videos:
+       if not row['transcript']:
+           continue
+       result = analyze(row['transcript'], row['channel'], row['title'], row['upload_date'])
+       result['source'] = {'channel': row['channel'], 'title': row['title'], 
+                           'date': row['upload_date'], 'video_id': row['video_id']}
+       con.execute("UPDATE videos SET status='done', analyzed_at=? WHERE video_id=?",
+           (datetime.now().isoformat(), row['video_id']))
+       con.commit()
+       print(f"✓ {len(result.get('companies',[]))} Unternehmen: {[c['name'] for c in result.get('companies',[])]}")
+   ```
+
+3. **Channel-Statistik im Dashboard aktualisieren:** Die Source-Seite zeigt
+   Mentions aus `watchlist_mentions`. Nach der Signal-Extraktion muss der
+   `watchlist_manager` oder `signal_manager` laufen um die neuen Signale in
+   die Watchlist zu überführen. Falls das Dashboard noch 0 anzeigt, liegt's
+   daran dass dieser Schritt noch aussteht — die Pipeline macht das morgen früh.
+
+**Pitfall `videos`-Tabellen-Schema:** Die `videos`-Tabelle hat KEINE `id`-Spalte.
+`video_id` ist der Primärschlüssel (TEXT). Bei `SELECT` immer `WHERE video_id=?`
+verwenden, nicht `WHERE id=?`.
+
+⚠ **Kosten:** Die Signal-Extraktion nutzt OpenRouter (DeepSeek, Fallback gpt-4o-mini).
+Pro Video fallen 1-2 API-Calls an (je nach Chunk-Anzahl). Bei vielen Videos
+lieber die nächste Pipeline abwarten.
 
 ### Diagnose: Pipeline läuft nicht
 

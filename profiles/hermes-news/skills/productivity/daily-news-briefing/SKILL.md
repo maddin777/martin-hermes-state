@@ -29,169 +29,56 @@ Standard 4-section briefing (Martins Konfiguration), max 5 items per section:
 
 Each item: **Überschrift** (max 10 Wörter) + 1-2 Sätze + Quellenlink in Klammern.
 
-## Delivery Model (CRITICAL — Job im Profil-eigenen Scheduler)
+## Delivery Model (CRITICAL — Profile Cron)
 
-**Dieses Briefing läuft im Scheduler des hermes-news Profils** — NICHT im default Scheduler.
-Der Job lebt in `/root/.hermes/profiles/hermes-news/cron/jobs.json` und wird vom
-Gateway des hermes-news Profils getaktet.
+**Dieses Briefing läuft im default Scheduler mit `profile: hermes-news`.**
 
-### Voraussetzung: Profil-Gateway läuft
+Konfiguration:
+- Job in `/root/.hermes/cron/jobs.json` (default DB, nicht Profil-DB)
+- `profile: hermes-news` → Runtime nutzt das Profil `.env` und `config.yaml`
+- `deliver: telegram` → Delivery über den **Home-Channel** des Profil-Bots
+- `model: openrouter/owl-alpha` (provider: openrouter) als Override
 
-Der Gateway des Ziel-Profils muss aktiv sein, sonst tickt der Scheduler nicht:
+**⚠️ PITFALL: KEINE explizite Chat-ID im deliver verwenden**
+- `deliver: telegram:-1003687061880` schlug mehrfach fehl mit "Chat not found"
+- Grund: Der Gateway des hermes-news Profils kennt den Kanal nur, wenn er in der
+  `channel_directory.json` des Profils eingetragen ist
+- **Fix 1:** `deliver: telegram` (nur Plattform, keine ID) — delivered in den
+  `TELEGRAM_HOME_CHANNEL` des Profils (hermes-news: auf `-1003687061880` gesetzt)
+- **Fix 2:** Falls explizite Chat-ID nötig: Channel in Profils `channel_directory.json`
+  eintragen + Gateway SIGHUP
+- Verifikation:
+  ```bash
+  source /root/.hermes/profiles/hermes-news/.env
+  curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+    -d "chat_id=${TELEGRAM_HOME_CHANNEL}" \
+    -d "text=Test" | python3 -c "import json,sys; print('✅' if json.load(sys.stdin).get('ok') else '❌')"
+  ```
 
-```bash
-# Prüfen: Gateway läuft?
-cat /root/.hermes/profiles/hermes-news/gateway_state.json | python3 -c "import json,sys; d=json.load(sys.stdin); print('✅ Running' if d.get('gateway_state')=='running' else '❌ Dead')"
-# Telegram verbunden?
-cat /root/.hermes/profiles/hermes-news/gateway_state.json | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('platforms',{}).get('telegram',{}).get('state','❌'))"
-```
+**⚠️ PITFALL: deliver: origin vs deliver: telegram**
+- `deliver: origin` schickt an den Erstellungs-Chat (meist DM)
+- `deliver: telegram` schickt an den Home-Channel des Profil-Bots
+- Mit `profile: hermes-news` + `deliver: origin` landet das Briefing im DM, nicht im
+  News-Kanal. Fix: `cronjob update deliver: telegram`
 
-Falls der Gateway nicht läuft: `systemctl start hermes-gateway-hermes-news.service`
+**Warum nicht in der Profil-DB?** `cronjob create` mit `profile:` schrieb früher unvollständige Jobs in die Profil-DB (fehlende `id`, `enabled`). Der aktuelle Workaround: default Scheduler mit profile-Routing.
 
-### Konfiguration
-
-Job-Struktur in der Profil-Cron-DB (`/root/.hermes/profiles/<profil>/cron/jobs.json`):
-
-```json
-{
-  "id": "<hash>",            // selbst generiert (z.B. md5(name+ts)[:11])
-  "name": "daily-news-briefing",
-  "prompt": "...",
-  "skills": ["daily-news-briefing"],
-  "skill": "daily-news-briefing",
-  "model": "openrouter/owl-alpha",
-  "provider": "openrouter",
-  "schedule": {"kind": "cron", "expr": "0 6 * * *", "display": "0 6 * * *"},
-  "deliver": "telegram",       // → TELEGRAM_HOME_CHANNEL des Profil-Bots
-  "state": "scheduled",
-  "enabled": true,
-  "repeat": {"times": null, "completed": 0},
-  "no_agent": false,
-  "enabled_toolsets": ["web", "terminal", "file", "browser"]
-}
-```
-
-**Wichtig:** Der Skill (`daily-news-briefing`) muss auch im Profil-Verzeichnis existieren:
-```bash
-cp -r /root/.hermes/skills/productivity/daily-news-briefing /root/.hermes/profiles/<profil>/skills/productivity/
-```
-
-### Anlegen eines Profil-Cron-Jobs (Python)
-
-Das `cronjob`-Tool arbeitet NUR im default Scheduler. Für Profil-Crons direkt ins JSON schreiben:
-
-```python
-import json, hashlib
-from datetime import datetime, timezone, timedelta
-
-path = "/root/.hermes/profiles/hermes-news/cron/jobs.json"
-data = json.load(open(path))
-
-job = {
-    "id": hashlib.md5(f"job-name-{datetime.now().isoformat()}".encode()).hexdigest()[:11],
-    "name": "daily-news-briefing",
-    "prompt": "<prompt>",
-    "skills": ["daily-news-briefing"],
-    "model": "openrouter/owl-alpha",
-    "provider": "openrouter",
-    "schedule": {"kind": "cron", "expr": "0 6 * * *", "display": "0 6 * * *"},
-    "enabled": True,
-    "state": "scheduled",
-    "deliver": "telegram",
-    "repeat": {"times": None, "completed": 0},
-    "no_agent": False,
-    "enabled_toolsets": ["web", "terminal", "file", "browser"]
-}
-
-data["jobs"].append(job)
-data["updated_at"] = datetime.now(timezone(timedelta(hours=2))).isoformat()
-
-with open(path, "w", encoding="utf-8") as f:
-    json.dump(data, f, indent=2, default=str)
-```
-
-Danach Gateway neustarten (falls nötig — der Scheduler liest live):
-```bash
-systemctl restart hermes-gateway-<profil>
-```
-
-### ⚠️ VERALTET — Nicht mehr verwenden
-
-Der frühere Workaround (Job im default Scheduler mit `profile: hermes-news`)
-DELIVERT NICHT an den Profil-Channel. Der default Scheduler verwendet immer
-seinen eigenen Bot-Token für die Zustellung, unabhängig vom `profile`-Parameter.
-Das Briefing landet dann im DM statt im News-Kanal.
-
-### Migration: Job aus default Scheduler → Profil-Scheduler
-
-Wenn der Job noch im default Scheduler läuft und in den Profil-Scheduler umziehen soll:
-
-1. **Job im default Scheduler löschen:**
-   ```
-   hermes cron remove <job-id>
-   ```
-
-2. **Skill ins Profil kopieren:**
-   ```bash
-   cp -r /root/.hermes/skills/productivity/daily-news-briefing /root/.hermes/profiles/<profil>/skills/productivity/
-   ```
-
-3. **Profil-Gateway prüfen (muss laufen):**
-   ```bash
-   cat /root/.hermes/profiles/<profil>/gateway_state.json | python3 -c "import json,sys; d=json.load(sys.stdin); print('✅' if d.get('gateway_state')=='running' else '❌')"
-   ```
-   Falls nicht: `systemctl start hermes-gateway-<profil>.service`
-
-4. **Job in Profil-Cron-DB anlegen** (siehe Python-Snippet unter "Anlegen eines Profil-Cron-Jobs").
-
-### ⚠️ Bekanntes Problem: cron_health.py false-positives
-
-Der `cron_health.py` Check (Job `cron-health-daily`) kann ❌ für Jobs melden,
-die parallel zu ihm laufen. Der Health-Check liest `cron.log` und markiert einen Job
-als "crashed" wenn sein Log-Block ein `START` aber noch kein `DONE/✅` enthält.
-
-**Betroffen:** Jobs die zur gleichen Minute wie der Health-Check starten (08:00)
-und länger als ein paar Sekunden brauchen.
-
-**Diagnose:** Im Dashboard oder per `grep` prüfen ob der betreffende Job
-tatsächlich `✅ ... abgeschlossen` im Log hat — wenn ja, ist es ein Timing-Problem.
-
-**Fix:** `cron-health-daily` auf 08:30 verschieben, sodass alle 08:00-Jobs
-durch sind bevor er checkt.
-
-### Verifikation
+### Manuelles Triggern
 
 ```bash
+# Verifikation: Bot im Channel?
 source /root/.hermes/profiles/hermes-news/.env
 curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
   -d "chat_id=${TELEGRAM_HOME_CHANNEL}" \
   -d "text=Test" | python3 -c "import json,sys; print('✅' if json.load(sys.stdin).get('ok') else '❌')"
 ```
 
-### Manuelles Triggern (Profil-Kontext)
+### Cron Job Lebenszyklus
 
-Nach Änderungen am Prompt oder Skill den nächsten scheduled Run abwarten (06:00)
-oder den Gateway neustarten, damit er den Job sofort triggert:
-
-```bash
-systemctl restart hermes-gateway-hermes-news.service
-```
-
-Verifikation dass der Bot im Channel ist:
-```bash
-source /root/.hermes/profiles/hermes-news/.env
-curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
-  -d "chat_id=${TELEGRAM_HOME_CHANNEL}" \
-  -d "text=Test" | python3 -c "import json,sys; print('✅' if json.load(sys.stdin).get('ok') else '❌')"
-```
-
-### Cron Job Lebenszyklus (Profil-Cron)
-
-Der Job lebt in `/root/.hermes/profiles/hermes-news/cron/jobs.json`.
-Nach jeder Änderung am Prompt oder Skill:
-1. Prompt in der Profil-`jobs.json` per Python-json.dump updaten
-2. Gateway neustarten: `systemctl restart hermes-gateway-hermes-news.service`
-3. Verifikation: `journalctl -u hermes-gateway-hermes-news.service --since "1 min ago"`
+Der Job läuft täglich um 06:00. Nach jeder Änderung am Prompt oder Skill:
+1. Prompt in `/root/.hermes/cron/jobs.json` per Python-json.dump updaten
+2. Kein Gateway-Neustart nötig (default Scheduler liest live)
+3. Nächsten Lauf abwarten oder `hermes cron run <job_id>` triggern
 
 ## Workflow
 
@@ -332,10 +219,9 @@ Wenn du das Briefing nicht selbst erstellst sondern an einen Subagenten delegier
 | Deutschland & Nordeuropa | NDR, Ostsee-Zeitung, Welt, Nordkurier, SVT (Schweden), DR (Dänemark), YLE (Finnland), Gazeta Wyborcza (Polen) |
 | Wetter & Wasser | Open-Meteo API (wetter), wassertemperatur.org / seatemperature.org (Browser) |
 
-## Cron Job Constraints (Profil-eigener Scheduler)
+## Cron Job Constraints (Default Scheduler + Profile Runtime)
 
-This job runs in the **hermes-news profile's own scheduler**, NOT the default Hermes scheduler.
-Delivery goes through the **profile's own Telegram bot** to the profile's TELEGRAM_HOME_CHANNEL.
+This job runs in the **default Hermes scheduler** with `profile: hermes-news` for runtime context. Delivery goes through the **main DM bot**, NOT through a profile-specific bot.
 
 Key constraints for the agent running this cron:
 - `execute_code` is **blocked** in cron mode — do not attempt it
@@ -343,25 +229,10 @@ Key constraints for the agent running this cron:
 - `curl | python3` pipe is **safe in terminal() calls** (non-cron runs) but blocked in cron
 - In cron mode: save RSS to `/tmp/` then `read_file`
 - No user interaction possible — make autonomous decisions
-- Final response is auto-delivered by the profile's gateway — do NOT use `send_message` or `curl`-based Telegram API calls
-- **Delivery goes to the profile's TELEGRAM_HOME_CHANNEL** via the profile's bot
+- Final response is auto-delivered by the scheduler — do NOT use `send_message` or `curl`-based Telegram API calls
+- **Delivery goes to this chat** (main DM), not to a profile channel
+- For profile-specific delivery (e.g. to a news channel): see `hermes-profile-management` Skill, §Cross-Profile Cron
 - For verification after manual trigger: `source /root/.hermes/profiles/hermes-news/.env && curl -s https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage...`
-- **Profile gateway must be running** for the scheduler to tick. Check via `gateway_state.json`.
-
-### Timing Conflicts with cron_health.py
-
-⚠️ **Der `cron_health.py` Check (Job `cron-health-daily`) kann false-positive ❌ melden**
-wenn er gleichzeitig mit einem anderen Cron-Job läuft.
-
-**Mechanismus:** `cron_health.py` liest `cron.log` und sucht nach `=== DATUM === jobname START ===`-Markern.
-Für jeden gefundenen START prüft er, ob der Block ein `✅ ... abgeschlossen` oder `✅ ... DONE` enthält.
-Wenn der Job noch läuft (nur START, noch kein DONE im Log), wird er als `❌ crashed` gemeldet.
-
-**Bekannter Konflikt:** `strategy_optimizer` (Sonntag 08:00) und `cron-health-daily` (08:00)
-laufen parallel. Der Optimizer braucht ~2 Minuten → Health-Check findet nur START ohne DONE.
-
-**Fix:** Staggered Schedules — z.B. `cron-health-daily` auf `30 8 * * *` (08:30) verschieben.
-Der Optimizer ist dann längst durch.
 
 ## Firecrawl Credit Exhaustion (Dauerzustand)
 

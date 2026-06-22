@@ -130,16 +130,22 @@ def _name_similarity(a: str, b: str) -> float:
     return SequenceMatcher(None, a.lower(), b.lower()).ratio()
 
 
-def _check_reject_cache(name: str):
+def _check_reject_cache(name: str, con=None):
     """
     Negativ-Cache-Lookup. Returns ein rejected-Result-Dict bei Cache-Hit
     (innerhalb TTL), sonst None. Degradiert still, falls Tabelle fehlt.
+
+    con: optionale geteilte Connection. Wenn übergeben, wird NICHT committed/
+    geschlossen (der Aufrufer besitzt die Transaktion) — verhindert Lock-Konflikte,
+    wenn der watchlist_manager-Loop bereits eine Schreibtransaktion offen hält.
     """
-    if not Path(DB_PATH).is_file():
+    own = con is None
+    if own and not Path(DB_PATH).is_file():
         return None
     try:
         key = name.lower().strip()
-        con = db_connect()
+        if own:
+            con = db_connect()
         row = con.execute("""
             SELECT reason, ticker FROM validation_rejects
             WHERE name_key = ? AND rejected_at > datetime('now', ?)
@@ -147,22 +153,32 @@ def _check_reject_cache(name: str):
         if row:
             con.execute("UPDATE validation_rejects SET hit_count = hit_count + 1 "
                         "WHERE name_key = ?", (key,))
-            con.commit()
-            con.close()
+            if own:
+                con.commit()
             return {"status": "rejected", "ticker": row["ticker"],
                     "reason": row["reason"], "details": {"cached": True}}
-        con.close()
     except Exception:
         pass  # Tabelle fehlt o.ä. -> normaler Pfad (kein Speedup, aber korrekt)
+    finally:
+        if own and con is not None:
+            try:
+                con.close()
+            except Exception:
+                pass
     return None
 
 
-def _cache_reject(name: str, reason: str, ticker, details):
-    """Schreibt deterministische Rejects in den Negativ-Cache (transiente NICHT)."""
+def _cache_reject(name: str, reason: str, ticker, details, con=None):
+    """
+    Schreibt deterministische Rejects in den Negativ-Cache (transiente NICHT).
+    con: optionale geteilte Connection (siehe _check_reject_cache).
+    """
     if reason not in _CACHEABLE_REJECTS:
         return
+    own = con is None
     try:
-        con = db_connect()
+        if own:
+            con = db_connect()
         con.execute("""
             INSERT INTO validation_rejects (name_key, reason, ticker, details, rejected_at, hit_count)
             VALUES (?, ?, ?, ?, datetime('now'), 1)
@@ -170,10 +186,16 @@ def _cache_reject(name: str, reason: str, ticker, details):
                 reason=excluded.reason, ticker=excluded.ticker,
                 details=excluded.details, rejected_at=datetime('now')
         """, (name.lower().strip(), reason, ticker, str(details or {})[:200]))
-        con.commit()
-        con.close()
+        if own:
+            con.commit()
     except Exception:
         pass  # z.B. Tabelle noch nicht migriert -> still ignorieren
+    finally:
+        if own and con is not None:
+            try:
+                con.close()
+            except Exception:
+                pass
 
 
 # --- Public API ---
@@ -211,7 +233,7 @@ def _resolve_isin_ticker(name_or_ticker: str) -> str | None:
     return None
 
 
-def validate(name: str) -> dict:
+def validate(name: str, con=None) -> dict:
     """
     Validiert einen Firmennamen, OHNE DB-Write.
     Reihenfolge der Checks: cache -> yf.Search -> quoteType -> name-sim -> liquidity.
@@ -239,7 +261,7 @@ def validate(name: str) -> dict:
     # === Step 2: yf.Search ===
     # Negativ-Cache zuerst: spart den teuren yfinance-Gauntlet für bereits
     # abgelehnte Namen (Tippfehler, nicht-börsennotierte Entitäten etc.).
-    cached_reject = _check_reject_cache(name)
+    cached_reject = _check_reject_cache(name, con=con)
     if cached_reject is not None:
         return cached_reject
     try:
@@ -252,7 +274,7 @@ def validate(name: str) -> dict:
 
     if not quotes:
         _log_reject(name, None, "unknown", "yf.Search returned no quotes")
-        _cache_reject(name, "unknown", None, {"quotes_count": 0})
+        _cache_reject(name, "unknown", None, {"quotes_count": 0}, con=con)
         return {"status": "rejected", "ticker": None, "reason": "unknown",
                 "details": {"quotes_count": 0}}
 
@@ -348,25 +370,28 @@ def validate(name: str) -> dict:
     # Kein Kandidat hat alle Checks bestanden -> Reject mit dem besten Fehlergrund
     _log_reject(name, rejection_ticker, rejection_reason or "unknown",
                 str(rejection_details or {})[:200])
-    _cache_reject(name, rejection_reason or "unknown", rejection_ticker, rejection_details)
+    _cache_reject(name, rejection_reason or "unknown", rejection_ticker, rejection_details, con=con)
     return {"status": "rejected",
             "ticker": rejection_ticker,
             "reason": rejection_reason or "unknown",
             "details": rejection_details or {}}
 
-def validate_and_register(name: str) -> dict:
+def validate_and_register(name: str, con=None) -> dict:
     """
     Validiert UND schreibt bei status='accepted' in companies + company_aliases.
-    
+
+    con: optionale geteilte Connection. Wenn übergeben (z.B. aus dem
+    watchlist_manager-Loop), laufen ALLE DB-Zugriffe der Validierungskette
+    über diese eine Connection — kein Lock-Konflikt mit einer offenen äußeren
+    Schreibtransaktion, und der Negativ-Cache kann tatsächlich schreiben.
+    Bei con=None: alte Standalone-Semantik (eigene Connection + commit/close).
+
     Reihenfolge:
     1. validate(name) aufrufen
     2. Wenn 'accepted': INSERT in DB (idempotent via INSERT OR IGNORE)
-    3. Cache _TICKER_CACHE wird NICHT direkt aktualisiert - 
-       neue Einträge sind erst beim nächsten Modul-Import sichtbar.
-       (Akzeptabel weil der Cron-Lauf einmalig läuft.)
     """
-    result = validate(name)
-    
+    result = validate(name, con=con)
+
     if result["status"] != "accepted":
         return result  # rejected oder already_known: nichts zu tun
 
@@ -374,9 +399,11 @@ def validate_and_register(name: str) -> dict:
     details = result["details"]
     alias   = name.lower().strip()
 
+    own = con is None
     try:
-        con = db_connect()
-        con.execute("PRAGMA foreign_keys = ON")
+        if own:
+            con = db_connect()
+            con.execute("PRAGMA foreign_keys = ON")
         cur = con.cursor()
 
         # 1. Insert in companies (idempotent: falls Ticker durch parallelen Lauf
@@ -408,11 +435,17 @@ def validate_and_register(name: str) -> dict:
         # 3. Falls dieser Name früher mal abgelehnt war: Negativ-Cache bereinigen
         cur.execute("DELETE FROM validation_rejects WHERE name_key = ?", (alias,))
 
-        con.commit()
-        con.close()
+        if own:
+            con.commit()
     except Exception as e:
         # DB-Insert fehlgeschlagen - validate-Ergebnis ist trotzdem korrekt
         result["details"]["db_insert_error"] = str(e)[:100]
+    finally:
+        if own and con is not None:
+            try:
+                con.close()
+            except Exception:
+                pass
 
     return result
 

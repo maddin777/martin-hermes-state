@@ -1,4 +1,51 @@
 {
-  "jobs": [],
-  "updated_at": "2026-06-17T07:35:00.000000+02:00"
+  "jobs": [
+    {
+      "id": "458eff51f9f",
+      "name": "daily-news-briefing",
+      "prompt": "Erstelle das t\u00e4gliche Morgen-Briefing (06:00) \u2014 folge dem daily-news-briefing Skill exakt. 5 Sektionen: Politik & Internationales, Finanzen & Wirtschaft, IT & KI, Deutschland & Nordeuropa, Wetter & Wassertemperaturen. Nutze Google News RSS per curl, Open-Meteo f\u00fcr Wetter, Browser f\u00fcr Wassertemperaturen (Firecrawl-Credits sind leer). KEINE leeren Sektionen. Max 3000 Zeichen pro Nachricht, aufteilen auf bis zu 5 Nachrichten. Alle Quellen angeben. \u00dcbersetzte internationale Quellen auf Deutsch.",
+      "skills": [
+        "daily-news-briefing"
+      ],
+      "skill": "daily-news-briefing",
+      "model": "openrouter/owl-alpha",
+      "provider": "openrouter",
+      "base_url": null,
+      "script": null,
+      "no_agent": false,
+      "context_from": null,
+      "schedule": {
+        "kind": "cron",
+        "expr": "0 6 * * *",
+        "display": "0 6 * * *"
+      },
+      "schedule_display": "0 6 * * *",
+      "repeat": {
+        "times": null,
+        "completed": 0
+      },
+      "enabled": true,
+      "state": "scheduled",
+      "paused_at": null,
+      "paused_reason": null,
+      "created_at": "2026-06-21T08:57:39.020283+02:00",
+      "next_run_at": null,
+      "last_run_at": null,
+      "last_status": null,
+      "last_error": null,
+      "last_delivery_error": null,
+      "deliver": "telegram",
+      "origin": null,
+      "enabled_toolsets": [
+        "web",
+        "terminal",
+        "file",
+        "browser"
+      ],
+      "workdir": null,
+      "profile": null,
+      "fire_claim": null
+    }
+  ],
+  "updated_at": "2026-06-21T08:57:39.020310+02:00"
 }

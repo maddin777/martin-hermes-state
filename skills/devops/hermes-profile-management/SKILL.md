@@ -505,6 +505,67 @@ Cron jobs created with `skills: [profile-spezifischer-skill]` can disappear from
 6. Gateway logs? Check `journalctl -u hermes-gateway-<profile> --no-pager -n 20`.
 7. Profile .env has OPENROUTER_API_KEY and correct TELEGRAM_BOT_TOKEN?
 
+### Cron-Health Timing-Konflikt
+
+Wenn ein Health-Check-Job (`cron_health.py`, no_agent) und ein anderer Job zur
+**gleichen Uhrzeit** laufen, kann der Health-Check den anderen Job fälschlich als
+❌ (failed) melden — weil er den Log-Block prüft bevor der Job fertig ist.
+
+**Beispiel:** cron-health-daily um 08:00, strategy_optimizer um 08:00 (Sonntag).
+Der Optimizer braucht ~2 Minuten. Der Health-Check um 08:00:01 findet nur "START"
+ohne "DONE" → flagged als crashed.
+
+**Diagnose:** Vergleiche die Startzeiten beider Jobs in der Cron-Liste und im
+cron.log. Wenn der Health-Check und der Ziel-Job die gleiche Startzeit haben,
+liegt ein Timing-Konflikt vor.
+
+**Fix:** Den Health-Check auf 30 Minuten nach dem letzten geprüften Job verschieben:
+```bash
+hermes cron update <job_id> --schedule "30 8 * * *"   # 08:30 statt 08:00
+```
+Oder den geprüften Job früher starten lassen.
+
+### Gateway-Restart killt Kindprozesse
+
+Ein `hermes gateway restart --system` sendet SIGTERM an den laufenden Prozess.
+Wenn andere Dienste als Kindprozesse des Gateways laufen (z.B. ein Dashboard-Server
+der per `nohup` oder `&` im gleichen Terminal gestartet wurde), werden diese
+**ebenfalls gekillt**.
+
+**Symptom:** Nach einem Gateway-Restart ist das Trading-Dashboard (Port 8081) nicht
+mehr erreichbar, obwohl der Dashboard-Watchdog es eigentlich am Leben hält.
+
+**Ursache:** Der Dashboard-Watchdog läuft alle 15 Minuten. Wenn das Dashboard 2
+Minuten nach dem Gateway-Restart gekillt wird, muss es bis zu 15 Minuten dauern
+bis der Watchdog es wiederbelebt.
+
+**Fix:** 
+1. Dashboard als separaten systemd-Service betreiben (nicht als Kind des Gateways)
+2. Oder Dashboard manuell neustarten: `cd <dashboard-dir> && ./venv/bin/python dashboard.py &`
+3. Oder Watchdog abwarten (max 15 Min)
+
+**Prävention:** Dienste die vom Gateway-Restart unabhängig sein müssen, immer als
+eigenen systemd-Service betreiben, nicht als `nohup`-Kind des Gateway-Prozesses.
+
+### no_agent "provider timeout" (transient)
+
+Ein no_agent Cron-Job kann gelegentlich mit folgendem Fehler fehlschlagen:
+```
+⚠️ Cron 'dashboard-watchdog' failed: provider timeout. Fallback chain was exhausted or unavailable.
+```
+
+**Das bedeutet NICHT** dass das Script oder der Job kaputt ist. Der Scheduler
+prüft auch bei no_agent Jobs den Provider-Status vor dem Dispatchen. Wenn der
+Provider (z.B. OpenRouter) kurzzeitig nicht erreichbar ist, rejected der
+Scheduler den Dispatch — auch für no_agent Jobs die gar keinen LLM brauchen.
+
+Das ist ein **transienter Scheduler-Fehler**. Der nächste Tick (z.B. 15 Minuten
+später) läuft normal durch, sobald der Provider wieder antwortet.
+
+**Kein Eingriff nötig** — solange der Fehler nicht gehäuft auftritt. Bei
+Häufung: Provider-Status prüfen (`hermes doctor`) oder Fallback-Provider
+konfigurieren.
+
 ### 429 Rate-Limit Cascade (Missing Toolset)
 
 When a cron job fails with `HTTP 429: Provider returned error`, the root cause is often NOT the rate limit itself — it is a cascade from a missing `web` toolset:
@@ -882,3 +943,109 @@ cd /root && git clone https://github.com/<user>/<repo>.git
 cp -r <repo>/skills/* ~/.hermes/skills/
 cp <repo>/config/* ~/.hermes/
 ```
+
+## 5. Remote Desktop / Dashboard Connectivity
+
+Verbinde Hermes Desktop (Electron App) mit einem Remote-Server, um über die
+Desktop-UI auf den Server zuzugreifen.
+
+### Architektur
+
+Der Desktop-Client verbindet sich **nicht** zum API Server (Port 8642, OpenAI-API)
+und **nicht** zum Messaging Gateway. Sondern zum **Web Dashboard** Prozess:
+
+```
+Desktop App ──http──→ hermes dashboard (Port 9119) ──→ Hermes Agent Core
+                                                       (Konfig, Sessions, Tools)
+```
+
+### Drei Dienste auf dem Remote-Server
+
+| Dienst | Port | Befehl | Zweck |
+|--------|------|--------|-------|
+| **Dashboard** | 9119 | `hermes dashboard` | Desktop Remote Gateway |
+| **API Server** | 8642 | `API_SERVER_ENABLED=true` im .env | OpenAI-Clients (Open WebUI) |
+| **Messaging Gateway** | — | `hermes gateway` | Telegram-/Discord-Bots |
+
+### Setup auf dem Remote-Server
+
+#### 1. Auth-Credentials setzen (im `.env`)
+
+```bash
+cat >> ~/.hermes/.env << 'EOF'
+
+# Dashboard Auth für Remote Desktop
+HERMES_DASHBOARD_BASIC_AUTH_USERNAME=***
+HERMES_DASHBOARD_BASIC_AUTH_PASSWORD=***
+HERMES_DASHBOARD_BASIC_AUTH_SECRET=*** rand -base64 32)
+EOF
+```
+
+`--host 0.0.0.0` aktiviert automatisch die Auth-Gate. Ohne gesetzte Credentials
+kann sich niemand anmelden.
+
+#### 2. systemd Service für Dashboard
+
+```ini
+# /etc/systemd/system/hermes-dashboard.service
+[Unit]
+Description=Hermes Agent Web Dashboard — Remote Backend for Desktop
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/root/.hermes
+EnvironmentFile=/root/.hermes/.env
+ExecStart=/root/.local/bin/hermes dashboard --host 0.0.0.0 --port 9119 --no-open
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=10
+
+[Install]
+WantedBy=multi-user.target
+```
+
+```bash
+systemctl daemon-reload
+systemctl enable --now hermes-dashboard
+systemctl status hermes-dashboard
+```
+
+#### 3. API Server (optional, für Open WebUI etc.)
+
+```bash
+echo 'API_SERVER_ENABLED=true' >> ~/.hermes/.env
+echo 'API_SERVER_KEY=mein-sicherer-key' >> ~/.hermes/.env
+echo 'API_SERVER_HOST=0.0.0.0' >> ~/.hermes/.env
+hermes gateway restart --system
+```
+
+Läuft dann auf Port 8642. Test:
+```bash
+curl -H "Authorization: Bearer mein-s...ey" http://<ip>:8642/v1/models
+```
+
+#### 4. Im Desktop einstellen
+
+- **Settings → Gateway → Remote gateway**
+- **Remote URL**: `http://<server-ip>:9119`
+- **Sign in** → Username/Passwort aus Schritt 1
+
+### Pitfalls
+
+**Der Desktop braucht das Dashboard, nicht den API Server.** Der API Server ist
+OpenAI-kompatibel (für Open WebUI). Der Desktop verbindet sich zum `hermes dashboard`
+Prozess (Port 9119). Verwechsle die beiden nicht.
+
+**Gateway-Restart killt Kindprozesse.** Wenn das Dashboard als Kind des Gateways
+läuft (z.B. per `nohup` im gleichen Terminal), wird es bei `hermes gateway restart`
+mitgekillt. Immer als separaten systemd-Service betreiben.
+
+**Port 8642 vs 9119.** Nicht verwechseln:
+- `:8642` = API Server (OpenAI API)
+- `:9119` = Dashboard (Desktop Verbindung)
+
+**Kein HTTPS.** Ohne Reverse Proxy (nginx/Caddy) läuft alles über HTTP. Fürs
+LAN okay, für Internet Zugriff Tailscale oder HTTPS-Proxy vorschalten.

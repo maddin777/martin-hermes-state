@@ -1,6 +1,6 @@
 # Hermes Trading Skill – Technische & Fachliche Dokumentation
 
-*Stand: Juni 2026 | System-Version nach Paketen A–D + Sprints 1–7 + Bugfix-Sprint + Screener-Source*
+*Stand: Juni 2026 | System-Version nach Paketen A–D + Sprints 1–7 + Bugfix-Sprint + Screener-Source + Watchlist-Performance-Fix*
 
 ---
 
@@ -33,6 +33,10 @@ Das System läuft ohne menschliches Eingreifen, benachrichtigt aber per Telegram
          └─ signal_manager.py          → Portfolio-Management + Positionen
 04:50  llm_validator.py           → Kreuzvalidierung High-Conviction Signale
 05:00  nightly_eval.py            → Performance-Metriken (Sortino, Calmar, R-Multiple)
+08:30  cron-health-daily          → Health-Check aller Cron-Jobs (START/DONE-Abgleich).
+                                     Bewusst 08:30 statt 08:00, sonst prüft er den sonntäglichen
+                                     strategy_optimizer (08:00, ~2 min Laufzeit) bevor dessen
+                                     DONE geschrieben ist → False-Positive "crashed".
 09:30  active_exit_check.py       → Technischer Exit-Check (morgens)
 10:00–17:00  breaking_news_monitor.py  → Stündliche News-Prüfung für offene Positionen
 10:00  thematic/drawdown_monitor.py    → Portfolio-Drawdown-Monitoring
@@ -112,6 +116,16 @@ conviction = (sentiment_score × 0.6 + mention_weight × 0.4) × (1 + channel_bo
 Zusätzlich:
 - **Thesis-Boost:** +8% bei aktiver, intakter Thesis + bullishem Momentum; +5% bei intact; +2% bei kein Check; 0% bei broken
 - **conviction_aged:** Bayesian-Ansatz mit Halbwertszeit (konfigurierbar via `CONVICTION_HALF_LIFE_DAYS` in config.py, Standard 14d)
+
+#### Performance: Negativ-Cache + geteilte Connection (Laufzeit 122 min → ~8 min)
+
+Die nächtliche Validierung von ~1800 unique Namen lief über `validate_and_register()` → `company_validator`. Zwei kombinierte Probleme hatten die Laufzeit auf ~2 h getrieben:
+
+1. **Lang gehaltene äußere Transaktion (Root Cause):** `db_connect()` nutzt deferred Transactions; der Watchlist-Loop hält ab dem ersten `INSERT INTO watchlist` eine offene Schreibtransaktion bis zum `commit()` nach der Schleife. In WAL blockiert das jede *separate* Schreib-Connection. `validate_and_register` öffnete (wie der Negativ-Cache) eine eigene Connection → lief 30 s in den `busy_timeout` und scheiterte still im `except`. Diese 30-s-Stalls waren der Großteil der Laufzeit (CPU-Zeit blieb konstant bei ~3 min — es wurde fast nur gewartet). **Fix:** Die äußere Connection wird durch die ganze Validierungskette durchgereicht (`validate_and_register(name, con=con)` → `validate(con=con)` → `_cache_reject/_check_reject_cache(con=con)`); alle Writes laufen auf *einer* Connection, kein Lock-Konflikt. Bei `con=None` bleibt die alte Standalone-Semantik.
+
+2. **Kein Negativ-Cache:** Abgelehnte Namen (Tippfehler, nicht-börsennotierte Entitäten) wurden nur in eine Logdatei geschrieben, nie gemerkt — also jede Nacht erneut durch den yfinance-Gauntlet (`yf.Search` + bis zu 5× `.info`) geschickt. **Fix:** Tabelle `validation_rejects` (Migration `migrate_add_reject_cache.py`) cached deterministische Rejects (`unknown/not_equity/name_mismatch/low_liquidity`) mit TTL `REJECT_CACHE_TTL_DAYS=21`. Transiente Fehler (`yf_error`) werden **nicht** gecacht (sonst blockiert ein einmaliger Netzwerkfehler einen validen Namen 21 Tage). Bei erfolgreichem Accept wird ein alter Reject-Eintrag entfernt.
+
+Steady-State: bekannte Firmen werden über `companies` aufgelöst, bekannter Müll über den Reject-Cache — nur *neue* Namen pro Nacht zahlen noch den Yahoo-Preis. Diagnose-Probe: `python3 test_lock_fix.py 15`.
 
 ### Step 4: Watchlist Dedup (`watchlist_dedup.py`)
 
@@ -309,7 +323,7 @@ scripts/
 │                             FX: ticker_to_currency(), price_to_eur(), position_size_in_shares(),
 │                             turnover_to_eur(), get_fx_rate_to_eur() [Frankfurter ECB API]
 ├── company_normalizer.py  ← 203 Aliases, Legal-Suffix-Strip
-├── company_validator.py   ← 5-stufige Validierungspipeline + ISIN-Mapping
+├── company_validator.py   ← 5-stufige Validierungspipeline + ISIN-Mapping + Negativ-Cache (validation_rejects)
 ├── xsearch_helper.py      ← Grok/X-Integration: conviction_boost, discover_finance_accounts
 ├── fx_rates.py            ← Legacy-Modul (ersetzt durch utils.py FX-Funktionen)
 │
