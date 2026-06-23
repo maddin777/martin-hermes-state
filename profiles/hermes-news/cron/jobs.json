@@ -1,7 +1,7 @@
 {
   "jobs": [
     {
-      "id": "458eff51f9f",
+      "id": "46acda532f8",
       "name": "daily-news-briefing",
       "prompt": "Erstelle das t\u00e4gliche Morgen-Briefing (06:00) \u2014 folge dem daily-news-briefing Skill exakt. 5 Sektionen: Politik & Internationales, Finanzen & Wirtschaft, IT & KI, Deutschland & Nordeuropa, Wetter & Wassertemperaturen. Nutze Google News RSS per curl, Open-Meteo f\u00fcr Wetter, Browser f\u00fcr Wassertemperaturen (Firecrawl-Credits sind leer). KEINE leeren Sektionen. Max 3000 Zeichen pro Nachricht, aufteilen auf bis zu 5 Nachrichten. Alle Quellen angeben. \u00dcbersetzte internationale Quellen auf Deutsch.",
       "skills": [
@@ -28,7 +28,7 @@
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
-      "created_at": "2026-06-21T08:57:39.020283+02:00",
+      "created_at": "2026-06-22T07:17:50.376210+02:00",
       "next_run_at": null,
       "last_run_at": null,
       "last_status": null,
@@ -47,5 +47,5 @@
       "fire_claim": null
     }
   ],
-  "updated_at": "2026-06-21T08:57:39.020310+02:00"
+  "updated_at": "2026-06-22T07:17:50.376237+02:00"
 }

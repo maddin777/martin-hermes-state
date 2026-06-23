@@ -428,6 +428,13 @@
       "category": "investor",
       "weight": 1.2,
       "enabled": true
+    },
+    {
+      "handle": "tradewithcong",
+      "name": "Trade with Congress",
+      "category": "news",
+      "weight": 1.3,
+      "enabled": true
     }
   ],
   "fred_indicators": [
