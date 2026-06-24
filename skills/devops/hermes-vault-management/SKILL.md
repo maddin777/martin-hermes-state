@@ -205,6 +205,7 @@ Layout:
 - USER.md forgotten when priorities change → update proactively
 - Weekly review too detailed → short report; [SILENT] when nothing to report
 - Vault Self-Write too many changes → limit: max 5 wikilinks + 2 new pages + 1 synthesis
+- **User sagt "Änderungen nicht auf Server":** Nicht direkt Sync-Problem akzeptieren → `references/bisync-diagnostic.md` konsultieren. Erst dry-run prüfen ob GDrive die Dateien hat; oft ist der Upload vom User-Gerät defekt, nicht der Bisync.
 
 ---
 

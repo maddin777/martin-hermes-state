@@ -48,7 +48,10 @@ for w in raw:
         current_conv = w["conviction_score"] or 0
         if current_conv > existing_conv:
             existing["name"] = w["name"]
-            existing["company_sector"] = w["company_sector"]
+            # Sektor vom Canonical-Ticker bevorzugen (Alias-Ticker wie ARMK
+            # haben oft 'Other' weil nicht in companies-Tabelle)
+            if w["company_sector"] != 'Other' or existing["company_sector"] == 'Other':
+                existing["company_sector"] = w["company_sector"]
             existing["tech_score"] = w["tech_score"]
             existing["tech_direction"] = w["tech_direction"]
             existing["last_seen"] = w["last_seen"]

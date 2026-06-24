@@ -1,17 +1,11 @@
 {
-  "updated_at": "2026-06-20T16:50:15.214403",
+  "updated_at": "2026-06-24T02:59:20.316970",
   "platforms": {
     "telegram": [
       {
         "id": "216051232",
         "name": "Martin",
         "type": "dm",
-        "thread_id": null
-      },
-      {
-        "id": "-1003687061880",
-        "name": "Ch_hermster_news",
-        "type": "channel",
         "thread_id": null
       }
     ],
