@@ -112,3 +112,68 @@ Lektion #20 abgeschlossen.
 10. **miasto**
 
 Lektion #21 abgeschlossen.
+
+
+### Polnisch Lektion #22
+
+**Wortschatz (Top 500):**
+- **dom** ` Haus `
+- **kobieta** ` Frau `
+- **człowiek** ` Mensch `
+- **czas** ` Zeit `
+- **dziecko** ` Kind `
+- **rok** ` Jahr `
+- **ręka** ` Hand `
+- **praca** ` Arbeit `
+- **miasto** ` Stadt `
+- **woda** ` Wasser `
+
+**Satzbau (N+1):**
+- **Dom** jest duży. ` Das Haus ist groß. `
+- **Kobieta** czyta książkę. ` Die Frau liest ein Buch. `
+- **Człowiek** idzie do sklepu. ` Der Mensch geht zum Laden. `
+- **Czas** płynie szybko. ` Die Zeit vergeht schnell. `
+- **Dziecko** śpi w łóżku. ` Das Kind schläft im Bett. `
+- **Rok** ma dwanaście miesięcy. ` Das Jahr hat zwölf Monate. `
+- **Ręka** jest zimna. ` Die Hand ist kalt. `
+- **Praca** jest trudna. ` Die Arbeit ist schwer. `
+- **Miasto** jest piękne. ` Die Stadt ist schön. `
+- **Woda** jest mokra. ` Das Wasser ist nass. `
+
+**Grammatik-Info (Kasus):**
+- **Dom** (Nominativ: dom, Genitiv: domu)
+- **Kobieta** (Nominativ: kobieta, Genitiv: kobiety)
+- **Człowiek** (Nominativ: człowiek, Genitiv: człowieka)
+- **Czas** (Nominativ: czas, Genitiv: czasu)
+- **Dziecko** (Nominativ: dziecko, Genitiv: dziecka)
+- **Rok** (Nominativ: rok, Genitiv: roku)
+- **Ręka** (Nominativ: ręka, Genitiv: ręki)
+- **Praca** (Nominativ: praca, Genitiv: pracy)
+- **Miasto** (Nominativ: miasto, Genitiv: miasta)
+- **Woda** (Nominativ: woda, Genitiv: wody)
+
+**Quiz (Lückentext):**
+1. Ten ___ jest duży. (Haus)
+2. Ta ___ czyta. (Frau)
+3. Dobry ___. (Mensch)
+4. Ile masz ___? (Zeit)
+5. Małe ___. (Kind)
+6. Nowy ___. (Jahr)
+7. Moja ___. (Hand)
+8. Ciężka ___. (Arbeit)
+9. Wielkie ___. (Stadt)
+10. Zimna ___. (Wasser)
+
+**Lösungen:**
+1. **dom**
+2. **kobieta**
+3. **człowiek**
+4. **czas**
+5. **dziecko**
+6. **rok**
+7. **ręka**
+8. **praca**
+9. **miasto**
+10. **woda**
+
+Lektion #22 abgeschlossen.
