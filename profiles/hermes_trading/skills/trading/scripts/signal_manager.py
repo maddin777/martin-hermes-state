@@ -230,35 +230,62 @@ def send_telegram(message):
     except Exception as e:
         print(f"  ⚠ Telegram Fehler: {e}")
 
+def get_current_regime(con):
+    """Liest das aktuelle Marktregime aus regime_history."""
+    try:
+        row = con.execute(
+            "SELECT regime, vix FROM regime_history ORDER BY date DESC LIMIT 1"
+        ).fetchone()
+        if row:
+            return row["regime"], row["vix"] or 0
+        return "unknown", 0
+    except Exception:
+        return "unknown", 0
+
+
 def adapt_strategy(cfg, con):
-    """Passt Strategie nach Trade-Performance an."""
+    """Passt Strategie nach Trade-Performance + Marktregime an.
+    
+    Grundprinzip: Im Sideways-Markt werden SL/TP nicht verändert,
+    weil engere Stops Verluste verstärken und weitere TPs unerreichbar sind.
+    """
     if cfg["total_trades"] < 3:
         return cfg
 
+    regime, vix = get_current_regime(con)
     win_rate = cfg["winning_trades"] / cfg["total_trades"] if cfg["total_trades"] > 0 else 0
     changes = []
 
     if cfg["consecutive_wins"] >= 3:
-        cfg["atr_tp_multiplier"] = min(4.0, cfg["atr_tp_multiplier"] + 0.25)
-        changes.append(f"TP erhöht auf {cfg['atr_tp_multiplier']}x ATR")
+        if regime == "sideways":
+            # Im Sideways: TP nicht weiter machen (unerreichbar)
+            if cfg["min_confidence"] < 0.75:
+                cfg["min_confidence"] = min(0.75, cfg["min_confidence"] + 0.03)
+                changes.append(f"Sideways → Min. Konfidenz erhöht auf {cfg['min_confidence']:.0%}")
+        else:
+            cfg["atr_tp_multiplier"] = min(3.5, cfg["atr_tp_multiplier"] + 0.25)
+            changes.append(f"TP erhöht auf {cfg['atr_tp_multiplier']}x ATR")
         cfg["consecutive_wins"] = 0
 
     if cfg["consecutive_losses"] >= 3:
-        cfg["atr_sl_multiplier"] = max(1.0, cfg["atr_sl_multiplier"] - 0.25)
-        changes.append(f"SL enger auf {cfg['atr_sl_multiplier']}x ATR")
+        if regime == "sideways":
+            # Im Sideways: SL NICHT enger machen (tödlich!)
+            if cfg["min_confidence"] < 0.80:
+                cfg["min_confidence"] = min(0.80, cfg["min_confidence"] + 0.05)
+                changes.append(f"Sideways → Min. Konfidenz erhöht auf {cfg['min_confidence']:.0%}")
+        else:
+            cfg["atr_sl_multiplier"] = max(1.2, cfg["atr_sl_multiplier"] - 0.25)
+            changes.append(f"SL enger auf {cfg['atr_sl_multiplier']}x ATR")
         cfg["consecutive_losses"] = 0
 
-    if win_rate < 0.40 and cfg["min_confidence"] < 0.80:
-        cfg["min_confidence"] = min(0.80, cfg["min_confidence"] + 0.05)
-        changes.append(f"Min. Konfidenz erhöht auf {cfg['min_confidence']:.0%}")
-
-    if win_rate > 0.65 and cfg["min_confidence"] > 0.60:
-        cfg["min_confidence"] = max(0.60, cfg["min_confidence"] - 0.05)
-        changes.append(f"Min. Konfidenz gesenkt auf {cfg['min_confidence']:.0%}")
+    # VIX-basierte Konfidenzanpassung
+    if vix > 25 and cfg["min_confidence"] < 0.70:
+        cfg["min_confidence"] = min(0.70, cfg["min_confidence"] + 0.03)
+        changes.append(f"VIX {vix:.0f} → Min. Konfidenz erhöht auf {cfg['min_confidence']:.0%}")
 
     if changes:
         msg = "🔧 <b>Strategie angepasst:</b>\n" + "\n".join(f"• {c}" for c in changes)
-        msg += f"\n\nWin Rate: {win_rate:.0%} | Trades: {cfg['total_trades']}"
+        msg += f"\n\nRegime: {regime} | VIX: {vix:.1f} | Win Rate: {win_rate:.0%} | Trades: {cfg['total_trades']}"
         send_telegram(msg)
 
     save_config(cfg)
@@ -302,6 +329,104 @@ def check_segment_performance(con, ticker, direction, conviction_score):
     except Exception:
         return True, None  # Bei Fehler durchlassen (fail open)
 
+
+def update_sector_blacklist(con, cfg):
+    """Aktualisiert die Sektor-Blacklist basierend auf 14d P&L.
+    
+    Ein Sektor wird auf die Blacklist gesetzt wenn:
+    - mind. 3 geschlossene Trades in 14 Tagen
+    - avg P&L negativ
+    
+    Re-Entry (Probation): Nach cooldown_days wird 1 Probation-Trade 
+    mit 50% Position Size erlaubt. Bei Gewinn → Sektor frei.
+    """
+    sector_pnl = {}
+    for row in con.execute("""
+        SELECT c.sector, COUNT(*) as trades, ROUND(SUM(p.pnl_eur), 2) as total_pnl,
+               ROUND(AVG(p.pnl_pct), 2) as avg_pnl_pct
+        FROM positions p
+        JOIN companies c ON c.ticker = p.ticker
+        WHERE p.exit_date >= date('now', '-14 days')
+          AND p.status = 'closed'
+        GROUP BY c.sector
+    """).fetchall():
+        sector = row["sector"] or "Other"
+        if row["trades"] >= 3 and (row["total_pnl"] or 0) < 0:
+            sector_pnl[sector] = {
+                "trades": row["trades"],
+                "total_pnl": row["total_pnl"],
+                "avg_pnl_pct": row["avg_pnl_pct"]
+            }
+
+    blacklist = cfg.get("sector_blacklist", {})
+    cooldown = cfg.get("sector_cooldown_days", 14)
+    
+    for sector, data in sector_pnl.items():
+        if sector not in blacklist:
+            blacklist[sector] = {
+                "blocked_since": datetime.now().isoformat(),
+                "reason": f"14d: {data['trades']} Trades, {data['total_pnl']:.0f}€ Ø {data['avg_pnl_pct']:+.1f}%",
+                "probation_done": False
+            }
+            print(f"  🚫 Sektor '{sector}' auf Blacklist: {blacklist[sector]['reason']}", flush=True)
+    
+    # Verwaiste Einträge entfernen (Sektoren die wieder positiv laufen)
+    for sector in list(blacklist.keys()):
+        if sector not in sector_pnl:
+            # Prüfen ob Cooldown abgelaufen + Probation möglich
+            blocked_since = datetime.fromisoformat(blacklist[sector]["blocked_since"])
+            days_blocked = (datetime.now() - blocked_since).days
+            if days_blocked >= cooldown and blacklist[sector].get("probation_done"):
+                del blacklist[sector]
+                print(f"  ✅ Sektor '{sector}' von Blacklist entfernt (Cooldown + Probation bestanden)", flush=True)
+    
+    cfg["sector_blacklist"] = blacklist
+    return cfg
+
+
+def is_sector_allowed(sector, con, cfg):
+    """Prüft ob ein Sektor für neue Entries freigegeben ist.
+    
+    Returns: (ok: bool, is_probation: bool, reason: str)
+    """
+    blacklist = cfg.get("sector_blacklist", {})
+    if sector not in blacklist:
+        return True, False, ""
+    
+    entry = blacklist[sector]
+    blocked_since = datetime.fromisoformat(entry["blocked_since"])
+    days_blocked = (datetime.now() - blocked_since).days
+    cooldown = cfg.get("sector_cooldown_days", 14)
+    
+    if days_blocked < cooldown:
+        return False, False, f"Sektor '{sector}' gesperrt ({days_blocked}/{cooldown}d): {entry.get('reason', '')}"
+    
+    # Cooldown abgelaufen → Probation
+    if not entry.get("probation_done"):
+        return True, True, f"Sektor '{sector}' in Probation (50% Size)"
+    
+    # Probation bereits durchgeführt → prüfen ob erfolgreich
+    probation_result = con.execute("""
+        SELECT pnl_eur, pnl_pct FROM positions p
+        JOIN companies c ON c.ticker = p.ticker
+        WHERE c.sector = ? AND p.exit_date >= ?
+        ORDER BY p.exit_date DESC LIMIT 1
+    """, (sector, blocked_since.isoformat())).fetchone()
+    
+    if probation_result and (probation_result["pnl_eur"] or 0) > 0:
+        # Probation gewonnen → Sektor freigeben
+        del blacklist[sector]
+        cfg["sector_blacklist"] = blacklist
+        save_config(cfg)
+        return True, False, f"Sektor '{sector}' freigegeben (Probation bestanden)"
+    else:
+        # Probation verloren → erneuter Cooldown
+        entry["blocked_since"] = datetime.now().isoformat()
+        entry["probation_done"] = False
+        cfg["sector_blacklist"] = blacklist
+        save_config(cfg)
+        return False, False, f"Sektor '{sector}' in erneutem Cooldown (Probation fehlgeschlagen)"
+    
 
 def has_upcoming_earnings(ticker, days_ahead=5):
     """Prüft ob Earnings innerhalb der nächsten N Tage anstehen.
@@ -970,6 +1095,9 @@ def open_new_positions(con, cfg):
         print("  ℹ Keine Watchlist-Kandidaten die alle Kriterien erfüllen.")
         return
 
+    # Sektor-Blacklist aktualisieren (14d P&L Auswertung)
+    cfg = update_sector_blacklist(con, cfg)
+
     # Priority Score berechnen
     def priority_score(item):
         c, direction = item
@@ -1056,13 +1184,24 @@ def open_new_positions(con, cfg):
             print(f"  💰 SHORT-Allokation voll ({short_invested:.0f}€/{max_short:.0f}€)")
             continue
 
-        # Sektor-Cap: max 2 Positionen pro Sektor
+        # Sektor-Check: Blacklist + Probation
         ticker_sector = "Other"
         sector_row = con.execute(
             "SELECT sector FROM companies WHERE ticker=?", (ticker,)
         ).fetchone()
         if sector_row and sector_row["sector"]:
             ticker_sector = sector_row["sector"]
+        
+        sector_ok, is_probation, sector_reason = is_sector_allowed(ticker_sector, con, cfg)
+        if not sector_ok:
+            print(f"  🚫 {c['name']}: {sector_reason}")
+            continue
+        if is_probation:
+            probation_factor = cfg.get("sector_probation_size_pct", 0.5)
+            print(f"  🧪 {c['name']}: {sector_reason} (Faktor: {probation_factor:.0%})")
+        
+        # Sektor-Cap: max 2 Positionen pro Sektor
+        MAX_POSITIONS_PER_SECTOR = 2
         if sector_counts.get(ticker_sector, 0) >= MAX_POSITIONS_PER_SECTOR:
             print(f"  🏭 {c['name']}: Sektor '{ticker_sector}' bereits voll "
                   f"({sector_counts[ticker_sector]}/{MAX_POSITIONS_PER_SECTOR})")
@@ -1141,6 +1280,11 @@ def open_new_positions(con, cfg):
 
         # VIX-Faktor anwenden (vor allen weiteren Caps)
         pct = pct * vix_factor
+
+        # Probation-Faktor: nur 50% Size für Sektoren im Re-Entry-Test
+        if is_probation:
+            pct = pct * probation_factor
+            sizing_label += f" | Probation ({probation_factor:.0%})"
 
         # Volatilitätsbereinigtes Positionsgrößensystem (Risk-Parity)
         # Risiko pro Trade capped auf risk_pct_per_trade % des Gesamtportfolios

@@ -1,4 +1,48 @@
 {
+"sakana/fugu-ultra":{
+"context_length":1000000,
+"max_completion_tokens":128000,
+"name":"Sakana: Fugu Ultra",
+"pricing":{
+"prompt":"0.000005",
+"completion":"0.00003",
+"web_search":"0.01",
+"input_cache_read":"0.0000005"
+}
+},
+"fugu-ultra":{
+"context_length":1000000,
+"max_completion_tokens":128000,
+"name":"Sakana: Fugu Ultra",
+"pricing":{
+"prompt":"0.000005",
+"completion":"0.00003",
+"web_search":"0.01",
+"input_cache_read":"0.0000005"
+}
+},
+"sakana/fugu-ultra-20260615":{
+"context_length":1000000,
+"max_completion_tokens":128000,
+"name":"Sakana: Fugu Ultra",
+"pricing":{
+"prompt":"0.000005",
+"completion":"0.00003",
+"web_search":"0.01",
+"input_cache_read":"0.0000005"
+}
+},
+"fugu-ultra-20260615":{
+"context_length":1000000,
+"max_completion_tokens":128000,
+"name":"Sakana: Fugu Ultra",
+"pricing":{
+"prompt":"0.000005",
+"completion":"0.00003",
+"web_search":"0.01",
+"input_cache_read":"0.0000005"
+}
+},
 "google/gemini-3.1-flash-image":{
 "context_length":131072,
 "max_completion_tokens":65536,
@@ -1752,42 +1796,42 @@
 },
 "deepseek/deepseek-v4-flash":{
 "context_length":1048576,
-"max_completion_tokens":65536,
+"max_completion_tokens":null,
 "name":"DeepSeek: DeepSeek V4 Flash",
 "pricing":{
-"prompt":"0.00000009",
-"completion":"0.00000018",
-"input_cache_read":"0.00000002"
+"prompt":"0.000000089",
+"completion":"0.000000224",
+"input_cache_read":"0.0000000266"
 }
 },
 "deepseek-v4-flash":{
 "context_length":1048576,
-"max_completion_tokens":65536,
+"max_completion_tokens":null,
 "name":"DeepSeek: DeepSeek V4 Flash",
 "pricing":{
-"prompt":"0.00000009",
-"completion":"0.00000018",
-"input_cache_read":"0.00000002"
+"prompt":"0.000000089",
+"completion":"0.000000224",
+"input_cache_read":"0.0000000266"
 }
 },
 "deepseek/deepseek-v4-flash-20260423":{
 "context_length":1048576,
-"max_completion_tokens":65536,
+"max_completion_tokens":null,
 "name":"DeepSeek: DeepSeek V4 Flash",
 "pricing":{
-"prompt":"0.00000009",
-"completion":"0.00000018",
-"input_cache_read":"0.00000002"
+"prompt":"0.000000089",
+"completion":"0.000000224",
+"input_cache_read":"0.0000000266"
 }
 },
 "deepseek-v4-flash-20260423":{
 "context_length":1048576,
-"max_completion_tokens":65536,
+"max_completion_tokens":null,
 "name":"DeepSeek: DeepSeek V4 Flash",
 "pricing":{
-"prompt":"0.00000009",
-"completion":"0.00000018",
-"input_cache_read":"0.00000002"
+"prompt":"0.000000089",
+"completion":"0.000000224",
+"input_cache_read":"0.0000000266"
 }
 },
 "inclusionai/ling-2.6-1t":{

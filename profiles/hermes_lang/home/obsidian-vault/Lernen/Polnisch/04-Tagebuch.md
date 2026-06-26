@@ -177,3 +177,56 @@ Lektion #21 abgeschlossen.
 10. **woda**
 
 Lektion #22 abgeschlossen.
+### Lektion #23
+
+### 1. Słownictwo (Top 500)
+**dzień** `Tag`
+**noc** `Nacht`
+**mężczyzna** `Mann`
+**dziecko** `Kind`
+**jeść** `essen`
+**pić** `trinken`
+**robić** `machen`
+**widzieć** `sehen`
+**iść** `gehen`
+**mieć** `haben`
+
+### 2. Sentence Mining (n+1)
+('**To jest nowy dzień.** `Das ist ein neuer Tag.`', '**Długa noc.** `Lange Nacht.`', '**Silny mężczyzna.** `Ein starker Mann.`', '**Małe dziecko śpi.** `Ein kleines Kind schläft.`', '**Chcę jeść.** `Ich möchte essen.`', '**Piję wodę.** `Ich trinke Wasser.`', '**Co robisz?** `Was machst du?`', '**Widzę cię.** `Ich sehe dich.`', '**Idę do domu.** `Ich gehe nach Hause.`', '**On ma psa.** `Er hat einen Hund.`')
+
+### 3. Gramatyka (Aspekt & Kasus)
+**Aspekt-Paare (Verben):**
+- **jeść** (imperf.) `essen` | **zjeść** (perf.) `essen (gegessen)`
+- **pić** (imperf.) `trinken` | **wypić** (perf.) `trinken (ausgetrunken)`
+- **robić** (imperf.) `machen` | **zrobić** (perf.) `machen (gemacht)`
+
+**Kasus (Nomen):**
+- **dzień** (Bierlat / Genitiv): `do dnia` `des Tages`
+- **noc** (Bierlat / Genitiv): `do nocy` `nocy`
+- **mężczyzna** (Akkusativ): `widzę mężczyznę` `ich sehe den Mann`
+
+### 4. Lueckentext-Quiz
+1. To jest nowy ___ . (Tag)
+2. To była długa ___ . (Nacht)
+3. Silny ___ idzie. (Mann)
+4. Małe ___ śpi. (Kind)
+5. Chcę ___ . (essen)
+6. ___ wodę. (trinken)
+7. Co ___ ? (machen)
+8. ___ cię. (sehen)
+9. ___ do domu. (gehen)
+10. On ___ psa. (haben)
+
+### 5. Rozwiązania
+1. **dzień**
+2. **noc**
+3. **mężczyzna**
+4. **dziecko**
+5. **jeść**
+6. **Piję**
+7. **robisz**
+8. **Widzę**
+9. **Idę**
+10. **ma**
+
+Lektion #23 abgeschlossen.

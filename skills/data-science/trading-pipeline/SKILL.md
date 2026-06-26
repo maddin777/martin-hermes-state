@@ -110,6 +110,8 @@ Details siehe `references/` im Skill-Verzeichnis sowie die Erläuterung.md im Ob
 | Watchlist Dedup | `references/watchlist-table-dedup.md` |
 | Closed-Loop Architecture | `references/closed-loop-architecture.md` |
 | Dashboard Ghost Entries | `references/dashboard-cron-ghost-entries.md` |
+| `adapt_strategy()` Regime-Blindheit | `references/adapt-strategy-regime-blindness.md` |
+| Sector Blacklist + Probation | `references/sector-blacklist-probation.md` |
 | Private Company OTHER-Klassifikation | `references/other-sector-private-companies.md` |
 | Canonical-Merge überschreibt Sector | `references/export-watchlist-sector-merge.md` |
 
@@ -198,7 +200,8 @@ Die Referenz enthält 23 klassifizierte Unternehmen plus Implementierungsvorschl
 | `Finnhub 403` → API-Key abgelaufen oder limitiert (siehe `references/finnhub-api-key-management.md`)
 | `pos.get("asset_type")` → Pitfall 16 (sqlite3.Row) — `pos["asset_type"] if "asset_type" in pos.keys() else "STANDARD"` verwenden
 | **`cron_health.py` ❌ false-positive** → Timing-Konflikt: `cron-health-daily` und `strategy_optimizer` starten beide um 08:00 (Sonntag). Der Optimizer braucht ~2 Min, der Health-Check findet nur START ohne DONE → flagged als crashed. Fix: staggered Schedules (z.B. health um 08:30).
-| **Channel in CHANNELS_FALLBACK aber nicht in source_registry** → `yt_channel_monitor.py` liest Kanäle aus der `source_registry`-DB. Die `CHANNELS_FALLBACK` wird NUR genutzt wenn `source_registry` komplett leer ist. Ein Kanal der nur in der Fallback-Liste steht wird **stumm übersprungen** — kein "[Kanal] Scanning..." im Log. Fix: `INSERT OR IGNORE INTO source_registry (source_type, source_key, display_name, status, enabled) VALUES ('youtube', '<url>', '<name>', 'active', 1)`.
+| **Config-Drift (SL=1.0/TP=4.0)** → adapt_strategy() hat SL/TP ohne Regime-Prüfung angepasst. Im Sideways-Markt führte das zu 81% SL_RATE + −358€ P&L. Fix: Regime-Check eingebaut, Config reset auf SL=1.5/TP=2.5. Siehe references/adapt-strategy-regime-blindness.md. |
+| **Channel in CHANNELS_FALLBACK aber nicht in source_registry** → yt_channel_monitor.py liest Kanäle aus der source_registry-DB. Die CHANNELS_FALLBACK wird NUR genutzt wenn source_registry komplett leer ist. Fix: INSERT OR IGNORE INTO source_registry.
 | **Canonical-Merge überschreibt Sector mit 'Other'** → `export_watchlist.py` merged Aliase (ARMK→ARM) und kopiert blind den Sector des höheren Conviction-Scores. Alias-Ticker haben oft 'Other' weil nicht in `companies`. Fix: Merge-Logik prüft `if w["company_sector"] != 'Other' or existing["company_sector"] == 'Other'`. Details in `references/export-watchlist-sector-merge.md`.
 
 ### Manuelles Nachholen eines YouTube-Kanals (außerhalb der Pipeline)
@@ -307,7 +310,9 @@ cd /root/.hermes/profiles/hermes_trading/skills/trading && \
 | Take-Profit | 2.5× ATR | 3.5× ATR | 2.0× ATR |
 | Partial Exit | +1.5× ATR | +2.0× ATR | +1.0× ATR |
 | Breakeven | +2.0× ATR | +2.5× ATR | +1.5× ATR |
-| Trailing Step | 0.5× ATR | 0.75× ATR | 0.3× ATR |
+| Trailing Step | 0.75× ATR | 0.75× ATR | 0.5× ATR |
+
+> **Trailing Step geändert am 25.06.2026:** von 0.5× auf 0.75× (STANDARD/TECH). Der alte Wert (0.5×) führte dazu, dass ein normaler Pullback von 0.6× ATR den Trailing Stop auslöste bevor der Trade das Take-Profit erreichte. 0.75× gibt mehr Raum im Sideways-Markt.
 
 ### Code-Struktur
 
@@ -315,6 +320,42 @@ cd /root/.hermes/profiles/hermes_trading/skills/trading && \
 - **`signal_manager.py`** — Liest asset_type bei Entry (wird in DB gespeichert), nutzt asset_type-spezifische Multiplikatoren für SL/TP und Trailing Stop
 - **`active_exit_check.py`** — Nutzt asset_type-spezifische Multiplikatoren für Thesis-BROKEN und Trailing Stop
 - **DB:** `positions.asset_type`-Spalte (seit 18.06., per ALTER TABLE migriert)
+
+### 🔴 Strategie-Config-Drift (Critical)
+
+**Problem:** `adapt_strategy()` in `signal_manager.py` passt SL/TP-Multiplikatoren basierend auf Trade-Ergebnissen an — **ohne Marktregime-Prüfung**. Das führte zu einer Config-Drift von 1,5× SL / 2,5× TP → 1,0× SL / 4,0× TP.
+
+**Abwärtsspirale im Sideways:**
+```
+Sideways → viele SL_HITs (normal) → SL enger → noch mehr SL_HITs → SL 1,0× → 81% SL-Rate
+```
+
+**Fix (25.06.2026):**
+1. `adapt_strategy()` prüft jetzt Regime aus `regime_history` — im Sideways werden SL/TP NICHT angepasst, nur `min_confidence` erhöht
+2. SL-Untergrenze auf 1,2× (war 1,0×) gesetzt
+3. TP-Obergrenze auf 3,5× (war 4,0×) gesetzt
+4. `consecutive_losses` auf 0 zurückgesetzt
+5. Config auf SL=1,5×, TP=2,5× zurückgesetzt
+6. `trailing_step` von 0,5× auf 0,75× erhöht
+
+Siehe `references/adapt-strategy-regime-blindness.md`.
+
+### 🔴 Sector Blacklist + Probation (seit 25.06.2026)
+
+Sektoren mit negativer 14d-P&L (≥3 Trades) werden automatisch auf eine Blacklist gesetzt:
+
+| Phase | Dauer | Regel |
+|-------|-------|-------|
+| **Gesperrt** | 14d Cooldown | Keine Entries in diesem Sektor |
+| **Probation** | 1 Trade | 50% Position Size erlaubt |
+| **Re-Entry** | Gewinn → frei | Sektor von Blacklist entfernt |
+| **Re-Entry** | Verlust → +14d | Erneuter Cooldown |
+
+**Ausgelöst von:** `update_sector_blacklist()` am Start von `open_new_positions()`.
+**Geprüft von:** `is_sector_allowed()` vor jedem Entry.
+**Config:** `strategy_config.json` → `sector_blacklist {}`, `sector_cooldown_days: 14`, `sector_probation_size_pct: 0.5`.
+
+Siehe `references/sector-blacklist-probation.md`.
 
 ### SP500 SMA200 Cron-Job (Amumbo-Exit)
 

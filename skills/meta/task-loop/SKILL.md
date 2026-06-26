@@ -37,9 +37,15 @@ Done-Kriterium: <Woran messe ich dass es fertig ist?>
 
 Faustregel: **Das Done-Kriterium muss das Problem aus Martins Perspektive lösen**, nicht nur einen Zwischenschritt. Wenn die News nicht im Kanal ankommen, ist "Job scheduled" kein Done. "Nachricht im Chat" ist Done.
 
-### Phase 2: Hypothese + Fix (ein Schritt pro Runde)
+### Phase 2: Context-Check + Hypothese
 
-- **Hypothese** formulieren: "Ich glaube das Problem ist X, weil ich Y gesehen habe"
+**Bevor** du einen Fix machst: prüfe ob die Umgebung/Regime/Config deinen Fix überhaupt unterstützt. Martins Standard-Frage: "Sollte nicht auch ein Check erfolgen ob wir in einem Seitwärts/Uptrend/Downtrend sind?" — generalisiert auf ALLE Tasks.
+
+- **Context-Check**: Ist das System in einem Zustand, in dem mein Fix Sinn ergibt? (Regime? Config-Zustand? Abhängigkeiten?)
+- **Hypothese** formulieren: "Ich glaube das Problem ist X, weil ich Y gesehen habe. Der Context (Regime/Config/Umgebung) unterstützt diesen Fix weil Z."
+
+### Phase 3: Fix (ein Schritt pro Runde)
+
 - **EINEN Fix** pro Iteration — nie zwei Änderungen gleichzeitig machen
 - Fix protokollieren in der Konversation (muss für Martin nachvollziehbar sein)
 
