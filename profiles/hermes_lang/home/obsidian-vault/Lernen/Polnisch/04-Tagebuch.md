@@ -230,3 +230,81 @@ Lektion #22 abgeschlossen.
 10. **ma**
 
 Lektion #23 abgeschlossen.
+
+
+## Lektion #24
+
+### 10 Woerter (Top 500)
+1. **brać** `nehmen`
+2. **czekać** `warten`
+3. **myśleć** `denken`
+4. **kochać** `lieben`
+5. **słuchać** `hören`
+6. **rozumieć** `verstehen`
+7. **potrzebować** `brauchen`
+8. **dawać** `geben`
+9. **żyć** `leben`
+10. **pytać** `fragen`
+
+### n+1 Sentence Mining
+1. **Biorę** `ich nehme` (brać)
+2. **Biorę chleb.** `Ich nehme Brot.`
+3. **Czekam** `ich warte` (czekać)
+4. **Czekam na ciebie.** `Ich warte auf dich.`
+5. **Myślę** `ich denke` (myśleć)
+6. **Myślę o tobie.** `Ich denke an dich.`
+7. **Kocham** `ich liebe` (kochać)
+8. **Kocham muzykę.** `Ich liebe Musik.`
+9. **Słucham** `ich höre` (słuchać)
+10. **Słucham radia.** `Ich höre Radio.`
+11. **Rozumiem** `ich verstehe` (rozumieć)
+12. **Rozumiem to.** `Ich verstehe das.`
+13. **Potrzebuję** `ich brauche` (potrzebować)
+14. **Potrzebuję pomocy.** `Ich brauche Hilfe.`
+15. **Daję** `ich gebe` (dawać)
+16. **Daję prezent.** `Ich gebe ein Geschenk.`
+17. **Żyję** `ich lebe` (żyć)
+18. **Żyję w Polsce.** `Ich lebe in Polen.`
+19. **Pytam** `ich frage` (pytać)
+20. **Pytam o drogę.** `Ich frage nach dem Weg.`
+
+### Aspekt-Paare & Kasus
+**Verben (Aspekt):**
+* **brać** (imp.) / **wziąć** (perf.) `nehmen`
+* **czekać** (imp.) / **poczekać** (perf.) `warten`
+* **myśleć** (imp.) / **pomyśleć** (perf.) `denken`
+* **słuchać** (imp.) / **posłuchać** (perf.) `hören`
+* **pytać** (imp.) / **zapytać** (perf.) `fragen`
+
+**Nomen (Kasus - Beispiel 'pomoc'):**
+* **Mianownik:** **pomoc** `Hilfe`
+* **Dopełniacz:** **pomocy** `Hilfe` (np. nie potrzebuję pomocy)
+* **Celownik:** **pomocy** `Hilfe`
+* **Biernik:** **pomoc** `Hilfe`
+* **Narzędnik:** **pomocą** `mit Hilfe`
+
+### 10 Lueckentext-Quiz
+1. Muszę **_________** (nehmen) klucze.
+2. Czy możesz na mnie **_________** (warten)?
+3. Co teraz **_________** (denken)?
+4. On **_________** (liebt) swoją rodzinę.
+5. Ja **_________** (höre) piosenkę.
+6. Nie **_________** (verstehe) tego zdania.
+7. Ja **_________** (brauche) nową książkę.
+8. On **_________** (gibt) mi kwiaty.
+9. Gdzie ty **_________** (lebst)?
+10. Chcę cię **_________** (fragen) o coś.
+
+### Aufloesung
+1. **brać**
+2. **czekać**
+3. **myślisz**
+4. **kocha**
+5. **słucham**
+6. **rozumiem**
+7. **potrzebuję**
+8. **daje**
+9. **żyjesz**
+10. **zapytać**
+
+Lektion #24 abgeschlossen.

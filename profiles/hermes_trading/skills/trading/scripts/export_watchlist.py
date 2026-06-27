@@ -33,6 +33,15 @@ raw = con.execute("""
     ORDER BY w.conviction_score DESC
 """).fetchall()
 
+# ── Sector Blacklist laden ────────────────────────────────────────────
+sector_blacklist = {}
+try:
+    with open(CONFIG_PATH if 'CONFIG_PATH' in dir() else '/root/.hermes/profiles/hermes_trading/skills/trading/data/strategy_config.json') as f:
+        scfg = json.load(f)
+        sector_blacklist = scfg.get("sector_blacklist", {})
+except Exception:
+    pass
+
 # ── Duplikate mit canonical_ticker mergen ─────────────────────────────
 # Wenn zwei Einträge denselben canonical-target haben:
 # höheren conviction_score behalten, mentions addieren
@@ -110,6 +119,12 @@ lines.append(f"**Gesamt:** {stats['total']} | "
              f"**≥76% Conviction:** {stats['high_conviction']}\n")
 lines.append(f"*Filter: conviction ≥ 76% oder bereits gekauft*"
              f" | *Canonical-Merge aktiv ({len(ct_map)} Regeln)*\n")
+
+# Sector Blacklist Info
+if sector_blacklist:
+    bl_notes = " | ".join(f"🚫 {s}" for s in sector_blacklist)
+    lines.append(f"> **Geblockte Sektoren:** {bl_notes} (keine Käufe für 14 Tage)\n")
+
 lines.append("---\n")
 
 # Tabellen-Header

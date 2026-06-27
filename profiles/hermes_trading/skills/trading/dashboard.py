@@ -636,6 +636,23 @@ def build_html(data):
     else:
         regime_html = "<div style='color:#555'>Noch keine Daten – läuft täglich 02:00</div>"
 
+    # Sector Blacklist HTML
+    sector_blacklist = cfg.get("sector_blacklist", {})
+    if sector_blacklist:
+        bl_rows = ""
+        for sector, entry in sector_blacklist.items():
+            bl_rows += f"""<tr>
+                <td style="font-weight:bold;color:#ff5252">🚫 {sector}</td>
+                <td>{entry.get('reason', '–')}</td>
+                <td style="color:#ffd740">{'✅ Probation' if entry.get('probation_done', False) else '⏳ Cooldown'}</td>
+            </tr>"""
+        sector_blacklist_html = f"""<table style="font-size:0.85em">
+            <tr><th>Sektor</th><th>Grund</th><th>Status</th></tr>
+            {bl_rows}
+        </table>"""
+    else:
+        sector_blacklist_html = "<div style='color:#555'>Keine Sektoren geblockt ✅</div>"
+
     # Benchmark + Equity-Kurve HTML (Phase 5.4)
     bm = data.get("benchmark", {})
     equity_curve = data.get("equity_curve", [])
@@ -1131,6 +1148,10 @@ wlRender();
     <h2>🌍 Markt-Regime</h2>
     <div style="background:#151525;border:1px solid #2a2a4a;border-radius:8px;padding:15px">
         {regime_html}
+    </div>
+    <h2>🚫 Geblockte Sektoren</h2>
+    <div style="background:#151525;border:1px solid #2a2a4a;border-radius:8px;padding:15px">
+        {sector_blacklist_html}
     </div>
     <h2>📈 Benchmark-Vergleich (YTD)</h2>
     <div style="background:#151525;border:1px solid #2a2a4a;border-radius:8px;padding:15px">

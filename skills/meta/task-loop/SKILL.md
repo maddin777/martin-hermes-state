@@ -49,7 +49,7 @@ Faustregel: **Das Done-Kriterium muss das Problem aus Martins Perspektive lösen
 - **EINEN Fix** pro Iteration — nie zwei Änderungen gleichzeitig machen
 - Fix protokollieren in der Konversation (muss für Martin nachvollziehbar sein)
 
-### Phase 3: Verification Gate(s) durchlaufen
+### Phase 4: Verification Gate(s) durchlaufen
 
 Jedes Gate nacheinander prüfen:
 
@@ -62,7 +62,7 @@ Gate 3 (echter Done): <Ist das Problem aus Martins Sicht gelöst?>
   → ✅/❌
 ```
 
-### Phase 4: Entscheiden
+### Phase 5: Entscheiden
 
 | Ergebnis | Nächster Schritt |
 |----------|------------------|
@@ -125,10 +125,23 @@ Nach Eskalation: Martin startet Gateway → alle Gates grün ✅
 | **Konfig-Änderung** | Restart + Healthcheck + Funktionsprüfung |
 | **Gateway-Problem** | systemctl status + Bot antwortet auf /start + Nachricht senden |
 
+## Token-Warnung vor grossen Analysen
+
+Vor Tasks die >100k Tokens kosten werden (delegate_task mit viel Kontext, x_search-Calls, umfassende DB-Analysen):
+
+```
+⚠️  Warnung: Dieser Task wird schätzungsweise <N>k Tokens kosten.
+OpenRouter-Modelle (deepseek-v4-flash) haben grössere Limits als xAI-Modelle.
+Weiter? [ja/nein]
+```
+
+Faustregel: delegate_task mit Context >2KB oder >5 Tool-Calls → vorher warnen.
+
 ## Wichtige Grundsätze
 
 1. **Niemals zwei Änderungen gleichzeitig.** Sonst weißt du nicht was gewirkt hat.
 2. **Niemals "wird schon klappen"** — jedes Gate muss aktiv geprüft werden.
 3. **Niemals dasselbe nochmal probieren.** Wenn Hypothese nicht hielt, neue aufstellen.
-4. **Bevor du was erklärst: mach.** Code-Änderung → ausführen. Gateway-Problem → prüfen. Nicht "ich würde vorschlagen".
-5. **Skill patchen nach erfolgreichem Fix.** Wenn das Wissen nicht in einem Skill landet, passiert der Fehler wieder.
+4. **Architektur-Änderungen vorher vorschlagen, nicht einfach implementieren.** Bei Änderungen die mehrere Komponenten betreffen (Config-Format, Datenfluss, neue Module): kurz die Logik skizzieren + Martin entscheiden lassen. Nicht "ich baue das jetzt" bei System-Architektur.
+5. **Bevor du was erklärst: mach.** Code-Änderung → ausführen. Gateway-Problem → prüfen. Nicht "ich würde vorschlagen".
+6. **Skill patchen nach erfolgreichem Fix.** Wenn das Wissen nicht in einem Skill landet, passiert der Fehler wieder.
