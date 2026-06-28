@@ -196,6 +196,12 @@ Nicht jeder `[[Wikilink]]` der auf keine Seite zeigt ist ein Broken Link. MOC-Pa
 - `[[../../hermes/dateiname]]` → Datei existiert im hermes/ Ordner — prüfen vor Meldung
 - `[[../Trading/Erklaerung]]` → Auflösung von wiki/ aus funktioniert (wiki/../Trading/ = Trading/)
 
+**Kritische Pitfall — `../../` Auflösung aus `wiki/`:**
+Aus `wiki/trading-index.md`: `[[../../Trading/Erklaerung]]` → `/root/Trading/Erklaerung` (geht 2 Ebenen hoch: wiki→vault-root→vault-parent).
+Aus `wiki/concepts/X.md`: `[[../../Trading/Erklaerung]]` → `/root/obsidian-vault/Trading/Erklaerung` (geht 2 Ebenen hoch: concepts→wiki→vault-root).
+**Merke:** `wiki/` ist 1 Level tief, `wiki/concepts/` ist 2 Level tief. Gleicher Link-Text kann je nach Quell-Tiefe valide oder broken sein. Immer mit `os.path.normpath(os.path.join(os.path.dirname(fpath), target))` auflösen.
+Referenz: `references/broken-link-detection-script.py` implementiert die vollständige Logik.
+
 **Echte Broken Links sind:**
 - Wikilinks zu nicht-existierenden Wiki-Seiten (z.B. `[[KI-Sicherheit]]`, `[[Aktien (KI Zulieferer)]]` → kein Konzept angelegt)
 - `../../`-Links deren Datei nicht existiert (z.B. falscher Zielordner, falscher Dateiname)
