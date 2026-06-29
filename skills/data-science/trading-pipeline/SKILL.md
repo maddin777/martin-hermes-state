@@ -114,6 +114,8 @@ Details siehe `references/` im Skill-Verzeichnis sowie die Erläuterung.md im Ob
 | Sector Blacklist + Probation | `references/sector-blacklist-probation.md` |
 | Private Company OTHER-Klassifikation | `references/other-sector-private-companies.md` |
 | Canonical-Merge überschreibt Sector | `references/export-watchlist-sector-merge.md` |
+| yfinance Date-Parsing (unconverted data) | `references/yfinance-date-parsing-fix.md` |
+| Sektor-Exposure-Cap (70%) | `references/sector-exposure-cap.md` |
 
 ### Session-Start-Protokoll: Proaktiver Pipeline-Check
 
@@ -202,7 +204,9 @@ Die Referenz enthält 23 klassifizierte Unternehmen plus Implementierungsvorschl
 | **`cron_health.py` ❌ false-positive** → Timing-Konflikt: `cron-health-daily` und `strategy_optimizer` starten beide um 08:00 (Sonntag). Der Optimizer braucht ~2 Min, der Health-Check findet nur START ohne DONE → flagged als crashed. Fix: staggered Schedules (z.B. health um 08:30).
 | **Config-Drift (SL=1.0/TP=4.0)** → adapt_strategy() hat SL/TP ohne Regime-Prüfung angepasst. Im Sideways-Markt führte das zu 81% SL_RATE + −358€ P&L. Fix: Regime-Check eingebaut, Config reset auf SL=1.5/TP=2.5. Siehe references/adapt-strategy-regime-blindness.md. |
 | **Channel in CHANNELS_FALLBACK aber nicht in source_registry** → yt_channel_monitor.py liest Kanäle aus der source_registry-DB. Die CHANNELS_FALLBACK wird NUR genutzt wenn source_registry komplett leer ist. Fix: INSERT OR IGNORE INTO source_registry.
-| **Canonical-Merge überschreibt Sector mit 'Other'** → `export_watchlist.py` merged Aliase (ARMK→ARM) und kopiert blind den Sector des höheren Conviction-Scores. Alias-Ticker haben oft 'Other' weil nicht in `companies`. Fix: Merge-Logik prüft `if w["company_sector"] != 'Other' or existing["company_sector"] == 'Other'`. Details in `references/export-watchlist-sector-merge.md`.
+| **Canonical-Merge überschreibt Sector mit 'Other'** → `export_watchlist.py` merged Aliase (ARMK→ARM) und kopiert blind den Sector des höheren Conviction-Scores. Alias-Ticker haben oft 'Other' weil nicht in `companies`. Fix: Merge-Logik prüft `if w["company_sector"] != 'Other' or existing["company_sector"] == 'Other'`. Details in `references/export-watchlist-sector-merge.md`. |
+| **yfinance „unconverted data remains"** → yfinance/pandas wirft ValueError bei Datums-Strings mit TZ-Suffix (z.B. `2026-06-28 00:00:00+00:00`). Killt alle `yf.download()`-Calls. Fix in fundamental_data.py: Monkey-Patch auf `_strptime._strptime` mit `dateutil.parser`-Fallback. Siehe `references/yfinance-date-parsing-fix.md`. |
+| **Sektor-Exposure-Cap (seit 28.06.2026)** → max 70% Portfolio-Exposure pro Sektor, nicht mehr max 2 Positionen. Prüfung in signal_manager.py **nach** Sizing mit tatsächlicher position_size. Config: `strategy_config.json: max_sector_exposure_pct: 0.70`. Grund: Quellen sind tech-lastig — ein Sektor soll dominieren können. Siehe `references/sector-exposure-cap.md`. |
 
 ### Manuelles Nachholen eines YouTube-Kanals (außerhalb der Pipeline)
 

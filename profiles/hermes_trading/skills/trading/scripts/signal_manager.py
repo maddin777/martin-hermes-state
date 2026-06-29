@@ -1015,17 +1015,16 @@ def open_new_positions(con, cfg):
         "SELECT ticker FROM positions WHERE status='open'"
     ).fetchall()}
 
-    # Sektor-Zähler für offene Positionen (JOIN auf companies)
-    MAX_POSITIONS_PER_SECTOR = 2
-    sector_counts = {}
+    # Sektor-Exposure für offene Positionen (JOIN auf companies)
+    sector_exposure = {}
     for r in con.execute("""
-        SELECT COALESCE(c.sector, 'Other') as sector, COUNT(*) as cnt
+        SELECT COALESCE(c.sector, 'Other') as sector, SUM(p.position_size) as exposure
         FROM positions p
         LEFT JOIN companies c ON c.ticker = p.ticker
         WHERE p.status='open'
         GROUP BY sector
     """).fetchall():
-        sector_counts[r["sector"]] = r["cnt"]
+        sector_exposure[r["sector"]] = r["exposure"] or 0
 
     # Heute bereits gehandelte Ticker (24h-Sperre korrekt per datetime)
     cutoff_24h = (datetime.now() - timedelta(hours=24)).strftime("%Y-%m-%d %H:%M")
@@ -1200,13 +1199,6 @@ def open_new_positions(con, cfg):
             probation_factor = cfg.get("sector_probation_size_pct", 0.5)
             print(f"  🧪 {c['name']}: {sector_reason} (Faktor: {probation_factor:.0%})")
         
-        # Sektor-Cap: max 2 Positionen pro Sektor
-        MAX_POSITIONS_PER_SECTOR = 2
-        if sector_counts.get(ticker_sector, 0) >= MAX_POSITIONS_PER_SECTOR:
-            print(f"  🏭 {c['name']}: Sektor '{ticker_sector}' bereits voll "
-                  f"({sector_counts[ticker_sector]}/{MAX_POSITIONS_PER_SECTOR})")
-            continue
-
         # Correlation Filter: Kein Einstieg wenn zu stark korreliert mit offenen Positionen
         corr_ok, corr_reason = check_correlation_with_open(con, ticker, direction, cfg)
         if not corr_ok:
@@ -1310,6 +1302,16 @@ def open_new_positions(con, cfg):
         if position_size < 200:
             continue
 
+        # Sektor-Exposure-Cap: max X% des Portfolios pro Sektor
+        max_sector_exposure = cfg.get("max_sector_exposure_pct", 0.70)
+        current_exposure = sector_exposure.get(ticker_sector, 0)
+        new_exposure_pct = (current_exposure + position_size) / portfolio_value
+        if new_exposure_pct > max_sector_exposure:
+            print(f"  🏭 {c['name']}: Sektor '{ticker_sector}' Exposure-Limit erreicht "
+                  f"({new_exposure_pct:.1%} > {max_sector_exposure:.0%}) "
+                  f"[aktuell {current_exposure:.0f}€ + {position_size:.0f}€]")
+            continue
+
         # Slippage auf Entry anwenden
         effective_entry = apply_slippage(current_price, direction, is_entry=True)
 
@@ -1363,8 +1365,8 @@ def open_new_positions(con, cfg):
             "UPDATE watchlist SET status='bought' WHERE name=?",
             (c["name"],)
         )
-        # Sektor-Zähler für nächste Iteration aktualisieren
-        sector_counts[ticker_sector] = sector_counts.get(ticker_sector, 0) + 1
+        # Sektor-Exposure für nächste Iteration aktualisieren
+        sector_exposure[ticker_sector] = sector_exposure.get(ticker_sector, 0) + position_size
 
         # Cash reduzieren
         cash -= position_size

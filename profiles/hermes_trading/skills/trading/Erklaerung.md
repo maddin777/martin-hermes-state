@@ -1,6 +1,6 @@
 # Hermes Trading Skill – Technische & Fachliche Dokumentation
 
-*Stand: Juni 2026 | System-Version nach Paketen A–D + Sprints 1–7 + Bugfix-Sprint + Screener-Source + Watchlist-Performance-Fix*
+*Stand: Juni 2026 | System-Version nach Paketen A–D + Sprints 1–7 + Bugfix-Sprint + Screener-Source + Watchlist-Performance-Fix + Sektor-Exposure-Cap (70%)*
 
 ---
 
@@ -163,7 +163,7 @@ Normalisierung: `confidence = (score + 10) / 20`
 4. Cash-Reserve: min(1.500€, 15% Portfolio) – wird auch intra-Loop pro Iteration geprüft
 5. Budget-Limit: max 70% investiert
 6. Max 8 offene Positionen
-7. Sektor-Cap: max 2 pro Sektor (JOIN auf companies.sector)
+7. **Sektor-Exposure-Cap:** max 70% des Portfolios pro Sektor (via `strategy_config.json: max_sector_exposure_pct`, geprüft NACH Sizing mit tatsächlicher Positionsgröße)
 8. Short-Thesis Score: mind. 2 von 4 Kriterien (Sentiment + P/E + Analyst + Tech)
 9. Re-Entry-Sperre: exakt 24h (datetime-basiert, nicht mehr tagesbasiert)
 10. Krypto-Filter: -USD/-USDT-Ticker geblockt

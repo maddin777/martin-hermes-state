@@ -15,6 +15,35 @@ import yfinance as yf
 from datetime import datetime, timedelta
 from config import DB_PATH, MACRO_SIGNAL_PATH, STRATEGY_CONFIG_PATH, db_connect
 from utils import retry, get_logger
+
+# ── Monkey-Patch: fix "unconverted data remains" in yfinance/pandas ────────────
+# yfinance (v0.2.54+) wirft ValueError bei Datums-Strings mit Zeitzonen-Suffix
+# (z.B. "2026-06-28 00:00:00+00:00" gegen Format "%Y-%m-%d").
+# Wir patchen _strptime._strptime_datetime — die interne Funktion die von
+# datetime.strptime() aufgerufen wird — für dateutil.parser-Fallback.
+import _strptime as _st
+from dateutil import parser as _dp
+
+_orig_st_strptime = _st._strptime
+
+def _safe_strptime(data_string, format="%a %b %d %H:%M:%S %Y"):
+    try:
+        return _orig_st_strptime(data_string, format)
+    except ValueError as e:
+        if "unconverted data remains" in str(e):
+            try:
+                parsed = _dp.parse(data_string)
+                tt_base = tuple(parsed.timetuple())
+                # _strptime gibt 11er-Tuple: (y,m,d,h,m,s,wd,yd,isdst, tzname,gmtoff)
+                tzname = parsed.tzname()
+                gmtoff = int(parsed.utcoffset().total_seconds()) if parsed.tzinfo else None
+                return tt_base + (tzname, gmtoff), parsed.microsecond, 0
+            except Exception:
+                pass
+        raise
+
+_st._strptime = _safe_strptime
+# ──────────────────────────────────────────────────────────────────────────────
 log = get_logger("fundamental_data")
 
 FRED_API_KEY = os.environ.get("FRED_API_KEY", "")

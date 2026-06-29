@@ -1655,8 +1655,8 @@
 "max_completion_tokens":262140,
 "name":"Qwen: Qwen3.6 27B",
 "pricing":{
-"prompt":"0.0000002885",
-"completion":"0.00000265"
+"prompt":"0.0000002596",
+"completion":"0.000002385"
 }
 },
 "qwen3.6-27b":{
@@ -1664,8 +1664,8 @@
 "max_completion_tokens":262140,
 "name":"Qwen: Qwen3.6 27B",
 "pricing":{
-"prompt":"0.0000002885",
-"completion":"0.00000265"
+"prompt":"0.0000002596",
+"completion":"0.000002385"
 }
 },
 "qwen/qwen3.6-27b-20260422":{
@@ -1673,8 +1673,8 @@
 "max_completion_tokens":262140,
 "name":"Qwen: Qwen3.6 27B",
 "pricing":{
-"prompt":"0.0000002885",
-"completion":"0.00000265"
+"prompt":"0.0000002596",
+"completion":"0.000002385"
 }
 },
 "qwen3.6-27b-20260422":{
@@ -1682,8 +1682,8 @@
 "max_completion_tokens":262140,
 "name":"Qwen: Qwen3.6 27B",
 "pricing":{
-"prompt":"0.0000002885",
-"completion":"0.00000265"
+"prompt":"0.0000002596",
+"completion":"0.000002385"
 }
 },
 "openai/gpt-5.5-pro":{
