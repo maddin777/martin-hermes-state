@@ -18,7 +18,7 @@ CONFIG_PATH = os.path.join(THEMATIC_DIR, "config", "thematic_config.json")
 TEMPLATE_DIR = os.path.join(os.path.dirname(__file__), "templates", "thematic")
 
 DB_PATH_ABS = os.path.join(
-    os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "trading.db"
+    os.path.dirname(os.path.abspath(__file__)), "data", "trading.db"
 )
 
 

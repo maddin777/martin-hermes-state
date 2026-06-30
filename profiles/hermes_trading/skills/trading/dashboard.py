@@ -335,10 +335,12 @@ def build_sources_section(data):
 
     # YouTube Kanäle
     yt_rows = ""
+    # Case-insensitive Channel-Match (DB speichert z.B. "urban jäkle", CHANNELS_FALLBACK hat "Urban Jäkle")
+    stats_ci = {k.lower(): v for k, v in stats.items()}
     for ch in yt_channels:
         name = ch["name"]
         url  = ch["url"]
-        s    = stats.get(name, {})
+        s    = stats_ci.get(name.lower(), {})
         count = s.get("count", 0)
         last  = s.get("last", "–")
         yt_rows += f"""

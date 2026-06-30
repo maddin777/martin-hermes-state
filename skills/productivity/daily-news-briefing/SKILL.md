@@ -266,7 +266,7 @@ Alternative: seatemperature.org via browser. Die Open-Meteo Lufttemperatur ist N
 
 - Same story from multiple sources → list once with all sources
 - Sort into 4 sections (Politik, Finanzen, IT/KI, D/Nordeuropa) + Wetter/Wasser
-- Prioritize recency (today > yesterday)
+- **RECENCY FILTER — NUR Artikel der letzten 2 Tage!** Jeder RSS-Item hat ein `<pubDate>`-Element. Parse es und vergleiche mit heute. Alles älter als 2 Tage → WEGLASSEN. Keine Ausnahmen, auch wenn interessant. Google News RSS liefert immer aktuelle News — wenn der Feed Müll/Altes ausspuckt, lieber weniger Items als alte.
 - All output in German — translate international sources
 
 ### Step 6: Assemble and deliver
