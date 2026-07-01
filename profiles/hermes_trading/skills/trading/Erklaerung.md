@@ -1,6 +1,6 @@
 # Hermes Trading Skill – Technische & Fachliche Dokumentation
 
-*Stand: Juni 2026 | System-Version nach Paketen A–D + Sprints 1–7 + Bugfix-Sprint + Screener-Source + Watchlist-Performance-Fix + Sektor-Exposure-Cap (70%)*
+*Stand: 29. Juni 2026 | System-Version nach Paketen A–D + Sprints 1–7 + Bugfix-Sprint + Screener-Source + Watchlist-Performance-Fix + Sektor-Exposure-Cap (70%) + Dashboard-Fixes*
 
 ---
 
@@ -409,3 +409,17 @@ Alle Migrationen laufen beim ersten Start des jeweiligen Scripts automatisch via
 | `yt_channel_monitor.py` | `videos` | `error_count` (für Retry-Limit) |
 | `watchlist_manager.py` | `watchlist` | `weekly_trend` |
 | `signal_manager.py` | `canonical_tickers` | neue Tabelle (Ticker-Mappings) |
+
+---
+
+## 15. Changelog
+
+### 29.06.2026 — Dashboard-Fixes Batch
+
+1. **Urban Jäkle kein letzter Eintrag** — Case-Mismatch zwischen `watchlist_mentions` (speichert `"urban jäkle"`) und CHANNELS_FALLBACK (`"Urban Jäkle"`). Dashboard matcht jetzt case-insensitive via `stats_ci`-Dict.
+2. **Thematic Dashboard DB-Fehler** — `dashboard_thematic.py` hatte einen `os.path.dirname()` zu viel → DB-Pfad zeigte auf nicht-existentes `skills/data/trading.db`. Fix: ein `os.path.dirname()` entfernt.
+3. **Finnhub 403 Rate-Limits** — `finnhub_client.py`: Sliding-Window Rate Limiter (max 50 Calls/60s, ~17% Puffer zum Free-Tier-Limit) statt festem Interval. Blockiert automatisch wenn Limit erreicht + wartet bis Fenster frei. Plus Retry (2 Versuche, 3s/6s Backoff) bei 403/429. Log-Level von "Fehler" auf "⚠️" reduziert.
+
+### Frühere Änderungen
+
+(Siehe Git-Historie und vorherige Versionen dieses Dokuments.)

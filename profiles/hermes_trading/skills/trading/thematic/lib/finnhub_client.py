@@ -13,31 +13,66 @@ from typing import Optional
 FINNHUB_KEY = os.environ.get("FINNHUB_API_KEY")
 FINNHUB_URL = "https://finnhub.io/api/v1"
 
-_last_call = 0
-MIN_INTERVAL = 1.1  # Sekunden (60/min ~ 1s pro Call)
+# Sliding-Window Rate Limiter: max 50 calls pro 60s (Free Tier = 60/min, ~17% Puffer)
+from collections import deque
+_call_timestamps = deque()
+MAX_CALLS_PER_WINDOW = 50
+WINDOW_SECONDS = 60
 
 
 def _rate_limit():
-    global _last_call
-    elapsed = time.time() - _last_call
-    if elapsed < MIN_INTERVAL:
-        time.sleep(MIN_INTERVAL - elapsed)
-    _last_call = time.time()
+    """Sliding-Window Rate Limiter — blockiert wenn >50 Calls in den letzten 60s."""
+    global _call_timestamps
+    now = time.time()
+    cutoff = now - WINDOW_SECONDS
 
+    # Alte Einträge rauswerfen
+    while _call_timestamps and _call_timestamps[0] < cutoff:
+        _call_timestamps.popleft()
+
+    if len(_call_timestamps) >= MAX_CALLS_PER_WINDOW:
+        # Warte bis das Fenster wieder frei ist (ältester Timestamp + 60s - jetzt)
+        wait = _call_timestamps[0] + WINDOW_SECONDS - now + 0.5  # +0.5s Puffer
+        if wait > 0:
+            print(f"[Finnhub] ⏳ Rate-Limit erreicht ({MAX_CALLS_PER_WINDOW}/60s) → warte {wait:.0f}s")
+            time.sleep(wait)
+        # Nach dem Warten nochmal aufräumen
+        while _call_timestamps and _call_timestamps[0] < now - WINDOW_SECONDS:
+            _call_timestamps.popleft()
+
+    _call_timestamps.append(time.time())
+
+MAX_RETRIES = 2
 
 def _get(endpoint: str, params: Optional[dict] = None) -> dict:
     if not FINNHUB_KEY:
         return {}
     params = params or {}
     params["token"] = FINNHUB_KEY
-    _rate_limit()
-    try:
-        resp = requests.get(f"{FINNHUB_URL}{endpoint}", params=params, timeout=15)
-        resp.raise_for_status()
-        return resp.json()
-    except Exception as e:
-        print(f"[Finnhub] Fehler {endpoint}: {e}")
-        return {}
+
+    for attempt in range(MAX_RETRIES):
+        _rate_limit()
+        try:
+            resp = requests.get(f"{FINNHUB_URL}{endpoint}", params=params, timeout=15)
+            if resp.status_code == 429 or resp.status_code == 403:
+                wait = 3 * (attempt + 1)
+                print(f"[Finnhub] ⚠️ {endpoint}: {resp.status_code} (Rate-Limit) → retry in {wait}s")
+                time.sleep(wait)
+                continue
+            resp.raise_for_status()
+            return resp.json()
+        except requests.exceptions.HTTPError as e:
+            if attempt < MAX_RETRIES - 1:
+                wait = 3 * (attempt + 1)
+                print(f"[Finnhub] ⚠️ {endpoint}: {e} → retry in {wait}s")
+                time.sleep(wait)
+                continue
+            print(f"[Finnhub] ⚠️ {endpoint}: {e}")
+            return {}
+        except Exception as e:
+            print(f"[Finnhub] ⚠️ {endpoint}: {e}")
+            return {}
+    return {}
 
 
 def get_company_profile(ticker: str) -> dict:

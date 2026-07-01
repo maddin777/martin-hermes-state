@@ -181,40 +181,40 @@
 },
 "z-ai/glm-5.2":{
 "context_length":1048576,
-"max_completion_tokens":32768,
+"max_completion_tokens":null,
 "name":"Z.ai: GLM 5.2",
 "pricing":{
-"prompt":"0.00000095",
+"prompt":"0.00000094",
 "completion":"0.000003",
 "input_cache_read":"0.00000018"
 }
 },
 "glm-5.2":{
 "context_length":1048576,
-"max_completion_tokens":32768,
+"max_completion_tokens":null,
 "name":"Z.ai: GLM 5.2",
 "pricing":{
-"prompt":"0.00000095",
+"prompt":"0.00000094",
 "completion":"0.000003",
 "input_cache_read":"0.00000018"
 }
 },
 "z-ai/glm-5.2-20260616":{
 "context_length":1048576,
-"max_completion_tokens":32768,
+"max_completion_tokens":null,
 "name":"Z.ai: GLM 5.2",
 "pricing":{
-"prompt":"0.00000095",
+"prompt":"0.00000094",
 "completion":"0.000003",
 "input_cache_read":"0.00000018"
 }
 },
 "glm-5.2-20260616":{
 "context_length":1048576,
-"max_completion_tokens":32768,
+"max_completion_tokens":null,
 "name":"Z.ai: GLM 5.2",
 "pricing":{
-"prompt":"0.00000095",
+"prompt":"0.00000094",
 "completion":"0.000003",
 "input_cache_read":"0.00000018"
 }
@@ -2226,66 +2226,13 @@
 "input_cache_write_1h":"0.00001"
 }
 },
-"anthropic/claude-opus-4.6-fast":{
-"context_length":1000000,
-"max_completion_tokens":128000,
-"name":"Anthropic: Claude Opus 4.6 (Fast)",
-"pricing":{
-"prompt":"0.00003",
-"completion":"0.00015",
-"web_search":"0.01",
-"input_cache_read":"0.000003",
-"input_cache_write":"0.0000375",
-"input_cache_write_1h":"0.00006"
-}
-},
-"claude-opus-4.6-fast":{
-"context_length":1000000,
-"max_completion_tokens":128000,
-"name":"Anthropic: Claude Opus 4.6 (Fast)",
-"pricing":{
-"prompt":"0.00003",
-"completion":"0.00015",
-"web_search":"0.01",
-"input_cache_read":"0.000003",
-"input_cache_write":"0.0000375",
-"input_cache_write_1h":"0.00006"
-}
-},
-"anthropic/claude-4.6-opus-fast-20260407":{
-"context_length":1000000,
-"max_completion_tokens":128000,
-"name":"Anthropic: Claude Opus 4.6 (Fast)",
-"pricing":{
-"prompt":"0.00003",
-"completion":"0.00015",
-"web_search":"0.01",
-"input_cache_read":"0.000003",
-"input_cache_write":"0.0000375",
-"input_cache_write_1h":"0.00006"
-}
-},
-"claude-4.6-opus-fast-20260407":{
-"context_length":1000000,
-"max_completion_tokens":128000,
-"name":"Anthropic: Claude Opus 4.6 (Fast)",
-"pricing":{
-"prompt":"0.00003",
-"completion":"0.00015",
-"web_search":"0.01",
-"input_cache_read":"0.000003",
-"input_cache_write":"0.0000375",
-"input_cache_write_1h":"0.00006"
-}
-},
 "z-ai/glm-5.1":{
 "context_length":202752,
 "max_completion_tokens":null,
 "name":"Z.ai: GLM 5.1",
 "pricing":{
-"prompt":"0.00000098",
-"completion":"0.00000308",
-"input_cache_read":"0.000000182"
+"prompt":"0.000000975",
+"completion":"0.0000043"
 }
 },
 "glm-5.1":{
@@ -2293,9 +2240,8 @@
 "max_completion_tokens":null,
 "name":"Z.ai: GLM 5.1",
 "pricing":{
-"prompt":"0.00000098",
-"completion":"0.00000308",
-"input_cache_read":"0.000000182"
+"prompt":"0.000000975",
+"completion":"0.0000043"
 }
 },
 "z-ai/glm-5.1-20260406":{
@@ -2303,9 +2249,8 @@
 "max_completion_tokens":null,
 "name":"Z.ai: GLM 5.1",
 "pricing":{
-"prompt":"0.00000098",
-"completion":"0.00000308",
-"input_cache_read":"0.000000182"
+"prompt":"0.000000975",
+"completion":"0.0000043"
 }
 },
 "glm-5.1-20260406":{
@@ -2313,9 +2258,8 @@
 "max_completion_tokens":null,
 "name":"Z.ai: GLM 5.1",
 "pricing":{
-"prompt":"0.00000098",
-"completion":"0.00000308",
-"input_cache_read":"0.000000182"
+"prompt":"0.000000975",
+"completion":"0.0000043"
 }
 },
 "google/gemma-4-26b-a4b-it:free":{
@@ -4115,22 +4059,20 @@
 },
 "stepfun/step-3.5-flash":{
 "context_length":262144,
-"max_completion_tokens":16384,
+"max_completion_tokens":65536,
 "name":"StepFun: Step 3.5 Flash",
 "pricing":{
-"prompt":"0.00000009",
-"completion":"0.0000003",
-"input_cache_read":"0.00000002"
+"prompt":"0.0000001",
+"completion":"0.0000003"
 }
 },
 "step-3.5-flash":{
 "context_length":262144,
-"max_completion_tokens":16384,
+"max_completion_tokens":65536,
 "name":"StepFun: Step 3.5 Flash",
 "pricing":{
-"prompt":"0.00000009",
-"completion":"0.0000003",
-"input_cache_read":"0.00000002"
+"prompt":"0.0000001",
+"completion":"0.0000003"
 }
 },
 "moonshotai/kimi-k2.5":{
@@ -6558,7 +6500,7 @@
 },
 "moonshotai/kimi-k2-0905":{
 "context_length":262144,
-"max_completion_tokens":262144,
+"max_completion_tokens":100352,
 "name":"MoonshotAI: Kimi K2 0905",
 "pricing":{
 "prompt":"0.0000006",
@@ -6567,7 +6509,7 @@
 },
 "kimi-k2-0905":{
 "context_length":262144,
-"max_completion_tokens":262144,
+"max_completion_tokens":100352,
 "name":"MoonshotAI: Kimi K2 0905",
 "pricing":{
 "prompt":"0.0000006",
@@ -7284,7 +7226,7 @@
 },
 "moonshotai/kimi-k2":{
 "context_length":131072,
-"max_completion_tokens":32768,
+"max_completion_tokens":100352,
 "name":"MoonshotAI: Kimi K2 0711",
 "pricing":{
 "prompt":"0.00000057",
@@ -7293,7 +7235,7 @@
 },
 "kimi-k2":{
 "context_length":131072,
-"max_completion_tokens":32768,
+"max_completion_tokens":100352,
 "name":"MoonshotAI: Kimi K2 0711",
 "pricing":{
 "prompt":"0.00000057",

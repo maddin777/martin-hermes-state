@@ -308,3 +308,65 @@ Lektion #23 abgeschlossen.
 10. **zapytać**
 
 Lektion #24 abgeschlossen.
+
+## Lektion #25
+
+### 1. Top 500 Vocabulary
+1. **droga** `Weg`
+2. **miejsce** `Ort`
+3. **dziecko** `Kind`
+4. **życie** `Leben`
+5. **kobieta** `Frau`
+6. **mężczyzna** `Mann`
+7. **miasto** `Stadt`
+8. **czas** `Zeit`
+9. **świat** `Welt`
+10. **ręka** `Hand`
+
+### 2. n+1 Sentence Mining
+1. **To jest moja droga.** `Das ist mein Weg.`
+2. **To jest dobre miejsce.** `Das ist ein guter Ort.`
+3. **Dziecko śpi.** `Das Kind schläft.`
+4. **Życie jest piękne.** `Das Leben ist schön.`
+5. **Ta kobieta pracuje.** `Diese Frau arbeitet.`
+6. **Ten mężczyzna biegnie.** `Dieser Mann läuft.`
+7. **Moje miasto jest duże.** `Meine Stadt ist groß.`
+8. **Nie mam czasu.** `Ich habe keine Zeit.`
+9. **Świat jest wielki.** `Die Welt ist groß.`
+10. **Moja ręka boli.** `Meine Hand tut weh.`
+
+### 3. Grammatik: Aspekt & Kasus
+
+**Aspekt-Paare (Verben):**
+- **pisać** (imperfekt) / **napisać** (perfekt) `schreiben`
+- **czytać** (imperfekt) / **przeczytać** (perfekt) `lesen`
+
+**Kasus (Nomen):**
+- **Miasto** (Nominativ/Akkusativ) -> **Miasta** (Genitiv)
+- **Kobieta** (Nominativ/Akkusativ) -> **Kobiety** (Genitiv)
+
+### 4. Lueckentext-Quiz
+1. To jest moja ______ (`Weg`).
+2. To jest dobre ______ (`Ort`).
+3. ______ (`Kind`) śpi.
+4. ______ (`Leben`) jest piękne.
+5. Ta ______ (`Frau`) pracuje.
+6. Ten ______ (`Mann`) biegnie.
+7. Moje ______ (`Stadt`) jest duże.
+8. Nie mam ______ (`Zeit`).
+9. ______ (`Welt`) jest wielki.
+10. Moja ______ (`Hand`) boli.
+
+### 5. Auflösung
+1. **droga**
+2. **miejsce**
+3. **Dziecko**
+4. **Życie**
+5. **kobieta**
+6. **mężczyzna**
+7. **miasto**
+8. **czasu**
+9. **Świat**
+10. **ręka**
+
+Lektion #25 abgeschlossen.
