@@ -8,7 +8,7 @@
         "daily-news-briefing"
       ],
       "skill": "daily-news-briefing",
-      "model": "openrouter/owl-alpha",
+      "model": "nvidia/nemotron-3-super-120b-a12b:free",
       "provider": "openrouter",
       "base_url": null,
       "script": null,
@@ -22,17 +22,17 @@
       "schedule_display": "0 6 * * *",
       "repeat": {
         "times": null,
-        "completed": 7
+        "completed": 8
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-06-22T07:17:50.376210+02:00",
-      "next_run_at": "2026-07-01T06:00:00+02:00",
-      "last_run_at": "2026-06-30T06:06:46.641283+02:00",
-      "last_status": "ok",
-      "last_error": null,
+      "next_run_at": "2026-07-02T06:00:00+02:00",
+      "last_run_at": "2026-07-01T06:00:16.311369+02:00",
+      "last_status": "error",
+      "last_error": "RuntimeError: HTTP 404: No endpoints found for openrouter/owl-alpha.",
       "last_delivery_error": null,
       "deliver": "telegram",
       "origin": null,
@@ -47,5 +47,5 @@
       "fire_claim": null
     }
   ],
-  "updated_at": "2026-06-30T06:06:46.642316+02:00"
+  "updated_at": "2026-07-01T06:00:16.312203+02:00"
 }

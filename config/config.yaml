@@ -383,8 +383,8 @@ memory:
   memory_enabled: true
   user_profile_enabled: true
   write_approval: false
-  memory_char_limit: 2200
-  user_char_limit: 1375
+  memory_char_limit: 4400
+  user_char_limit: 2750
   provider: holographic
   flush_min_turns: 6
   nudge_interval: 10
@@ -491,19 +491,20 @@ approvals:
   mcp_reload_confirm: true
   destructive_slash_confirm: false
 command_allowlist:
-- stop/restart hermes gateway (kills running agents)
 - shell command via -c/-lc flag
-- recursive chown to root
 - stop/restart system service
+- stop/restart hermes gateway (kills running agents)
+- kill hermes/gateway process (self-termination)
+- in-place edit of system config
+- script execution via -e/-c flag
+- in-place edit of Hermes config/env
+- overwrite project env/config via redirection
+- overwrite system file via redirection
 - pipe remote content to shell
 - overwrite system config
-- script execution via -e/-c flag
-- overwrite project env/config via redirection
 - delete in root path
-- kill hermes/gateway process (self-termination)
-- overwrite system file via redirection
 - script execution via heredoc
-- in-place edit of system config
+- recursive chown to root
 quick_commands: {}
 platform_hints: {}
 hooks: {}

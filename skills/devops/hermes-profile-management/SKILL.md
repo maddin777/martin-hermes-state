@@ -109,10 +109,10 @@ except urllib.error.HTTPError as e:
 7. **Gateway restart after changes:** Always `systemctl restart hermes-gateway-<profile>` after `.env`, `config.yaml`, or `jobs.json` changes.
 8. **Response truncated: avoid delegate_task in cron prompts.** Models with low output-token limits (e.g. `openai/gpt-oss-120b:free`) can fail with `RuntimeError: Response truncated due to output length limit` when the cron prompt uses `delegate_task` — subagent output aggregates into the main response, exceeding the length check. Fix: remove `delegate_task`, compact prompt (max 10-12 items, bulletpoints), or use a model with higher output capacity.
 
-10. **Model selection for cron jobs:** If truncation persists (even without `delegate_task`), switch to a model with higher output capacity. `openrouter/owl-alpha` (free, 1M context, agentic-workload-optimized) resolved the truncation issue for Martins `hermes-news` daily briefing. Set `model: "openrouter/owl-alpha"` and `provider: "openrouter"` in the cron job config. Owl Alpha is on the same OpenRouter routing tier -- no additional API key needed.
+10. **Model selection for cron jobs:** If truncation persists (even without `delegate_task`), switch to a model with higher output capacity. `deepseek/deepseek-v4-flash` (free, 1M context, agentic-workload-optimized) resolved the truncation issue for Martins `hermes-news` daily briefing. Alternative: `deepseek/deepseek-v4-flash` (schneller, günstig, ebenfalls OpenRouter). Set both `model` and `provider` in the cron job config.
 
 11. **xai-oauth 403 (spending limit) — switch provider entirely:** When xAI Grok tokens run out, the cron job returns HTTP 403 `personal-team-blocked:spending-limit`. The fix is NOT model-only — the entire provider must change:
-    - Cron job: change both `model` (to e.g. `openrouter/owl-alpha`) AND `provider` (to `openrouter`)
+    - Cron job: change both `model` (to e.g. `deepseek/deepseek-v4-flash`) AND `provider` (to `openrouter`)
     - x_search config in `config.yaml`: stays on `xai-oauth` (separate from cron model)
     - Cron prompt stays unchanged — the model swap is invisible to the LLM
     - When Grok credits are restored, switch back by reversing both fields
@@ -139,6 +139,8 @@ except urllib.error.HTTPError as e:
     ```
     Der Provider-Name ist `xai-oauth`, NICHT `xai`. Das Modell `grok-4.20-0309-non-reasoning` ist ein non-reasoning Modell für schnellere, direkte Antworten. Reasoning-Modelle haben kein `-non-reasoning` Suffix.
 
+12b. **One-Shot-Cron-Jobs mit ISO-Timestamp feuern nicht immer automatisch.** Ein One-Shot (`schedule: once at 2026-06-30 09:30`) kann in `state: scheduled` hängenbleiben mit `next_run_at: null` und `last_run_at: null`, obwohl die Zeit verstrichen ist. Fix: `cronjob action=run job_id=<id>` triggert ihn manuell. Prävention: recurring Cron mit `repeat: 1` nutzen (robuster). Siehe `references/one-shot-cron-not-firing.md`.
+
 13. **JSON in jobs.json mit Sonderzeichen — patch-Tool vermeiden.** Wenn der Prompt deutsche Sonderzeichen enthält (Anführungszeichen „ “, Gedankenstriche —, ———), korrumpiert das `patch`-Tool die JSON-Struktur (fehlende Kommas, unescaped Chars).
     
     **Fix:** Immer Python mit `json.dump(ensure_ascii=False)` verwenden:
@@ -151,7 +153,36 @@ except urllib.error.HTTPError as e:
     ```
     Das erhält Umlaute und Sonderzeichen lesbar und escaped automatisch notwendige Zeichen.
 
-14. **Cross-Profile Cron Delivery Bot Mismatch (CRITICAL).** Wenn du einen Cron-Job im **main Hermes Scheduler** anlegst (`cronjob`-Tool oder `hermes cron create`) mit `profile: <name>`, dann läuft der **Agent im Profil-Kontext**, aber die **Zustellung (Delivery) geht über den main Gateway/Bot** — NICHT über den Bot des Profils.
+14. **Cross-Profile Cron Delivery Bot Mismatch (CRITICAL).** Die Zustellung eines Cron-Jobs geht IMMER über den Bot-Token des Schedulers, in dem der Job läuft. Der `profile:`-Parameter steuert nur die Runtime-Umgebung (`.env`, `config.yaml`), NICHT den Delivery-Bot.
+
+    **Fall A: `deliver: telegram:-100XXXX` im Default-Scheduler OHNE `profile:`-Parameter**
+
+    Der Job läuft im default Scheduler, delivery geht über den **default Bot** (`@myhermster_bot` beim User Martin). Wenn die Channel-ID einem Profil-Bot gehört (z.B. `@hermster_news_bot`), scheitert die Zustellung mit `Chat not found` — der default Bot kennt den Channel nicht.
+
+    **Symptom:** `last_status: ok` (Agent lief erfolgreich), aber `last_delivery_error: "Chat not found"`. Das Output-File liegt im Cron-Output-Verzeichnis, erreicht den User aber nie.
+
+    **Diagnose:**
+    ```bash
+    # Prüfen welcher Bot den Channel kennt
+    source ~/.hermes/.env  # default bot
+    curl -s "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/getChat?chat_id=-100XXXX" | python3 -c "import json,sys; d=json.load(sys.stdin); print('✅' if d.get('ok') else '❌ Bot kennt Channel nicht')"
+
+    # Prüfen ob Profil-Bot den Channel kennt
+    source ~/.hermes/profiles/<profil>/.env  # profile bot
+    curl -s "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/getChat?chat_id=-100XXXX" | python3 -c "import json,sys; d=json.load(sys.stdin); print('✅' if d.get('ok') else '❌')"
+    ```
+
+    **Fixes (sorted by robustness):**
+    1. **Bester Weg: Job ins Profil schreiben** — schieb den Job direkt ins Profil-eigene `cron/jobs.json`. Dann deliver der Profil-Bot, der den Channel kennt.
+    2. **Manuelle Delivery via Profil-Bot:** Lies die Cron-Output-Datei und send per `curl` über den Profil-Bot-Token (Quick Fix, nicht nachhaltig).
+    3. **`deliver: telegram` OHNE Channel-ID** — delivered in den `TELEGRAM_HOME_CHANNEL` des Scheduler-Bots. Funktioniert nur wenn der Channel der Home-Channel ist.
+
+    **Praktisches Beispiel aus Martins Setup (01.07.2026):**
+    Ein One-Shot-Job im Default-Scheduler mit `deliver: telegram:-1003687061880` lief erfolgreich (25KB Output), aber die Nachricht kam nie an. Grund: Der Channel `-1003687061880` (Ch_hermster_news) gehört zum `@hermster_news_bot` (hermes-news Profil). Der Default-Bot `@myhermster_bot` kannte den Channel nicht. Fix: Output gelesen und per `curl` über den hermes-news-Bot-Token manuell zugestellt. Prävention: Job direkt ins hermes-news Profil schreiben.
+
+    **Fall B: Job mit `profile: <name>` im Default-Scheduler** (der ursprüngliche Fall)
+    
+    Wenn du einen Cron-Job im **main Hermes Scheduler** anlegst (`cronjob`-Tool oder `hermes cron create`) mit `profile: <name>`, dann läuft der **Agent im Profil-Kontext**, aber die **Zustellung (Delivery) geht über den main Gateway/Bot** — NICHT über den Bot des Profils.
 
     **Symptom:** Der Job läuft erfolgreich (`last_status: ok`), aber die Zustellung scheitert mit `Chat not found` — weil der main-Bot nicht im Ziel-Channel ist. Der Profil-Bot wäre im Channel, wird aber nie für die Delivery verwendet.
     
@@ -166,7 +197,7 @@ except urllib.error.HTTPError as e:
         'name': 'job-name',
         'prompt': '...',  # Vollständiger Prompt
         'skills': [],
-        'model': {'model': 'openrouter/owl-alpha', 'provider': 'openrouter'},
+        'model': {'model': 'deepseek/deepseek-v4-flash', 'provider': 'openrouter'},
         'schedule': {'kind': 'cron', 'expr': '0 6 * * *', 'display': '0 6 * * *'},
         'state': 'scheduled',
         'deliver': 'origin',  # KEY: 'origin' im Profil-Kontext = TELEGRAM_HOME_CHANNEL über Profil-Bot
@@ -182,8 +213,33 @@ except urllib.error.HTTPError as e:
     - Das ist der kanonische Weg, um durch das Profil-Gateway zuzustellen
     
     **Nicht versuchen:** curl-Befehle in den Cron-Prompt zu packen — der Hermes Prompt-Validator blockiert shell-basierte Delivery-Payloads als Exfiltrations-Risiko (`threat pattern 'exfil_curl_url'`).
-    
-    **Verifikation:**
+
+    ### Pitfall: cronjob run ignoriert profile-Feld aus jobs.json
+
+    Wenn du manuell `"profile": "hermes-news"` in die `jobs.json` geschrieben hast
+    (z.B. für Delivery-Routing über den Profil-Gateway), wird dieser Parameter beim
+    `cronjob run` NICHT berücksichtigt. Der Job läuft dann im default Profil-Kontext
+    — Delivery geht über den default Bot, nicht über den Profil-Bot.
+
+    **Symptom:** Du triggerst einen Job mit `cronjob action=run`, er läuft
+    erfolgreich, aber die Nachricht kommt im DM statt im Channel an — obwohl
+    `profile: hermes-news` in der `jobs.json` steht.
+
+    **Ursache:** `cronjob run` lädt den Job aus dem internen Cache des Schedulers,
+    nicht aus der `jobs.json` auf Disk. Das `profile`-Feld wird dort nicht gespeichert.
+
+    **Fix:**
+    - Für recurring Jobs: den nächsten scheduled Tick abwarten (Scheduler liest
+      direkt aus `jobs.json` beim Tick)
+    - Für Tests: Job direkt in die Profil-Cron-DB schreiben
+      (`/root/.hermes/profiles/<profil>/cron/jobs.json`)
+    - Oder: Gateway neustarten NACH dem Edit von `jobs.json`, damit der Scheduler
+      die Datei frisch lädt, dann `cronjob run` triggern
+
+    **Verifikation:** `journalctl -u hermes-gateway.service --since "2 min ago"`
+    zeigt ob der Job im richtigen Kontext lief.
+
+    ### Verifikation
     ```bash
     source /root/.hermes/profiles/<profil>/.env
     curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
@@ -321,7 +377,7 @@ hermes cron create \
   --name "my-job" \
   --schedule "0 6 * * *" \
   --prompt "..." \
-  --model openrouter/owl-alpha \
+  --model deepseek/deepseek-v4-flash \
   --provider openrouter \
   --profile hermes-news  # runtime context, NOT delivery bot
   --deliver origin       # → this DM (main bot)
@@ -331,7 +387,7 @@ Or via the tool:
 ```json
 cronjob(action="create", name="my-job", schedule="0 6 * * *",
         profile="hermes-news", deliver="origin",
-        model={"model": "openrouter/owl-alpha", "provider": "openrouter"})
+        model={"model": "deepseek/deepseek-v4-flash", "provider": "openrouter"})
 ```
 
 **Use this when:** The job's output should come to the main DM, not to a profile channel.
@@ -818,6 +874,12 @@ A profile cron job runs ONLY when the associated gateway is active. Gateway down
 
 Full diagnosis recipes in `references/gateway-watchdog-diagnosis.md`.
 
+### Cross-Profile Delivery Bot Mismatch
+
+Wenn ein Cron-Job erfolgreich läuft aber die Nachricht nie ankommt (`Chat not found`):
+- **Ursache:** Der Scheduler-Bot kennt den Ziel-Channel nicht (gehört zu anderem Profil-Bot)
+- **Diagnose + Fix:** Siehe `references/cross-profile-delivery-bot-mismatch.md`
+
 ### Quick Health Check
 
 ```bash
@@ -1049,3 +1111,133 @@ mitgekillt. Immer als separaten systemd-Service betreiben.
 
 **Kein HTTPS.** Ohne Reverse Proxy (nginx/Caddy) läuft alles über HTTP. Fürs
 LAN okay, für Internet Zugriff Tailscale oder HTTPS-Proxy vorschalten.
+
+---
+
+## 6. Model Migration Across Skills, Profiles, and Configs
+
+Wenn ein Modell deprecated wird (z.B. `openrouter/owl-alpha` → nicht mehr
+verfügbar), muss der Swap systematisch durchgezogen werden — nicht nur im
+Cron-Job, sondern in allen Skills, Referenzdateien und Profilen die das Modell
+erwähnen.
+
+### Search Phase — alle Vorkommen finden
+
+```bash
+grep -rn "old-model-name" ~/.hermes/skills/ --include='*.md'
+grep -rn "old-model-name" ~/.hermes/cron/jobs.json
+grep -rn "old-model-name" ~/.hermes/profiles/*/cron/jobs.json
+grep -rn "old-model-name" ~/.hermes/profiles/*/skills/ --include='*.md'
+```
+
+Filtere historische Outputs (`cron/output/`, `sessions/`) und Caches
+(`models_dev_cache.json`, `provider_models_cache.json`, `model_catalog.json`)
+raus — die listen nur verfügbare Modelle oder sind Laufzeit-Historie.
+
+### Update Phase
+
+**Batch 1 — Aktive Cron-Jobs (vorrangig):**
+```bash
+# Default Scheduler
+hermes cron list | grep old-model-name
+hermes cron update <job_id> --model new-model-name --provider openrouter
+
+# Profile Scheduler — direkt in jobs.json patchen
+python3 -c "
+import json
+path = '/root/.hermes/profiles/<profil>/cron/jobs.json'
+d = json.load(open(path))
+for j in d['jobs']:
+    if j.get('model') == 'old-model-name':
+        j['model'] = 'new-model-name'
+json.dump(d, open(path, 'w'), indent=2, ensure_ascii=False)
+"
+systemctl restart hermes-gateway-<profil>
+```
+
+**Batch 2 — Skills (alle SKILL.md + references):**
+```bash
+# replace_all = True für jedes File mit Vorkommen
+# via skill_manage(action='patch') oder direktes patch-Tool
+```
+
+Drei Kategorien von Fundstellen:
+- **Config-Beispiele in Code-Blöcken** (JSON/YAML-Snippets) — `replace_all` sicher
+- **Dokumentationstext** ("Nutze `altes-model` für...") — einzeln patchen
+- **Historische Debug-Reports** ("Error 404 for old-model") — **nicht patchen**, das ist korrekte Historie
+
+**Batch 3 — Profile (cross-profile):**
+Profile haben eigene Kopien von Skills + `cron/jobs.json`. Jedes muss einzeln
+gepatcht werden (cross_profile=True beachten).
+
+### Verify Phase
+
+Nach dem Swap prüfen ob noch aktive Fundstellen übrig sind:
+
+```bash
+grep -rn "old-model-name" ~/.hermes/skills/ ~/.hermes/cron/jobs.json \
+  ~/.hermes/profiles/*/cron/jobs.json ~/.hermes/profiles/*/skills/ \
+  --include='*.md' --include='*.json' | grep -v "cron/output" | grep -v "sessions/"
+```
+
+### Fallstricke
+
+- **Nicht alle Fundstellen sind aktiv** — Caches (`provider_models_cache.json`,
+  `model_catalog.json`) und historische Session-Files enthalten das alte Modell
+  als Daten, nicht als Konfiguration. Nicht patchen.
+- **Cross-profile Guard** — das `patch`-Tool blockiert Schreibzugriffe auf
+  fremde Profile. Mit `cross_profile=True` nur nach explizitem User-OK.
+- **`cronjob update` aktualisiert nicht nur das Model** — der Scheduler fixiert
+  das Model zum Update-Zeitpunkt. Kein manuelles Edit von `jobs.json` nötig
+  für default-Scheduler-Jobs.
+- **`last_error`-Felder** in `jobs.json` enthalten alte Modellnamen in
+  Fehlermeldungen (z.B. "HTTP 404: No endpoints found for altes-model"). Die
+  sind korrekte Historie und werden beim nächsten erfolgreichen Lauf
+  überschrieben.
+
+---
+
+## 7. Cron Prompt Decoupling — File References statt Inline
+
+Langfristig wartbare Cron-Jobs lagern den Prompt in eine Datei aus und
+referenzieren sie per `hermes goal --file`. Prompt-Änderungen erfordern dann
+kein Cron-Job-Touching.
+
+### Warum
+
+- **Inline-Prompts in `jobs.json`** — Änderungen brauchen Python-JSON-Dump
+  oder cronjob-update
+- **File-Referenzen** — `patch` auf die `.txt`-Datei reicht, der Job liest
+  beim nächsten Tick neu
+- **Versionskontrolle** — Goal-Dateien können in Git; `jobs.json`-Diffs sind
+  unleserlich
+
+### Wie
+
+```cron
+# Statt: inline prompt in jobs.json
+# Besser: Dateireferenz
+0 14 * * 1,3,5  hermes goal --file ~/hermes/goals/scan_A_reddit_hn.txt
+```
+
+Der Cron-Prompt (im Scheduler) enthält nur noch den Verweis:
+
+```
+Führe den Scan aus. Lade ~/hermes/goals/scan_X.txt und folge dem
+darin enthaltenen /goal exakt. Speichere Report und sende per Telegram.
+```
+
+### Wann decouplen
+
+- Der Prompt ist länger als 5 Zeilen
+- Der Prompt wird häufiger geändert als der Schedule
+- Mehrere Jobs teilen sich Teile des Prompts (Scoring-Logik, Gate-Regeln)
+- Der Prompt soll versionierbar sein
+
+### Pitfalls
+
+- Der `--file`-Pfad muss im Scheduler-Kontext lesbar sein (absoluter Pfad)
+- Datei muss existieren bevor der Job feuert (Cron schlägt sonst silent fehl)
+- Kein Rollback-Mechanismus — bei defekter Datei feuert der Job nicht
+- Goal-Dateien müssen **self-contained** sein — sie können keine weiteren
+  Dateien referenzieren

@@ -21,7 +21,7 @@ import yfinance as yf
 import pandas_ta as ta
 from datetime import datetime, timedelta
 from utils import passes_liquidity_filter, apply_slippage, COMMISSION_EUR, get_price_data_cached, prefetch_prices
-from utils import get_logger, price_to_eur, position_size_in_shares
+from utils import get_logger, price_to_eur, position_size_in_shares, open_positions_market_value_eur, calc_pnl_with_costs
 log = get_logger("signal_manager")
 from config import DB_PATH, SIGNALS_VALIDATED_PATH, STRATEGY_CONFIG_PATH, MACRO_SIGNAL_PATH, db_connect, get_asset_type, get_asset_multipliers
 CONFIG_PATH = STRATEGY_CONFIG_PATH
@@ -217,16 +217,22 @@ def send_telegram(message):
     if not TELEGRAM_TOKEN or not TELEGRAM_HOME_CHANNEL:
         print(f"\n{message}")
         return
+    url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
     try:
-        requests.post(
-            f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage",
-            json={
-                "chat_id": TELEGRAM_HOME_CHANNEL,
-                "text": message,
-                "parse_mode": "HTML"
-            },
+        resp = requests.post(
+            url,
+            json={"chat_id": TELEGRAM_HOME_CHANNEL, "text": message, "parse_mode": "HTML"},
             timeout=10
         )
+        # #19: Firmennamen mit < oder & brechen parse_mode=HTML → Telegram
+        # antwortet 400 und die Nachricht ginge still verloren. Fallback: erneut
+        # ohne parse_mode senden (Tags erscheinen dann als Text, aber zugestellt).
+        if resp.status_code == 400:
+            requests.post(
+                url,
+                json={"chat_id": TELEGRAM_HOME_CHANNEL, "text": message},
+                timeout=10
+            )
     except Exception as e:
         print(f"  ⚠ Telegram Fehler: {e}")
 
@@ -282,6 +288,19 @@ def adapt_strategy(cfg, con):
     if vix > 25 and cfg["min_confidence"] < 0.70:
         cfg["min_confidence"] = min(0.70, cfg["min_confidence"] + 0.03)
         changes.append(f"VIX {vix:.0f} → Min. Konfidenz erhöht auf {cfg['min_confidence']:.0%}")
+
+    # #13: Recovery-Pfad. adapt_strategy hob min_confidence nur an (VIX, Loss-Serien)
+    # und senkte nie – über Wochen ratcht das Richtung 0.80 → Entry-Starvation.
+    # Bei ruhigem Markt (VIX < 20) und solider Win-Rate schrittweise zurück Richtung
+    # Basiswert (Floor 0.60).
+    conf_floor = cfg.get("min_confidence_floor", 0.60)
+    if vix < 20 and win_rate >= 0.55 and cfg["min_confidence"] > conf_floor \
+            and cfg["consecutive_losses"] == 0:
+        old = cfg["min_confidence"]
+        cfg["min_confidence"] = round(max(conf_floor, old - 0.02), 2)
+        if cfg["min_confidence"] < old:
+            changes.append(f"Ruhiger Markt + WR {win_rate:.0%} → Min. Konfidenz "
+                           f"gesenkt auf {cfg['min_confidence']:.0%}")
 
     if changes:
         msg = "🔧 <b>Strategie angepasst:</b>\n" + "\n".join(f"• {c}" for c in changes)
@@ -501,7 +520,12 @@ def check_open_positions(con, cfg):
         pos_asset_type = pos["asset_type"] if "asset_type" in pos.keys() else "STANDARD"
         pos_mult = get_asset_multipliers(pos_asset_type)
 
-        if cfg.get("partial_tp_enabled") and not pos["partial_exit_done"] and atr:
+        # #5: Gap-Schutz. Wenn der Kurs im selben Tick schon SL oder TP erreicht,
+        # NICHT zusätzlich den Partial-TP buchen – sonst würden Partial (50%+PnL)
+        # und der anschließende Full-Close (100%+PnL) zusammen ~150% als Cash
+        # zurückbuchen (Doppelbuchung bei Overnight-Gap über den TP).
+        if (cfg.get("partial_tp_enabled") and not pos["partial_exit_done"]
+                and atr and not hit_sl and not hit_tp):
             pnl_atr = (current_price - entry) / atr if direction == "LONG" \
                       else (entry - current_price) / atr
             if pnl_atr >= pos_mult["partial_atr"]:
@@ -608,6 +632,11 @@ def check_open_positions(con, cfg):
             exit_reason = "TARGET_HIT"
 
         if exit_reason:
+            # #11: PnL einheitlich mit Exit-Slippage + Commission (entry_price ist
+            # bereits effektiv). Ersetzt die slippage-freie Rohberechnung.
+            pnl_eur, pnl_pct = realized_pnl_from_effective_entry(
+                entry, current_price, original_position_size, direction
+            )
             # Cash-Rückbuchung mit original_position_size (vor Partial-TP-Reduktion)
             cash += original_position_size + pnl_eur
             con.execute("""
@@ -688,24 +717,43 @@ def apply_regime_filter(conviction, direction, regime):
 
 def check_drawdown(con):
     """
-    Prüft Portfolio-Drawdown gegen ATH.
+    Prüft Portfolio-Drawdown gegen ATH – auf Basis von Mark-to-Market (#3).
+
+    Früher wurde portfolio.total_value gelesen, das ist aber nur Buchwert
+    (cash + Σ position_size = Einstandskosten). Unrealisierte Verluste offener
+    Positionen waren damit unsichtbar → die -15%/-25%-Bremse feuerte erst
+    NACH den Einzel-SL-Hits. Jetzt: Live-Wert aus aktuellen Kursen.
+
     Gibt (drawdown_pct, action) zurück:
       action = 'ok'       → normal weiter
       action = 'no_entry' → -15%: keine neuen Positionen
       action = 'close_all' → -25%: alle Positionen schließen
     """
-    portfolio = con.execute("SELECT total_value, ath_value FROM portfolio WHERE id=1").fetchone()
+    portfolio = con.execute("SELECT cash, total_value, ath_value FROM portfolio WHERE id=1").fetchone()
     if not portfolio:
         return 0.0, "ok"
 
-    total = portfolio["total_value"] or 0
-    ath   = portfolio["ath_value"]   or total
+    cash = portfolio["cash"] or 0
+    open_positions = con.execute(
+        "SELECT ticker, direction, entry_price, position_size FROM positions WHERE status='open'"
+    ).fetchall()
+    if open_positions:
+        prefetch_prices([p["ticker"] for p in open_positions if p["ticker"]])
+        market_val = open_positions_market_value_eur(open_positions)
+    else:
+        market_val = 0.0
+
+    total = cash + market_val
+    ath   = portfolio["ath_value"] or total
+
+    # Buchwert + Live-MtM in DB fortschreiben (damit Dashboard/andere Checks konsistent sind)
+    con.execute("UPDATE portfolio SET total_value=? WHERE id=1", (round(total, 2),))
 
     # ATH aktualisieren wenn neues Hoch
     if total > ath:
-        con.execute("UPDATE portfolio SET ath_value=? WHERE id=1", (total,))
-        con.commit()
+        con.execute("UPDATE portfolio SET ath_value=? WHERE id=1", (round(total, 2),))
         ath = total
+    con.commit()
 
     if ath == 0:
         return 0.0, "ok"
@@ -797,10 +845,19 @@ def check_short_thesis(con, ticker: str, conviction_bear: float, cfg: dict) -> t
     score = 0
     reasons = []
 
-    # Kriterium 1: Bearish Sentiment
-    if conviction_bear >= cfg.get("min_confidence_short", 0.65):
+    # #7: Kriterien 1 und 4 waren de-facto immer erfüllt (die Kandidaten-Query im
+    # signal_manager filtert bereits auf conviction_bear>=Schwelle UND
+    # tech_direction='SHORT'), d.h. jeder Kandidat startete mit 2/4 → Gate war
+    # wirkungslos. Diese beiden Kriterien liefern deshalb nur noch je 1 Punkt,
+    # wenn sie DEUTLICH über der Mindestschwelle liegen bzw. der Tech-Score
+    # zusätzlich stark bearish ist. Damit müssen für 2/4 echte unabhängige
+    # Belege (Bewertung/Analyst) dazukommen.
+
+    # Kriterium 1: Bearish Sentiment DEUTLICH über Schwelle (nicht nur knapp)
+    min_short = cfg.get("min_confidence_short", 0.65)
+    if conviction_bear >= min_short + 0.10:
         score += 1
-        reasons.append(f"Bearish conviction {conviction_bear:.0%}")
+        reasons.append(f"Bearish conviction stark {conviction_bear:.0%}")
 
     # Kriterium 2: Bewertung (P/E > Sektor-Median)
     try:
@@ -831,15 +888,17 @@ def check_short_thesis(con, ticker: str, conviction_bear: float, cfg: dict) -> t
     except Exception:
         pass
 
-    # Kriterium 4: Technische Schwäche
+    # Kriterium 4: Technische Schwäche – #7: nicht nur tech_direction='SHORT'
+    # (das ist per Kandidaten-Query ohnehin gesetzt), sondern zusätzlich ein
+    # deutlich bearisher tech_score (< 0.40 Confidence).
     try:
         wl = con.execute(
-            "SELECT tech_direction FROM watchlist WHERE ticker=? AND status='watching'",
+            "SELECT tech_direction, tech_score FROM watchlist WHERE ticker=? AND status='watching'",
             (ticker,)
         ).fetchone()
-        if wl and wl["tech_direction"] == "SHORT":
+        if wl and wl["tech_direction"] == "SHORT" and (wl["tech_score"] or 1.0) < 0.40:
             score += 1
-            reasons.append("Tech-Direction: SHORT")
+            reasons.append(f"Tech stark bearish ({(wl['tech_score'] or 0):.2f})")
     except Exception:
         pass
 
@@ -1097,6 +1156,16 @@ def open_new_positions(con, cfg):
     # Sektor-Blacklist aktualisieren (14d P&L Auswertung)
     cfg = update_sector_blacklist(con, cfg)
 
+    # #6: Richtungsabhängige Conviction. LONG nutzt conviction_score (bullish),
+    # SHORT nutzt conviction_score_bear (bearish). Vorher wurde durchgängig die
+    # bullishe Conviction für Ranking, Sizing und den Grok-Gate genommen.
+    def _dir_conviction(c, direction):
+        if direction == "SHORT":
+            v = c["conviction_score_bear"] if "conviction_score_bear" in c.keys() else None
+        else:
+            v = c["conviction_score"] if "conviction_score" in c.keys() else None
+        return v or 0
+
     # Priority Score berechnen
     def priority_score(item):
         c, direction = item
@@ -1111,14 +1180,20 @@ def open_new_positions(con, cfg):
         except Exception:
             recency = 0
 
+        conv = _dir_conviction(c, direction)
+        tech = c["tech_score"] or 0
+        # #6: Für SHORT ist ein NIEDRIGER tech_score (bearishe Technik) das stärkere
+        # Signal → invertieren, damit das Ranking die besten Shorts oben hat.
+        tech_component = (1.0 - tech) if direction == "SHORT" else tech
+
         score = (
-            (c["conviction_score"] or 0) * 0.40 +
-            (c["tech_score"] or 0)       * 0.40 +
-            channel_diversity             * 0.20
+            conv            * 0.40 +
+            tech_component  * 0.40 +
+            channel_diversity * 0.20
         )
         tiebreaker = (
             recency                      * 0.001 +
-            (c["tech_score"] or 0)       * 0.0001 +
+            tech_component               * 0.0001 +
             min(c["mention_count"], 10)  * 0.00001
         )
         return score + tiebreaker
@@ -1133,7 +1208,7 @@ def open_new_positions(con, cfg):
             break
 
         ticker = c["ticker"]
-     # 🚫 Krypto-Filter (Notnagel): verhindert dass extrahierte Privatfirmen
+        cand_conviction = _dir_conviction(c, direction)   # #6: LONG=bullish, SHORT=bearish
         # wie "OpenAI"/"Anthropic" als CRYPTOCURRENCY-Ticker getradet werden.
         # yfinance liefert fuer XYZ-USD echte Preise/Volumen – Liquiditaetsfilter
         # blockt das nicht zuverlaessig.
@@ -1216,14 +1291,14 @@ def open_new_positions(con, cfg):
             continue
 
         # Loop 3: Pre-Entry Validation Gate – Segment-Historie prüfen
-        seg_ok, seg_reason = check_segment_performance(con, ticker, direction, c["conviction_score"] if "conviction_score" in c.keys() else 0)
+        seg_ok, seg_reason = check_segment_performance(con, ticker, direction, cand_conviction)
         if not seg_ok:
             print(f"  🚫 {c['name']}: {seg_reason}")
             continue
 
         # Grok Breaking-News-Check: Negative Breaking News → kein Entry
         # Nur für HIGH-Conviction (spart Grok-Calls für schwächere Kandidaten)
-        if (c["conviction_score"] or 0) >= cfg.get("conviction_high", 0.80):
+        if cand_conviction >= cfg.get("conviction_high", 0.80):
             try:
                 from xsearch_helper import breaking_news_check
                 has_breaking, summary = breaking_news_check(ticker, c["name"])
@@ -1257,7 +1332,7 @@ def open_new_positions(con, cfg):
             pass
 
         # Position Sizing
-        conviction = c["conviction_score"] or 0
+        conviction = _dir_conviction(c, direction)   # #6: LONG=bullish, SHORT=bearish
         conviction = apply_regime_filter(conviction, direction, regime)
 
         if conviction >= cfg.get("conviction_high", 0.80):
@@ -1282,7 +1357,12 @@ def open_new_positions(con, cfg):
         # Risiko pro Trade capped auf risk_pct_per_trade % des Gesamtportfolios
         risk_pct       = cfg.get("risk_pct_per_trade", 0.015)
         risk_amount    = portfolio_value * risk_pct
-        sl_multiplier  = cfg.get("atr_sl_multiplier", 1.5)
+        # #9: Der reale SL kommt aus den asset_type-Multiplikatoren (TECH 2.0×,
+        # DEFENSIVE 1.0× …), nicht aus cfg["atr_sl_multiplier"]. Sizing muss
+        # denselben Multiplikator verwenden, sonst weicht das Ist-Risiko pro
+        # Trade um bis zu ±33% vom Zielrisiko ab.
+        _asset_type_for_sizing = get_asset_type(ticker_sector)
+        sl_multiplier  = get_asset_multipliers(_asset_type_for_sizing)["atr_sl"]
         # ATR in EUR umrechnen (FX-aware) für korrektes Sizing
         atr_eur        = price_to_eur(atr, ticker)
         sl_distance_eur = sl_multiplier * atr_eur
@@ -1352,7 +1432,7 @@ def open_new_positions(con, cfg):
             datetime.now().strftime("%Y-%m-%d %H:%M"),
             round(sl, 2), round(tp, 2), round(sl, 2),
             round(position_size, 2), round(shares, 4),
-            round(atr, 4), c["conviction_score"],
+            round(atr, 4), cand_conviction,
             ", ".join(set(channels[:3])),
             c["notes"] or "",
             effective_entry if direction == "LONG" else 0,
@@ -1391,6 +1471,18 @@ def open_new_positions(con, cfg):
         open_tickers.add(ticker)
         opened += 1
 
+        # #12: Wenn dies ein Probation-Trade war (Sektor gerade aus dem Cooldown),
+        # probation_done=True setzen. Vorher wurde das Flag nie gesetzt → beliebig
+        # viele 50%-Probation-Trades, und der Auswertungs-/Removal-Pfad war toter Code.
+        if is_probation:
+            bl = cfg.get("sector_blacklist", {})
+            if ticker_sector in bl:
+                bl[ticker_sector]["probation_done"] = True
+                cfg["sector_blacklist"] = bl
+                save_config(cfg)
+                print(f"  🧪 Probation-Trade eröffnet für '{ticker_sector}' "
+                      f"→ probation_done=True (Auswertung beim nächsten Lauf)", flush=True)
+
         msg = (
             f"📈 <b>NEUES SIGNAL: {c['name']}</b>\n"
             f"Ticker: {ticker} | {direction}\n"
@@ -1401,7 +1493,7 @@ def open_new_positions(con, cfg):
             "📊 <b>Watchlist-Analyse:</b>\n"
             f"• Mentions: {c['mention_count']}x in 30 Tagen\n"
             f"• Kanäle: {', '.join(set(channels[:3]))} ({unique_channels} verschiedene)\n"
-            f"• Conviction: {c['conviction_score']:.0%} {'bullish' if direction == 'LONG' else 'bearish'}\n"
+            f"• Conviction: {cand_conviction:.0%} {'bullish' if direction == 'LONG' else 'bearish'}\n"
             f"• Tech Score: {c['tech_score']:.2f}\n\n"
             f"💰 Cash verbleibend: {cash:.2f}€"
         )
@@ -1455,12 +1547,16 @@ def print_portfolio_summary(con, cfg):
 def main(mode="full"):
     # Lockfile: verhindert parallelen full-Lauf während check_only läuft (und umgekehrt)
     import fcntl, tempfile
-    lock_path = os.path.join(os.path.dirname(DB_PATH), "signal_manager.lock")
+    # #14: Gemeinsames Lock-File mit active_exit_check/drawdown_monitor
+    # (utils.portfolio_lock nutzt denselben Pfad). Dadurch schließen sich ALLE
+    # portfolio-schreibenden Skripte gegenseitig aus, nicht nur signal_manager
+    # gegen sich selbst.
+    lock_path = os.path.join(os.path.dirname(DB_PATH), "portfolio.lock")
     lock_file = open(lock_path, "w")
     try:
         fcntl.flock(lock_file, fcntl.LOCK_EX | fcntl.LOCK_NB)
     except BlockingIOError:
-        print(f"⚠ signal_manager läuft bereits (Lockfile: {lock_path}) – Abbruch.", flush=True)
+        print(f"⚠ Portfolio gerade gesperrt (anderer Writer aktiv, Lock: {lock_path}) – Abbruch.", flush=True)
         lock_file.close()
         sys.exit(0)  # kein Fehler-Exit, Pipeline soll weiterlaufen
 

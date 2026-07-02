@@ -1,6 +1,6 @@
 # Hermes Trading Skill – Technische & Fachliche Dokumentation
 
-*Stand: 29. Juni 2026 | System-Version nach Paketen A–D + Sprints 1–7 + Bugfix-Sprint + Screener-Source + Watchlist-Performance-Fix + Sektor-Exposure-Cap (70%) + Dashboard-Fixes*
+*Stand: 1. Juli 2026 | System-Version nach Paketen A–D + Sprints 1–7 + Bugfix-Sprint + Screener-Source + Watchlist-Performance-Fix + Sektor-Exposure-Cap (70%) + Dashboard-Fixes + **Security-&-Risk-Hardening-Sprint (19 Punkte)***
 
 ---
 
@@ -423,3 +423,156 @@ Alle Migrationen laufen beim ersten Start des jeweiligen Scripts automatisch via
 ### Frühere Änderungen
 
 (Siehe Git-Historie und vorherige Versionen dieses Dokuments.)
+
+---
+
+## Security-&-Risk-Hardening-Sprint (1. Juli 2026)
+
+Vollständige Schwachstellen-Analyse (fachlich + technisch) mit 19 umgesetzten Fixes.
+Betroffene Dateien: `dashboard.py`, `signal_manager.py`, `utils.py`,
+`active_exit_check.py`, `strategy_optimizer.py`, `nightly_eval.py`,
+`drawdown_monitor.py`, `xsearch_helper.py`.
+
+### 🔴 Sicherheit
+
+**#1 – Unauth. RCE über das Dashboard (dashboard.py).**
+`POST /sources/yt/add` schrieb `name`/`url` unsaniert per String-Interpolation in
+den Python-Quelltext von `yt_channel_monitor.py`, den Cron um 04:00 als root
+ausführt → beliebige Code-Ausführung, zusätzlich CSRF-fähig (simple Form-POSTs).
+**Fix:** YouTube-Kanäle leben jetzt in `source_registry` (DB), exakt wie RSS/Twitter
+(`get_yt_channels/add_yt_channel/remove_yt_channel` schreiben DB statt Quellcode).
+Strenge Eingabe-Validierung (`_YT_NAME_RE`, `_YT_URL_RE`). Dashboard bindet
+standardmäßig auf `127.0.0.1` (LAN nur bewusst über `DASHBOARD_BIND=0.0.0.0`).
+Alle POST-Mutationen erfordern einen Token, sobald `DASHBOARD_TOKEN` gesetzt ist
+(Header `X-Dashboard-Token` oder Formfeld `_token`).
+
+**#2 – Stored XSS (dashboard.py).** Firmennamen/Reasons aus der LLM-Extraktion
+externer Inhalte (YouTube-Transkripte!) wurden ungeescapt gerendert.
+**Fix:** `html.escape()` auf alle DB/LLM-Felder in den serverseitigen Tabellen;
+`</script>`-Breakout im eingebetteten Watchlist-JSON geschlossen
+(`<`,`>`,`&` → `\u00xx`); JS-`esc()`-Helfer für das clientseitige `innerHTML`-Rendering.
+
+### 🔴 Risiko-Kern
+
+**#3 – Drawdown-Bremse war blind für offene Verluste (signal_manager.py,
+drawdown_monitor.py, utils.py).** `portfolio.total_value` ist Buchwert
+(`cash + Σ position_size` = Einstand); unrealisierte Verluste waren unsichtbar,
+die −15%/−25%-Notbremse feuerte erst NACH den Einzel-SL-Hits.
+**Fix:** Neue Helfer `utils.position_current_value_eur()` +
+`utils.open_positions_market_value_eur()`. `check_drawdown()` und
+`drawdown_monitor` rechnen jetzt Mark-to-Market (`cash + Σ MtM`), inkl.
+Fortschreibung von `total_value`/`ath_value`.
+
+**#4 – Strategy Optimizer speicherte cfg fast nie (strategy_optimizer.py).**
+Der v2-`main()` schrieb `strategy_config.json` nur im `<10-Trades`-Zweig. Walk-Forward-
+und Eval-Metrics-Anpassungen blieben nur im Speicher → sonntäglicher Lauf de-facto
+No-Op auf Platte. **Fix:** cfg-Dump (a) VOR der Parameter-Optimierung
+(damit `_original_main` die eval-/source-Anpassungen sieht), (b) direkt nach
+WF-Übernahme, (c) finaler Safety-Dump am Funktionsende.
+
+**#5 – Cash-Doppelbuchung bei TP-Gap (signal_manager.py).** `hit_tp` wurde vor dem
+Partial-TP-Block berechnet; ein Overnight-Gap über den TP (≥2.5×ATR ⇒ auch
+≥1.5×ATR) ließ Partial UND Full-Close im selben Tick feuern → ~150% Cash zurück.
+**Fix:** Partial-TP nur wenn `not hit_sl and not hit_tp`.
+
+### 🟠 Short-Seite
+
+**#6 – Shorts wurden mit Long-Metriken bewertet (signal_manager.py).** Ranking,
+Sizing-Tier und Grok-News-Gate nutzten durchgängig `conviction_score` (bullish),
+und der Priority-Score rankte `tech_score` aufsteigend gut (für Shorts ist niedriger
+tech_score aber das stärkere Signal). **Fix:** Helfer `_dir_conviction(c, direction)`
+(LONG=`conviction_score`, SHORT=`conviction_score_bear`); im Priority-Score wird der
+Tech-Beitrag für Shorts invertiert (`1 - tech_score`). Gespeicherte
+`positions.confidence` und Telegram zeigen jetzt die richtungsrichtige Conviction.
+
+**#7 – Short-Thesis-Gate (2/4) war ein No-Op (signal_manager.py).** Kriterien 1
+(bear-Conviction ≥ Schwelle) und 4 (`tech_direction='SHORT'`) sind per Kandidaten-
+Query ohnehin erfüllt → jeder Kandidat startete mit 2/4. **Fix:** Kriterium 1 zählt
+nur bei conviction_bear ≥ Schwelle + 0.10; Kriterium 4 nur bei zusätzlich
+tech_score < 0.40. Für 2/4 müssen jetzt echte unabhängige Belege
+(Bewertung/Analyst) dazukommen.
+
+**#8 – active_exit_check behandelte Shorts falsch (active_exit_check.py).**
+`TECH_BROKEN` basierte auf einem Bullish-Count – „broken" ist für einen SHORT aber
+gut. **Fix:** Richtungsabhängig: LONG schließt bei `broken`, SHORT bei `intact`
+(Setup gegen uns). Zusätzlich fehlte der Trailing-Stop-Zweig für SHORT komplett →
+ergänzt (gespiegelt).
+
+**#9 – Sizing-Risiko ≠ realer Stop (signal_manager.py).** Risk-Parity rechnete mit
+`cfg["atr_sl_multiplier"]` (1.5), der reale SL kommt aber aus den Asset-Type-
+Multiplikatoren (TECH 2.0×, DEFENSIVE 1.0×) → Ist-Risiko wich um ±33% ab.
+**Fix:** Sizing nutzt `get_asset_multipliers(get_asset_type(sector))["atr_sl"]`.
+
+### 🟠 Optimizer / Metriken
+
+**#10 – Optimizer optimierte entkoppelte/mehrdeutige Parameter
+(strategy_optimizer.py).** `atr_sl/tp` steuern live keine Exits mehr (Asset-Type tut
+das); `min_confidence` filtert im Backtest gegen `positions.confidence` (=Conviction),
+live aber gegen `tech_score`; ohne Intraday-Pfad kann ein weiterer TP nie „getroffen"
+werden (Bias Richtung enger Parameter). **Fix:** Als bekannte Grenzen klar
+dokumentiert; Auto-Übernahme bleibt an `IMPROVEMENT_THRESHOLD` (10%) und WF ab
+30 Trades gekoppelt.
+
+**#11 – Slippage-Inkonsistenz zwischen den Exit-Engines
+(utils.py, signal_manager.py, active_exit_check.py).** `signal_manager`-Close hatte
+KEINE Exit-Slippage; `active_exit_check` schlug die Entry-Slippage DOPPELT auf
+(`entry_price` in der DB ist bereits effektiv). **Fix:** gemeinsamer Helfer
+`utils.realized_pnl_from_effective_entry()` – nur Exit-Slippage + Commission,
+in beiden Engines verwendet.
+
+**#12 – Sektor-Probation kaputt (signal_manager.py).** `probation_done` wurde nie
+auf `True` gesetzt → beliebig viele 50%-Probation-Trades, Removal-/Auswertungspfad
+toter Code. **Fix:** nach erfolgreichem Probation-Entry `probation_done=True` +
+`save_config`.
+
+**#13 – min_confidence-Ratchet (signal_manager.py).** `adapt_strategy` hob
+`min_confidence` nur an (VIX/Loss-Serien), senkte nie → Drift Richtung 0.80 →
+Entry-Starvation. **Fix:** Recovery-Pfad – bei VIX < 20, Win-Rate ≥ 55% und keiner
+Verlustserie schrittweise −0.02 Richtung Floor (`min_confidence_floor`, Std. 0.60).
+
+**#16 – nightly_eval-Metriken verzerrt (nightly_eval.py).** Sortino/Calmar/MaxDD
+behandelten Positions-`pnl_pct` als Portfolio-Rendite (−10%-Position ≈ −1,5%
+Portfolio) → stark überzeichnet. **Fix:** Portfolio-gewichtete Renditen
+(`pnl_eur / total_value`) via `_portfolio_returns_pct()`.
+
+### 🟡 Robustheit
+
+**#14 – Nebenläufigkeit / Lost Updates (utils.py, signal_manager.py,
+active_exit_check.py, drawdown_monitor.py).** `breaking_news_monitor` (10–17),
+`signal_manager check_only` (13–20), `active_exit_check`+`thesis_monitor` (15:30)
+liefen überlappend; Read-Modify-Write auf `portfolio.cash` über getrennte
+Connections → Lost-Update-Risiko. `drawdown_monitor` umging zudem
+`config.db_connect()` (kein WAL/busy_timeout). **Fix:** gemeinsames
+`utils.portfolio_lock()` (flock auf `data/portfolio.lock`); `active_exit_check`
+kapselt `main()` darin; `signal_manager` nutzt jetzt DASSELBE Lock-File
+(`portfolio.lock` statt `signal_manager.lock`) → alle Cash-Writer schließen sich
+gegenseitig aus. `drawdown_monitor` nutzt `config.db_connect` (nur Reader auf
+`portfolio`, daher ohne Lock) + Mark-to-Market.
+
+**#15 – Stiller FX-Faktor 1.0 (utils.py).** Unbekannte Währung gab kommentarlos 1.0
+zurück. **Fix:** erst Fallback-Tabelle, sonst WARN-Log (Ticker sollte verworfen
+werden).
+
+**#17 – _price_cache wuchs unbegrenzt (utils.py).** Volle 2y-DataFrames pro Ticker
+ohne Eviction. **Fix:** `_cache_store()` mit TTL-Eviction + harter Obergrenze
+(`_PRICE_CACHE_MAX=400`, ältester Eintrag wird verdrängt).
+
+**#18 – x_search JSON-Parsing (xsearch_helper.py).** Greedy `r'\{.*\}'` fasste bei
+mehreren JSON-Blöcken die falsche Spanne. **Fix:** `_extract_first_json()` via
+`JSONDecoder.raw_decode` – erstes sauber dekodierbares Objekt.
+
+**#19 – Quellen-Attribution + Telegram-HTML (nightly_eval.py, signal_manager.py).**
+`source_channel LIKE '%channel%'` konnte Quellen mit Teilstring-Namen
+quer-attribuieren → Whole-Token-Match gegen die kommagetrennte Liste. Firmennamen
+mit `<`/`&` brachen `parse_mode=HTML` (Nachricht ging still verloren) →
+`send_telegram` sendet bei HTTP 400 automatisch ohne `parse_mode` erneut.
+
+### Nicht umgesetzt (bewusst)
+- `SLIPPAGE_PCT`/`COMMISSION_EUR` sind weiterhin in `config.py` UND `utils.py`
+  definiert (identische Werte). Konsolidierung wäre wünschenswert, birgt aber
+  Divergenz-Risiko bei falscher Migration → separat behandeln.
+
+### Konfigurations-Hinweise (neu)
+- `DASHBOARD_BIND` (Std. `127.0.0.1`), `DASHBOARD_TOKEN` (Pflicht bei LAN-Bind)
+- `min_confidence_floor` in `strategy_config.json` (Std. 0.60, für #13)
+- Neues Lock-File: `data/portfolio.lock` (ersetzt `signal_manager.lock`)

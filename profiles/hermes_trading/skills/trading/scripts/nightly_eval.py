@@ -84,9 +84,23 @@ def calc_portfolio_metrics(con):
         losses = abs(sum(r[0] for r in rows if (r[0] or 0) < 0))
         return round(gains / losses, 2) if losses > 0 else gains
 
+    # #16: Portfolio-Bezugsgröße für gewichtete Renditen. Vorher wurde pnl_pct
+    # (Rendite auf die EINZELPOSITION) behandelt, als wäre es die Portfolio-
+    # Rendite. Eine -10%-Position ≈ -1,5% aufs Portfolio → Sortino/Calmar/DD
+    # waren dadurch stark überzeichnet. Jetzt: Beitrag = pnl_eur / portfolio_value.
+    _pv_row = con.execute("SELECT total_value FROM portfolio WHERE id=1").fetchone()
+    portfolio_base = (_pv_row[0] if _pv_row and _pv_row[0] else 10000.0)
+
+    def _portfolio_returns_pct(since):
+        """Liste der Portfolio-Renditen je Trade in % (pnl_eur / Portfolio-Wert)."""
+        rows = con.execute(
+            "SELECT pnl_eur FROM positions WHERE status='closed' AND exit_date >= ? ORDER BY exit_date",
+            (since,)
+        ).fetchall()
+        return [((r[0] or 0) / portfolio_base) * 100 for r in rows]
+
     def sortino_ratio(since):
-        rows = con.execute("SELECT pnl_pct FROM positions WHERE status='closed' AND exit_date >= ?", (since,)).fetchall()
-        pnls = [r[0] or 0 for r in rows]
+        pnls = _portfolio_returns_pct(since)
         if len(pnls) < 2: return 0
         avg = sum(pnls) / len(pnls)
         downside = [p for p in pnls if p < 0]
@@ -95,20 +109,20 @@ def calc_portfolio_metrics(con):
         return round((avg / dstd) * math.sqrt(252), 2) if dstd > 0 else 0
 
     def max_drawdown(since):
-        rows = con.execute("SELECT pnl_pct FROM positions WHERE status='closed' AND exit_date >= ? ORDER BY exit_date", (since,)).fetchall()
-        equity, peak, max_dd = 10000.0, 10000.0, 0
-        for r in rows:
-            equity *= (1 + (r[0] or 0) / 100)
+        pnls = _portfolio_returns_pct(since)
+        equity, peak, max_dd = portfolio_base, portfolio_base, 0
+        for p in pnls:
+            equity *= (1 + p / 100)
             peak = max(peak, equity)
             max_dd = max(max_dd, (peak - equity) / peak * 100)
         return round(max_dd, 2)
 
     def calmar_ratio(since):
-        rows = con.execute("SELECT pnl_pct FROM positions WHERE status='closed' AND exit_date >= ?", (since,)).fetchall()
-        if not rows: return 0
+        pnls = _portfolio_returns_pct(since)
+        if not pnls: return 0
         total_ret = 1.0
-        for r in rows:
-            total_ret *= (1 + (r[0] or 0) / 100)
+        for p in pnls:
+            total_ret *= (1 + p / 100)
         total_ret = (total_ret - 1) * 100
         dd = max_drawdown(since)
         return round(total_ret / dd, 2) if dd > 0 else 0
@@ -174,9 +188,18 @@ def calc_source_quality(con, today):
             (channel, d30)
         ).fetchone()[0]
 
+        # #19: source_channel ist eine kommagetrennte Liste (", ".join(...)).
+        # Substring-LIKE '%channel%' konnte Quellen quer-attribuieren, deren Name
+        # Teilstring eines anderen ist (z.B. "Aktien" in "Aktien Mag"). Jetzt exakt
+        # als ganzes Token in der Liste matchen.
         trades = con.execute(
-            "SELECT pnl_eur FROM positions WHERE source_channel LIKE ? AND status='closed' AND exit_date >= ?",
-            (f"%{channel}%", d30)
+            """SELECT pnl_eur FROM positions
+               WHERE (source_channel = ?
+                      OR source_channel LIKE ?
+                      OR source_channel LIKE ?
+                      OR source_channel LIKE ?)
+                 AND status='closed' AND exit_date >= ?""",
+            (channel, f"{channel}, %", f"%, {channel}", f"%, {channel}, %", d30)
         ).fetchall()
         bought   = len(trades)
         wins     = sum(1 for t in trades if (t[0] or 0) > 0)

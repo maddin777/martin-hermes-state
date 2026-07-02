@@ -75,13 +75,31 @@ def x_search(query, hours=24, allowed_handles=None):
         )
         agent    = _get_agent()
         response = agent.chat(prompt)
-        m = re.search(r'\{.*\}', response, re.DOTALL)
-        if m:
-            return json.loads(m.group(0))
-        return None
+        # #18: Greedy r'\{.*\}' fasste bei mehreren JSON-Blöcken die falsche Spanne
+        # (erstes { bis letztes }) und scheiterte am Müll dazwischen. Jetzt: ersten
+        # SAUBER dekodierbaren JSON-Block per raw_decode finden.
+        parsed = _extract_first_json(response)
+        return parsed
     except Exception as e:
         print("  x_search Fehler: {}".format(e), flush=True)
         return None
+
+
+def _extract_first_json(text):
+    """Findet das erste vollständig parsebare JSON-Objekt in einem Freitext."""
+    if not text:
+        return None
+    dec = json.JSONDecoder()
+    for idx, ch in enumerate(text):
+        if ch != "{":
+            continue
+        try:
+            obj, _ = dec.raw_decode(text[idx:])
+            if isinstance(obj, dict):
+                return obj
+        except ValueError:
+            continue
+    return None
 
 
 def conviction_boost(ticker, name, current_conviction):

@@ -660,7 +660,7 @@ the `cronjob` tool, the `hermes cron` CLI (`list`, `add`, `edit`,
   The error is NOT a delivery issue — the agent never finished.
   **Fix:** Remove `delegate_task` from the prompt, keep prompts compact (max 10-12
   items, 1-2 sentence bulletpoints), or switch to a model with higher output
-  capacity (e.g. `openrouter/owl-alpha`, `google/gemini-2.0-flash-exp:free`).
+  capacity (e.g. `nvidia/nemotron-3-super-120b-a12b:free`, `google/gemini-2.0-flash-exp:free`).
 
 - **/goal-Cron-Struktur:** Convert task-getriebene Cron-Prompts in
   goal-getriebene Workflows mit `/goal` + `/subgoal` + `/handoff`. Der Agent

@@ -19,7 +19,7 @@ The cron job's model (`openai/gpt-oss-120b:free`) has a small output-token ceili
 ```bash
 cat /root/.hermes/profiles/hermes-news/cron/jobs.json | grep -A2 '"model"'
 ```
-Expected: `"model": "openrouter/owl-alpha"` (high-output model)
+Expected: `"model": "nvidia/nemotron-3-super-120b-a12b:free"` (high-output model)
 Found: `"model": "openai/gpt-oss-120b:free"` (low-output model, reverted from previous fix)
 
 ### Step 2: Check profile default model
@@ -53,7 +53,7 @@ The latest file was 996 bytes -- only the error message, no actual news.
 
 ## Fix Applied
 
-1. **Change model in jobs.json** from `openai/gpt-oss-120b:free` to `openrouter/owl-alpha` (free, 1M context, agentic-workload-optimized).
+1. **Change model in jobs.json** from `openai/gpt-oss-120b:free` to `nvidia/nemotron-3-super-120b-a12b:free` (free, 1M context, agentic-workload-optimized).
 2. **Restart the profile gateway:** `systemctl restart hermes-gateway-hermes-news`
 3. **Trigger test run:** `hermes --profile hermes-news cron run 999fe77b345a`
 4. **Verify:** Check cron list for `ok` status and output file for content.
@@ -63,11 +63,11 @@ The latest file was 996 bytes -- only the error message, no actual news.
 After fix, the triggered run completed successfully:
 - Last run: `2026-05-15T06:33:51 -- ok`
 - Output: 3200 bytes, 8 German news items with links
-- Model: `openrouter/owl-alpha` handled the output without truncation
+- Model: `nvidia/nemotron-3-super-120b-a12b:free` handled the output without truncation
 
 ## Key Observations
 
 - The `cronjob` tool (used for main Hermes cron) does NOT work for profile cron jobs. Attempting `cronjob(action='update', job_id='999fe77b345a')` returns "Job with ID '999fe77b345a' not found". Profile crons must be managed via `hermes --profile <name> cron <command>` or direct jobs.json editing.
-- The model in jobs.json had been changed previously (May 11) from `openai/gpt-oss-120b:free` to `openrouter/owl-alpha`, but was silently reverted by May 15. The config.yaml model.default was still `openai/gpt-oss-120b:free`, suggesting some process or restart resets the cron job's model to the profile default.
+- The model in jobs.json had been changed previously (May 11) from `openai/gpt-oss-120b:free` to `nvidia/nemotron-3-super-120b-a12b:free`, but was silently reverted by May 15. The config.yaml model.default was still `openai/gpt-oss-120b:free`, suggesting some process or restart resets the cron job's model to the profile default.
 - `hermes cron run` executes on the **next scheduler tick**, not immediately. The cron list's `last_run` only updates after the job completes.
 - Test-run session files are at `~/.hermes/profiles/hermes-news/sessions/session_cron_999fe77b345a_<timestamp>.json` and may be large (128KB+) if the cron agent was actively browsing.

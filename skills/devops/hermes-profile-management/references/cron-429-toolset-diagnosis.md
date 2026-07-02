@@ -59,7 +59,7 @@ grep -A 1 'model:' ~/.hermes/profiles/<profile>/config.yaml
 grep '"model"' ~/.hermes/profiles/<profile>/cron/jobs.json | head -1
 ```
 
-**Free models on OpenRouter** (e.g. `openai/gpt-oss-120b:free`, `openrouter/owl-alpha`) are aggressively rate-limited. A single long session with retries can exhaust the free-tier quota for minutes.
+**Free models on OpenRouter** (e.g. `openai/gpt-oss-120b:free`, `nvidia/nemotron-3-super-120b-a12b:free`) are aggressively rate-limited. A single long session with retries can exhaust the free-tier quota for minutes.
 
 **Fix:** Switch to a paid-tier model with higher rate limits, e.g. `deepseek/deepseek-v4-flash` on OpenRouter.
 

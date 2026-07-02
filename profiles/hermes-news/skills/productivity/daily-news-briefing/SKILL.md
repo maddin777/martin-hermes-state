@@ -37,7 +37,7 @@ Konfiguration:
 - Job in `/root/.hermes/cron/jobs.json` (default DB, nicht Profil-DB)
 - `profile: hermes-news` → Runtime nutzt das Profil `.env` und `config.yaml`
 - `deliver: telegram` → Delivery über den **Home-Channel** des Profil-Bots
-- `model: openrouter/owl-alpha` (provider: openrouter) als Override
+- `model: nvidia/nemotron-3-super-120b-a12b:free` (provider: openrouter) als Override
 
 **⚠️ PITFALL: KEINE explizite Chat-ID im deliver verwenden**
 - `deliver: telegram:-1003687061880` schlug mehrfach fehl mit "Chat not found"

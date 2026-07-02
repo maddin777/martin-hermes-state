@@ -43,6 +43,15 @@ Faustregel: **Das Done-Kriterium muss das Problem aus Martins Perspektive lösen
 
 - **Context-Check**: Ist das System in einem Zustand, in dem mein Fix Sinn ergibt? (Regime? Config-Zustand? Abhängigkeiten?)
 - **Hypothese** formulieren: "Ich glaube das Problem ist X, weil ich Y gesehen habe. Der Context (Regime/Config/Umgebung) unterstützt diesen Fix weil Z."
+- **Bei mehrdeutigen Requests:** Wenn Martins Frage auf mehrere Projekte/Kontexte zutreffen könnte, kurz verifizieren bevor du lossprintest. Ein "Deepdive wozu?" spart 12 Nachrichten und Frustration.
+
+### Phase 2b: Compact-Response-Regel (bei komplexen Ergebnissen)
+
+Wenn das Ergebnis einer Task-Ausführung mehrere Punkte/Erkenntnisse umfasst:
+
+- **Sammle alles in EINER Antwort**, nicht verteilt über mehrere Tool-Calls/Nachrichten.
+- Nur aufteilen wenn Telegram-Zeichenlimit (3000) oder Tool-Constraint es erzwingt.
+- Martin hat sich explizit über fragmentierte Antworten beschwert ("Warum hast die Erklärung jetzt 12 mal erzeugt?"). Eine lange, vollständige Nachricht ist besser als 12 kurze.
 
 ### Phase 3: Fix (ein Schritt pro Runde)
 

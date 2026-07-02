@@ -10,6 +10,8 @@ import env_loader  # noqa: F401  (side-effect: laedt .env)
 import sqlite3
 import requests
 from datetime import date, datetime, timedelta
+from config import db_connect as _cfg_db_connect
+from utils import prefetch_prices, open_positions_market_value_eur, portfolio_lock
 
 DB_PATH = os.path.join(
     os.path.dirname(os.path.dirname(__file__)),
@@ -21,9 +23,9 @@ TELEGRAM_HOME_CHANNEL = os.environ.get("TELEGRAM_HOME_CHANNEL") or os.environ.ge
 
 
 def _db_connect():
-    con = sqlite3.connect(DB_PATH)
-    con.row_factory = sqlite3.Row
-    return con
+    # #14: nutzt zentrale Connection (WAL + busy_timeout=30s) statt raw connect,
+    # sonst kein Schutz gegen SQLite-Lock-Konflikte mit den anderen Skripten.
+    return _cfg_db_connect(DB_PATH)
 
 
 def _send_telegram(msg: str):
@@ -73,11 +75,15 @@ def main():
         return
 
     cash = portfolio["cash"] or 0
-    open_pos_val = sum(
-        p["position_size"] or 0 for p in con.execute(
-            "SELECT position_size FROM positions WHERE status = 'open'"
-        ).fetchall()
-    )
+    # #3/#14: Mark-to-Market statt Buchwert (Σ position_size = Einstand).
+    open_positions = con.execute(
+        "SELECT ticker, direction, entry_price, position_size FROM positions WHERE status = 'open'"
+    ).fetchall()
+    if open_positions:
+        prefetch_prices([p["ticker"] for p in open_positions if p["ticker"]])
+        open_pos_val = open_positions_market_value_eur(open_positions)
+    else:
+        open_pos_val = 0.0
     open_pnl = sum(
         p["pnl_eur"] or 0 for p in con.execute(
             "SELECT pnl_eur FROM positions WHERE status = 'open'"

@@ -1,4 +1,17 @@
 {
+  "agent-reach": {
+    "archived_at": null,
+    "created_at": "2026-07-01T13:00:45.364395+00:00",
+    "created_by": null,
+    "last_patched_at": "2026-07-01T13:21:10.383016+00:00",
+    "last_used_at": null,
+    "last_viewed_at": null,
+    "patch_count": 3,
+    "pinned": false,
+    "state": "active",
+    "use_count": 0,
+    "view_count": 0
+  },
   "airtable": {
     "archived_at": null,
     "created_at": "2026-06-22T01:24:11.882284+00:00",
@@ -198,14 +211,27 @@
     "archived_at": null,
     "created_at": "2026-06-17T05:36:27.522356+00:00",
     "created_by": "agent",
-    "last_patched_at": "2026-06-29T04:50:47.285662+00:00",
-    "last_used_at": "2026-06-30T04:01:00.022842+00:00",
-    "last_viewed_at": "2026-06-29T04:50:42.044487+00:00",
-    "patch_count": 13,
+    "last_patched_at": "2026-07-01T13:00:39.178753+00:00",
+    "last_used_at": "2026-07-01T13:00:26.261945+00:00",
+    "last_viewed_at": "2026-07-01T13:00:26.253678+00:00",
+    "patch_count": 18,
     "pinned": false,
     "state": "active",
-    "use_count": 27,
-    "view_count": 18
+    "use_count": 35,
+    "view_count": 23
+  },
+  "dataviz-story-scout": {
+    "archived_at": null,
+    "created_at": "2026-07-01T16:49:37.389957+00:00",
+    "created_by": "agent",
+    "last_patched_at": null,
+    "last_used_at": "2026-07-01T16:49:42.377697+00:00",
+    "last_viewed_at": "2026-07-01T16:49:42.371046+00:00",
+    "patch_count": 0,
+    "pinned": false,
+    "state": "active",
+    "use_count": 1,
+    "view_count": 1
   },
   "design-md": {
     "archived_at": null,
@@ -443,25 +469,25 @@
     "created_at": "2026-06-20T09:42:30.151568+00:00",
     "created_by": "agent",
     "last_patched_at": "2026-06-21T18:57:42.342538+00:00",
-    "last_used_at": "2026-06-23T05:30:22.340652+00:00",
-    "last_viewed_at": "2026-06-23T05:30:22.329377+00:00",
+    "last_used_at": "2026-07-01T13:00:16.072734+00:00",
+    "last_viewed_at": "2026-07-01T13:00:16.061123+00:00",
     "patch_count": 2,
     "pinned": false,
     "state": "active",
-    "use_count": 4,
-    "view_count": 4
+    "use_count": 5,
+    "view_count": 5
   },
   "hermes-profile-management": {
     "archived_at": null,
     "created_at": "2026-05-10T22:19:09.296101+00:00",
-    "last_patched_at": "2026-06-21T16:40:02.075331+00:00",
-    "last_used_at": "2026-06-23T05:30:22.346620+00:00",
-    "last_viewed_at": "2026-06-23T05:30:22.336098+00:00",
-    "patch_count": 41,
+    "last_patched_at": "2026-07-01T12:37:04.904392+00:00",
+    "last_used_at": "2026-07-01T13:20:49.168874+00:00",
+    "last_viewed_at": "2026-07-01T13:20:49.160307+00:00",
+    "patch_count": 54,
     "pinned": false,
     "state": "active",
-    "use_count": 61,
-    "view_count": 62
+    "use_count": 72,
+    "view_count": 73
   },
   "hermes-profile-news-cron": {
     "archived_at": null,
@@ -668,6 +694,19 @@
     "state": "active",
     "use_count": 0,
     "view_count": 0
+  },
+  "micro-saas-opportunity-scan": {
+    "archived_at": null,
+    "created_at": "2026-07-01T07:10:20.525385+00:00",
+    "created_by": "agent",
+    "last_patched_at": "2026-07-01T13:21:25.099009+00:00",
+    "last_used_at": "2026-07-01T13:21:18.829340+00:00",
+    "last_viewed_at": "2026-07-01T13:21:18.822803+00:00",
+    "patch_count": 1,
+    "pinned": false,
+    "state": "active",
+    "use_count": 1,
+    "view_count": 1
   },
   "name-normalization-dedup": {
     "archived_at": null,
@@ -985,14 +1024,14 @@
     "archived_at": null,
     "created_at": "2026-06-25T05:33:55.828028+00:00",
     "created_by": null,
-    "last_patched_at": "2026-06-26T05:54:26.722957+00:00",
-    "last_used_at": "2026-06-27T21:41:13.091374+00:00",
-    "last_viewed_at": "2026-06-27T21:41:13.077979+00:00",
-    "patch_count": 4,
+    "last_patched_at": "2026-07-01T16:49:19.734256+00:00",
+    "last_used_at": "2026-07-01T16:49:08.188672+00:00",
+    "last_viewed_at": "2026-07-01T16:49:08.180358+00:00",
+    "patch_count": 5,
     "pinned": false,
     "state": "active",
-    "use_count": 5,
-    "view_count": 5
+    "use_count": 6,
+    "view_count": 6
   },
   "teams-meeting-pipeline": {
     "archived_at": null,

@@ -24,7 +24,7 @@ Falls stopped: `hermes_lang gateway start`.
 
 **Profilname ist `hermes_lang`** (Unterstrich), NICHT `hermes-lang`. Alle Pfade im Skill verwenden `hermes_lang`.
 
-**Model-Wahl:** Fuer Cron-Jobs mit laengeren Prompts (Quiz + Grammatik + Fortschritt) `openrouter/owl-alpha` nutzen -- vermeidet Output-Truncation, die bei `openai/gpt-oss-120b:free` auftreten kann.
+**Model-Wahl:** Fuer Cron-Jobs mit laengeren Prompts (Quiz + Grammatik + Fortschritt) `nvidia/nemotron-3-super-120b-a12b:free` nutzen -- vermeidet Output-Truncation, die bei `openai/gpt-oss-120b:free` auftreten kann.
 
 **Ordner anlegen**:
 ```bash
@@ -75,7 +75,7 @@ hermes -p hermes_lang cron create "0 8 * * *" \
   "DiSSS Lesson [SPRACHE]: Quiz 10 random Vok (PL->DE), 1 Grammatik-Tipp, Fortschritt in Obsidian." \
   --name [SPRACHE]-disss-daily \
   --deliver telegram \
-  --model provider=openrouter,model=openrouter/owl-alpha
+  --model provider=openrouter,model=nvidia/nemotron-3-super-120b-a12b:free
 ```
 
 **Kein `deliver='local'`** -- liefert an Ch_hermster_lang. Ohne `--deliver telegram` landen Lektionen im lokalen Output-Ordner und nie auf Telegram.
@@ -87,7 +87,7 @@ hermes -p hermes_lang cron create "0 8 * * *" \
 - **Profilname: `hermes_lang`** (Unterstrich), nicht `hermes-lang`. Falscher Pfad -> Cron bricht ab.
 - **Gateway muss laufen** -- `hermes profile list` pruefen, sonst schlaegt Cron silent fehl.
 - **Cron-Job kann bei git pull fliegen** -- Cron-Jobs mit profile-spezifischen Skill-Referenzen (`skills: [hermes-lang-disss-language-learning]`) werden beim Scheduler-Neustart nach `git pull` ggf. nicht geladen. Loesung: Skills im Prompt embedden, nicht als `skills=` referenzieren. Nach jedem git pull: `hermes cron list` pruefen.
-- **Model-Output-Limit:** `openai/gpt-oss-120b:free` truncated bei Quiz+Grammatik+Fortschritt. `openrouter/owl-alpha` nutzen.
+- **Model-Output-Limit:** `openai/gpt-oss-120b:free` truncated bei Quiz+Grammatik+Fortschritt. `nvidia/nemotron-3-super-120b-a12b:free` nutzen.
 - **Anki manuell importieren:** CSV wird geschrieben, aber nicht automatisch in Anki geladen.
 - **20min/Tag max** -- Skill ist fuer Mikro-Lektionen ausgelegt.
 - **Keine `hermes_tools`-Importe in Scripts** -- `from hermes_tools import read_file` existiert nicht. Daten per `read_file` Tool holen, nicht per Python-Script.

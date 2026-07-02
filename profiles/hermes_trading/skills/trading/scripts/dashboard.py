@@ -4,6 +4,8 @@ from collections import deque
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from urllib.parse import parse_qs, urlparse
 from datetime import datetime
+import sys, os
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from config import DB_PATH, SCRIPTS_DIR, CRON_LOG_PATH, SOURCES_CONFIG_PATH, STRATEGY_CONFIG_PATH, THEMATIC_LOG_PATH, db_connect
 
 # Aliase für dashboard.py (abweichende Namen im Skript)
@@ -39,61 +41,96 @@ def save_sources(sources):
         json.dump(sources, f, indent=2, ensure_ascii=False)
 
 def get_yt_channels():
-    """Liest YouTube-Kanäle direkt aus yt_channel_monitor.py."""
+    """Liest YouTube-Kanäle aus source_registry (DB), Fallback statische Liste.
+
+    #1 Sicherheitsfix: früher wurde der Python-Quelltext von yt_channel_monitor.py
+    geparst/beschrieben – das war ein Code-Injection-Vektor. Kanäle leben jetzt in
+    der DB (source_registry), exakt wie RSS/Twitter.
+    """
     channels = []
-    if not os.path.exists(YT_MONITOR):
-        return channels
     try:
-        with open(YT_MONITOR) as f:
-            content = f.read()
-        # Extrahiere CHANNELS Liste
-        match = re.search(r'CHANNELS_FALLBACK\s*=\s*\[(.*?)\]', content, re.DOTALL)
-        if match:
-            block = match.group(1)
-            pairs = re.findall(r'\("([^"]+)",\s*"([^"]+)"\)', block)
-            for name, url in pairs:
-                channels.append({"name": name, "url": url, "enabled": True})
+        con = db_connect()
+        rows = con.execute("""
+            SELECT display_name AS name, source_key AS url, enabled
+            FROM source_registry
+            WHERE source_type='youtube' AND status != 'removed'
+            ORDER BY display_name
+        """).fetchall()
+        con.close()
+        for r in rows:
+            channels.append({"name": r["name"], "url": r["url"],
+                             "enabled": bool(r["enabled"])})
+        if channels:
+            return channels
     except Exception:
         pass
+    # Fallback: statische Liste aus dem Monitor (nur Lesen, kein Schreiben!)
+    if os.path.exists(YT_MONITOR):
+        try:
+            with open(YT_MONITOR) as f:
+                content = f.read()
+            match = re.search(r'CHANNELS_FALLBACK\s*=\s*\[(.*?)\]', content, re.DOTALL)
+            if match:
+                for name, url in re.findall(r'\("([^"]+)",\s*"([^"]+)"\)', match.group(1)):
+                    channels.append({"name": name, "url": url, "enabled": True})
+        except Exception:
+            pass
     return channels
 
+
+# #1: Strenge Eingabe-Validierung. Namen/URLs landen NICHT mehr in Code,
+# aber wir halten sie trotzdem sauber (kein Anführungszeichen/Steuerzeichen-Müll).
+_YT_NAME_RE = re.compile(r'^[\w .,&()\-/+äöüÄÖÜß]{2,80}$')
+_YT_URL_RE  = re.compile(
+    r'^https://(www\.)?(youtube\.com/(channel/|@|c/|user/)[\w\-./]+|youtu\.be/[\w\-]+)$'
+)
+
+
+def _valid_yt_input(name: str, url: str) -> bool:
+    return bool(name and url and _YT_NAME_RE.match(name) and _YT_URL_RE.match(url))
+
+
 def add_yt_channel(name, url):
-    """Fügt YouTube-Kanal zu yt_channel_monitor.py hinzu."""
+    """Fügt einen YouTube-Kanal in source_registry ein (DB statt Quellcode)."""
+    if not _valid_yt_input(name, url):
+        print(f"Ungültige YT-Eingabe abgelehnt: name={name!r} url={url!r}")
+        return False
     try:
-        with open(YT_MONITOR) as f:
-            content = f.read()
-        # Letzten Kanal-Eintrag finden und danach einfügen
-        last_entry = re.search(
-            r'(\s*\("[^"]+",\s*"[^"]+"\),)\s*\]',
-            content, re.DOTALL
-        )
-        if last_entry:
-            insert_pos = last_entry.start(1) + len(last_entry.group(1))
-            new_entry = f'\n    ("{name}",      "{url}"),'
-            content = content[:insert_pos] + new_entry + content[insert_pos:]
-            with open(YT_MONITOR, "w") as f:
-                f.write(content)
-            return True
+        con = db_connect()
+        con.execute("""
+            INSERT INTO source_registry
+                (source_type, source_key, display_name, language, region,
+                 category, status, weight, enabled, added_by, discovery_reason)
+            VALUES ('youtube', ?, ?, 'de', 'DE', 'finance',
+                    'active', 1.0, 1, 'dashboard', 'manuell im Dashboard hinzugefügt')
+            ON CONFLICT(source_key) DO UPDATE SET
+                status='active', enabled=1, display_name=excluded.display_name
+        """, (url, name))
+        con.commit()
+        con.close()
+        return True
     except Exception as e:
-        print(f"Fehler beim Hinzufügen: {e}")
-    return False
+        print(f"Fehler beim Hinzufügen (DB): {e}")
+        return False
+
 
 def remove_yt_channel(name):
-    """Entfernt YouTube-Kanal aus yt_channel_monitor.py."""
+    """Deaktiviert einen YouTube-Kanal in source_registry (soft-remove)."""
+    if not name:
+        return False
     try:
-        with open(YT_MONITOR) as f:
-            content = f.read()
-        # Zeile mit diesem Namen entfernen
-        content = re.sub(
-            rf'\s*\("{re.escape(name)}",\s*"[^"]+"\),?',
-            '',
-            content
-        )
-        with open(YT_MONITOR, "w") as f:
-            f.write(content)
-        return True
+        con = db_connect()
+        cur = con.execute("""
+            UPDATE source_registry SET status='removed', enabled=0
+            WHERE source_type='youtube' AND display_name=?
+        """, (name,))
+        con.commit()
+        changed = cur.rowcount
+        con.close()
+        return changed > 0
     except Exception:
         return False
+
 
 # ─── Cron ────────────────────────────────────────────────────────────────────
 
@@ -603,7 +640,7 @@ def build_html(data):
         wrc = "color:#00e676" if wr >= 0.6 else "color:#ffd740" if wr >= 0.4 else "color:#ff5252"
         qc  = "color:#00e676" if qsc >= 0.7 else "color:#ffd740" if qsc >= 0.4 else "color:#ff5252"
         source_quality_rows += f"""<tr>
-            <td><b>{sq.get('channel','')}</b></td>
+            <td><b>{html.escape(str(sq.get('channel','')))}</b></td>
             <td style="text-align:center">{sq.get('mentions_30d',0)}</td>
             <td style="text-align:center">{sq.get('bought_30d',0)}</td>
             <td style="text-align:center;{wrc}">{wr:.0%}</td>
@@ -645,7 +682,7 @@ def build_html(data):
         for sector, entry in sector_blacklist.items():
             bl_rows += f"""<tr>
                 <td style="font-weight:bold;color:#ff5252">🚫 {sector}</td>
-                <td>{entry.get('reason', '–')}</td>
+                <td>{html.escape(str(entry.get('reason', '–')))}</td>
                 <td style="color:#ffd740">{'✅ Probation' if entry.get('probation_done', False) else '⏳ Cooldown'}</td>
             </tr>"""
         sector_blacklist_html = f"""<table style="font-size:0.85em">
@@ -734,7 +771,7 @@ def build_html(data):
                 cur = f"{cp:.2f}"; pnl_e = f"{eur:+.2f}€"; pnl_p = f"{pct*100:+.1f}%"
         except Exception: pass
         open_rows += f"""<tr>
-            <td>{p['name']}</td><td>{p['ticker']}</td><td>{dl}</td>
+            <td>{html.escape(str(p['name']))}</td><td>{html.escape(str(p['ticker']))}</td><td>{dl}</td>
             <td>{p['entry_price']:.2f}</td>
             <td style="font-weight:bold">{cur}</td>
             <td style="{pc};font-weight:bold">{pnl_e}</td>
@@ -743,7 +780,7 @@ def build_html(data):
             <td style="color:#00e676">{p['take_profit']:.2f}</td>
             <td>{p['position_size']:.0f}€</td>
             <td>{p['entry_date'][:10]}</td>
-            <td style="font-size:0.8em;color:#888">{p.get('source_channel','')}</td>
+            <td style="font-size:0.8em;color:#888">{html.escape(str(p.get('source_channel','')))}</td>
         </tr>"""
     if not open_rows:
         open_rows = '<tr><td colspan="12" style="text-align:center;color:#555;padding:20px">Keine offenen Positionen</td></tr>'
@@ -754,7 +791,7 @@ def build_html(data):
         c = "color:#00e676" if (p.get("pnl_eur") or 0)>0 else "color:#ff5252"
         reason_map = {"SL_HIT":"🛑 SL", "TARGET_HIT":"🎯 TP", "TECH_BROKEN":"⚡ Tech", "MANUAL":"✋"}
         reason = reason_map.get(p.get("exit_reason",""), p.get("exit_reason",""))
-        closed_rows += f"<tr><td>{p['name']}</td><td>{p['ticker']}</td><td>{p['direction']}</td><td>{p['entry_price']:.2f}</td><td>{p.get('exit_price',0):.2f}</td><td style='{c}'>{p.get('pnl_eur',0):+.2f}€</td><td style='{c}'>{p.get('pnl_pct',0):+.1f}%</td><td>{reason}</td><td>{(p.get('exit_date') or '')[:10]}</td></tr>"
+        closed_rows += f"<tr><td>{html.escape(str(p['name']))}</td><td>{html.escape(str(p['ticker']))}</td><td>{html.escape(str(p['direction']))}</td><td>{p['entry_price']:.2f}</td><td>{p.get('exit_price',0):.2f}</td><td style='{c}'>{p.get('pnl_eur',0):+.2f}€</td><td style='{c}'>{p.get('pnl_pct',0):+.1f}%</td><td>{reason}</td><td>{(p.get('exit_date') or '')[:10]}</td></tr>"
     if not closed_rows:
         closed_rows = '<tr><td colspan="9" style="text-align:center;color:#555;padding:20px">Noch keine abgeschlossenen Trades</td></tr>'
 
@@ -788,6 +825,11 @@ def build_html(data):
             "status":        w.get("status") or "watching",
         })
     wl_json = json.dumps(wl_data, ensure_ascii=False)
+    # #2: Verhindert </script>-Breakout und HTML-Injection aus dem JSON-Blob,
+    # der in einen <script>-Block interpoliert wird.
+    wl_json = (wl_json.replace("<", "\\u003c")
+                      .replace(">", "\\u003e")
+                      .replace("&", "\\u0026"))
     wl_count_total    = len(wl_data)
     wl_count_watching = sum(1 for w in wl_data if w["status"] == "watching")
     wl_count_bought   = sum(1 for w in wl_data if w["status"] == "bought")
@@ -1084,21 +1126,25 @@ function wlRender() {{
     const slice = sorted.slice(start, start + WL_PAGE_SIZE);
 
     const tbody = document.getElementById("wl-tbody");
+    // #2: innerHTML-Escaping für DB/LLM-stämmige Felder (Name/Ticker/Sektor/Kanäle).
+    const esc = s => String(s == null ? "" : s)
+        .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
     tbody.innerHTML = slice.map(w => {{
         const conv = w.conviction || 0;
         const cc = conv >= 0.6 ? "#00e676" : conv >= 0.4 ? "#ffd740" : "#ff5252";
         const tech = w.tech_score != null ? w.tech_score.toFixed(2) : "–";
         const dc = w.tech_direction === "LONG" ? "#00e676" : w.tech_direction === "SHORT" ? "#ff5252" : "#888";
-        const first3 = w.channels.slice(0, 3).join(", ");
+        const first3 = w.channels.slice(0, 3).map(esc).join(", ");
         const rest = w.channels.slice(3);
         const tip = w.channels.length > 0
-            ? `<div class="wl-channels-tip">${{w.channels.join("<br>")}}</div>` : "";
+            ? `<div class="wl-channels-tip">${{w.channels.map(esc).join("<br>")}}</div>` : "";
         const more = rest.length > 0 ? ` <span style="color:#00d4ff">+${{rest.length}}</span>` : "";
         const status_icon = w.status === "bought" ? "🛒 " : w.status === "dropped" ? "✗ " : "";
         return `<tr>
-            <td>${{status_icon}}${{w.name}}</td>
-            <td>${{w.ticker}}</td>
-            <td>${{w.sector}}</td>
+            <td>${{status_icon}}${{esc(w.name)}}</td>
+            <td>${{esc(w.ticker)}}</td>
+            <td>${{esc(w.sector)}}</td>
             <td style="text-align:center">${{w.mention_count}}</td>
             <td style="color:#00e676;text-align:center">${{w.bullish}}↑</td>
             <td style="color:#ff5252;text-align:center">${{w.bearish}}↓</td>
@@ -1107,7 +1153,7 @@ function wlRender() {{
             <td style="text-align:center">${{tech}}</td>
             <td style="color:${{dc}};text-align:center">${{w.tech_direction || "–"}}</td>
             <td style="font-size:0.8em"><span class="wl-channels-wrap">${{first3}}${{more}}${{tip}}</span></td>
-            <td style="font-size:0.8em;text-align:center">${{w.first_seen}}</td>
+            <td style="font-size:0.8em;text-align:center">${{esc(w.first_seen)}}</td>
             <td style="font-size:0.8em;text-align:center">${{w.last_seen}}</td>
         </tr>`;
     }}).join("") || `<tr><td colspan="13" style="text-align:center;color:#555;padding:20px">Keine Treffer</td></tr>`;
@@ -1216,7 +1262,17 @@ def build_thematic_section():
 class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         try:
-            content = build_html(get_data()).encode("utf-8")
+            page = build_html(get_data())
+            # #1: Wenn ein DASHBOARD_TOKEN gesetzt ist, in jedes POST-Formular ein
+            # verstecktes _token-Feld einfügen, damit die Dashboard-Buttons (same-
+            # origin) weiter funktionieren. Eine fremde Website kann die Seite wegen
+            # Same-Origin-Policy nicht auslesen → blinde CSRF-POSTs schlagen fehl.
+            token = os.environ.get("DASHBOARD_TOKEN", "")
+            if token:
+                tok_field = f'<input type="hidden" name="_token" value="{html.escape(token)}">'
+                page = re.sub(r'(<form\b[^>]*\bmethod="POST"[^>]*>)',
+                              r'\1' + tok_field, page, flags=re.IGNORECASE)
+            content = page.encode("utf-8")
             self.send_response(200)
             self.send_header("Content-Type","text/html; charset=utf-8")
             self.send_header("Content-Length", len(content))
@@ -1234,6 +1290,32 @@ class Handler(BaseHTTPRequestHandler):
         path    = urlparse(self.path).path
         success = False
         msg     = ""
+
+        # #1: Zugriffskontrolle für Mutationen (POST). Konsistente Regeln:
+        #   1) DASHBOARD_TOKEN gesetzt  → Token ist Pflicht (Header X-Dashboard-Token
+        #      oder Formfeld _token). Schützt gegen CSRF/Drive-by aus dem Browser
+        #      eines LAN-Geräts (eine fremde Website kennt den Token nicht).
+        #   2) Kein Token + Bind non-local (0.0.0.0) → Mutationen GESPERRT
+        #      (offenes LAN-Dashboard ohne jede Prüfung wäre der RCE/CSRF-Vektor).
+        #   3) Kein Token + Bind 127.0.0.1 → erlaubt (nur lokal erreichbar).
+        required = os.environ.get("DASHBOARD_TOKEN", "")
+        bind_local = os.environ.get("DASHBOARD_BIND", "127.0.0.1") == "127.0.0.1"
+        if required:
+            supplied = self.headers.get("X-Dashboard-Token") or params.get("_token", "")
+            if supplied != required:
+                self.send_response(403)
+                self.end_headers()
+                self.wfile.write(b"forbidden: invalid or missing token")
+                return
+        elif not bind_local:
+            self.send_response(403)
+            self.end_headers()
+            self.wfile.write(
+                "Mutationen gesperrt: Dashboard ist per DASHBOARD_BIND im Netz "
+                "erreichbar, aber kein DASHBOARD_TOKEN gesetzt. Bitte Token setzen."
+                .encode("utf-8")
+            )
+            return
 
         try:
             sources = load_sources()
@@ -1388,5 +1470,11 @@ class Handler(BaseHTTPRequestHandler):
 
 if __name__ == "__main__":
     port = 8081
-    print(f"🌐 Dashboard läuft auf http://0.0.0.0:{port}")
-    HTTPServer(("0.0.0.0", port), Handler).serve_forever()
+    # #1: Standardmäßig NUR localhost. Für LAN-Zugriff bewusst
+    # DASHBOARD_BIND=0.0.0.0 setzen – dann sollte DASHBOARD_TOKEN gesetzt sein.
+    bind = os.environ.get("DASHBOARD_BIND", "127.0.0.1")
+    if bind != "127.0.0.1" and not os.environ.get("DASHBOARD_TOKEN"):
+        print("⚠ WARNUNG: Dashboard bindet auf", bind,
+              "ohne DASHBOARD_TOKEN – Mutationen (POST) sind gesperrt.", flush=True)
+    print(f"🌐 Dashboard läuft auf http://{bind}:{port}")
+    HTTPServer((bind, port), Handler).serve_forever()

@@ -11,10 +11,10 @@ Siehe Pitfall #14 in `hermes-profile-management` SKILL.md für Details zum Cross
 
 | Component | Model | Provider | Notes |
 |-----------|-------|----------|-------|
-| **Cron (LLM)** | `openrouter/owl-alpha` | `openrouter` | Free model, handles multi-turn news research |
+| **Cron (LLM)** | `deepseek/deepseek-v4-flash` | `openrouter` | Free model, handles multi-turn news research |
 | **x_search API** | `grok-4.20-reasoning` | `xai-oauth` | Separately configured in config.yaml |
 
-When xAI Grok tokens run out (HTTP 403 spending-limit): switch BOTH `model` and `provider` in the cron job to openrouter/owl-alpha. x_search stays on xai-oauth (separate config).
+When xAI Grok tokens run out (HTTP 403 spending-limit): switch BOTH `model` and `provider` in the cron job to deepseek/deepseek-v4-flash. x_search stays on xai-oauth (separate config).
 
 ## Source List (stable, use in every prompt version)
 

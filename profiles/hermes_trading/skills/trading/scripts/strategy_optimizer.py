@@ -121,6 +121,18 @@ def backtest_params(trades, sl_mult, tp_mult, min_conf):
     """
     Simuliert wie Trades mit anderen Parametern ausgesehen hätten.
     Nutzt ATR bei Entry und simuliert SL/TP Hits.
+
+    #10 – Bekannte Grenzen dieser Vereinfachung (bewusst, keine Fundamentaldaten
+    für einen echten Pfad-Backtest vorhanden):
+    • positions.confidence enthält seit dem Short-Fix die RICHTUNGS-Conviction
+      (bull bzw. bear), nicht den Tech-Confidence-Wert. min_conf filtert hier
+      also über Conviction, während der LIVE-Entry-Filter min_confidence gegen
+      tech_score prüft. Die Optimierung von min_confidence ist damit nur ein
+      grober Proxy – primär sind SL/TP-Multiplikatoren aussagekräftig.
+    • Es liegt nur der Exit-Preis vor, kein Intraday-Pfad. Ein WEITERER TP kann
+      daher nie „getroffen" werden, wenn der Original-Exit früher lag → leichter
+      Bias Richtung enger Parameter. Deshalb greift die Auto-Übernahme erst ab
+      IMPROVEMENT_THRESHOLD (10%) und der Walk-Forward-Pfad ab 30 Trades.
     """
     simulated = []
 
@@ -457,6 +469,12 @@ def main():
         "SELECT COUNT(*) FROM positions WHERE status='closed'"
     ).fetchone()[0]
 
+    # #4: Eval-Metrics- und Source-Weight-Anpassungen SOFORT persistieren, bevor
+    # _original_main() (Grid Search) die Config frisch von Platte liest. Sonst
+    # gingen diese Änderungen verloren, weil _original_main cfg neu lädt.
+    with open(STRATEGY_CONFIG_PATH, "w") as f:
+        json.dump(cfg, f, indent=2)
+
     if trade_count >= 30:
         print(f"\n🔬 Walk-Forward Optimierung ({trade_count} Trades)...", flush=True)
         try:
@@ -469,6 +487,10 @@ def main():
                 cfg["atr_sl_multiplier"] = new_params["atr_sl_multiplier"]
                 cfg["atr_tp_multiplier"] = new_params["atr_tp_multiplier"]
                 cfg["min_confidence"] = new_params["min_confidence"]
+                # #4: WF-Parameter wurden vorher NUR im Speicher gesetzt und nie
+                # geschrieben – Telegram meldete "übernommen", auf Platte No-Op.
+                with open(STRATEGY_CONFIG_PATH, "w") as f:
+                    json.dump(cfg, f, indent=2)
                 print(f"  ✅ WF-Parameter übernommen: SL={new_params['atr_sl_multiplier']}x "
                       f"TP={new_params['atr_tp_multiplier']}x Conf={new_params['min_confidence']:.0%}")
             else:
@@ -514,6 +536,14 @@ def main():
         )
     except Exception:
         pass
+
+    # #4: Finaler Safety-Dump – stellt sicher, dass cfg (inkl. aller
+    # in-memory-Anpassungen) in jedem Pfad auf Platte landet.
+    try:
+        with open(STRATEGY_CONFIG_PATH, "w") as f:
+            json.dump(cfg, f, indent=2)
+    except Exception as e:
+        print(f"  ⚠ Konnte strategy_config.json nicht schreiben: {e}", flush=True)
 
     con.close()
     print("\n✅ Strategy Optimizer v2 abgeschlossen", flush=True)

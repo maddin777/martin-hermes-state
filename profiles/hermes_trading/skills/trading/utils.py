@@ -123,6 +123,15 @@ def get_fx_rate_to_eur(currency: str) -> float:
     rates = _fetch_fx_rates()
     eur_per_unit = rates.get(currency)
     if not eur_per_unit or eur_per_unit <= 0:
+        # #15: Unbekannte Währung nicht mehr still als 1:1 behandeln.
+        # Frankfurter kennt ~30 Währungen; fehlt eine (z.B. KRW im Fallback),
+        # wäre 1.0 grob falsch. Fallback-Tabelle prüfen, sonst laut warnen.
+        fb = _FX_FALLBACK.get(currency)
+        if fb and fb > 0:
+            return 1.0 / fb
+        _log = get_logger("utils.fx")
+        _log.warning("Unbekannte Währung '%s' – kein FX-Kurs, nutze 1.0 (Bewertung "
+                     "potentiell falsch, Ticker sollte verworfen werden)", currency)
         return 1.0
     # rates ist EUR → currency, wir wollen currency → EUR
     return 1.0 / eur_per_unit
@@ -201,9 +210,86 @@ def position_size_in_shares(position_eur: float, price: float, ticker: str) -> f
     return position_eur / price_eur
 
 
+# ── Gemeinsames Portfolio-Lock (#14) ──────────────────────────────────────────
+import contextlib as _contextlib
+
+@_contextlib.contextmanager
+def portfolio_lock(blocking: bool = True):
+    """
+    Prozessübergreifendes Advisory-Lock für alle Skripte, die positions/portfolio
+    schreiben (signal_manager, active_exit_check, breaking_news_monitor,
+    drawdown_monitor). Verhindert Lost-Updates auf portfolio.cash bei zeitgleichem
+    Lauf (WAL serialisiert nur einzelne Writes, nicht die Read-Modify-Write-Logik).
+
+    blocking=True: wartet, bis das Lock frei ist (Skripte sind kurzlebig).
+    blocking=False: yield True/False je nach Erfolg (Aufrufer prüft).
+    """
+    import fcntl
+    from config import DATA_DIR
+    _os.makedirs(DATA_DIR, exist_ok=True)
+    lock_path = _os.path.join(DATA_DIR, "portfolio.lock")
+    fh = open(lock_path, "w")
+    acquired = False
+    try:
+        if blocking:
+            fcntl.flock(fh, fcntl.LOCK_EX)
+            acquired = True
+        else:
+            try:
+                fcntl.flock(fh, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                acquired = True
+            except BlockingIOError:
+                acquired = False
+        yield acquired
+    finally:
+        if acquired:
+            fcntl.flock(fh, fcntl.LOCK_UN)
+        fh.close()
+
+
 def turnover_to_eur(price: float, volume: float, ticker: str) -> float:
     """Tagesumsatz (Preis × Volumen) in EUR."""
     return price_to_eur(price, ticker) * volume
+
+
+# ── Mark-to-Market (#3) ───────────────────────────────────────────────────────
+def position_current_value_eur(pos, current_price_native) -> float:
+    """
+    Aktueller rückbuchbarer EUR-Wert einer offenen Position bei current_price.
+
+    Entspricht dem, was beim Sofort-Close als Cash zurückkäme:
+    position_size (Einstand) + unrealisierter PnL. Für LONG und SHORT gleich
+    modelliert (bei Entry wurde für beide position_size vom Cash abgezogen).
+
+    pos: sqlite Row/dict mit direction, entry_price, position_size.
+    current_price_native: Kurs in der Heimwährung des Tickers (PnL-Ratio ist
+    FX-invariant, daher keine EUR-Umrechnung nötig).
+    Fallback bei fehlendem Kurs: Einstand (position_size).
+    """
+    size  = (pos["position_size"] if "position_size" in pos.keys() else pos.get("position_size")) or 0
+    entry = (pos["entry_price"]   if "entry_price"   in pos.keys() else pos.get("entry_price"))   or 0
+    if not current_price_native or not entry:
+        return size
+    direction = pos["direction"] if "direction" in pos.keys() else pos.get("direction")
+    if direction == "LONG":
+        pnl_pct = (current_price_native - entry) / entry
+    else:
+        pnl_pct = (entry - current_price_native) / entry
+    return size + pnl_pct * size
+
+
+def open_positions_market_value_eur(positions) -> float:
+    """
+    Summiert den Mark-to-Market-Wert aller offenen Positionen (EUR).
+    Nutzt get_price_data_cached – Aufrufer sollte vorher prefetch_prices()
+    aufrufen, damit keine Einzel-Downloads anfallen.
+    """
+    total = 0.0
+    for pos in positions:
+        ticker = pos["ticker"] if "ticker" in pos.keys() else pos.get("ticker")
+        close, _, _ = get_price_data_cached(ticker) if ticker else (None, None, None)
+        total += position_current_value_eur(pos, close)
+    return total
 
 
 # ── Retry-Decorator ───────────────────────────────────────────────────────────
@@ -281,6 +367,26 @@ def apply_slippage(price, direction, is_entry=True):
             return price * (1 - SLIPPAGE_PCT)
         else:  # SHORT
             return price * (1 + SLIPPAGE_PCT)
+
+
+def realized_pnl_from_effective_entry(entry_effective_price, current_price,
+                                      position_size, direction):
+    """
+    #11: Einheitliche Exit-PnL-Berechnung für BEIDE Exit-Engines
+    (signal_manager.check_open_positions + active_exit_check).
+
+    Wichtig: entry_price wird bereits SLIPPAGE-behaftet in der DB gespeichert
+    (effective_entry beim Open). Daher hier NUR Exit-Slippage + Commission
+    anwenden – sonst zählt die Entry-Slippage doppelt (alter Bug in
+    active_exit_check) bzw. fehlt ganz (alter Zustand in signal_manager).
+    """
+    ex = apply_slippage(current_price, direction, is_entry=False)
+    if direction == "LONG":
+        pnl_pct = (ex - entry_effective_price) / entry_effective_price
+    else:
+        pnl_pct = (entry_effective_price - ex) / entry_effective_price
+    pnl_eur = pnl_pct * position_size - COMMISSION_EUR
+    return pnl_eur, pnl_pct
 
 
 def calc_pnl_with_costs(entry_price, exit_price, position_size, direction):
@@ -460,10 +566,26 @@ def get_technical_score(ticker):
 
 _price_cache: dict = {}   # ticker → (timestamp, close, atr, df)
 _PRICE_TTL = 300          # 5 Minuten
+_PRICE_CACHE_MAX = 400    # #17: harte Obergrenze gegen unbegrenztes Wachstum
 
 
 def _cache_key(ticker: str) -> str:
     return ticker.upper()
+
+
+def _cache_store(key, value):
+    """Schreibt in _price_cache und evictet abgelaufene bzw. älteste Einträge (#17)."""
+    now = _time.time()
+    if len(_price_cache) >= _PRICE_CACHE_MAX:
+        # Zuerst abgelaufene entfernen
+        stale = [k for k, v in _price_cache.items() if now - v[0] >= _PRICE_TTL]
+        for k in stale:
+            _price_cache.pop(k, None)
+        # Falls immer noch voll: ältesten Eintrag verdrängen
+        if len(_price_cache) >= _PRICE_CACHE_MAX:
+            oldest = min(_price_cache, key=lambda k: _price_cache[k][0])
+            _price_cache.pop(oldest, None)
+    _price_cache[key] = value
 
 
 def get_price_data_cached(ticker: str):
@@ -491,7 +613,7 @@ def get_price_data_cached(ticker: str):
         atr_s   = ta.atr(high_s, low_s, close_s, length=14)
         close_val = float(close_s.iloc[-1])
         atr_val   = float(atr_s.iloc[-1])
-        _price_cache[key] = (now, close_val, atr_val, df)
+        _cache_store(key, (now, close_val, atr_val, df))
         return close_val, atr_val, df
     except Exception as e:
         _log = get_logger("utils.price")
@@ -530,7 +652,7 @@ def prefetch_prices(tickers: list):
                 atr_s     = ta.atr(high_s, low_s, close_s, length=14)
                 close_val = float(close_s.iloc[-1])
                 atr_val   = float(atr_s.iloc[-1])
-                _price_cache[_cache_key(ticker)] = (now, close_val, atr_val, df)
+                _cache_store(_cache_key(ticker), (now, close_val, atr_val, df))
             except Exception:
                 pass  # Einzelner Fehler überspringen, andere laufen weiter
         print(f"  ✅ Cache befüllt: {len(_price_cache)} Einträge", flush=True)

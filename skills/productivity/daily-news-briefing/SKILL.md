@@ -29,11 +29,26 @@ Standard 4-section briefing (Martins Konfiguration), max 5 items per section:
 
 Each item: **Überschrift** (max 10 Wörter) + 1-2 Sätze + Quellenlink in Klammern.
 
-## Delivery Model (CRITICAL — Job im Profil-eigenen Scheduler)
+## Delivery Model (CRITICAL — Default Scheduler + Profile Routing)
 
-**Dieses Briefing läuft im Scheduler des hermes-news Profils** — NICHT im default Scheduler.
-Der Job lebt in `/root/.hermes/profiles/hermes-news/cron/jobs.json` und wird vom
-Gateway des hermes-news Profils getaktet.
+**Dieses Briefing läuft im default Hermes Scheduler mit `profile: hermes-news`** —
+der Job lebt in `/root/.hermes/cron/jobs.json`, nicht in der Profil-Cron-DB.
+Der `profile`-Parameter steuert die Runtime-Umgebung (`.env`, `config.yaml`).
+
+**ACHTUNG — Delivery-Bot:** Der default Scheduler liefert IMMER über den
+default Bot aus, NICHT über den Profil-Bot. `deliver: telegram` geht zum
+`TELEGRAM_HOME_CHANNEL` des default Bots (Martins DM), nicht zum News-Channel.
+
+**Stand 01.07.2026:** Der Job (id `769f3356b8d1`) hat:
+- `profile: hermes-news` (Runtime-Kontext)
+- `deliver: telegram` (→ TELEGRAM_HOME_CHANNEL des Scheduler-Bots)
+- `model: deepseek/deepseek-v4-flash`
+- `enabled_toolsets: [web, terminal, file, browser]`
+
+⚠️ **Bekanntes Problem:** Wenn der default Bot den Ziel-Channel nicht kennt
+(`Chat not found`), muss der Job entweder ins Profil-eigene `cron/jobs.json`
+umziehen (siehe §Migration) oder via `deliver: telegram` nur in den Home-Channel
+des default Bots liefern.
 
 ### Voraussetzung: Profil-Gateway läuft
 
@@ -59,7 +74,7 @@ Job-Struktur in der Profil-Cron-DB (`/root/.hermes/profiles/<profil>/cron/jobs.j
   "prompt": "...",
   "skills": ["daily-news-briefing"],
   "skill": "daily-news-briefing",
-  "model": "openrouter/owl-alpha",
+  "model": "deepseek/deepseek-v4-flash",
   "provider": "openrouter",
   "schedule": {"kind": "cron", "expr": "0 6 * * *", "display": "0 6 * * *"},
   "deliver": "telegram",       // → TELEGRAM_HOME_CHANNEL des Profil-Bots
@@ -92,7 +107,7 @@ job = {
     "name": "daily-news-briefing",
     "prompt": "<prompt>",
     "skills": ["daily-news-briefing"],
-    "model": "openrouter/owl-alpha",
+    "model": "deepseek/deepseek-v4-flash",
     "provider": "openrouter",
     "schedule": {"kind": "cron", "expr": "0 6 * * *", "display": "0 6 * * *"},
     "enabled": True,
@@ -115,12 +130,19 @@ Danach Gateway neustarten (falls nötig — der Scheduler liest live):
 systemctl restart hermes-gateway-<profil>
 ```
 
-### ⚠️ VERALTET — Nicht mehr verwenden
+### ⚠️ Default Scheduler + profile-Routing (aktueller Stand)
 
-Der frühere Workaround (Job im default Scheduler mit `profile: hermes-news`)
-DELIVERT NICHT an den Profil-Channel. Der default Scheduler verwendet immer
-seinen eigenen Bot-Token für die Zustellung, unabhängig vom `profile`-Parameter.
-Das Briefing landet dann im DM statt im News-Kanal.
+Der Job (id `769f3356b8d1`) läuft aktuell im default Scheduler mit
+`profile: hermes-news` und `deliver: telegram`. Das deliver geht zum
+TELEGRAM_HOME_CHANNEL des Scheduler-Bots (default), nicht des Profil-Bots.
+
+**Wenn Delivery im DM statt im News-Channel ankommt:** Job ins Profil
+migrieren (siehe §Migration unten).
+
+### ✅ Alternative: Job direkt in Profil-Cron-DB (empfohlen für Channel-Delivery)
+
+Soll das Briefing im News-Channel (Ch_hermster_news) landen, MUSS der Job
+im hermes-news Profil-Scheduler leben. Anlegen via Python:
 
 ### Migration: Job aus default Scheduler → Profil-Scheduler
 
@@ -370,7 +392,9 @@ Firecrawl-Credits werden monatlich zurückgesetzt (aktuell: 13.7.). Dazwischen s
 **Symptom:** `Firecrawl search failed: Payment Required: Insufficient credits`
 
 **Workaround-Reihenfolge:**
-1. Google News RSS per curl (funktioniert zuverlässig, keine Credits nötig)
-2. Open-Meteo API für Wetter (kein API-Key, keine Credits)
-3. Browser für Wassertemperaturen (wassertemperatur.org)
-4. Direkte curl-Aufrufe auf andere RSS-Feeds (tagesschau.de, heise.de, welt.de)
+1. **Exa Search** — semantische Websuche, kein Credit: `mcporter call 'exa.web_search_exa(query: "...", numResults: 5)'`
+2. **Jina Reader** — Webseiten lesen, kein Credit: `curl -s "https://r.jina.ai/URL"`
+3. Google News RSS per curl (funktioniert zuverlässig, keine Credits nötig)
+4. Open-Meteo API für Wetter (kein API-Key, keine Credits)
+5. Browser für Wassertemperaturen (wassertemperatur.org)
+6. Direkte curl-Aufrufe auf andere RSS-Feeds (tagesschau.de, heise.de, welt.de)

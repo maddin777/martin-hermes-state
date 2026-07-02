@@ -166,7 +166,8 @@ Pro Sektion: Top 5 Meldungen
 - Max 15000 Zeichen gesamt
 ```
 
-Modell: `openrouter/owl-alpha` (Provider: `openrouter`)
+Modell: `nvidia/nemotron-3-super-120b-a12b:free` (Provider: `openrouter`)
+Alternativ: `deepseek/deepseek-v4-flash` — schneller, ebenfalls OpenRouter
 Schedule: `0 6 * * *`
 Delivery: `origin` (via hermes-news Profil-Gateway)
 
