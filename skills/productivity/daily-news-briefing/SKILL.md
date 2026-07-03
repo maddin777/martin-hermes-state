@@ -29,26 +29,16 @@ Standard 4-section briefing (Martins Konfiguration), max 5 items per section:
 
 Each item: **Überschrift** (max 10 Wörter) + 1-2 Sätze + Quellenlink in Klammern.
 
-## Delivery Model (CRITICAL — Default Scheduler + Profile Routing)
+#### Delivery Model (CRITICAL — Profile Scheduler, NOT default)
 
-**Dieses Briefing läuft im default Hermes Scheduler mit `profile: hermes-news`** —
-der Job lebt in `/root/.hermes/cron/jobs.json`, nicht in der Profil-Cron-DB.
-Der `profile`-Parameter steuert die Runtime-Umgebung (`.env`, `config.yaml`).
+**Das Briefing läuft im hermes-news Profil-Scheduler** (Job `46acda532f8`),
+nicht im default Hermes Scheduler. Der Job lebt in
+`/root/.hermes/profiles/hermes-news/cron/jobs.json`, nicht in der
+Default-Cron-DB.
 
-**ACHTUNG — Delivery-Bot:** Der default Scheduler liefert IMMER über den
-default Bot aus, NICHT über den Profil-Bot. `deliver: telegram` geht zum
-`TELEGRAM_HOME_CHANNEL` des default Bots (Martins DM), nicht zum News-Channel.
-
-**Stand 01.07.2026:** Der Job (id `769f3356b8d1`) hat:
-- `profile: hermes-news` (Runtime-Kontext)
-- `deliver: telegram` (→ TELEGRAM_HOME_CHANNEL des Scheduler-Bots)
-- `model: deepseek/deepseek-v4-flash`
-- `enabled_toolsets: [web, terminal, file, browser]`
-
-⚠️ **Bekanntes Problem:** Wenn der default Bot den Ziel-Channel nicht kennt
-(`Chat not found`), muss der Job entweder ins Profil-eigene `cron/jobs.json`
-umziehen (siehe §Migration) oder via `deliver: telegram` nur in den Home-Channel
-des default Bots liefern.
+**Modell:** `deepseek/deepseek-v4-flash` via OpenRouter.  
+**Delivery:** `deliver: telegram` → TELEGRAM_HOME_CHANNEL des Profil-Bots
+(@hermster_news_bot → News-Channel `-1003687061880`).
 
 ### Voraussetzung: Profil-Gateway läuft
 
@@ -130,11 +120,34 @@ Danach Gateway neustarten (falls nötig — der Scheduler liest live):
 systemctl restart hermes-gateway-<profil>
 ```
 
-### ⚠️ Default Scheduler + profile-Routing (aktueller Stand)
+### 🚨 ACHTUNG: Duplikat-Job-Falle bei Migration
 
-Der Job (id `769f3356b8d1`) läuft aktuell im default Scheduler mit
-`profile: hermes-news` und `deliver: telegram`. Das deliver geht zum
-TELEGRAM_HOME_CHANNEL des Scheduler-Bots (default), nicht des Profil-Bots.
+**Das Problem:** Wenn der Job im default Scheduler lebt und du einen zweiten
+Job im Profil-Scheduler anlegst (für Channel-Delivery), laufen **BEIDE parallel**.
+Der default Job deliveriert weiter in den DM, der Profil-Job in den Channel.
+
+**Passiert (02.07.2026):** Der Profil-Job lief 9 Tage lang mit
+`nvidia/nemotron-3-super-120b-a12b:free` (altes Modell, alter Prompt ohne
+Frische-Regel) während der Default-Job mit `deepseek/deepseek-v4-flash` lief.
+Ergebnis: Gossip, Dopplungen, schlechte Formatierung im Channel + Duplikate im DM.
+
+**Fix bei Migration → IMMER beide Scheduler checken:**
+
+```bash
+# Prüfen ob der Jobname in beiden Schedulern existiert
+grep -l '"daily-news-briefing"' /root/.hermes/cron/jobs.json
+grep -l '"daily-news-briefing"' /root/.hermes/profiles/hermes-news/cron/jobs.json
+```
+
+**Wenn er in BEIDEN existiert** → einen löschen (meist den im default Scheduler).
+
+### ⚠️ Default Scheduler + profile-Routing
+
+Das Briefing läuft im **hermes-news Profil-Scheduler** (Job `46acda532f8`).
+Der default Scheduler ist seit 02.07.2026 NICHT mehr zuständig.
+
+Der Profil-Job deliveriert über den Profil-Bot (@hermster_news_bot) in dessen
+TELEGRAM_HOME_CHANNEL (-1003687061880 = News-Channel).
 
 **Wenn Delivery im DM statt im News-Channel ankommt:** Job ins Profil
 migrieren (siehe §Migration unten).
@@ -149,22 +162,47 @@ im hermes-news Profil-Scheduler leben. Anlegen via Python:
 Wenn der Job noch im default Scheduler läuft und in den Profil-Scheduler umziehen soll:
 
 1. **Job im default Scheduler löschen:**
-   ```
+   ```bash
    hermes cron remove <job-id>
    ```
+   🔴 **KRITISCH:** Nicht vergessen — sonst laufen BEIDE Jobs parallel mit
+   unterschiedlichen Modellen. Der default Job wirst du nicht sehen (liefert in DM),
+   der Profil-Job in den Channel. Passiert am 02.07.2026 mit nemotron vs deepseek.
 
-2. **Skill ins Profil kopieren:**
+   **Automatisierte Prüfung:** Das Script `scripts/check_duplicate_jobs.py`
+   (im Skill-Verzeichnis) prüft beide Scheduler und warnt bei Duplikaten.
+
+2. **Modell-Kopie sicherstellen:** Prüfe dass das Modell im Profil-Cron dem
+   gewünschten entspricht. Der Profil-Scheduler hat SEIN EIGENES jobs.json —
+   ein `model`-Update im default Scheduler ändert NICHT den Profil-Job.
+   ```bash
+   cat /root/.hermes/profiles/hermes-news/cron/jobs.json | python3 -c "
+   import json,sys; d=json.load(sys.stdin)
+   for j in d['jobs']:
+       if 'daily-news' in j.get('name',''):
+           print(f\"{j['name']}: {j['provider']}/{j['model']}\")
+   "
+   ```
+
+3. **Skill ins Profil kopieren:**
    ```bash
    cp -r /root/.hermes/skills/productivity/daily-news-briefing /root/.hermes/profiles/<profil>/skills/productivity/
    ```
 
-3. **Profil-Gateway prüfen (muss laufen):**
+4. **Profil-Gateway prüfen (muss laufen):**
    ```bash
    cat /root/.hermes/profiles/<profil>/gateway_state.json | python3 -c "import json,sys; d=json.load(sys.stdin); print('✅' if d.get('gateway_state')=='running' else '❌')"
    ```
    Falls nicht: `systemctl start hermes-gateway-<profil>.service`
 
-4. **Job in Profil-Cron-DB anlegen** (siehe Python-Snippet unter "Anlegen eines Profil-Cron-Jobs").
+5. **Job in Profil-Cron-DB anlegen** (siehe Python-Snippet unter "Anlegen eines Profil-Cron-Jobs").
+
+6. **🔴 VERIFIKATION — Kein Duplikat-Job:**
+   ```bash
+   # Prüfen: kommt der Jobname in beiden Schedulern vor?
+   echo "Default: $(grep -c '\"daily-news-briefing\"' /root/.hermes/cron/jobs.json 2>/dev/null || echo 0)"
+   echo "Profil:  $(grep -c '\"daily-news-briefing\"' /root/.hermes/profiles/hermes-news/cron/jobs.json 2>/dev/null || echo 0)"
+   ```
 
 ### ⚠️ Bekanntes Problem: cron_health.py false-positives
 

@@ -370,3 +370,60 @@ Lektion #24 abgeschlossen.
 10. **ręka**
 
 Lektion #25 abgeschlossen.
+
+## Lektion #26
+
+**Wortschatz (Top 500)**
+1. **pan** `Herr`
+2. **pani** `Frau`
+3. **brat** `Bruder`
+4. **siostra** `Schwester`
+5. **ojciec** `Vater`
+6. **matka** `Mutter`
+7. **syn** `Sohn`
+8. **córka** `Tochter`
+9. **dziecko** `Kind`
+10. **rodzina** `Familie`
+
+**Sentence Mining (n+1)**
+1. **Mój brat jest tutaj.** `Mein Bruder ist hier.`
+2. **Moja siostra kocha kawę.** `Meine Schwester liebt Kaffee.`
+3. **Ojciec pije wodę.** `Der Vater trinkt Wasser.`
+4. **Matka szuka córki.** `Die Mutter sucht die Tochter.`
+5. **Syn ma dziecko.** `Der Sohn hat ein Kind.`
+6. **Rodzina jest bardzo ważna.** `Die Familie ist sehr wichtig.`
+
+**Grammatik: Aspekt & Kasus**
+* **Verb-Aspekt (Imperfekt -> Perfekt):**
+    * **czytać** (lesen) -> **przeczytać** (gelesen haben)
+    * **pisać** (schreiben) -> **napisać** (geschrieben haben)
+* **Nomen-Kasus (Nominativ -> Akkusativ):**
+    * **brat** (Nominativ) -> **brata** (Akkusativ)
+    * **siostra** (Nominativ) -> **siostrę** (Akkusativ)
+    * **matka** (Nominativ) -> **matkę** (Akkusativ)
+
+**Lückentext-Quiz**
+1. Moja **_________** (Schwester) jest miła.
+2. Czy masz **_________** (Bruder)?
+3. **_________** (Vater) pracuje w domu.
+4. Widzę moją **_________** (Mutter).
+5. On ma małą **_________** (Tochter).
+6. Moja **_________** (Familie) mieszka w Polsce.
+7. **_________** (Sohn) idzie do szkoły.
+8. Czy to jest Twoje **_________** (Kind)?
+9. Spotykam **_________** (Herr) Kowalski.
+10. Gdzie jest **_________** (Frau) Nowak?
+
+**Auflösung**
+1. **siostra**
+2. **brata**
+3. **Ojciec**
+4. **matkę**
+5. **córkę**
+6. **rodzina**
+7. **Syn**
+8. **dziecko**
+9. **pana**
+10. **panią**
+
+Lektion #26 abgeschlossen.

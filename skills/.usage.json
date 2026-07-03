@@ -211,14 +211,14 @@
     "archived_at": null,
     "created_at": "2026-06-17T05:36:27.522356+00:00",
     "created_by": "agent",
-    "last_patched_at": "2026-07-01T13:00:39.178753+00:00",
-    "last_used_at": "2026-07-01T13:00:26.261945+00:00",
-    "last_viewed_at": "2026-07-01T13:00:26.253678+00:00",
-    "patch_count": 18,
+    "last_patched_at": "2026-07-02T05:25:47.300146+00:00",
+    "last_used_at": "2026-07-02T05:25:50.922061+00:00",
+    "last_viewed_at": "2026-07-02T05:25:50.913549+00:00",
+    "patch_count": 23,
     "pinned": false,
     "state": "active",
-    "use_count": 35,
-    "view_count": 23
+    "use_count": 39,
+    "view_count": 26
   },
   "dataviz-story-scout": {
     "archived_at": null,

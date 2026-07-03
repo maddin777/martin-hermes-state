@@ -1886,42 +1886,42 @@
 },
 "deepseek/deepseek-v4-flash":{
 "context_length":1048576,
-"max_completion_tokens":null,
+"max_completion_tokens":16384,
 "name":"DeepSeek: DeepSeek V4 Flash",
 "pricing":{
-"prompt":"0.000000098",
-"completion":"0.000000196",
-"input_cache_read":"0.00000002"
+"prompt":"0.00000009",
+"completion":"0.00000018",
+"input_cache_read":"0.000000018"
 }
 },
 "deepseek-v4-flash":{
 "context_length":1048576,
-"max_completion_tokens":null,
+"max_completion_tokens":16384,
 "name":"DeepSeek: DeepSeek V4 Flash",
 "pricing":{
-"prompt":"0.000000098",
-"completion":"0.000000196",
-"input_cache_read":"0.00000002"
+"prompt":"0.00000009",
+"completion":"0.00000018",
+"input_cache_read":"0.000000018"
 }
 },
 "deepseek/deepseek-v4-flash-20260423":{
 "context_length":1048576,
-"max_completion_tokens":null,
+"max_completion_tokens":16384,
 "name":"DeepSeek: DeepSeek V4 Flash",
 "pricing":{
-"prompt":"0.000000098",
-"completion":"0.000000196",
-"input_cache_read":"0.00000002"
+"prompt":"0.00000009",
+"completion":"0.00000018",
+"input_cache_read":"0.000000018"
 }
 },
 "deepseek-v4-flash-20260423":{
 "context_length":1048576,
-"max_completion_tokens":null,
+"max_completion_tokens":16384,
 "name":"DeepSeek: DeepSeek V4 Flash",
 "pricing":{
-"prompt":"0.000000098",
-"completion":"0.000000196",
-"input_cache_read":"0.00000002"
+"prompt":"0.00000009",
+"completion":"0.00000018",
+"input_cache_read":"0.000000018"
 }
 },
 "inclusionai/ling-2.6-1t":{
@@ -4551,21 +4551,21 @@
 },
 "minimax/minimax-m2.1":{
 "context_length":204800,
-"max_completion_tokens":196608,
+"max_completion_tokens":131072,
 "name":"MiniMax: MiniMax M2.1",
 "pricing":{
-"prompt":"0.00000029",
-"completion":"0.00000095",
+"prompt":"0.0000003",
+"completion":"0.0000012",
 "input_cache_read":"0.00000003"
 }
 },
 "minimax-m2.1":{
 "context_length":204800,
-"max_completion_tokens":196608,
+"max_completion_tokens":131072,
 "name":"MiniMax: MiniMax M2.1",
 "pricing":{
-"prompt":"0.00000029",
-"completion":"0.00000095",
+"prompt":"0.0000003",
+"completion":"0.0000012",
 "input_cache_read":"0.00000003"
 }
 },
@@ -5527,42 +5527,42 @@
 },
 "moonshotai/kimi-k2-thinking":{
 "context_length":262144,
-"max_completion_tokens":262144,
+"max_completion_tokens":100352,
 "name":"MoonshotAI: Kimi K2 Thinking",
 "pricing":{
 "prompt":"0.0000006",
 "completion":"0.0000025",
-"input_cache_read":"0.0000006"
+"input_cache_read":"0.00000015"
 }
 },
 "kimi-k2-thinking":{
 "context_length":262144,
-"max_completion_tokens":262144,
+"max_completion_tokens":100352,
 "name":"MoonshotAI: Kimi K2 Thinking",
 "pricing":{
 "prompt":"0.0000006",
 "completion":"0.0000025",
-"input_cache_read":"0.0000006"
+"input_cache_read":"0.00000015"
 }
 },
 "moonshotai/kimi-k2-thinking-20251106":{
 "context_length":262144,
-"max_completion_tokens":262144,
+"max_completion_tokens":100352,
 "name":"MoonshotAI: Kimi K2 Thinking",
 "pricing":{
 "prompt":"0.0000006",
 "completion":"0.0000025",
-"input_cache_read":"0.0000006"
+"input_cache_read":"0.00000015"
 }
 },
 "kimi-k2-thinking-20251106":{
 "context_length":262144,
-"max_completion_tokens":262144,
+"max_completion_tokens":100352,
 "name":"MoonshotAI: Kimi K2 Thinking",
 "pricing":{
 "prompt":"0.0000006",
 "completion":"0.0000025",
-"input_cache_read":"0.0000006"
+"input_cache_read":"0.00000015"
 }
 },
 "amazon/nova-premier-v1":{
@@ -5685,22 +5685,20 @@
 },
 "minimax/minimax-m2":{
 "context_length":204800,
-"max_completion_tokens":196608,
+"max_completion_tokens":131072,
 "name":"MiniMax: MiniMax M2",
 "pricing":{
 "prompt":"0.000000255",
-"completion":"0.000001",
-"input_cache_read":"0.00000003"
+"completion":"0.00000102"
 }
 },
 "minimax-m2":{
 "context_length":204800,
-"max_completion_tokens":196608,
+"max_completion_tokens":131072,
 "name":"MiniMax: MiniMax M2",
 "pricing":{
 "prompt":"0.000000255",
-"completion":"0.000001",
-"input_cache_read":"0.00000003"
+"completion":"0.00000102"
 }
 },
 "qwen/qwen3-vl-32b-instruct":{
@@ -6572,22 +6570,20 @@
 },
 "qwen/qwen3-30b-a3b-thinking-2507":{
 "context_length":131072,
-"max_completion_tokens":131072,
+"max_completion_tokens":32768,
 "name":"Qwen: Qwen3 30B A3B Thinking 2507",
 "pricing":{
-"prompt":"0.00000008",
-"completion":"0.0000004",
-"input_cache_read":"0.00000008"
+"prompt":"0.00000013",
+"completion":"0.00000156"
 }
 },
 "qwen3-30b-a3b-thinking-2507":{
 "context_length":131072,
-"max_completion_tokens":131072,
+"max_completion_tokens":32768,
 "name":"Qwen: Qwen3 30B A3B Thinking 2507",
 "pricing":{
-"prompt":"0.00000008",
-"completion":"0.0000004",
-"input_cache_read":"0.00000008"
+"prompt":"0.00000013",
+"completion":"0.00000156"
 }
 },
 "nousresearch/hermes-4-70b":{
@@ -7933,9 +7929,8 @@
 "max_completion_tokens":8192,
 "name":"Qwen: Qwen3 8B",
 "pricing":{
-"prompt":"0.00000005",
-"completion":"0.0000004",
-"input_cache_read":"0.00000005"
+"prompt":"0.000000117",
+"completion":"0.000000455"
 }
 },
 "qwen3-8b":{
@@ -7943,9 +7938,8 @@
 "max_completion_tokens":8192,
 "name":"Qwen: Qwen3 8B",
 "pricing":{
-"prompt":"0.00000005",
-"completion":"0.0000004",
-"input_cache_read":"0.00000005"
+"prompt":"0.000000117",
+"completion":"0.000000455"
 }
 },
 "qwen/qwen3-8b-04-28":{
@@ -7953,9 +7947,8 @@
 "max_completion_tokens":8192,
 "name":"Qwen: Qwen3 8B",
 "pricing":{
-"prompt":"0.00000005",
-"completion":"0.0000004",
-"input_cache_read":"0.00000005"
+"prompt":"0.000000117",
+"completion":"0.000000455"
 }
 },
 "qwen3-8b-04-28":{
@@ -7963,9 +7956,8 @@
 "max_completion_tokens":8192,
 "name":"Qwen: Qwen3 8B",
 "pricing":{
-"prompt":"0.00000005",
-"completion":"0.0000004",
-"input_cache_read":"0.00000005"
+"prompt":"0.000000117",
+"completion":"0.000000455"
 }
 },
 "qwen/qwen3-14b":{
@@ -8417,8 +8409,8 @@
 "max_completion_tokens":16384,
 "name":"DeepSeek: DeepSeek V3 0324",
 "pricing":{
-"prompt":"0.0000002",
-"completion":"0.00000077",
+"prompt":"0.00000024",
+"completion":"0.0000009",
 "input_cache_read":"0.000000135"
 }
 },
@@ -8427,8 +8419,8 @@
 "max_completion_tokens":16384,
 "name":"DeepSeek: DeepSeek V3 0324",
 "pricing":{
-"prompt":"0.0000002",
-"completion":"0.00000077",
+"prompt":"0.00000024",
+"completion":"0.0000009",
 "input_cache_read":"0.000000135"
 }
 },
