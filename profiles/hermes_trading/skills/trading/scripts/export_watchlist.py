@@ -4,12 +4,24 @@ Nutzt canonical_tickers-Tabelle zum Zusammenführen von Duplikaten.
 """
 import sqlite3
 import json
+import re
 from datetime import datetime
 
 
 import os
 from config import DB_PATH, OBSIDIAN_WATCHLIST_PATH, db_connect
 os.makedirs(os.path.dirname(OBSIDIAN_WATCHLIST_PATH), exist_ok=True)
+
+
+def _normalize_date(val: str | None) -> str | None:
+    """Wandelt YYYYMMDD → YYYY-MM-DD, lässt andere Formate passieren."""
+    if not val:
+        return val
+    m = re.fullmatch(r"(\d{4})(\d{2})(\d{2})", val)
+    if m:
+        return f"{m.group(1)}-{m.group(2)}-{m.group(3)}"
+    return val
+
 
 con = db_connect()
 # ── Canonical Ticker Map laden ─────────────────────────────────────────
@@ -146,7 +158,7 @@ for i, w in enumerate(watchlist, 1):
         f"{w['company_sector']} | {w['mention_count']} | "
         f"{w['bullish_count']} | {w['bearish_count']} | "
         f"{conviction:.0%} | {tech} | {direction} | "
-        f"{channels_str} | {w['last_seen'] or '–'} |"
+        f"{channels_str} | {_normalize_date(w['last_seen']) or '–'} |"
     )
 
 with open(OBSIDIAN_WATCHLIST_PATH, "w", encoding="utf-8") as f:

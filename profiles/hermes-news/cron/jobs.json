@@ -3,7 +3,7 @@
     {
       "id": "46acda532f8",
       "name": "daily-news-briefing",
-      "prompt": "Erstelle das tägliche Morgen-Briefing (06:00) — folge dem daily-news-briefing Skill exakt. 5 Sektionen: Politik & Internationales, Finanzen & Wirtschaft, IT & KI, Deutschland & Nordeuropa, Wetter & Wassertemperaturen. Nutze Google News RSS per curl, Open-Meteo für Wetter, Browser für Wassertemperaturen (Firecrawl-Credits sind leer). KEINE leeren Sektionen. Max 3000 Zeichen pro Nachricht, aufteilen auf bis zu 5 Nachrichten. Alle Quellen angeben. Übersetzte internationale Quellen auf Deutsch.\n\n🔴 FRISCHE-REGEL (wichtig!): NUR Artikel der letzten 2 Tage. Jeden RSS-Item am <pubDate> prüfen. Alles älter als 2 Tage komplett weglassen — auch wenn es interessant ist. Lieber 2 aktuelle Artikel pro Sektion als 5 mit veraltetem Zeug. Keine Ausnahmen.",
+      "prompt": "Erstelle das t\u00e4gliche Morgen-Briefing (06:00) \u2014 folge dem daily-news-briefing Skill exakt. 5 Sektionen: Politik & Internationales, Finanzen & Wirtschaft, IT & KI, Deutschland & Nordeuropa, Wetter & Wassertemperaturen. Nutze Google News RSS per curl, Open-Meteo f\u00fcr Wetter, Browser f\u00fcr Wassertemperaturen (Firecrawl-Credits sind leer). KEINE leeren Sektionen. Max 3000 Zeichen pro Nachricht, aufteilen auf bis zu 5 Nachrichten. Alle Quellen angeben. \u00dcbersetzte internationale Quellen auf Deutsch.\n\n\ud83d\udd34 FRISCHE-REGEL (wichtig!): NUR Artikel der letzten 2 Tage. Jeden RSS-Item am <pubDate> pr\u00fcfen. Alles \u00e4lter als 2 Tage komplett weglassen \u2014 auch wenn es interessant ist. Lieber 2 aktuelle Artikel pro Sektion als 5 mit veraltetem Zeug. Keine Ausnahmen.",
       "skills": [
         "daily-news-briefing"
       ],
@@ -22,15 +22,15 @@
       "schedule_display": "0 6 * * *",
       "repeat": {
         "times": null,
-        "completed": 9
+        "completed": 10
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-06-22T07:17:50.376210+02:00",
-      "next_run_at": "2026-07-03T06:00:00+02:00",
-      "last_run_at": "2026-07-02T06:07:58.246332+02:00",
+      "next_run_at": "2026-07-04T06:00:00+02:00",
+      "last_run_at": "2026-07-03T06:04:26.271188+02:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -47,5 +47,5 @@
       "fire_claim": null
     }
   ],
-  "updated_at": "2026-07-02T07:24:02.288430+02:00"
+  "updated_at": "2026-07-03T06:04:26.272090+02:00"
 }

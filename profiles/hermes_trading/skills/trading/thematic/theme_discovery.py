@@ -4,10 +4,12 @@ Nutzt Tavily API fuer News + Polymarket fuer zusaetzliche Signale.
 """
 import json
 import os
-import sqlite3
+import sys
 from datetime import date, datetime, timedelta
+sys.path.insert(0, "/root/.hermes/profiles/hermes_trading/skills/trading")
 from thematic.lib import llm_client, tavily_client, prompt_loader, embedding_client
 from thematic.lib.polymarket_client import fetch_top_movers
+from config import db_connect as _db_connect_cfg
 
 DB_PATH = os.path.join(
     os.path.dirname(os.path.dirname(__file__)),
@@ -22,9 +24,7 @@ CATEGORIES = [
 
 
 def _db_connect():
-    con = sqlite3.connect(DB_PATH)
-    con.row_factory = sqlite3.Row
-    return con
+    return _db_connect_cfg()
 
 
 def _persist_news(con, articles: list):

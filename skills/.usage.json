@@ -1088,27 +1088,27 @@
     "archived_at": null,
     "created_at": "2026-05-27T06:29:36.528930+00:00",
     "created_by": "agent",
-    "last_patched_at": "2026-06-29T06:12:38.806627+00:00",
-    "last_used_at": "2026-06-30T14:15:48.464071+00:00",
-    "last_viewed_at": "2026-06-30T14:15:48.458504+00:00",
-    "patch_count": 119,
+    "last_patched_at": "2026-07-03T09:06:16.739558+00:00",
+    "last_used_at": "2026-07-03T13:18:03.645805+00:00",
+    "last_viewed_at": "2026-07-03T13:18:03.638637+00:00",
+    "patch_count": 121,
     "pinned": false,
     "state": "active",
-    "use_count": 133,
-    "view_count": 125
+    "use_count": 137,
+    "view_count": 129
   },
   "trading-scan": {
     "archived_at": null,
     "created_at": "2026-06-12T08:57:55.815003+00:00",
     "created_by": null,
     "last_patched_at": null,
-    "last_used_at": "2026-06-28T14:44:53.070487+00:00",
-    "last_viewed_at": "2026-06-28T14:44:53.058807+00:00",
+    "last_used_at": "2026-07-03T09:03:47.573844+00:00",
+    "last_viewed_at": "2026-07-03T09:03:47.558931+00:00",
     "patch_count": 0,
     "pinned": false,
     "state": "active",
-    "use_count": 4,
-    "view_count": 4
+    "use_count": 5,
+    "view_count": 5
   },
   "vehicle-comparison": {
     "archived_at": null,

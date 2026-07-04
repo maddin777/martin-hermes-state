@@ -175,7 +175,10 @@ def parse_json_response(result: dict, default=None) -> dict:
     """Extrahiert JSON aus LLM-Antwort, bereinigt Markdown-Wrapper."""
     if not result.get("ok"):
         return default or {}
-    text = result["content"].strip()
+    content = result.get("content")
+    if content is None:
+        return default or {}
+    text = content.strip()
     for marker in ["```json", "```"]:
         if marker in text:
             text = text.split(marker)[1].split("```")[0].strip()
