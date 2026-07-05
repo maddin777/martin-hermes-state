@@ -22,7 +22,7 @@ Installiert unter `~/.agent-reach-venv/`. 7 Kanäle aktiv, Tools via `~/.local/b
 | **GitHub** | ✅ aktiv | `gh` CLI |
 | **V2EX** | ✅ aktiv | `curl -s "https://www.v2ex.com/api/topics/hot.json"` |
 | **Twitter/X** | ⏸ installiert (Cookies fehlen) | `twitter search "query" -n 10` |
-| **Reddit** | ⏸ installiert (Login fehlt) | `rdt search "query" --limit 10` |
+| **Reddit** | 🔴 blockiert (IP-Sperre) | Exa Search Fallback (siehe unten) |
 
 ## Verwendung in den Pipelines
 
@@ -49,8 +49,27 @@ for e in f.entries[:5]:
 "
 ```
 
-## Status-Prüfung
-## Status-Prüfung
+## Reddit-Blockade-Fallback
+
+Reddit blockt Server-IPs dieser Umgebung aggressiv (403 auf allen Endpoints — www, old.reddit, JSON-API, Jina Reader). **RDT funktioniert nicht.** Die Fallback-Kette ist:
+
+1. **Exa Search** (primär): `mcporter call 'exa.web_search_exa(query: "site:reddit.com/r/subreddit KEYWORDS", numResults: 5)'`
+   - Nutze Reddit-spezifische Keywords in der Query: Subreddit-Name, Thread-Titel-Fragmente, Score/Upvote-Zahlen
+   - Exa returned Highlights aus dem Thread (+ Kommentare falls indexiert)
+   - Schlagwörter aus der URL (Post-ID, Slug) helfen bei der Identifikation
+
+2. **Pullpush.io** (Kommentare): `curl -s "https://api.pullpush.io/reddit/search/comment/?subreddit=SUBREDDIT&link_id=t3_POSTID&size=25"`
+   - Holt historische Kommentare — aber nur wenn indexiert, oft leer
+
+3. **Google Cache** (selten): `curl -s -L "https://webcache.googleusercontent.com/search?q=cache:REDDIT_URL"`
+   - Funktioniert nur bei sehr populären Threads
+
+**Query-Patterns die funktionieren:**
+- `"exakter Thread-Titel" site:reddit.com/r/subreddit` — wenn der Titel bekannt ist
+- `subreddit URL-ID POSTID` — über die Post-ID aus der URL
+- `site:reddit.com/r/subreddit KEYWORDS aus Thread` — semantische Suche
+
+Siehe `references/reddit-fallback.md` für konkrete Beispiele aus Produktiv-Sessions.
 ```bash
 agent-reach doctor
 ```

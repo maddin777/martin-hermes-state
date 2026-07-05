@@ -3,14 +3,14 @@
     "archived_at": null,
     "created_at": "2026-07-01T13:00:45.364395+00:00",
     "created_by": null,
-    "last_patched_at": "2026-07-01T13:21:10.383016+00:00",
-    "last_used_at": null,
-    "last_viewed_at": null,
-    "patch_count": 3,
+    "last_patched_at": "2026-07-04T23:35:52.264555+00:00",
+    "last_used_at": "2026-07-04T23:35:32.083363+00:00",
+    "last_viewed_at": "2026-07-04T23:35:32.077054+00:00",
+    "patch_count": 6,
     "pinned": false,
     "state": "active",
-    "use_count": 0,
-    "view_count": 0
+    "use_count": 2,
+    "view_count": 2
   },
   "airtable": {
     "archived_at": null,
@@ -506,13 +506,13 @@
     "created_at": "2026-05-26T03:52:18.196606+00:00",
     "created_by": null,
     "last_patched_at": "2026-06-23T21:26:08.739234+00:00",
-    "last_used_at": "2026-06-27T01:00:05.325559+00:00",
-    "last_viewed_at": "2026-06-27T01:00:05.313107+00:00",
+    "last_used_at": "2026-07-04T01:00:44.556193+00:00",
+    "last_viewed_at": "2026-07-04T01:00:44.548962+00:00",
     "patch_count": 18,
     "pinned": false,
     "state": "active",
-    "use_count": 24,
-    "view_count": 24
+    "use_count": 25,
+    "view_count": 25
   },
   "hermes-voice": {
     "archived_at": null,
@@ -764,14 +764,14 @@
     "archived_at": null,
     "created_at": "2026-06-22T01:24:12.348954+00:00",
     "created_by": null,
-    "last_patched_at": "2026-06-27T01:03:51.038957+00:00",
-    "last_used_at": "2026-06-27T01:00:05.331821+00:00",
-    "last_viewed_at": "2026-06-27T01:00:05.319122+00:00",
-    "patch_count": 2,
+    "last_patched_at": "2026-07-04T09:40:47.270355+00:00",
+    "last_used_at": "2026-07-04T09:40:57.635114+00:00",
+    "last_viewed_at": "2026-07-04T09:40:57.628748+00:00",
+    "patch_count": 7,
     "pinned": false,
     "state": "active",
-    "use_count": 1,
-    "view_count": 1
+    "use_count": 8,
+    "view_count": 8
   },
   "ocr-and-documents": {
     "archived_at": null,
@@ -1024,14 +1024,14 @@
     "archived_at": null,
     "created_at": "2026-06-25T05:33:55.828028+00:00",
     "created_by": null,
-    "last_patched_at": "2026-07-01T16:49:19.734256+00:00",
-    "last_used_at": "2026-07-01T16:49:08.188672+00:00",
-    "last_viewed_at": "2026-07-01T16:49:08.180358+00:00",
-    "patch_count": 5,
+    "last_patched_at": "2026-07-04T09:40:54.641131+00:00",
+    "last_used_at": "2026-07-04T09:40:07.764798+00:00",
+    "last_viewed_at": "2026-07-04T09:40:07.752836+00:00",
+    "patch_count": 6,
     "pinned": false,
     "state": "active",
-    "use_count": 6,
-    "view_count": 6
+    "use_count": 7,
+    "view_count": 7
   },
   "teams-meeting-pipeline": {
     "archived_at": null,

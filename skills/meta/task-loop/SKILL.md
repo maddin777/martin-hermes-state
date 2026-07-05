@@ -44,6 +44,8 @@ Faustregel: **Das Done-Kriterium muss das Problem aus Martins Perspektive lösen
 - **Context-Check**: Ist das System in einem Zustand, in dem mein Fix Sinn ergibt? (Regime? Config-Zustand? Abhängigkeiten?)
 - **Hypothese** formulieren: "Ich glaube das Problem ist X, weil ich Y gesehen habe. Der Context (Regime/Config/Umgebung) unterstützt diesen Fix weil Z."
 - **Bei mehrdeutigen Requests:** Wenn Martins Frage auf mehrere Projekte/Kontexte zutreffen könnte, kurz verifizieren bevor du lossprintest. Ein "Deepdive wozu?" spart 12 Nachrichten und Frustration.
+- **"Aus meinen proaktiven Vorschlägen" — Trace-Pattern:** Wenn Martin sagt "Bau X aus deinen proaktiven Vorschlägen" und X ist nirgends zu finden → die Vorschläge kamen aus dem vault-insights Cron (02:45, Abschnitt C). `session_search(query="Proaktive Vorschläge", sort="newest", limit=1)` findet den Report. Der Report listet 3 Vorschläge mit konkreten nächsten Schritten — Punkt 1, 2, 3 entsprechen "Abschnitt C Punkt 1, 2, 3".
+- **"Aktualisier die erklaerung.md" — Richtung prüfen:** Wenn die Wiki-Seite neuer ist als die Quelle, ist die Quelle veraltet und muss mit dem Wiki-Stand aktualisiert werden (nicht umgekehrt). Timestamps checken bevor du editierst.
 
 ### Phase 2b: Compact-Response-Regel (bei komplexen Ergebnissen)
 

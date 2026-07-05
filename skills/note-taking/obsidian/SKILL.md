@@ -127,7 +127,7 @@ Dreistufiges Schema — in den Morning Report oder direkt ans User-Feedback:
 
 Pro relevanter Quelle: neue Wiki-Seite in `wiki/concepts/` anlegen.
 
-**Template:**
+**Standard-Template:** (siehe auch `templates/gate-page.md` für Checklisten/Gate-Seiten)
 
 ```markdown
 [[wiki/concepts|concepts]] → [[Seitenname]]
@@ -206,6 +206,24 @@ Referenz: `references/broken-link-detection-script.py` implementiert die vollst�
 - Wikilinks zu nicht-existierenden Wiki-Seiten (z.B. `[[KI-Sicherheit]]`, `[[Aktien (KI Zulieferer)]]` → kein Konzept angelegt)
 - `../../`-Links deren Datei nicht existiert (z.B. falscher Zielordner, falscher Dateiname)
 - `../skills/...` Links aus Wiki-Seiten (skills/ ist kein Wiki-Ordner)
+- Links mit doppelter `.md.md`-Extension (z.B. `[[wiki/concepts/SOUL.md.md]]` — korrekt ist `.md`)
+- Links mit abschließendem `\`-Escape (z.B. `[[Exil-Polen\\|Polen]]` — das `\\` ist ein Syntax-Fehler, korrekt ist `[[Exil-Polen|Polen]]`)
+
+**Zusätzliche Noise-Patterns (häufige False Positives):**
+
+| Pattern | Beispiel | Begründung |
+|---------|----------|-----------|
+| `wiki/concepts/Seitenname.md` als Self-Link | `[[wiki/concepts/Automation.md]]` in `Automation.md` | Obsidian rendert das als Fettdruck — kein Broken Link |
+| `./` Präfix | `[[./Multi-LLM Ensemble]]` in `LLM.md` | Relativer Link zum selben Ordner |
+| `wiki/concepts/Seitenname` (ohne `.md`) als Self-Link | `[[wiki/concepts/Automation]]` in `Automation.md` | Gleiches Prinzip — Navigation, kein Broken Link |
+
+**Pitfall — Self-Link Detection:**
+Beim Filtern von Self-Links muss der Dateiname (ohne Pfad) mit dem Link-Target (nach Strip von `wiki/concepts/`, `wiki/entities/`, `./`) case-insensitive verglichen werden. Der Link `[[wiki/concepts/Pre-Mortem]]` in `Pre-Mortem.md` ist valide. Der gleiche Link in `Automation.md` wäre broken.
+
+**Pitfall — Trailing Backslash `\\`:**
+In Obsidian-Markdown wird `[[Exil-Polen\\|Polen]]` als Link zu `Exil-Polen\` (mit Backslash im Namen) interpretiert — der Backslash ist escaped, aber Obsidian matcht ihn nicht als existierende Seite. Wenn der Scanner `\\` im Link findet → fast immer ein Broken Link durch escaped Pipe.
+
+Referenz: `references/broken-link-detection-script.py` implementiert die vollständige Logik inklusive dieser Noise-Patterns.
 
 ### Orphan Detection
 
@@ -379,6 +397,17 @@ Regeln:
 - Quellen immer als relativen Pfad referenzieren
 - Wiki-Seiten kompakt halten (max 500 Wörter pro Konzept)
 - Bei nichts Neuem: [SILENT] (unterdrückt Delivery)
+
+### Proaktive Vorschläge aus Cron — Trace-Pattern
+
+Wenn der User sagt "Bau X / Aktualisier Y aus meinen proaktiven Vorschlägen" und X/Y nicht auffindbar sind:
+
+1. **Die Vorschläge kamen aus dem vault-insights CRON** (02:45 täglich, Abschnitt C — "Proaktive Vorschläge max 3")
+2. **Trace:** `session_search(query="Proaktive Vorschläge", sort="newest", limit=1)` um den heutigen vault-insights Report zu finden
+3. **Die genauen Vorschläge identifizieren:** Der Report listet 3 Vorschläge mit konkreten nächsten Schritten, Aufwand und "Soll ich das jetzt umsetzen?"
+4. **Bauen:** Vorschlag 1 = Verifier Gate (Wiki-Seite anlegen), Vorschlag 2 = Cron/Code-Bau, Vorschlag 3 = Doku-Update (oft umgekehrt: Wiki ist Quelle, Erklaerung.md muss aktualisiert werden)
+
+**Wichtig:** Bei "Aktualisier die erklaerung.md" schauen ob die Wiki-Seite neuer ist als die Quelle — dann ist die Quelle veraltet und muss mit dem Wiki-Stand gefixt werden (nicht andersrum).
 
 Referenz: `references/vault-wide-content-linking-2026-05-11.md` für das vollständige Protokoll der 143-link Vault-Restrukturierung.
 
