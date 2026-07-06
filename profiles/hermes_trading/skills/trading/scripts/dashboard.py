@@ -957,6 +957,7 @@ def build_html(data):
     <button class="tab-btn" onclick="showTab('quality')">📊 Qualität</button>
     <button class="tab-btn" onclick="showTab('cron')">⏰ Cron & Logs</button>
     <button class="tab-btn" onclick="showTab('thematic')" style="color:#ffd740">🎓 Thematic</button>
+    <button class="tab-btn" onclick="showTab('exits')" style="color:#ff9800">🚪 Exits</button>
 </div>
 
 <!-- Tab: Portfolio -->
@@ -1227,6 +1228,11 @@ wlRender();
     {build_thematic_section()}
 </div>
 
+<!-- Tab: Exits -->
+<div id="tab-exits" class="tab-content">
+    {build_exits_section(data)}
+</div>
+
 <div class="footer">Auto-Refresh alle 60s | {datetime.now().strftime('%d.%m.%Y %H:%M:%S')} | Hermes Trading v4.1</div>
 
 <script>
@@ -1246,6 +1252,341 @@ if (urlTab) {{
 }}
 </script>
 </body></html>"""
+
+
+def build_exits_section(data):
+    """🚪 Exit Management — Stairway to Heaven Step-Out-Visualisierung"""
+    import yfinance as yf
+    from config import DB_PATH, db_connect
+
+    positions = data["open_pos"]
+    if not positions:
+        return '<div style="color:#555;padding:40px;text-align:center">Keine offenen Positionen – kein Exit-Management nötig ✅</div>'
+
+    # Stairway-Standard-Levels (x ATR): wie viel % der Position verkaufen
+    stairway_levels = [
+        (1.0, 0.25, "TP1"),
+        (2.0, 0.25, "TP2"),
+        (3.0, 0.50, "TP3"),
+    ]
+
+    positions_html = ""
+    summary_rows = []
+
+    for idx, pos in enumerate(positions):
+        ticker = pos["ticker"]
+        direction = pos["direction"]
+        entry = pos["entry_price"]
+        sl = pos["stop_loss"]
+        tp = pos["take_profit"]
+        size = pos["position_size"]
+        atr_entry = pos["atr_at_entry"] or 0
+
+        # Aktuellen Preis holen
+        current_price = None
+        try:
+            t = yf.Ticker(ticker)
+            current_price = t.fast_info['last_price']
+        except Exception:
+            current_price = None
+
+        if not current_price:
+            # Fallback: entry nehmen
+            current_price = entry
+
+        # ATR bestimmen
+        atr = atr_entry if atr_entry > 0 else (abs(tp - entry) / 3.0 if tp and entry else 1.0)
+
+        if direction == "LONG":
+            pnl_atr = (current_price - entry) / atr if atr > 0 else 0
+            pnl_pct = ((current_price - entry) / entry * 100) if entry else 0
+        else:
+            pnl_atr = (entry - current_price) / atr if atr > 0 else 0
+            pnl_pct = ((entry - current_price) / entry * 100) if entry else 0
+
+        # Trailing-Stand
+        trailing_sl = pos.get("trailing_sl") or sl
+        highest = pos.get("highest_price") or current_price
+        lowest = pos.get("lowest_price") or current_price
+
+        # Stairway-levels berechnen
+        # Für LONG: steps bei entry + atr_lvl * atr
+        # Für SHORT: steps bei entry - atr_lvl * atr
+        steps = []
+        for atr_lvl, pct, label in stairway_levels:
+            if direction == "LONG":
+                step_price = entry + atr_lvl * atr
+            else:
+                step_price = entry - atr_lvl * atr
+
+            hit = (direction == "LONG" and current_price >= step_price) or \
+                  (direction == "SHORT" and current_price <= step_price)
+            steps.append({
+                "atr_lvl": atr_lvl,
+                "pct": pct,
+                "label": label,
+                "price": round(step_price, 2),
+                "hit": hit,
+                "active": not hit,
+            })
+
+        # SVG Stairway (200x160)
+        W, H = 200, 160
+        # Normalisierter Bereich: min = min(entry, sl, current, trailing) - padding
+        # max = max(entry, tp, current, trailing) + padding
+        prices = [entry, sl, tp, current_price, trailing_sl]
+        for s in steps:
+            prices.append(s["price"])
+        min_p = min(prices) - atr * 0.5
+        max_p = max(prices) + atr * 0.5
+        if max_p - min_p < 0.01:
+            max_p = min_p + 1
+        rng = max_p - min_p
+
+        def to_y(price):
+            # price oben ist größer → y wird kleiner
+            return int(H - (price - min_p) / rng * (H - 20) - 10)
+
+        def to_x(step_idx):
+            return 30 + step_idx * (W - 60) // max(len(steps), 1)
+
+        # SVG-Build
+        svg_parts = []
+        # Hintergrund
+        svg_parts.append(f'<rect x="0" y="0" width="{W}" height="{H}" fill="#0d0d1a" rx="6"/>')
+
+        # Horizontale ATR-Gitterlinien
+        for atr_lvl in [0, 1, 2, 3]:
+            if direction == "LONG":
+                p = entry + atr_lvl * atr
+            else:
+                p = entry - atr_lvl * atr
+            if min_p <= p <= max_p:
+                y = to_y(p)
+                dash = "3,3" if atr_lvl > 0 else ""
+                svg_parts.append(
+                    f'<line x1="5" y1="{y}" x2="{W-5}" y2="{y}" '
+                    f'stroke="#1a1a2e" stroke-width="1" stroke-dasharray="{dash}"/>'
+                )
+                if atr_lvl > 0:
+                    svg_parts.append(
+                        f'<text x="{W-4}" y="{y-2}" fill="#333" font-size="7" '
+                        f'text-anchor="end">{atr_lvl}×</text>'
+                    )
+
+        # Stairway-Treppe (Polygon)
+        # Steps: entry → step1 → step2 → step3 → TP (horizontal)
+        stair_x = [30]
+        stair_y = [to_y(entry)]
+        prev_y = to_y(entry)
+        for i, s in enumerate(steps):
+            x = to_x(i)
+            y = to_y(s["price"])
+            # vertical rauf
+            stair_x.append(x)
+            stair_y.append(prev_y)
+            # horizontal rüber
+            stair_x.append(x)
+            stair_y.append(y)
+            prev_y = y
+
+        # TP als final step
+        tp_x = W - 30
+        tp_y = to_y(tp)
+        stair_x.append(tp_x)
+        stair_y.append(prev_y)
+        stair_x.append(tp_x)
+        stair_y.append(tp_y)
+
+        # Stairway-Linie (grau)
+        pts = " ".join(f"{stair_x[i]},{stair_y[i]}" for i in range(len(stair_x)))
+        svg_parts.append(
+            f'<polyline points="{pts}" fill="none" stroke="#333" stroke-width="1.5" '
+            f'stroke-dasharray="4,3"/>'
+        )
+
+        # Aktuelle Position (dot)
+        cy = to_y(current_price)
+        clr = "#00e676" if pnl_pct >= 0 else "#ff5252"
+        svg_parts.append(
+            f'<circle cx="30" cy="{cy}" r="5" fill="{clr}" stroke="#fff" stroke-width="1.5"/>'
+        )
+        svg_parts.append(
+            f'<text x="8" y="{cy+3}" fill="{clr}" font-size="8" font-weight="bold">●</text>'
+        )
+
+        # Trailing SL (Dreieck)
+        ts_y = to_y(trailing_sl)
+        svg_parts.append(
+            f'<polygon points="22,{ts_y-4} 28,{ts_y+4} 16,{ts_y+4}" '
+            f'fill="#ff9800" opacity="0.8"/>'
+        )
+
+        # Step-Markierungen (erreicht = grün, aktiv = orange)
+        for i, s in enumerate(steps):
+            x = to_x(i)
+            y = to_y(s["price"])
+            sc = "#00e676" if s["hit"] else "#ff9800"
+            label = "✓" if s["hit"] else f'{int(s["pct"]*100)}%'
+            svg_parts.append(
+                f'<circle cx="{x}" cy="{y}" r="4" fill="{sc}" stroke="#fff" stroke-width="1"/>'
+            )
+            svg_parts.append(
+                f'<text x="{x}" y="{y-7}" fill="{sc}" font-size="7" '
+                f'text-anchor="middle">{label}</text>'
+            )
+
+        # SL (rot Dreieck nach unten)
+        sl_y = to_y(sl)
+        if direction == "LONG":
+            # SL unterhalb
+            svg_parts.append(
+                f'<polygon points="22,{sl_y+4} 28,{sl_y-4} 16,{sl_y-4}" '
+                f'fill="#ff5252" opacity="0.8"/>'
+            )
+        else:
+            svg_parts.append(
+                f'<polygon points="22,{sl_y-4} 28,{sl_y+4} 16,{sl_y+4}" '
+                f'fill="#ff5252" opacity="0.8"/>'
+            )
+
+        # TP (grün Diamond)
+        tp_y = to_y(tp)
+        svg_parts.append(
+            f'<polygon points="30,{tp_y-5} 35,{tp_y} 30,{tp_y+5} 25,{tp_y}" '
+            f'fill="#00e676" opacity="0.6"/>'
+        )
+
+        # Entry-Marker
+        ey = to_y(entry)
+        svg_parts.append(
+            f'<line x1="25" y1="{ey}" x2="35" y2="{ey}" stroke="#448aff" '
+            f'stroke-width="2" opacity="0.5"/>'
+        )
+
+        svg = f'<svg viewBox="0 0 {W} {H}" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;border-radius:6px">{chr(10).join(svg_parts)}</svg>'
+
+        # Summary-Table
+        stp_pct = sum(s["pct"] for s in steps if s["hit"])
+        next_step = next((s for s in steps if s["active"]), None)
+        trail_status = "🔒 Trailing" if trailing_sl != sl else "⏳ Fix"
+        if direction == "LONG" and trailing_sl > sl:
+            trail_status = "🔒 Trailing"
+        elif direction == "SHORT" and trailing_sl < sl:
+            trail_status = "🔒 Trailing"
+        else:
+            trail_status = "⏳ Fix"
+
+        partial_exit_done = pos.get("partial_exit_done", 0) or 0
+        partial_pct = int(partial_exit_done * 100) if partial_exit_done < 1 else partial_exit_done
+
+        positions_html += f"""
+        <div style="background:#151525;border:1px solid #2a2a4a;border-radius:8px;padding:15px;margin-bottom:15px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+                <div>
+                    <span style="font-size:1.1em;font-weight:bold">{html.escape(pos['name'])}</span>
+                    <span style="color:#888;font-size:0.85em"> ({ticker})</span>
+                    <span style="color:{'#00e676' if direction=='LONG' else '#ff5252'};font-size:0.85em;margin-left:8px">{direction}</span>
+                </div>
+                <div style="text-align:right">
+                    <span style="color:{'#00e676' if pnl_pct>=0 else '#ff5252'};font-weight:bold;font-size:1.1em">{pnl_pct:+.1f}%</span>
+                    <span style="color:#888;font-size:0.8em;margin-left:8px">+{pnl_atr:.1f}x ATR</span>
+                </div>
+            </div>
+            <div style="display:grid;grid-template-columns:220px 1fr;gap:15px">
+                <div style="background:#0a0a14;border-radius:6px;padding:5px">{svg}</div>
+                <div>
+                    <table style="font-size:0.82em;margin-bottom:8px">
+                        <tr><td style="color:#888;padding:3px 8px">Entry</td>
+                            <td style="font-weight:bold">{entry:.2f}</td>
+                            <td style="color:#888;padding:3px 8px">SL</td>
+                            <td style="color:#ff5252">{sl:.2f}</td>
+                            <td style="color:#888;padding:3px 8px">TP</td>
+                            <td style="color:#00e676">{tp:.2f}</td></tr>
+                        <tr><td style="color:#888;padding:3px 8px">Aktuell</td>
+                            <td style="font-weight:bold;color:{clr}">{current_price:.2f}</td>
+                            <td style="color:#888;padding:3px 8px">Trailing</td>
+                            <td style="color:#ff9800">{trailing_sl:.2f}</td>
+                            <td style="color:#888;padding:3px 8px">ATR</td>
+                            <td>{atr:.2f}</td></tr>
+                        <tr><td style="color:#888;padding:3px 8px">Größe</td>
+                            <td>{size:.0f}€</td>
+                            <td style="color:#888;padding:3px 8px">Trail</td>
+                            <td>{trail_status}</td>
+                            <td style="color:#888;padding:3px 8px">Step-out</td>
+                            <td style="color:#ff9800">{int(stp_pct*100)}% done</td></tr>
+                    </table>
+                    <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap">
+                        {''.join(
+                            f'<span style="background:#{'00e67622' if s['hit'] else 'ff980022'};'
+                            f'border:1px solid #{'00e676' if s['hit'] else 'ff9800'};'
+                            f'color:#{'00e676' if s['hit'] else 'ff9800'};'
+                            f'padding:2px 8px;border-radius:4px;font-size:0.75em">'
+                            f'{s["label"]}: {int(s["pct"]*100)}% @ {s["price"]:.2f} '
+                            f'{"✅" if s["hit"] else "⏳"}'
+                            f'</span>'
+                            for s in steps
+                        )}
+                    </div>
+                </div>
+            </div>
+        </div>"""
+
+        summary_rows.append({
+            "name": pos["name"],
+            "ticker": ticker,
+            "direction": direction,
+            "pnl_pct": pnl_pct,
+            "pnl_atr": pnl_atr,
+            "trail_status": trail_status,
+            "steps_done": f"{int(stp_pct*100)}%",
+            "next_step": next_step["label"] if next_step else "✅ Alle",
+        })
+
+    # Summary-Tabelle
+    sum_rows = ""
+    for r in summary_rows:
+        dc = "#00e676" if r["direction"] == "LONG" else "#ff5252"
+        pc = "#00e676" if r["pnl_pct"] >= 0 else "#ff5252"
+        sum_rows += f"""<tr>
+            <td><b>{html.escape(r['name'])}</b></td>
+            <td>{r['ticker']}</td>
+            <td style="color:{dc}">{r['direction']}</td>
+            <td style="color:{pc}">{r['pnl_pct']:+.1f}%</td>
+            <td>{r['pnl_atr']:+.1f}x</td>
+            <td style="color:#ff9800">{r['trail_status']}</td>
+            <td style="color:#ff9800">{r['steps_done']}</td>
+            <td>{r['next_step']}</td>
+        </tr>"""
+
+    return f"""
+    <h2>🚪 Exit Management — Stairway to Heaven</h2>
+    <p style="color:#888;font-size:0.85em;margin-bottom:15px">
+        Automatischer Step-Out-Plan: Verkaufe Positionen in Tranchen bei steigenden ATR-Levels.
+        Standard: 25% @ 1× ATR, 25% @ 2× ATR, 50% @ 3× ATR.
+    </p>
+    <h2 style="font-size:0.85em">📊 Übersicht ({len(positions)} Positionen)</h2>
+    <table style="margin-bottom:20px">
+        <tr><th>Position</th><th>Ticker</th><th>Typ</th><th>P&L</th>
+        <th>ATR-P&L</th><th>Trail</th><th>Step-out</th><th>Nächster Step</th></tr>
+        {sum_rows}
+    </table>
+    <h2 style="font-size:0.85em">📈 Stairway-Detail</h2>
+    {positions_html}
+    <div style="background:#151525;border:1px solid #2a2a4a;border-radius:8px;padding:12px;margin-top:10px;font-size:0.8em">
+        <div style="color:#888;margin-bottom:5px"><b>Legende:</b></div>
+        <div style="display:flex;gap:20px;flex-wrap:wrap">
+            <span>● <span style="color:#00e676">Grün</span> = Aktueller Preis (im Plus)</span>
+            <span>● <span style="color:#ff5252">Rot</span> = Aktueller Preis (im Minus)</span>
+            <span>🔻 <span style="color:#ff5252">Dreieck</span> = Stop-Loss</span>
+            <span>🔺 <span style="color:#ff9800">Dreieck</span> = Trailing Stop</span>
+            <span>◆ <span style="color:#00e676">Diamant</span> = Take-Profit</span>
+            <span>— <span style="color:#448aff">Blau</span> = Entry-Preis</span>
+            <span>✅ <span style="color:#00e676">Grün</span> = Step erreicht</span>
+            <span>⏳ <span style="color:#ff9800">Orange</span> = Step aktiv</span>
+        </div>
+    </div>
+    """
 
 
 def build_thematic_section():
