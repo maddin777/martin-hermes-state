@@ -1089,12 +1089,12 @@
     "created_at": "2026-05-27T06:29:36.528930+00:00",
     "created_by": "agent",
     "last_patched_at": "2026-07-03T09:06:16.739558+00:00",
-    "last_used_at": "2026-07-03T13:18:03.645805+00:00",
+    "last_used_at": "2026-07-05T08:00:21.542512+00:00",
     "last_viewed_at": "2026-07-03T13:18:03.638637+00:00",
     "patch_count": 121,
     "pinned": false,
     "state": "active",
-    "use_count": 137,
+    "use_count": 139,
     "view_count": 129
   },
   "trading-scan": {
