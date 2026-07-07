@@ -55,7 +55,11 @@ Wenn keine Unternehmen: leeres Array."""
                 }, {"role": "user", "content": text}]
             }, timeout=30)
         data = r.json()
-        content_str = data["choices"][0]["message"]["content"].strip()
+        msg_content = data["choices"][0]["message"].get("content")
+        if not msg_content:
+            log.warning("LLM content is None in social_scanner, skipping")
+            return []
+        content_str = msg_content.strip()
         return json.loads(content_str)
     except Exception:
         return {"companies": [], "market_outlook": "neutral"}

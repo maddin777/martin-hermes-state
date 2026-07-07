@@ -76,8 +76,57 @@ Database is at:
 **Nicht-Selbstständige Scripts:** technical_validator, signal_extractor, watchlist_manager laufen innerhalb von trading_pipeline.py.
 
 ### Dashboard
-- Port **8081**, Flask app in `skills/trading/dashboard.py`
+- Port **8081**, Python HTTP server in `skills/trading/scripts/dashboard.py`
+- **Live copy**: `/root/.hermes/profiles/hermes_trading/skills/trading/scripts/dashboard.py`
+- **State backup**: `/root/martin-hermes-state/profiles/hermes_trading/skills/trading/scripts/dashboard.py`
+  - ⚠️ Beim Editieren: Die Live-Datei unter `.hermes` läuft im Dashboard-Prozess. Die `martin-hermes-state`-Kopie ist ein git-backup. Immer BEIDE editieren, ODER die `.hermes`-Kopie direkt editieren und dann `cp` in den State.
 - Dashboard-Watchdog: Cron d1c92b5337c5, no_agent alle 15min, Script `~/.hermes/scripts/dashboard-watchdog.sh`
+
+#### Dashboard-Architektur
+
+Das Dashboard ist ein **Single-File Python HTTP Server** mit inline HTML/CSS/JS. Kein Framework, keine Templates.
+
+**Neue Section hinzufügen (Pattern):**
+1. **Tab-Button** in `tab-nav` (Zeile ~954):
+   ```html
+   <button class="tab-btn" onclick="showTab('exits')" style="color:#ff9800">🚪 Exits</button>
+   ```
+2. **Tab-Content** nach dem letzten Tab-Container:
+   ```html
+   <!-- Tab: Exits -->
+   <div id="tab-exits" class="tab-content">
+       {build_exits_section(data)}
+   </div>
+   ```
+3. **`build_*_section(data)`-Funktion** vor `build_thematic_section()`:
+   - Bekommt `data`-Dict (open_pos, closed, watchlist, cfg, stats etc.)
+   - Gibt HTML-String zurück (inline SVG, Tabellen, etc.)
+   - SVG-Visualisierungen sind selbst-gerendert (kein externes JS/SVG-Lib)
+
+**Bestehende Tabs:** portfolio, watchlist, sources, quality, cron, thematic, **exits**
+
+#### Exit Management — Stairway to Heaven (🚪 Exits-Tab, seit 06.07.2026)
+
+Visuelle Step-Out-Planung für offene Positionen:
+
+**Standard-Stairway-Levels:** 25% @ 1× ATR → 25% @ 2× ATR → 50% @ 3× ATR
+
+**Pro Position:**
+- **SVG-Stairway-Chart** (200×160px): Entry → TP1 → TP2 → TP3 → TP als Treppe
+  - Gitterlinien bei 1×, 2×, 3× ATR (horizontal)
+  - 🟢 Punkt = aktueller Preis (grün/rot je P&L)
+  - 🔻 Rot = Stop-Loss, 🔺 Orange = Trailing, ◆ Grün = Take-Profit
+  - — Blau = Entry-Preis
+  - ✅ Grün = Step erreicht, ⏳ Orange = Step noch aktiv
+- **Key-Values-Tabelle**: Entry, SL, TP, Aktuell, Trailing, ATR, Größe, Trail-Status, Step-out-Fortschritt
+- **Step-Out-Badges**: zB `TP1: 25% @ 135.20 ✅` / `TP3: 50% @ 148.30 ⏳`
+
+**Datenquellen:**
+- `data["open_pos"]` aus `get_data()` → Positionen mit entry, sl, tp, trailing_sl, atr_at_entry
+- `yfinance.Ticker().fast_info['last_price']` für aktuelle Kurse (live pro Request)
+- ATR-Fallback: `abs(tp - entry) / 3.0` wenn `atr_at_entry` fehlt
+
+**Funktion:** `build_exits_section(data)` in `dashboard.py`
 
 ### Thematic Pipeline
 - Läuft via **eigener system crontab** (nicht orchestriert von trading_pipeline.py):
@@ -110,13 +159,14 @@ Details siehe `references/` im Skill-Verzeichnis sowie die Erläuterung.md im Ob
 | Watchlist Dedup | `references/watchlist-table-dedup.md` |
 | Closed-Loop Architecture | `references/closed-loop-architecture.md` |
 | **Dashboard Ghost Entries** | `references/dashboard-cron-ghost-entries.md` |
+| **Dashboard Two Copies** (live vs state) | `references/live-vs-state-backup.md` |
 | `adapt_strategy()` Regime-Blindheit | `references/adapt-strategy-regime-blindness.md` |
 | Sector Blacklist + Probation | `references/sector-blacklist-probation.md` |
 | Private Company OTHER-Klassifikation | `references/other-sector-private-companies.md` |
 | Canonical-Merge überschreibt Sector | `references/export-watchlist-sector-merge.md` |
 | yfinance Date-Parsing (unconverted data) | `references/yfinance-date-parsing-fix.md` |
 | Sektor-Exposure-Cap (70%) | `references/sector-exposure-cap.md` |
-| **Watchlist-Export: YYYYMMDD → YYYY-MM-DD** | `references/date-normalization-pattern.md`
+| **LLM API `content: null` — NoneType Crash** | `references/llm-api-content-none-pattern.md` |
 
 ### Session-Start-Protokoll: Proaktiver Pipeline-Check
 
@@ -212,6 +262,8 @@ Die Referenz enthält 23 klassifizierte Unternehmen plus Implementierungsvorschl
 | **Sektor-Exposure-Cap (seit 28.06.2026)** → max 70% Portfolio-Exposure pro Sektor, nicht mehr max 2 Positionen. Prüfung in signal_manager.py **nach** Sizing mit tatsächlicher position_size. Config: `strategy_config.json: max_sector_exposure_pct: 0.70`. Grund: Quellen sind tech-lastig — ein Sektor soll dominieren können. Siehe `references/sector-exposure-cap.md`. |
 | **Dashboard Sources Tab — Channel case-mismatch** → Quellen-Tab zeigt für YouTube-Kanäle `–` als letzten Eintrag, obwohl 190+ Mentions existieren. Ursache: `watchlist_mentions.channel` speichert lowercase (`"urban jäkle"`), CHANNELS_FALLBACK in `yt_channel_monitor.py` hat `"Urban Jäkle"`. Dashboard matcht case-sensitive → kein Treffer. Fix: `stats_ci = {k.lower(): v for k, v in stats.items()}` in `build_sources_section()`. |
 | **Thematic Dashboard — unable to open database file** → Thematic-Tab zeigt Fehler statt Inhalt. `dashboard_thematic.py` berechnet `DB_PATH_ABS` mit einem `os.path.dirname()` zu viel → zeigt auf `skills/data/trading.db` (existiert nicht) statt `skills/trading/data/trading.db`. Fix: ein `os.path.dirname()` entfernen, sodass nur `os.path.dirname(os.path.abspath(__file__))` + `data/trading.db` verwendet wird. |
+| **`signal_manager.py check_only` crashed (seit ~03.07.2026)** → `'NoneType' object has no attribute 'strip'` in `check_open_positions()` line 637. **Root Cause (gefunden 06.07.2026):** OpenRouter API liefert gelegentlich `content: null` statt eines Text-Strings in `data["choices"][0]["message"]["content"]`. Alle Scripts die blind `["content"].strip()` aufrufen crashen dann. **Fix:** `.get("content")` + None-Guard vor `.strip()`. Betroffen waren 6 Files (siehe `references/llm-api-content-none-pattern.md`). Gefixt durch gezielte Patches am 06.07.2026. |
+| **`fundamental_data.py` KeyError: `config["fred_indicators"]` (seit ~03.07.2026)** → `load_config()` lädt aus `STRATEGY_CONFIG_PATH` (= `strategy_config.json`), aber `fred_indicators` lebt in `SOURCES_CONFIG_PATH` (= `sources.json`). **Fix:** `SOURCES_CONFIG_PATH` importieren, `sources.json` laden, `sources_cfg.get("fred_indicators", [])` verwenden. |
 
 ### Manuelles Nachholen eines YouTube-Kanals (außerhalb der Pipeline)
 

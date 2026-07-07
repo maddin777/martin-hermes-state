@@ -16,13 +16,13 @@
     "archived_at": null,
     "created_at": "2026-07-04T19:07:35.308568+00:00",
     "created_by": "agent",
-    "last_patched_at": "2026-07-04T19:07:45.232996+00:00",
-    "last_used_at": null,
-    "last_viewed_at": null,
-    "patch_count": 1,
+    "last_patched_at": "2026-07-06T19:05:46.565721+00:00",
+    "last_used_at": "2026-07-06T19:04:59.987514+00:00",
+    "last_viewed_at": "2026-07-06T19:04:59.978139+00:00",
+    "patch_count": 3,
     "pinned": false,
     "state": "active",
-    "use_count": 0,
-    "view_count": 0
+    "use_count": 1,
+    "view_count": 1
   }
 }

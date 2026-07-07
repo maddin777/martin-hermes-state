@@ -92,7 +92,10 @@ def call_api(chunk, channel, title, date, chunk_num, total_chunks):
         data = r.json()
         if "choices" not in data:
             raise KeyError(f"Keine 'choices' in API-Antwort: {data}")
-        text = data["choices"][0]["message"]["content"].strip()
+        msg_content = data["choices"][0]["message"].get("content")
+        if not msg_content:
+            raise KeyError(f"Leeres content-Feld in API-Antwort: {data.get('choices', [{}])[0].get('message', {})}")
+        text = msg_content.strip()
         if text.startswith("```"):
             text = text.split("```")[1]
             if text.startswith("json"):

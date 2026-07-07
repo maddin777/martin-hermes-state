@@ -363,7 +363,11 @@ Antworte NUR mit einem JSON-Array von maximal 3 Vorschlägen (kein Markdown, kei
                 if "error" in data:
                     print(f"  ⚠ Modell {model}: {data['error'].get('message', data['error'])}")
                     continue
-                resp_text = data["choices"][0]["message"]["content"].strip()
+                msg_content = data["choices"][0]["message"].get("content")
+                if not msg_content:
+                    print(f"  ⚠ Modell {model}: leeres content-Feld, skip")
+                    continue
+                resp_text = msg_content.strip()
                 used_model = model
                 break
             except Exception as e:

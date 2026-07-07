@@ -173,7 +173,10 @@ Antworte NUR mit JSON:
                   "max_tokens": 300},
             timeout=30
         )
-        text = r.json()["choices"][0]["message"]["content"].strip()
+        msg_content = r.json()["choices"][0]["message"].get("content")
+        if not msg_content:
+            return "unknown", 0.5, "empty LLM response", False, False, False, ""
+        text = msg_content.strip()
         text = text.strip("```json").strip("```").strip()
         data = json.loads(text)
         return (data.get("verdict", "unknown"),

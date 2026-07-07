@@ -13,7 +13,7 @@ import env_loader  # noqa: F401  (side-effect: laedt .env)
 import requests
 import yfinance as yf
 from datetime import datetime, timedelta
-from config import DB_PATH, MACRO_SIGNAL_PATH, STRATEGY_CONFIG_PATH, db_connect
+from config import DB_PATH, MACRO_SIGNAL_PATH, STRATEGY_CONFIG_PATH, SOURCES_CONFIG_PATH, db_connect
 from utils import retry, get_logger
 
 # ── Monkey-Patch: fix "unconverted data remains" in yfinance/pandas ────────────
@@ -513,8 +513,16 @@ def main():
     try:
         config = load_config()
 
-        # 1. FRED Makrodaten
-        fetch_fred_data(con, config["fred_indicators"])
+        # 1. FRED Makrodaten — aus sources_config laden (nicht strategy_config!)
+        sources_cfg = load_sources_config() if 'load_sources_config' in dir() else {}
+        if not sources_cfg:
+            try:
+                with open(SOURCES_CONFIG_PATH) as _sf:
+                    sources_cfg = json.load(_sf)
+            except Exception:
+                sources_cfg = {}
+        fred_indicators = sources_cfg.get("fred_indicators", [])
+        fetch_fred_data(con, fred_indicators)
 
         # 2. Watchlist-Ticker für Insider + PCR
         watchlist_tickers = [

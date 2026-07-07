@@ -36,6 +36,7 @@ Each lesson must contain:
 - **Missing Skills**: The specialized `polnisch-disss-context` skill may be missing. If so, fallback to manual implementation of this structure.
 - **Redundancy**: Failing to check the diary file for previous words violates the core instruction.
 - **Formatting Errors**: Mixing up bold/monospace for Polish/German makes the lesson unreadable for the user.
+- **File Access/Parsing**: When reading the Obsidian diary, ensure to handle potential non-standard Markdown or different key names in the tool response (e.g., use `content_returned` instead of `content` if necessary). Always verify the file exists using `ls` or `os.path.exists` first to avoid silent failures.
 
 ## References
 - `references/lesson-structure-example.md`: A template of a correctly formatted lesson.

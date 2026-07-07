@@ -20,21 +20,21 @@
       "schedule_display": "0 21 * * *",
       "repeat": {
         "times": null,
-        "completed": 70
+        "completed": 71
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-04-23T23:32:55.511544+02:00",
-      "next_run_at": "2026-07-06T21:00:00+02:00",
-      "last_run_at": "2026-07-05T21:03:09.505984+02:00",
-      "last_status": "error",
-      "last_error": "RuntimeError: Response truncated due to output length limit",
+      "next_run_at": "2026-07-07T21:00:00+02:00",
+      "last_run_at": "2026-07-06T21:04:50.587106+02:00",
+      "last_status": "ok",
+      "last_error": null,
       "last_delivery_error": null,
       "deliver": "telegram:-1003933492757",
       "origin": null
     }
   ],
-  "updated_at": "2026-07-05T21:03:09.507137+02:00"
+  "updated_at": "2026-07-06T21:04:50.588182+02:00"
 }

@@ -59,7 +59,10 @@ Antworte NUR mit einem JSON-Objekt:
             print(f"  ⚠ HTTP {response.status_code}: {response.text[:200]}", flush=True)
             return "UNCERTAIN", f"HTTP {response.status_code}"
         data = response.json()
-        text = data["choices"][0]["message"]["content"]
+        text = data["choices"][0]["message"].get("content")
+        if not text:
+            print(f"  ⚠ LLM gab leeres Content-Feld zurück", flush=True)
+            return "UNCERTAIN", "empty LLM response"
         text = text.strip().lstrip("```json").lstrip("```").rstrip("```").strip()
         result = json.loads(text)
         return result.get("verdict", "UNCERTAIN"), result.get("reason", "")

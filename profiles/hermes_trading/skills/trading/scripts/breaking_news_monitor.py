@@ -82,7 +82,11 @@ def _score_news_sentiment(news_items: list, company_name: str) -> tuple:
                   "messages": [{"role": "user", "content": prompt}]},
             timeout=30,
         )
-        text = r.json()["choices"][0]["message"]["content"].strip()
+        content = r.json()["choices"][0]["message"].get("content")
+        if not content:
+            log.warning("LLM gab leeres Content-Feld zurück")
+            return 0.5, ""
+        text = content.strip()
         text = text.replace("```json", "").replace("```", "").strip()
         data = json.loads(text)
         score = float(data.get("score", 0.5))
