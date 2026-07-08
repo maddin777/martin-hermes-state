@@ -51,7 +51,9 @@ def get_yt_channels():
     try:
         con = db_connect()
         rows = con.execute("""
-            SELECT display_name AS name, source_key AS url, enabled
+            SELECT display_name AS name, source_key AS url, enabled,
+                   status, weight, win_rate_90d, avg_pnl_per_trade,
+                   total_bought, rejection_reason
             FROM source_registry
             WHERE source_type='youtube' AND status != 'removed'
             ORDER BY display_name
@@ -59,7 +61,13 @@ def get_yt_channels():
         con.close()
         for r in rows:
             channels.append({"name": r["name"], "url": r["url"],
-                             "enabled": bool(r["enabled"])})
+                             "enabled": bool(r["enabled"]),
+                             "status": r["status"] or "active",
+                             "weight": r["weight"] or 1.0,
+                             "win_rate": r["win_rate_90d"] or 0,
+                             "avg_pnl": r["avg_pnl_per_trade"] or 0,
+                             "total_bought": r["total_bought"] or 0,
+                             "rejection_reason": r["rejection_reason"] or ""})
         if channels:
             return channels
     except Exception:
@@ -72,7 +80,10 @@ def get_yt_channels():
             match = re.search(r'CHANNELS_FALLBACK\s*=\s*\[(.*?)\]', content, re.DOTALL)
             if match:
                 for name, url in re.findall(r'\("([^"]+)",\s*"([^"]+)"\)', match.group(1)):
-                    channels.append({"name": name, "url": url, "enabled": True})
+                    channels.append({"name": name, "url": url, "enabled": True,
+                                     "status": "active", "weight": 1.0,
+                                     "win_rate": 0, "avg_pnl": 0,
+                                     "total_bought": 0, "rejection_reason": ""})
         except Exception:
             pass
     return channels
@@ -370,9 +381,8 @@ def build_sources_section(data):
     yt_channels = data["yt_channels"]
     stats = data["channel_stats"]
 
-    # YouTube Kanäle
+    # YouTube Kanäle — sortierbare Tabelle mit Source-Statistiken
     yt_rows = ""
-    # Case-insensitive Channel-Match (DB speichert z.B. "urban jäkle", CHANNELS_FALLBACK hat "Urban Jäkle")
     stats_ci = {k.lower(): v for k, v in stats.items()}
     for ch in yt_channels:
         name = ch["name"]
@@ -380,17 +390,69 @@ def build_sources_section(data):
         s    = stats_ci.get(name.lower(), {})
         count = s.get("count", 0)
         last  = s.get("last", "–")
+
+        # Status-Icon
+        st = ch.get("status", "active")
+        if st == "active":
+            status_icon = "🟢"
+            status_label = "Aktiv"
+        elif st == "probation":
+            status_icon = "🧪"
+            status_label = "Probation"
+        elif st == "suspended":
+            status_icon = "⏸"
+            status_label = "Suspendiert"
+        elif st == "candidate":
+            status_icon = "🔶"
+            status_label = "Kandidat"
+        elif st == "rejected":
+            status_icon = "❌"
+            status_label = "Abgelehnt"
+        else:
+            status_icon = "🔘"
+            status_label = st
+
+        # Win Rate farbig
+        wr = ch.get("win_rate", 0)
+        wr_color = "#00e676" if wr >= 0.50 else "#ffd740" if wr >= 0.30 else "#ff5252"
+        wr_str = f"{wr:.0%}" if ch.get("total_bought", 0) > 0 else "–"
+
+        # Ø PnL farbig
+        ap = ch.get("avg_pnl", 0)
+        pnl_color = "#00e676" if ap >= 0 else "#ff5252"
+        pnl_str = f"{ap:+.1f}%" if ch.get("total_bought", 0) > 0 else "–"
+
+        # Weight farbig
+        w = ch.get("weight", 1.0)
+        w_color = "#00e676" if w >= 1.0 else "#ffd740" if w >= 0.5 else "#ff8a50"
+
+        # Grund (rejection_reason)
+        reason = ch.get("rejection_reason", "")
+        reason_str = f'<span style="color:#ff8a50;font-size:0.75em">{reason}</span>' if reason else ""
+
+        # Sortier-IDs
+        st_sort = {"active":0, "probation":1, "candidate":2, "suspended":3, "rejected":4}.get(st, 99)
+        wr_sort = f"{wr:.4f}"
+        ap_sort = f"{ap:.2f}"
+
         yt_rows += f"""
-        <tr>
+        <tr data-sort-status="{st_sort}" data-sort-name="{name.lower()}"
+            data-sort-wr="{wr_sort}" data-sort-pnl="{ap_sort}"
+            data-sort-weight="{w}" data-sort-grund="{reason.lower()}"
+            data-sort-mentions="{count}" data-sort-last="{last}">
+            <td style="text-align:center">{status_icon}</td>
             <td><b>{name}</b></td>
-            <td style="font-size:0.8em;color:#888">{url}</td>
+            <td style="text-align:center;color:{wr_color};font-weight:bold">{wr_str}</td>
+            <td style="text-align:center;color:{pnl_color}">{pnl_str}</td>
+            <td style="text-align:center;color:{w_color};font-weight:bold">{w:.1f}</td>
+            <td style="font-size:0.8em;max-width:180px;overflow:hidden;text-overflow:ellipsis">{reason_str}</td>
             <td style="text-align:center;color:#00e676">{count} Mentions</td>
             <td style="font-size:0.8em">{last}</td>
             <td>
                 <form method="POST" action="/sources/yt/remove" style="display:inline">
                     <input type="hidden" name="name" value="{html.escape(name)}">
                     <button type="submit" style="background:#ff525233;border:1px solid #ff5252;color:#ff5252;padding:3px 10px;border-radius:4px;cursor:pointer;font-size:0.8em">
-                        🗑 Entfernen
+                        🗑
                     </button>
                 </form>
             </td>
@@ -533,13 +595,23 @@ def build_sources_section(data):
     <div style="color:#00d4ff;font-weight:bold;margin-bottom:15px;font-size:1.1em">
         🎬 YouTube Kanäle ({len(yt_channels)} aktiv)
     </div>
-    <table>
+    <table class="src-sortable" id="yt-table">
+        <thead>
         <tr>
-            <th>Name</th><th>URL</th>
-            <th style="text-align:center">30-Tage Mentions</th>
-            <th>Letzter Beitrag</th><th>Aktion</th>
+            <th style="text-align:center;width:30px" class="src-sort" data-sort="status">Status</th>
+            <th style="width:200px" class="src-sort" data-sort="name">Name</th>
+            <th style="text-align:center;width:60px" class="src-sort" data-sort="wr">Win Rate</th>
+            <th style="text-align:center;width:60px" class="src-sort" data-sort="pnl">Ø PnL</th>
+            <th style="text-align:center;width:60px" class="src-sort" data-sort="weight">Weight</th>
+            <th style="width:180px" class="src-sort" data-sort="grund">Grund</th>
+            <th style="text-align:center;width:100px" class="src-sort" data-sort="mentions">Mentions</th>
+            <th style="width:120px" class="src-sort" data-sort="last">Letzter</th>
+            <th style="width:50px">Aktion</th>
         </tr>
+        </thead>
+        <tbody>
         {yt_rows}
+        </tbody>
     </table>
     <div style="color:#888;font-size:0.85em;margin-top:10px">Neuen Kanal hinzufügen:</div>
     {yt_add_form}
@@ -1044,6 +1116,10 @@ def build_html(data):
 .wl-sort:hover {{ background: #1e1e38; }}
 .wl-sort.sort-asc::after {{ content: " ▲"; color: #00d4ff; }}
 .wl-sort.sort-desc::after {{ content: " ▼"; color: #00d4ff; }}
+.src-sort {{ cursor: pointer; user-select: none; }}
+.src-sort:hover {{ background: #1e1e38; }}
+.src-sort.sort-asc::after {{ content: " ▲"; color: #00d4ff; font-size:0.7em; vertical-align:middle; }}
+.src-sort.sort-desc::after {{ content: " ▼"; color: #00d4ff; font-size:0.7em; vertical-align:middle; }}
 #wl-prev, #wl-next {{
     background: #1a1a2e; border: 1px solid #2a2a4a; color: #fff;
     padding: 6px 12px; border-radius: 4px; cursor: pointer;
@@ -1250,6 +1326,43 @@ if (urlTab) {{
     var btn = document.querySelector('[onclick="showTab(\\'' + urlTab.replace(/'/g, "\\'") + '\\')"]');
     if (btn) btn.click();
 }}
+
+// Sortierbare Quellen-Tabelle
+function srcSortTable(tableId) {{
+    var table = document.getElementById(tableId);
+    if (!table) return;
+    var tbody = table.querySelector('tbody') || table;
+    var headers = table.querySelectorAll('.src-sort');
+    var current = {{ key: null, dir: 'asc' }};
+
+    headers.forEach(function(th) {{
+        th.style.cursor = 'pointer';
+        th.addEventListener('click', function() {{
+            var key = this.dataset.sort;
+            if (current.key === key) {{
+                current.dir = current.dir === 'asc' ? 'desc' : 'asc';
+            }} else {{
+                current.key = key;
+                current.dir = 'asc';
+            }}
+            headers.forEach(function(h) {{ h.classList.remove('sort-asc', 'sort-desc'); }});
+            this.classList.add('sort-' + current.dir);
+
+            var rows = Array.from(tbody.querySelectorAll('tr'));
+            rows.sort(function(a, b) {{
+                var va = a.getAttribute('data-sort-' + key) || '';
+                var vb = b.getAttribute('data-sort-' + key) || '';
+                var na = parseFloat(va), nb = parseFloat(vb);
+                if (!isNaN(na) && !isNaN(nb)) {{
+                    return (na - nb) * (current.dir === 'asc' ? 1 : -1);
+                }}
+                return va.localeCompare(vb) * (current.dir === 'asc' ? 1 : -1);
+            }});
+            rows.forEach(function(r) {{ tbody.appendChild(r); }});
+        }});
+    }});
+}}
+srcSortTable('yt-table');
 </script>
 </body></html>"""
 
@@ -1810,6 +1923,8 @@ class Handler(BaseHTTPRequestHandler):
 
 
 if __name__ == "__main__":
+    from dotenv import load_dotenv
+    load_dotenv(os.path.join(SCRIPTS_DIR, "..", ".env"))
     port = 8081
     # #1: Standardmäßig NUR localhost. Für LAN-Zugriff bewusst
     # DASHBOARD_BIND=0.0.0.0 setzen – dann sollte DASHBOARD_TOKEN gesetzt sein.

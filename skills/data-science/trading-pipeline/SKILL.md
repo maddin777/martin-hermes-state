@@ -59,28 +59,70 @@ Database is at:
 /root/.hermes/profiles/hermes_trading/skills/trading/data/trading.db
 ```
 
-### Cron Schedule (Mo–Fr)
+### Cron Schedule
 
-| Time  | Script | Purpose |
-|-------|--------|---------|
-| 02:00 | `fundamental_data.py` | Macro data, insider trades, put/call ratios, regime detection |
-| 03:00 | `social_scanner.py` | RSS feeds (Seeking Alpha, Bloomberg etc.) + Twitter/X (twitterapi.io, 6 accounts) |
-| 04:00 | `trading_pipeline.py` | Orchestrator: YouTube scan → KI Analyse → Watchlist Update → Technical Analysis (yfinance) → Signal Manager. Watchlist Update 2-3h (Grok + yfinance). |
-| 04:50 | `llm_validator.py` | ⚠️ Noch in crontab obwohl Fix aussteht (DB-Lock) |
-| 05:00 | `nightly_eval.py` | ✅ Sauber (<5s) |
-| 09:30 | `active_exit_check.py` | Mid-day exit checks |
-| 13-20:15 | `signal_manager.py check_only` | Intraday signal check |
-| 15:30 | `active_exit_check.py` | Afternoon exit checks |
-| 20:00 (Fr) | `signal_manager.py full` | Weekly signal review |
+**Grundsatz:** Pipeline-Jobs (Analyse/Screening) laufen Mo–Fr. Safety-Jobs (Exit-Checks, SL/TP-Management, Breaking News) laufen **täglich** — seit 07.07.2026. Samstag war vorher eine tote Zone (kein `6` in der Crontab).
+
+| Zeit | Script | Tage | Purpose |
+|------|--------|------|---------|
+| 02:00 | `fundamental_data.py` | Mo–Fr | Macro data, insider trades, put/call ratios, regime detection |
+| 03:00 | `social_scanner.py` | Mo–Fr | RSS feeds (Seeking Alpha, Bloomberg etc.) + Twitter/X (twitterapi.io, 6 accounts) |
+| 04:00 | `trading_pipeline.py` | Mo–Fr | Orchestrator: YouTube scan → KI Analyse → Watchlist Update → Technical Analysis (yfinance) → Signal Manager. Watchlist Update 2-3h (Grok + yfinance). |
+| 04:50 | `llm_validator.py` | Mo–Fr | ⚠️ Noch in crontab obwohl Fix aussteht (DB-Lock) |
+| 05:00 | `nightly_eval.py` | Mo–Fr | ✅ Sauber (<5s) |
+| 09:30 | `active_exit_check.py` | **täglich** | Mid-day exit checks |
+| 10-17h | `breaking_news_monitor.py` | **täglich** | Stündlicher Breaking-News-Scan |
+| 13-20h | `signal_manager.py check_only` | **täglich** | Intraday SL/TP check |
+| 15:30 | `active_exit_check.py` | **täglich** | Afternoon exit checks |
+| 20:00 (Fr) | `signal_manager.py full` | Fr | Weekly signal review |
+
+**Wochenend-Crontab-Änderung (07.07.2026):** `active_exit_check`, `signal_manager check_only`, `breaking_news_monitor` wurden von `* 1-5` auf `* *` (täglich) umgestellt. Die Pipeline-Jobs blieben Mo–Fr. Samstag (`6`) war vorher in keiner Crontab-Regel definiert — absolute tote Zone.
 
 **Nicht-Selbstständige Scripts:** technical_validator, signal_extractor, watchlist_manager laufen innerhalb von trading_pipeline.py.
 
+### Source Lifecycle — Quelle verwalten (seit 07.07.2026)
+
+Quellen (YouTube-Kanäle, RSS-Feeds, Twitter-Accounts) werden in `source_registry` verwaltet. Der `source_lifecycle.py` läuft sonntags und bewertet die Performance pro Quelle.
+
+**Pipeline:** `candidate → probation → active → penalized (weight=0.3)`
+
+| Phase | Status | Scannt? | Weight | Auslöser |
+|-------|--------|---------|--------|----------|
+| Neu | `candidate` | ✅ Ja | 1.0 | Manuell hinzugefügt oder automatisch entdeckt |
+| Test | `probation` | ✅ Ja | 0.5 | Nach manueller Promotion aus candidate |
+| Aktiv | `active` | ✅ Ja | 1.0 (dynamisch 0.3–2.5) | Probation bestanden (≥5 Trades, WR≥40%) |
+| **Penalisiert** | `active` **mit weight=0.3** | ✅ **Ja** | **0.3** | Schlechte Performance (WR<35%, avg_pnl negativ, ≥3 Verluste) |
+| Entfernt | `removed` | ❌ Nein | – | Sehr schlecht (WR<20%) ODER seit 60+ Tagen keine Mentions |
+
+**Wichtige Änderung (07.07.2026):** Früher wurden schlechte Quellen auf `status='suspended', enabled=0` gesetzt → Scan komplett gestoppt. Martin fand das nicht gut ("solche Quellen komplett rausschmeissen finde ich nicht gut"). **Neue Logik:** Statt suspendieren wird das Weight auf `penalize_min_weight` (0.3) gesetzt und `enabled=1` bleibt. Die Quelle wird weiter gescannt, aber ihre Signale haben kaum Einfluss. 10 vorher suspendierte Kanäle wurden am 07.07. reaktiviert.
+
+**Gewichtsanpassung (`adjust_weights()`):** Läuft sonntags im `source_lifecycle.py`. Quellen mit WR≥60% bekommen +15% Gewicht (max 2.5). Quellen mit WR<35% bekommen -20% Gewicht (min 0.3). Quellen mit <5 Trades bleiben unverändert.
+
+**Dashboard:** Im Quellen-Tab siehst du pro Channel:
+- **Status-Badge**: 🟢 Aktiv, 🧪 Probation, 🆕 Kandidat, ⏸ Deaktiviert
+- **Win Rate**: farbig (grün ≥50%, gelb ≥30%, rot <30%)
+- **Ø PnL**: farbig (grün positiv, rot negativ)
+- **Weight**: farbig (grün ≥1.0, gelb ≥0.5, orange <0.5)
+- **Grund**: Warum penalisiert (z.B. "WR=0%; avg_pnl=-54.7€")
+
 ### Dashboard
 - Port **8081**, Python HTTP server in `skills/trading/scripts/dashboard.py`
+- Läuft **unter systemd** (`trading-dashboard.service`), nicht als Background-Prozess. Restart: `systemctl restart trading-dashboard.service`
+- **override.conf** beim systemd-Service setzt `DASHBOARD_BIND=0.0.0.0` und `DASHBOARD_TOKEN`
 - **Live copy**: `/root/.hermes/profiles/hermes_trading/skills/trading/scripts/dashboard.py`
 - **State backup**: `/root/martin-hermes-state/profiles/hermes_trading/skills/trading/scripts/dashboard.py`
-  - ⚠️ Beim Editieren: Die Live-Datei unter `.hermes` läuft im Dashboard-Prozess. Die `martin-hermes-state`-Kopie ist ein git-backup. Immer BEIDE editieren, ODER die `.hermes`-Kopie direkt editieren und dann `cp` in den State.
+  - ⚠️ Beim Editieren: Die Live-Datei unter `.hermes` läuft im Dashboard-Prozess (systemd). Die `martin-hermes-state`-Kopie ist ein git-backup. Immer BEIDE editieren, ODER die `.hermes`-Kopie direkt editieren und dann `cp` in den State.
+- **`load_dotenv()` seit 07.07.2026:** Der `__main__`-Block lädt `.env` aus dem Trading-Profil (`load_dotenv(os.path.join(SCRIPTS_DIR, "..", ".env"))`), damit `DASHBOARD_BIND=0.0.0.0` immer gesetzt ist — auch ohne den Watchdog-Workaround.
 - Dashboard-Watchdog: Cron d1c92b5337c5, no_agent alle 15min, Script `~/.hermes/scripts/dashboard-watchdog.sh`
+  - ⚠️ Watchdog lädt seit 07.07.2026 die `.env` vor dem Restart (`export $(grep -v '^#' .env | xargs)`), damit `DASHBOARD_BIND=0.0.0.0` gesetzt ist. Ohne diesen Fix bindet der Neustart auf `127.0.0.1` → Dashboard ist nur noch lokal erreichbar.
+- **Dashboard starten mit LAN-Zugriff:** Immer `.env` exportieren, sonst Default `127.0.0.1`:
+  ```bash
+  cd /root/.hermes/profiles/hermes_trading/skills/trading
+  export $(grep -v '^#' /root/.hermes/profiles/hermes_trading/.env | xargs)
+  venv/bin/python scripts/dashboard.py
+  ```
+  Die `.env` enthält `DASHBOARD_BIND=0.0.0.0` und `DASHBOARD_TOKEN=***`. Der Token wird für POST-Mutationen (Buttons im Dashboard) benötigt.
+- **start_dashboard.sh** (Wrapper): `/root/.hermes/scripts/start_dashboard.sh` — sourced .env und startet dashboard.py. Der Watchdog ruft dieses Script nicht auf (hat eigenes `export`-Inline). Bei manuellen Neustarts das Script verwenden.
 
 #### Dashboard-Architektur
 
@@ -104,6 +146,15 @@ Das Dashboard ist ein **Single-File Python HTTP Server** mit inline HTML/CSS/JS.
    - SVG-Visualisierungen sind selbst-gerendert (kein externes JS/SVG-Lib)
 
 **Bestehende Tabs:** portfolio, watchlist, sources, quality, cron, thematic, **exits**
+
+**Quellen-Tab (Sources):** Zeigt seit 07.07.2026 pro YouTube-Kanal:
+- Name + Status-Badge (🟢 Aktiv, 🧪 Probation, 🆕 Kandidat, ⏸ Deaktiviert)
+- 30-Tage Mentions
+- Win Rate (farbig nach Qualität)
+- Ø PnL pro Trade
+- Weight (farbig)
+- Grund für Penalty (falls vorhanden)
+- Datenquelle: `source_registry`-Tabelle + `watchlist_mentions`-Aggregat
 
 #### Exit Management — Stairway to Heaven (🚪 Exits-Tab, seit 06.07.2026)
 
@@ -160,6 +211,7 @@ Details siehe `references/` im Skill-Verzeichnis sowie die Erläuterung.md im Ob
 | Closed-Loop Architecture | `references/closed-loop-architecture.md` |
 | **Dashboard Ghost Entries** | `references/dashboard-cron-ghost-entries.md` |
 | **Dashboard Two Copies** (live vs state) | `references/live-vs-state-backup.md` |
+| **Dashboard Sortable Table Pattern** | `references/dashboard-sortable-table-pattern.md` |
 | `adapt_strategy()` Regime-Blindheit | `references/adapt-strategy-regime-blindness.md` |
 | Sector Blacklist + Probation | `references/sector-blacklist-probation.md` |
 | Private Company OTHER-Klassifikation | `references/other-sector-private-companies.md` |
@@ -253,17 +305,19 @@ Die Referenz enthält 23 klassifizierte Unternehmen plus Implementierungsvorschl
 | `Finnhub 403` → API-Key abgelaufen oder limitiert (siehe `references/finnhub-api-key-management.md`)
 | `pos.get("asset_type")` → Pitfall 16 (sqlite3.Row) — `pos["asset_type"] if "asset_type" in pos.keys() else "STANDARD"` verwenden
 | **`cron_health.py` ❌ false-positive** → Timing-Konflikt: `cron-health-daily` und `strategy_optimizer` starten beide um 08:00 (Sonntag). Der Optimizer braucht ~2 Min, der Health-Check findet nur START ohne DONE → flagged als crashed. Fix: staggered Schedules (z.B. health um 08:30).
+| **`cron_health.py` false-negative "Keine Jobs"** → Regex `(\d+)` scheiterte an eintstelligen Tagen (`Jul  7` = double space zwischen Monat und Tag). **Fix (07.07.2026):** `\s+(\d+)` im Datums-Regex. Betrifft Tage 1-9 jedes Monats. Alle 6 Tage im Monat wurden fälschlich als "keine Jobs" gemeldet. |
 | **PM Scanner: `result["content"] is None` → AttributeError** → `llm_client.parse_json_response()` crasht wenn OpenRouter `content: null` liefert. Fix: None-Check in `parse_json_response()` vor `.strip()`.
 | **Theme Discovery: `database is locked`** → Kaskade von PM Scanner-Crash (offene Transaktion) + fehlender `busy_timeout` in `theme_discovery.py` nutzt raw `sqlite3.connect()` statt `config.db_connect()`. Fix: `config.db_connect()` verwenden (WAL + busy_timeout).
 | **Config-Drift (SL=1.0/TP=4.0)** → adapt_strategy() hat SL/TP ohne Regime-Prüfung angepasst. Im Sideways-Markt führte das zu 81% SL_RATE + −358€ P&L. Fix: Regime-Check eingebaut, Config reset auf SL=1.5/TP=2.5. Siehe references/adapt-strategy-regime-blindness.md. |
 | **Channel in CHANNELS_FALLBACK aber nicht in source_registry** → yt_channel_monitor.py liest Kanäle aus der source_registry-DB. Die CHANNELS_FALLBACK wird NUR genutzt wenn source_registry komplett leer ist. Fix: INSERT OR IGNORE INTO source_registry.
 | **Canonical-Merge überschreibt Sector mit 'Other'** → `export_watchlist.py` merged Aliase (ARMK→ARM) und kopiert blind den Sector des höheren Conviction-Scores. Alias-Ticker haben oft 'Other' weil nicht in `companies`. Fix: Merge-Logik prüft `if w["company_sector"] != 'Other' or existing["company_sector"] == 'Other'`. Details in `references/export-watchlist-sector-merge.md`. |
-| **yfinance „unconverted data remains"** → yfinance/pandas wirft ValueError bei Datums-Strings mit TZ-Suffix (z.B. `2026-06-28 00:00:00+00:00`). Killt alle `yf.download()`-Calls. Fix in fundamental_data.py: Monkey-Patch auf `_strptime._strptime` mit `dateutil.parser`-Fallback. Siehe `references/yfinance-date-parsing-fix.md`. |
+| **yfinance "unconverted data remains"** → yfinance/pandas wirft ValueError bei Datums-Strings mit TZ-Suffix (z.B. `2026-06-28 00:00:00+00:00`). Killt alle `yf.download()`-Calls. Fix in fundamental_data.py: Monkey-Patch auf `_strptime._strptime` mit `dateutil.parser`-Fallback. Siehe `references/yfinance-date-parsing-fix.md`. |
 | **Sektor-Exposure-Cap (seit 28.06.2026)** → max 70% Portfolio-Exposure pro Sektor, nicht mehr max 2 Positionen. Prüfung in signal_manager.py **nach** Sizing mit tatsächlicher position_size. Config: `strategy_config.json: max_sector_exposure_pct: 0.70`. Grund: Quellen sind tech-lastig — ein Sektor soll dominieren können. Siehe `references/sector-exposure-cap.md`. |
 | **Dashboard Sources Tab — Channel case-mismatch** → Quellen-Tab zeigt für YouTube-Kanäle `–` als letzten Eintrag, obwohl 190+ Mentions existieren. Ursache: `watchlist_mentions.channel` speichert lowercase (`"urban jäkle"`), CHANNELS_FALLBACK in `yt_channel_monitor.py` hat `"Urban Jäkle"`. Dashboard matcht case-sensitive → kein Treffer. Fix: `stats_ci = {k.lower(): v for k, v in stats.items()}` in `build_sources_section()`. |
 | **Thematic Dashboard — unable to open database file** → Thematic-Tab zeigt Fehler statt Inhalt. `dashboard_thematic.py` berechnet `DB_PATH_ABS` mit einem `os.path.dirname()` zu viel → zeigt auf `skills/data/trading.db` (existiert nicht) statt `skills/trading/data/trading.db`. Fix: ein `os.path.dirname()` entfernen, sodass nur `os.path.dirname(os.path.abspath(__file__))` + `data/trading.db` verwendet wird. |
-| **`signal_manager.py check_only` crashed (seit ~03.07.2026)** → `'NoneType' object has no attribute 'strip'` in `check_open_positions()` line 637. **Root Cause (gefunden 06.07.2026):** OpenRouter API liefert gelegentlich `content: null` statt eines Text-Strings in `data["choices"][0]["message"]["content"]`. Alle Scripts die blind `["content"].strip()` aufrufen crashen dann. **Fix:** `.get("content")` + None-Guard vor `.strip()`. Betroffen waren 6 Files (siehe `references/llm-api-content-none-pattern.md`). Gefixt durch gezielte Patches am 06.07.2026. |
+| **`signal_manager.py check_only` crashed (seit ~03.07.2026)** → `NameError: name 'realized_pnl_from_effective_entry' is not defined` in `check_open_positions()` line 637. **Root Cause (gefunden 07.07.2026):** Die Funktion wurde in `utils.py` definiert, aber in `signal_manager.py` nie importiert — der Import fehlte. **Zusätzlich:** OpenRouter API liefert gelegentlich `content: null` → blindes `["content"].strip()` crasht in 6 Files. **Fix:** `realized_pnl_from_effective_entry` zum Import hinzugefügt. NoneType-Fix in 6 weiteren Files (siehe `references/llm-api-content-none-pattern.md`). |
 | **`fundamental_data.py` KeyError: `config["fred_indicators"]` (seit ~03.07.2026)** → `load_config()` lädt aus `STRATEGY_CONFIG_PATH` (= `strategy_config.json`), aber `fred_indicators` lebt in `SOURCES_CONFIG_PATH` (= `sources.json`). **Fix:** `SOURCES_CONFIG_PATH` importieren, `sources.json` laden, `sources_cfg.get("fred_indicators", [])` verwenden. |
+| **Source Lifecycle: Kanäle wurden suspended statt penalisiert** → Alte Logik (vor 07.07.2026) setzte `status='suspended', enabled=0` bei schlechter Performance. Neue Logik: `weight=0.3, enabled=1` (Scan läuft weiter, Signale haben kaum Gewicht). 10 Kanäle wurden am 07.07. reaktiviert. |
 
 ### Manuelles Nachholen eines YouTube-Kanals (außerhalb der Pipeline)
 
@@ -438,6 +492,11 @@ sqlite3 /root/.hermes/profiles/hermes_trading/skills/trading/data/trading.db \
 
 # Dashboard health
 curl -s -o /dev/null -w "%{http_code}" http://localhost:8081/
+
+# Cron-Health-Check (läuft täglich 08:30 als no_agent cron b0b06693e8f9)
+# Script: ~/.hermes/scripts/cron_health.py — prüft ob alle Trading-Jobs HEUTE geloggt sind
+# Bei false-negative: Regex `(\d+)` scheitert an eintstelligen Tagen → fix: `\s+(\d+)`
+python3 /root/.hermes/scripts/cron_health.py
 
 # System crontab
 crontab -l | grep trading

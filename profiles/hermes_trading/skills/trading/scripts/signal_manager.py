@@ -20,7 +20,7 @@ import requests
 import yfinance as yf
 import pandas_ta as ta
 from datetime import datetime, timedelta
-from utils import passes_liquidity_filter, apply_slippage, COMMISSION_EUR, get_price_data_cached, prefetch_prices
+from utils import passes_liquidity_filter, apply_slippage, COMMISSION_EUR, get_price_data_cached, prefetch_prices, realized_pnl_from_effective_entry
 from utils import get_logger, price_to_eur, position_size_in_shares, open_positions_market_value_eur, calc_pnl_with_costs
 log = get_logger("signal_manager")
 from config import DB_PATH, SIGNALS_VALIDATED_PATH, STRATEGY_CONFIG_PATH, MACRO_SIGNAL_PATH, db_connect, get_asset_type, get_asset_multipliers

@@ -60,7 +60,7 @@ python3 llm_validator.py       # Kreuzvalidierung
 python3 nightly_eval.py        # Metriken + Report
 ```
 
-**Intraday (09:00-20:00, Mo-Fr):**
+**Intraday (09:00-20:00, täglich):**
 ```
 python3 signal_manager.py check_only  # SL/TP prüfen
 python3 active_exit_check.py          # Tech-Check + Profit-Sicherung

@@ -229,9 +229,14 @@ def demote_bad_sources(con):
             reasons.append(f"{src['consecutive_losses']} consec losses")
         if src["avg_pnl_per_trade"] < T["suspend_avg_pnl"]:
             reasons.append(f"avg_pnl={src['avg_pnl_per_trade']:+.1f}%")
-        con.execute("UPDATE source_registry SET status='suspended', enabled=0, status_changed_at=?, rejection_reason=? WHERE id=?",
-                    (now, "; ".join(reasons), src["id"]))
-        print(f"  ⏸️  SUSPENDED: {src['display_name']:30} ({'; '.join(reasons)})")
+        # #20: NICHT mehr suspendieren/enabled=0 → stattdessen Gewicht auf Minimum
+        # setzen und aktiv lassen. Sonst werden Kanäle blind aus dem Scan geworfen
+        # obwohl sie täglich posten. Das minimale Gewicht sorgt dafür, dass ihre
+        # Signale kaum noch zählen, aber sie weiter beobachtet werden.
+        new_w = T["penalize_min_weight"]
+        con.execute("UPDATE source_registry SET weight=?, enabled=1, status_changed_at=?, rejection_reason=? WHERE id=?",
+                    (new_w, now, "; ".join(reasons), src["id"]))
+        print(f"  ⚠️  PENALIZED: {src['display_name']:30} weight={new_w} ({'; '.join(reasons)})")
 
     to_remove = con.execute("""
         SELECT * FROM source_registry WHERE status IN ('active','suspended')
