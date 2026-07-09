@@ -506,14 +506,14 @@
   "hermes-profile-management": {
     "archived_at": null,
     "created_at": "2026-05-10T22:19:09.296101+00:00",
-    "last_patched_at": "2026-07-01T12:37:04.904392+00:00",
-    "last_used_at": "2026-07-01T13:20:49.168874+00:00",
-    "last_viewed_at": "2026-07-01T13:20:49.160307+00:00",
-    "patch_count": 54,
+    "last_patched_at": "2026-07-08T21:16:07.239655+00:00",
+    "last_used_at": "2026-07-08T21:16:01.688061+00:00",
+    "last_viewed_at": "2026-07-08T21:16:01.681057+00:00",
+    "patch_count": 59,
     "pinned": false,
     "state": "active",
-    "use_count": 72,
-    "view_count": 73
+    "use_count": 75,
+    "view_count": 76
   },
   "hermes-profile-news-cron": {
     "archived_at": null,
@@ -1114,14 +1114,14 @@
     "archived_at": null,
     "created_at": "2026-05-27T06:29:36.528930+00:00",
     "created_by": "agent",
-    "last_patched_at": "2026-07-07T10:43:07.567068+00:00",
-    "last_used_at": "2026-07-07T10:42:54.885133+00:00",
-    "last_viewed_at": "2026-07-07T10:42:54.872160+00:00",
-    "patch_count": 143,
+    "last_patched_at": "2026-07-08T08:21:34.569024+00:00",
+    "last_used_at": "2026-07-08T08:21:26.882666+00:00",
+    "last_viewed_at": "2026-07-08T08:21:26.874603+00:00",
+    "patch_count": 154,
     "pinned": false,
     "state": "active",
-    "use_count": 159,
-    "view_count": 149
+    "use_count": 170,
+    "view_count": 160
   },
   "trading-scan": {
     "archived_at": null,

@@ -1114,7 +1114,19 @@ LAN okay, für Internet Zugriff Tailscale oder HTTPS-Proxy vorschalten.
 
 ---
 
-## 6. Model Migration Across Skills, Profiles, and Configs
+## 6. Post-Update / Post-Doctor Cleanup
+
+Nach `hermes update && hermes doctor fix` bleiben **immer** Residual-Issues,
+die der Doctor nicht automatisch behebt: Orphan-Alias-Wrapper, deprecated
+Toolset-Namen in der Config, falsche Profile-Namen in Wrapper-Skripten
+(dash vs. underscore).
+
+Siehe `references/post-update-cleanup.md` für die vollständige Checkliste
+mit Diagnose- und Fix-Befehlen.
+
+---
+
+## 7. Model Migration Across Skills, Profiles, and Configs
 
 Wenn ein Modell deprecated wird (z.B. `openrouter/owl-alpha` → nicht mehr
 verfügbar), muss der Swap systematisch durchgezogen werden — nicht nur im
@@ -1197,7 +1209,7 @@ grep -rn "old-model-name" ~/.hermes/skills/ ~/.hermes/cron/jobs.json \
 
 ---
 
-## 7. Cron Prompt Decoupling — File References statt Inline
+## 8. Cron Prompt Decoupling — File References statt Inline
 
 Langfristig wartbare Cron-Jobs lagern den Prompt in eine Datei aus und
 referenzieren sie per `hermes goal --file`. Prompt-Änderungen erfordern dann

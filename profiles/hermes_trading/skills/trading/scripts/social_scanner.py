@@ -97,11 +97,11 @@ def fetch_rss_feeds(con, feeds):
                       pub_date.strftime("%Y-%m-%d %H:%M"),
                       datetime.now().isoformat(), companies_json,
                       result.get("market_outlook", "neutral")))
+                con.commit()  # Lock kurz halten — nicht bis zum LLM-Call des nächsten Artikels
                 count += 1
                 new_articles += 1
             if count > 0:
                 print(f"  ✓ {feed_cfg['name']:25} {count} neue Artikel", flush=True)
-            con.commit()
         except Exception as e:
             print(f"  ✗ {feed_cfg['name']}: {e}", flush=True)
     print(f"  → {new_articles} neue RSS-Artikel gespeichert", flush=True)
@@ -159,6 +159,7 @@ def fetch_twitter(con, accounts):
                 """, ("twitter", acc["name"], text[:200], text, url,
                       pub_str, datetime.now().isoformat(),
                       companies_json, result.get("market_outlook", "neutral")))
+                con.commit()  # Lock kurz halten — nicht bis zum nächsten LLM-Call
                 count += 1
             con.commit()
             if count > 0:

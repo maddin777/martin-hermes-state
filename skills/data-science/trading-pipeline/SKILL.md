@@ -19,7 +19,7 @@ Bevor du eine Änderung am Trading-System vorschlägst, prüfe ob sie zu unserem
 | Prüfpunkt | Fragen |
 |-----------|--------|
 | **Haltedauer** | Wir halten 5-14 Tage. Passt der Vorschlag zu multi-day, nicht intraday? |
-| **Pipeline-Takt** | Pipeline läuft 1x täglich morgens (04:00). Kein Markt-Daemon. |
+| **Pipeline-Takt** | Pipeline läuft 1x täglich morgens (03:30). Kein Markt-Daemon. |
 | **Hebel** | Paper-Trading mit 1x Hebel + TR-Gebühren (1€/Trade). Intraday-Edge wird killt. |
 | **Datenquellen** | yfinance (täglich), YouTube/RSS/Twitter (morgens). Kein Echtzeit-Feed. |
 | **Modell-Kosten** | Grok nur für Conviction-Boost (max 20 Calls). Rest via yfinance. |
@@ -67,7 +67,7 @@ Database is at:
 |------|--------|------|---------|
 | 02:00 | `fundamental_data.py` | Mo–Fr | Macro data, insider trades, put/call ratios, regime detection |
 | 03:00 | `social_scanner.py` | Mo–Fr | RSS feeds (Seeking Alpha, Bloomberg etc.) + Twitter/X (twitterapi.io, 6 accounts) |
-| 04:00 | `trading_pipeline.py` | Mo–Fr | Orchestrator: YouTube scan → KI Analyse → Watchlist Update → Technical Analysis (yfinance) → Signal Manager. Watchlist Update 2-3h (Grok + yfinance). |
+| 03:30 | `trading_pipeline.py` | Mo–Fr | Orchestrator: YouTube scan → KI Analyse → Watchlist Update → Technical Analysis (yfinance) → Signal Manager. Watchlist Update 2-3h (Grok + yfinance). Um 03:30 (statt 04:00) um mehr Puffer vor nightly_eval (05:00) zu haben. Social_scanner (03:00) läuft vorher durch. |
 | 04:50 | `llm_validator.py` | Mo–Fr | ⚠️ Noch in crontab obwohl Fix aussteht (DB-Lock) |
 | 05:00 | `nightly_eval.py` | Mo–Fr | ✅ Sauber (<5s) |
 | 09:30 | `active_exit_check.py` | **täglich** | Mid-day exit checks |
@@ -219,6 +219,8 @@ Details siehe `references/` im Skill-Verzeichnis sowie die Erläuterung.md im Ob
 | yfinance Date-Parsing (unconverted data) | `references/yfinance-date-parsing-fix.md` |
 | Sektor-Exposure-Cap (70%) | `references/sector-exposure-cap.md` |
 | **LLM API `content: null` — NoneType Crash** | `references/llm-api-content-none-pattern.md` |
+| **DB Lock: Transaction-in-Loop-Pattern** | `references/db-lock-short-transactions.md` |
+| **Cron Health: Pipeline-Block-Slicing** | `references/cron-health-slicing-bug.md` |
 
 ### Session-Start-Protokoll: Proaktiver Pipeline-Check
 
@@ -299,13 +301,14 @@ Die Referenz enthält 23 klassifizierte Unternehmen plus Implementierungsvorschl
 
 **Bekannte Fehlermuster auf einen Blick:**
 - Gelber Ghost-Eintrag → Pitfall 14 (Dashboard Ghost Entries)
-- `database is locked` → Orphaned Connection (Pitfall 12) oder Timing-Konflikt
+- `database is locked` → Transaction-in-Loop-Pattern (API-Call zwischen execute und commit) oder Orphaned Connection. Siehe `references/db-lock-short-transactions.md`.
 - `sqlite3.Row` AttributeError → Pitfall 16
 - Pipeline läuft länger als 1h → Watchlist Update zu langsam (Grok/yfinance API)
 | `Finnhub 403` → API-Key abgelaufen oder limitiert (siehe `references/finnhub-api-key-management.md`)
 | `pos.get("asset_type")` → Pitfall 16 (sqlite3.Row) — `pos["asset_type"] if "asset_type" in pos.keys() else "STANDARD"` verwenden
 | **`cron_health.py` ❌ false-positive** → Timing-Konflikt: `cron-health-daily` und `strategy_optimizer` starten beide um 08:00 (Sonntag). Der Optimizer braucht ~2 Min, der Health-Check findet nur START ohne DONE → flagged als crashed. Fix: staggered Schedules (z.B. health um 08:30).
-| **`cron_health.py` false-negative "Keine Jobs"** → Regex `(\d+)` scheiterte an eintstelligen Tagen (`Jul  7` = double space zwischen Monat und Tag). **Fix (07.07.2026):** `\s+(\d+)` im Datums-Regex. Betrifft Tage 1-9 jedes Monats. Alle 6 Tage im Monat wurden fälschlich als "keine Jobs" gemeldet. |
+| **`cron_health.py` false-negative "Keine Jobs"** → Regex `(\\d+)` scheiterte an eintstelligen Tagen (`Jul  7` = double space zwischen Monat und Tag). **Fix (07.07.2026):** `\\s+(\\d+)` im Datums-Regex. Betrifft Tage 1-9 jedes Monats. Alle 6 Tage im Monat wurden fälschlich als "keine Jobs" gemeldet. |
+| **`cron_health.py` ⚠️ Pipeline-interne Jobs ausserhalb des Blocks** → Pipeline-interne Marker (YouTube Scan DONE, KI Analyse DONE) werden vom Health-Check nur im Pipeline-Block gesucht. Wenn die Pipeline länger läuft als bis zum nächsten Cron-Job (z.B. YouTube Scan 04:00→05:45, nightly_eval feuert um 05:00), liegt der DONE-Marker **ausserhalb** des Pipeline-Blocks. Der Health-Check findet nur START ohne DONE → ⚠️. **Symptom:** `cron_health.py` zeigt ⚠️ für einen Pipeline-Schritt, obwohl der Scan erfolgreich war. **Diagnose:** Prüfe ob die DONE-Zeile (z.B. `=== HH:MM YouTube Scan DONE ===`) nach dem START-Marker des nächsten Cron-Jobs liegt. **Fix:** Entweder Pipeline-Block-Slicing erweitern (DONE-Marker auch im folgenden Block akzeptieren) oder Scan-Wartezeiten reduzieren (z.B. YouTube 120s→60s) damit er vor dem nächsten Cron-Job fertig ist. Siehe `references/cron-health-slicing-bug.md`.
 | **PM Scanner: `result["content"] is None` → AttributeError** → `llm_client.parse_json_response()` crasht wenn OpenRouter `content: null` liefert. Fix: None-Check in `parse_json_response()` vor `.strip()`.
 | **Theme Discovery: `database is locked`** → Kaskade von PM Scanner-Crash (offene Transaktion) + fehlender `busy_timeout` in `theme_discovery.py` nutzt raw `sqlite3.connect()` statt `config.db_connect()`. Fix: `config.db_connect()` verwenden (WAL + busy_timeout).
 | **Config-Drift (SL=1.0/TP=4.0)** → adapt_strategy() hat SL/TP ohne Regime-Prüfung angepasst. Im Sideways-Markt führte das zu 81% SL_RATE + −358€ P&L. Fix: Regime-Check eingebaut, Config reset auf SL=1.5/TP=2.5. Siehe references/adapt-strategy-regime-blindness.md. |
@@ -318,11 +321,11 @@ Die Referenz enthält 23 klassifizierte Unternehmen plus Implementierungsvorschl
 | **`signal_manager.py check_only` crashed (seit ~03.07.2026)** → `NameError: name 'realized_pnl_from_effective_entry' is not defined` in `check_open_positions()` line 637. **Root Cause (gefunden 07.07.2026):** Die Funktion wurde in `utils.py` definiert, aber in `signal_manager.py` nie importiert — der Import fehlte. **Zusätzlich:** OpenRouter API liefert gelegentlich `content: null` → blindes `["content"].strip()` crasht in 6 Files. **Fix:** `realized_pnl_from_effective_entry` zum Import hinzugefügt. NoneType-Fix in 6 weiteren Files (siehe `references/llm-api-content-none-pattern.md`). |
 | **`fundamental_data.py` KeyError: `config["fred_indicators"]` (seit ~03.07.2026)** → `load_config()` lädt aus `STRATEGY_CONFIG_PATH` (= `strategy_config.json`), aber `fred_indicators` lebt in `SOURCES_CONFIG_PATH` (= `sources.json`). **Fix:** `SOURCES_CONFIG_PATH` importieren, `sources.json` laden, `sources_cfg.get("fred_indicators", [])` verwenden. |
 | **Source Lifecycle: Kanäle wurden suspended statt penalisiert** → Alte Logik (vor 07.07.2026) setzte `status='suspended', enabled=0` bei schlechter Performance. Neue Logik: `weight=0.3, enabled=1` (Scan läuft weiter, Signale haben kaum Gewicht). 10 Kanäle wurden am 07.07. reaktiviert. |
+| **DB Lock: Transaction-in-Loop mit API-Calls** → `con.execute("INSERT...")` im Loop, `con.commit()` erst nach allen API-Calls. Die Transaction blockiert andere Writer für Minuten. **Fix:** `commit()` nach jedem Item im Loop. Betrifft `fetch_fred_data`, `fetch_insider_trades`, `fetch_pcr` (fundamental_data.py) und `fetch_rss_feeds`, `fetch_twitter` (social_scanner.py). Siehe `references/db-lock-short-transactions.md`. |
 
 ### Manuelles Nachholen eines YouTube-Kanals (außerhalb der Pipeline)
 
-Wenn ein Kanal neu in die `source_registry` aufgenommen wurde, aber die Pipeline
-erst morgen früh um 04:00 läuft:
+Wenn ein Kanal neu in die `source_registry` aufgenommen wurde, aber die Pipeline\nerst morgen früh um 03:30 läuft:
 
 1. **Videos scannen und in DB einfügen:**
    ```python

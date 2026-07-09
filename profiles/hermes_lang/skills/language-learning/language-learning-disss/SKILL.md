@@ -22,7 +22,6 @@ Identify the high-frequency core of the target language. Use existing knowledge 
 
 ### Step 2: Sequence Generation
 Create a syllabus that organizes the selected content into daily, manageable lessons.
-## Implementation Workflow
 
 ### Step 3: Lesson Production
 
@@ -38,7 +37,15 @@ Every lesson MUST follow a strict structure to ensure cognitive load is optimize
 4.  **Interactive Quiz**: 10 fill-in-the-blank sentences (Lueckentext).
 5.  **Answer Key**: A clear solution key at the end.
 
+## Language-Specific Implementations
+
+Detailed implementation instructions for specific languages are available in the `references/` directory.
+
+### Polish (DiSSS Functional Context)
+Specific pedagogical structures for Polish, including verb aspect and noun case patterns, can be found in `references/polish-implementation.md`.
+
 ## Automation & Tracking
+...
 
 ...
 

@@ -90,12 +90,13 @@ def fetch_fred_data(con, indicators):
                 VALUES (?,?,?,?,?,?)
             """, (ind["id"], value, date, datetime.now().isoformat(),
                   signal, ind["name"]))
+            con.commit()  # Lock kurz halten — nicht bis zum Ende der Schleife warten
             print(f"  ✓ {ind['name']:30} {value:8.3f} [{signal}]", flush=True)
 
         except Exception as e:
             print(f"  ✗ {ind['id']}: {e}", flush=True)
 
-    con.commit()
+    # Kein con.commit() mehr nötig — wurde bereits nach jedem INSERT committed
 
 def fetch_insider_trades(con, tickers):
     """Holt Insider-Trades von SEC EDGAR für Watchlist-Ticker."""
@@ -130,6 +131,7 @@ def fetch_insider_trades(con, tickers):
                     VALUES (?,?,?,?,?,?)
                 """, (ticker, entity, insider, period,
                       datetime.now().isoformat(), signal))
+                con.commit()  # Lock kurz halten
 
             if hits:
                 print(f"  ✓ {ticker:10} {len(hits)} Insider-Trades gefunden", flush=True)
@@ -137,7 +139,7 @@ def fetch_insider_trades(con, tickers):
         except Exception as e:
             print(f"  ✗ {ticker}: {e}", flush=True)
 
-    con.commit()
+    # Kein con.commit() mehr nötig
 
 def fetch_pcr(con, tickers):
     """Berechnet Put/Call Ratio via yfinance."""
@@ -165,13 +167,14 @@ def fetch_pcr(con, tickers):
                 INSERT INTO options_data (ticker, pcr, signal, fetched_at)
                 VALUES (?,?,?,?)
             """, (ticker, pcr, signal, datetime.now().isoformat()))
+            con.commit()  # Lock kurz halten
 
             print(f"  ✓ {ticker:10} PCR={pcr:.3f} [{signal}]", flush=True)
 
         except Exception as e:
             pass  # Viele Ticker haben keine Options
 
-    con.commit()
+    # Kein con.commit() mehr nötig
 
 def get_macro_summary(con):
     """Gibt aktuellen Makro-Status zurück."""
