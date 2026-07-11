@@ -237,14 +237,14 @@
     "archived_at": null,
     "created_at": "2026-07-01T16:49:37.389957+00:00",
     "created_by": "agent",
-    "last_patched_at": null,
-    "last_used_at": "2026-07-01T16:49:42.377697+00:00",
-    "last_viewed_at": "2026-07-01T16:49:42.371046+00:00",
-    "patch_count": 0,
+    "last_patched_at": "2026-07-10T12:17:17.858895+00:00",
+    "last_used_at": "2026-07-10T12:16:28.505316+00:00",
+    "last_viewed_at": "2026-07-10T12:16:28.492864+00:00",
+    "patch_count": 2,
     "pinned": false,
     "state": "active",
-    "use_count": 1,
-    "view_count": 1
+    "use_count": 2,
+    "view_count": 2
   },
   "design-md": {
     "archived_at": null,
@@ -1114,27 +1114,27 @@
     "archived_at": null,
     "created_at": "2026-05-27T06:29:36.528930+00:00",
     "created_by": "agent",
-    "last_patched_at": "2026-07-08T08:21:34.569024+00:00",
-    "last_used_at": "2026-07-08T08:21:26.882666+00:00",
-    "last_viewed_at": "2026-07-08T08:21:26.874603+00:00",
-    "patch_count": 154,
+    "last_patched_at": "2026-07-10T10:19:08.296543+00:00",
+    "last_used_at": "2026-07-10T12:16:28.510869+00:00",
+    "last_viewed_at": "2026-07-10T12:16:28.499868+00:00",
+    "patch_count": 160,
     "pinned": false,
     "state": "active",
-    "use_count": 170,
-    "view_count": 160
+    "use_count": 177,
+    "view_count": 167
   },
   "trading-scan": {
     "archived_at": null,
     "created_at": "2026-06-12T08:57:55.815003+00:00",
     "created_by": null,
     "last_patched_at": "2026-07-07T07:22:57.615400+00:00",
-    "last_used_at": "2026-07-07T08:21:45.059293+00:00",
-    "last_viewed_at": "2026-07-07T08:21:45.050370+00:00",
+    "last_used_at": "2026-07-10T07:18:38.224420+00:00",
+    "last_viewed_at": "2026-07-10T07:18:38.219352+00:00",
     "patch_count": 1,
     "pinned": false,
     "state": "active",
-    "use_count": 7,
-    "view_count": 7
+    "use_count": 8,
+    "view_count": 8
   },
   "vehicle-comparison": {
     "archived_at": null,

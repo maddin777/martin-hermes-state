@@ -718,20 +718,19 @@ def apply_regime_filter(conviction, direction, regime):
 def check_drawdown(con):
     """
     Prüft Portfolio-Drawdown gegen ATH – auf Basis von Mark-to-Market (#3).
-
     Früher wurde portfolio.total_value gelesen, das ist aber nur Buchwert
     (cash + Σ position_size = Einstandskosten). Unrealisierte Verluste offener
     Positionen waren damit unsichtbar → die -15%/-25%-Bremse feuerte erst
     NACH den Einzel-SL-Hits. Jetzt: Live-Wert aus aktuellen Kursen.
 
-    Gibt (drawdown_pct, action) zurück:
-      action = 'ok'       → normal weiter
-      action = 'no_entry' → -15%: keine neuen Positionen
-      action = 'close_all' → -25%: alle Positionen schließen
+    Gibt (drawdown_pct, action, params) zurück:
+      action = 'ok'       → normal (mit ggf. reduzierten Parametern)
+      action = 'close_all' → ≥25%: alle Positionen schließen
+      params: dict mit size_factor, min_confidence, max_positions
     """
     portfolio = con.execute("SELECT cash, total_value, ath_value FROM portfolio WHERE id=1").fetchone()
     if not portfolio:
-        return 0.0, "ok"
+        return 0.0, "ok", {"size_factor": 1.0, "min_confidence": 0.70, "max_positions": 8}
 
     cash = portfolio["cash"] or 0
     open_positions = con.execute(
@@ -756,16 +755,19 @@ def check_drawdown(con):
     con.commit()
 
     if ath == 0:
-        return 0.0, "ok"
+        return 0.0, "ok", {"size_factor": 1.0, "min_confidence": 0.70, "max_positions": 8}
 
     drawdown = (ath - total) / ath
 
+    # Graduierte Reduzierung statt Binary-Stopp
     if drawdown >= 0.25:
-        return drawdown, "close_all"
+        return drawdown, "close_all", {"size_factor": 0.0, "min_confidence": 1.0, "max_positions": 0}
     elif drawdown >= 0.15:
-        return drawdown, "no_entry"
+        return drawdown, "ok", {"size_factor": 0.50, "min_confidence": 0.80, "max_positions": 4}
+    elif drawdown >= 0.12:
+        return drawdown, "ok", {"size_factor": 0.75, "min_confidence": 0.75, "max_positions": 6}
     else:
-        return drawdown, "ok"
+        return drawdown, "ok", {"size_factor": 1.0, "min_confidence": 0.70, "max_positions": 8}
 
 
 def _is_drawdown_cooldown_active(cfg) -> bool:
@@ -989,20 +991,23 @@ def get_canonical_ticker(con, ticker: str) -> str:
 
 def open_new_positions(con, cfg):
     """Öffnet neue Positionen aus der Watchlist (LONG + SHORT)."""
-    # ── Drawdown-Cooldown ─────────────────────────────────────────────────
-    if _is_drawdown_cooldown_active(cfg):
-        return
-
-    # ── Drawdown-Notbremse ────────────────────────────────────────────────
-    drawdown_pct, dd_action = check_drawdown(con)
+    # ── Drawdown-Notbremse + Graduierte Reduzierung ─────────────────
+    drawdown_pct, dd_action, dd_params = check_drawdown(con)
     if dd_action == "close_all":
         print(f"  🚨 DRAWDOWN NOTBREMSE: -{drawdown_pct:.1%} vom ATH → ALLE Positionen schließen!", flush=True)
         send_telegram(f"🚨 DRAWDOWN NOTBREMSE\n-{drawdown_pct:.1%} vom ATH\nAlle Positionen werden geschlossen!")
         _emergency_close_all(con, cfg)
         return
-    elif dd_action == "no_entry":
-        print(f"  ⚠️  Drawdown -{drawdown_pct:.1%} vom ATH → keine neuen Positionen", flush=True)
-        return
+
+    # Graduierte Drawdown-Reduzierung (ersetzt alten no_entry-Stopp)
+    dd_size_factor = dd_params["size_factor"]
+    dd_min_confidence = dd_params["min_confidence"]
+    dd_max_positions = dd_params["max_positions"]
+
+    if dd_size_factor < 1.0:
+        print(f"  📉 Drawdown -{drawdown_pct:.1%} vom ATH → Size {dd_size_factor:.0%}, "
+              f"Confidence ≥{dd_min_confidence:.0%}, Max {dd_max_positions} Positionen",
+              flush=True)
     elif drawdown_pct > 0.05:
         print(f"  📉 Drawdown: -{drawdown_pct:.1%} vom ATH (noch OK)", flush=True)
 
@@ -1017,8 +1022,8 @@ def open_new_positions(con, cfg):
     if macro == "bearish":
         print("  ⚠️  Makro BEARISH – fahre mit reduzierter Conviction fort", flush=True)
 
-    # Phase 5.3: Dynamische Max-Positions basierend auf Regime
-    base_max = cfg["max_positions"]
+    # Phase 5.3: Dynamische Max-Positionen basierend auf Regime + Drawdown
+    base_max = dd_max_positions  # Vom Drawdown bestimmt (12%-Stufen)
     if regime == "bear":
         effective_max_long  = min(base_max, 4)   # Max 4 LONG im Bear-Markt
         effective_max_short = 4                   # SHORT-Slots erhöhen
@@ -1124,7 +1129,7 @@ def open_new_positions(con, cfg):
         """, (
             cfg.get("min_conviction", 0.60),
             cfg.get("min_mentions", 2),
-            cfg.get("min_confidence", 0.60)
+            dd_min_confidence,  # Drawdown-abhängig: 0.70/0.75/0.80
         )).fetchall()
 
     if allow_short and open_short_count < effective_max_short:
@@ -1352,6 +1357,11 @@ def open_new_positions(con, cfg):
         if is_probation:
             pct = pct * probation_factor
             sizing_label += f" | Probation ({probation_factor:.0%})"
+
+        # Drawdown-Faktor: Positionsgröße ab 12% Drawdown reduziert
+        if dd_size_factor < 1.0:
+            pct = pct * dd_size_factor
+            sizing_label += f" | Drawdown ({dd_size_factor:.0%})"
 
         # Volatilitätsbereinigtes Positionsgrößensystem (Risk-Parity)
         # Risiko pro Trade capped auf risk_pct_per_trade % des Gesamtportfolios

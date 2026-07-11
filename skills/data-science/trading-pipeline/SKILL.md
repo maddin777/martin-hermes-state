@@ -219,7 +219,8 @@ Details siehe `references/` im Skill-Verzeichnis sowie die Erläuterung.md im Ob
 | yfinance Date-Parsing (unconverted data) | `references/yfinance-date-parsing-fix.md` |
 | Sektor-Exposure-Cap (70%) | `references/sector-exposure-cap.md` |
 | **LLM API `content: null` — NoneType Crash** | `references/llm-api-content-none-pattern.md` |
-| **DB Lock: Transaction-in-Loop-Pattern** | `references/db-lock-short-transactions.md` |
+| **DB Lock: Transaction-in-Loop mit API-Calls** | `references/db-lock-short-transactions.md` |
+| **YouTube Scan Cleanup DB Lock (Inter-Cron-Job Kaskade)** | `references/yt-cleanup-db-lock.md` |
 | **Cron Health: Pipeline-Block-Slicing** | `references/cron-health-slicing-bug.md` |
 
 ### Session-Start-Protokoll: Proaktiver Pipeline-Check
@@ -301,7 +302,7 @@ Die Referenz enthält 23 klassifizierte Unternehmen plus Implementierungsvorschl
 
 **Bekannte Fehlermuster auf einen Blick:**
 - Gelber Ghost-Eintrag → Pitfall 14 (Dashboard Ghost Entries)
-- `database is locked` → Transaction-in-Loop-Pattern (API-Call zwischen execute und commit) oder Orphaned Connection. Siehe `references/db-lock-short-transactions.md`.
+- `database is locked` → Transaction-in-Loop-Pattern (API-Call zwischen execute und commit) oder **Inter-Cron-Job Kaskade** (vorgelagerter Job hält Lock, crasht, und lässt offene Transaktion). Siehe `references/db-lock-short-transactions.md` und `references/yt-cleanup-db-lock.md`.
 - `sqlite3.Row` AttributeError → Pitfall 16
 - Pipeline läuft länger als 1h → Watchlist Update zu langsam (Grok/yfinance API)
 | `Finnhub 403` → API-Key abgelaufen oder limitiert (siehe `references/finnhub-api-key-management.md`)
@@ -322,6 +323,7 @@ Die Referenz enthält 23 klassifizierte Unternehmen plus Implementierungsvorschl
 | **`fundamental_data.py` KeyError: `config["fred_indicators"]` (seit ~03.07.2026)** → `load_config()` lädt aus `STRATEGY_CONFIG_PATH` (= `strategy_config.json`), aber `fred_indicators` lebt in `SOURCES_CONFIG_PATH` (= `sources.json`). **Fix:** `SOURCES_CONFIG_PATH` importieren, `sources.json` laden, `sources_cfg.get("fred_indicators", [])` verwenden. |
 | **Source Lifecycle: Kanäle wurden suspended statt penalisiert** → Alte Logik (vor 07.07.2026) setzte `status='suspended', enabled=0` bei schlechter Performance. Neue Logik: `weight=0.3, enabled=1` (Scan läuft weiter, Signale haben kaum Gewicht). 10 Kanäle wurden am 07.07. reaktiviert. |
 | **DB Lock: Transaction-in-Loop mit API-Calls** → `con.execute("INSERT...")` im Loop, `con.commit()` erst nach allen API-Calls. Die Transaction blockiert andere Writer für Minuten. **Fix:** `commit()` nach jedem Item im Loop. Betrifft `fetch_fred_data`, `fetch_insider_trades`, `fetch_pcr` (fundamental_data.py) und `fetch_rss_feeds`, `fetch_twitter` (social_scanner.py). Siehe `references/db-lock-short-transactions.md`. |
+| **YouTube Scan DB Lock: Inter-Cron-Job Kaskade** → `yt_channel_monitor.py` crasht in `cleanup_db()` mit `database is locked` beim ersten Pipeline-Schritt. Ursache: `social_scanner.py` (03:00) hält Lock vom vorgelagerten `fundamental_data.py` (02:00), crasht, und lässt offene Transaktion. **Fix:** `cleanup_db()` hat 120s busy_timeout + 3 Retry-Versuche + rollback im Fehlerfall. Siehe `references/yt-cleanup-db-lock.md`. |
 
 ### Manuelles Nachholen eines YouTube-Kanals (außerhalb der Pipeline)
 
@@ -474,6 +476,33 @@ Sektoren mit negativer 14d-P&L (≥3 Trades) werden automatisch auf eine Blackli
 **Config:** `strategy_config.json` → `sector_blacklist {}`, `sector_cooldown_days: 14`, `sector_probation_size_pct: 0.5`.
 
 Siehe `references/sector-blacklist-probation.md`.
+
+### 🔴 Drawdown Protection — Graduierte Reduzierung (seit 10.07.2026)
+
+**Problem (alt):** Ein Binary-Stopp bei ≥15% Drawdown (`no_entry`) verhinderte neue Trades komplett. Wenn der laufende Trade im SL endete, konnte der Drawdown nie wieder abgebaut werden — das System war in einer **Heilungsfalle** gefangen.
+
+**Neue Logik:** Statt komplettem Stopp werden Position Size, Confidence-Schwelle und Max-Positionen graduiert reduziert. Das System bleibt handlungsfähig, aber mit geringerem Risiko.
+
+| Drawdown | Size-Faktor | Min. Confidence | Max Positionen | Effekt |
+|----------|-------------|-----------------|----------------|--------|
+| **< 12%** | 100% | 70% | 8 | Normalbetrieb |
+| **12–15%** | 75% | 75% | 6 | Warnzone: reduzierte Size |
+| **15–25%** | 50% | 80% | 4 | Bremszone: halbe Size, höhere Qualität |
+| **≥ 25%** | close_all + 7d Cooldown | — | 0 | Notbremse (wie gehabt) |
+
+**Heilungsmechanismus:** Bei 50% Size + 80% Confidence reichen 1-2 solide Trades mit +3-4% Gewinn, um den Drawdown von 15% auf unter 12% zu drücken → volle Size wieder frei.
+
+**Code-Struktur:**
+- **`check_drawdown()`** in `signal_manager.py` — Gibt `(drawdown_pct, action, params)` zurück mit `size_factor`, `min_confidence`, `max_positions`
+- **`open_new_positions()`** — Wendet die drei Parameter an:
+  1. `dd_max_positions` ersetzt `cfg["max_positions"]` als Basis für Regime-Caps
+  2. `dd_min_confidence` überschreibt `cfg.get("min_confidence", 0.60)` in der DB-Query
+  3. `dd_size_factor` wird nach VIX- und Probation-Faktor auf `pct` angewendet
+- **Config:** `strategy_config.json` → `drawdown_cooldown_days: 7` (nur für ≥25%-Fall)
+
+**Alter `no_entry`-Stopp wurde entfernt.** Der `_is_drawdown_cooldown_active()`-Check existiert noch als Funktion, wird aber nur noch vom `close_all`-Fall genutzt.
+
+Siehe `references/graduated-drawdown-reduction.md`.
 
 ### SP500 SMA200 Cron-Job (Amumbo-Exit)
 

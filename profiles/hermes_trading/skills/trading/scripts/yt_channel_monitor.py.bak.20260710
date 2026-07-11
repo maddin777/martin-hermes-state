@@ -146,30 +146,14 @@ def get_transcript(video_id):
     return None
 
 def cleanup_db(con):
-    # Hoher busy_timeout + Retry, weil diese Methode oft mit DB-Lock crasht
-    # wenn fundamental_data/social_scanner noch laufen (Pipeline-Überlapp)
-    con.execute("PRAGMA busy_timeout=120000;")
-    max_retries = 3
-    for attempt in range(max_retries):
-        try:
-            result1 = con.execute("""
-                UPDATE videos SET transcript=NULL
-                WHERE transcript IS NOT NULL AND created_at < datetime('now', '-7 days')
-            """)
-            result2 = con.execute("""
-                DELETE FROM videos WHERE created_at < datetime('now', '-30 days')
-            """)
-            con.commit()
-            break
-        except sqlite3.OperationalError as e:
-            if "locked" in str(e) and attempt < max_retries - 1:
-                print(f"  ⚠ DB-Lock beim Cleanup (Versuch {attempt+2}/{max_retries}), warte 10s...", flush=True)
-                con.rollback()
-                time.sleep(10)
-            else:
-                print(f"  ⚠ Cleanup fehlgeschlagen nach {attempt+1} Versuchen: {e}", flush=True)
-                con.rollback()
-                return
+    result1 = con.execute("""
+        UPDATE videos SET transcript=NULL
+        WHERE transcript IS NOT NULL AND created_at < datetime('now', '-7 days')
+    """)
+    result2 = con.execute("""
+        DELETE FROM videos WHERE created_at < datetime('now', '-30 days')
+    """)
+    con.commit()
     print(f"  🧹 Cleanup: {result1.rowcount} Transkripte geleert, "
           f"{result2.rowcount} alte Einträge gelöscht.", flush=True)
 

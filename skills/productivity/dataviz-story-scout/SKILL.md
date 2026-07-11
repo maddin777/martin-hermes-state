@@ -99,10 +99,37 @@ Out-of-the-box Ideen erwünscht:
 ## Bekannte Pitfalls
 
 - **Firecrawl-Credits leer**: web_search/web_extract oft nicht verfügbar. Ausweichen auf:
-  curl + old.reddit.com für Reddit-Quellen, direkte API-Calls (FRED, Tankerkönig), Exa Search via `mcporter`
+  curl + old.reddit.com für Reddit-Quellen, direkte API-Calls (FRED, Tankerkönig), Exa Search via `mcporter`.
+  **Alternative: Wikipedia API** — `curl -sL "https://de.wikipedia.org/w/api.php?action=parse&page=ARTIKEL&prop=text&format=json"` liefert gerenderten HTML. `action=query&prop=extracts&explaintext&format=json` liefert Plain-Text. Für Tabellen: Regex über `<table class=\"wikitable\">`-Blöcke, dann `re.sub(r'<[^>]+>', ' ', t)` zur Extraktion.
 - **Keine erfundenen Daten**: Jede Idee braucht eine reale, frei zugängliche Quelle. Lieber 7 solide Ideen als 10 mit toten Quellen.
 - **Dedup vergessen**: Immer gegen den 8-Wochen-Store checken. Gleiches Thema nur mit neuem Winkel wiederholen.
 - **Zu generisch**: "Chart über Inflation" → scheitert am Hook-Gate. Immer: "Seit 2020 sind Lebensmittel 35% teurer, aber die Löhne nur 12% gestiegen."
+
+## Ad-hoc Data Research (Zwischen den Cron-Läufen)
+
+Wenn der User zwischen den wöchentlichen Cron-Läufen eine konkrete Recherche anfragt:
+
+1. **Datenquellen identifizieren**: Destatis (GENESIS-Tabellennummern), Eurostat, Bundesbank, Wikipedia, Bundestag
+2. **API-Fallback-Strategie**: Wenn Firecrawl leer ist, in dieser Reihenfolge:
+   - `curl` + Wikipedia API (action=parse, action=query) für Artikel + Tabellen
+   - `curl` + Destatis Seiten (oft JS-lastig, aber manchmal rohe HTML-Tabellen)
+   - `curl` + statista.com (Paywall, aber Teaser-Daten oft ausreichend)
+   - Python + re (Regex) für HTML-Tabellen-Extraktion
+3. **Output-Format**: Strukturierte Tabelle mit Datenquellen, Vergleichsmöglichkeiten, und Story-Hook pro Topic. Siehe `references/evergreen-topics.md` für vorgeprüfte Themen.
+
+## Evergreen Topics (vorgeprüft, wiederverwendbar)
+
+Diese Themen funktionieren immer wieder, weil sie die 4 Hooks treffen und regelmäßig neue Daten erscheinen:
+
+| Thema | Hooks | Datenquellen | Letzter Check |
+|-------|-------|-------------|---------------|
+| **Baupreise vs. Löhne** | Überraschung, Identität | Destatis 61262-0001 (Baupreisindex), 62111-0001 (Lohnindex) | 10.07.2026 |
+| **Politikergehälter vs. Normalverdiener** | Vergleich, Identität | Wikipedia Abgeordnetenentschädigung, Destatis Lohnentwicklung | 10.07.2026 |
+| **Mietpreise vs. Kaufpreise** | Identität, Neugier | Immobilienpreisindex Destatis, Gutachterausschüsse | — |
+| **Energiekosten DE vs. EU** | Vergleich, Überraschung | Eurostat, BNetzA/SMARD | — |
+| **Rentenlücke** | Identität, Überraschung | Deutsche Rentenversicherung, Destatis | — |
+
+**Formel für Evergreen-Updates:** Nimm das beste alte Thema, aktualisiere die Daten um 1-2 Jahre, ändere die Hook-Richtung (z.B. "Baupreise vs Löhne" → "Wieviel Haus kriegt man für ein Jahresgehalt 1970 vs 2025").
 
 ## Verifikation
 
