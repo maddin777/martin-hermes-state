@@ -12,6 +12,7 @@ noise-filtering for navigational self-references.
 v2026-07-04 — Added: trailing-backslash detection, .md.md detection,
               ./ prefix handling, improved self-link matching with
               wiki/concepts/ prefix.
+v2026-07-11 — Confirmed: vault-root-relative links handled correctly by CASE C.
 """
 
 import re, os, glob, datetime

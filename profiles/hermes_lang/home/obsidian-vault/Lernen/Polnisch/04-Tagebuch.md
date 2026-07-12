@@ -427,3 +427,64 @@ Lektion #25 abgeschlossen.
 10. **panią**
 
 Lektion #26 abgeschlossen.
+
+
+--- Entry ---
+### Polnisch-Lektion #27
+
+#### 1. Wortschatz (Top 500)
+- **dom** `(`Haus`)`
+- **kobieta** `(`Frau`)`
+- **pić** `(`trinken` (imperf.))`
+- **pisać** `(`schreiben` (imperf.))`
+- **duży** `(`groß`)`
+- **dobry** `(`gut`)`
+- **robić** `(`machen` (imperf.))`
+- **jechać** `(`fahren` (imperf.))`
+- **miasto** `(`Stadt`)`
+- **dziecko** `(`Kind`)`
+
+#### 2. Aspekt-Paare (Verben)
+- **pić** / **wypić** `(`trinken / austrinken`)`
+- **pisać** / **napisać** `(`schreiben / aufschreiben`)`
+- **robić** / **zrobić** `(`machen / erledigen`)`
+- **jechać** / **pojechać** `(`fahren / wegfahren`)`
+
+#### 3. Kasus-Beispiele (Nomen)
+- **dom** (Masc, Nominativ) `(`Haus`)`
+- **dom** (Masc, Akkusativ) `(`Haus`)`
+- **kobieta** (Fem, Nominativ) `(`Frau`)`
+- **kobieta** (Fem, Akkusativ) `(`Frau`)`
+
+#### 4. Sentence Mining (n+1)
+- **Ten duży dom jest dobry.** `Dieses große Haus ist gut.`
+- **Kobieta pije wodę.** `Die Frau trinkt Wasser.`
+- **Dziecko pisze list.** `Das Kind schreibt einen Brief.`
+- **Jedziemy do miasta.** `Wir fahren in die Stadt.`
+- **Robię coś dużego.** `Ich mache etwas Großes.`
+
+#### 5. Lueckentext-Quiz
+1. Ten ___ dom jest dobry. (groß)
+2. ___ pije wodę. (Die Frau)
+3. ___ pisze list. (Das Kind)
+4. Jedziemy do ___. (Stadt)
+5. ___ robi coś. (Sie/Die Frau - simplified)
+6. To jest ___ dom. (gut)
+7. ___ jest duże. (Das Haus - simplified)
+8. Piję ___ wodę. (kalt/groß/gut - context: gut)
+9. ___ pisze bardzo długi list. (Die Frau)
+10. ___ pije w mieście. (Das Kind)
+
+#### 6. Auflösung
+1. duży
+2. Kobieta
+3. Dziecko
+4. miasta
+5. Kobieta
+6. dobry
+7. Miasto
+8. dobrą
+9. Kobieta
+10. Dziecko
+
+Lektion #27 abgeschlossen.

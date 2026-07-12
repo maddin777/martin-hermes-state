@@ -1,6 +1,6 @@
 # Hermes Trading Skill – Technische & Fachliche Dokumentation
 
-*Stand: 1. Juli 2026 | System-Version nach Paketen A–D + Sprints 1–7 + Bugfix-Sprint + Screener-Source + Watchlist-Performance-Fix + Sektor-Exposure-Cap (70%) + Dashboard-Fixes + **Security-&-Risk-Hardening-Sprint (19 Punkte)***
+*Stand: 11. Juli 2026 | System-Version nach Paketen A–D + Sprints 1–7 + Bugfix-Sprint + Screener-Source + Watchlist-Performance-Fix + Sektor-Exposure-Cap (70%) + Dashboard-Fixes + **Security-&-Risk-Hardening-Sprint (19 Punkte)** + **Backtesting-Engine + PEAD-Signal (aus ai-hedge-fund)***
 
 ---
 
@@ -338,6 +338,7 @@ scripts/
 │                             VIX-Halving aus macro_data; risk_pct_per_trade konfigurierbar;
 │                             Drawdown-Cooldown 7 Tage; FX-korrektes Sizing; 24h re-entry fix
 ├── trading_pipeline.py    ← Orchestrierung (Logger korrekt, kein def log() Shadow)
+├── pead_signal.py         ← PEAD-Signal: Earnings-Surprise → Conviction-Boost
 │
 ├── active_exit_check.py   ← 2× täglich: Tech-Exit + Thesis-broken SL-Tightening
 │                             BUGFIX: Cash & Portfolio-Value bei jedem Exit aktualisiert
@@ -350,6 +351,16 @@ scripts/
 ├── strategy_optimizer.py  ← Walk-Forward Optimierung
 ├── export_watchlist.py    ← Obsidian-Export (≥76% Conviction)
 └── export_companies_yaml.py ← YAML-Export für git
+
+backtesting/              ← Backtesting-Engine (aus ai-hedge-fund v2, adaptiert)
+├── __init__.py           ← Exports: BacktestEngine, PerformanceMetrics, Trade
+├── engine.py             ← BacktestEngine: Trade-Simulation, Equity-Kurve, Metriken
+├── models.py             ← Signal, Trade, PerformanceMetrics, BacktestResult (Pydantic)
+├── alpha_model.py        ← AlphaModel/QuantModel/DataClient Interfaces
+├── data_client.py        ← YFinanceDataClient (yfinance-Adapter für den Backtester)
+└── signals/
+    ├── __init__.py
+    └── pead.py           ← PEADModel: Post-Earnings-Announcement-Drift (Quant-Signal)
 
 thematic/
 ├── thesis_monitor.py      ← Thesis-Status-Prüfung (täglich 15:30)
@@ -576,3 +587,176 @@ mit `<`/`&` brachen `parse_mode=HTML` (Nachricht ging still verloren) →
 - `DASHBOARD_BIND` (Std. `127.0.0.1`), `DASHBOARD_TOKEN` (Pflicht bei LAN-Bind)
 - `min_confidence_floor` in `strategy_config.json` (Std. 0.60, für #13)
 - Neues Lock-File: `data/portfolio.lock` (ersetzt `signal_manager.lock`)
+
+---
+
+## 16. Backtesting & Signal-Erweiterungen (aus ai-hedge-fund)
+
+Am 11.07.2026 wurde die Open-Source-Repo [virattt/ai-hedge-fund](https://github.com/virattt/ai-hedge-fund)
+(61k Stars, MIT License) analysiert und drei Erkenntnisse in die Pipeline
+eingebaut: **Backtesting-Engine**, **PEAD-Signal**, **Multi-Agent-Voting-Konzept**.
+
+### 16.1 Analyse: Was die Repo anders macht
+
+| Aspekt | ai-hedge-fund | Hermes Trading |
+|--------|---------------|----------------|
+| **Takt** | One-Shot / Backtest | Persistent, 24/7 Cron |
+| **Daten** | Financial Datasets API (paid) | yfinance (free) + YouTube/RSS/Twitter |
+| **Agenten** | 19 LLM-Personas + 4 analytische | 1 Signal-Extraktion + Technical Validator |
+| **LLM-Kosten** | Sehr hoch (19 Calls pro Ticker) | Niedrig (1-2 Calls pro Video) |
+| **Backtesting** | ✅ Dedizierte Engine | ❌ Nur eval_metrics + Paper Trading |
+| **Risiko** | Volatility-adjusted Sizing | ATR-basiert, Drawdown-Stufen, Sector Blacklist |
+| **Portfolio** | LLM Portfolio Manager | Deterministische Signal Manager Logik |
+| **State** | Cache-Dateien | SQLite DB |
+
+**Nicht übernommen:** 19 LLM-Persona-Agents (zu teuer, zu langsam), Financial
+Datasets API (zusätzliche Paid-API), LangGraph (unnötige Komplexität für
+Cron-basierten Ansatz), One-Shot-Design (wir brauchen persistentes Monitoring).
+
+### 16.2 Backtesting Engine (`backtesting/`)
+
+Die v2-Backtesting-Engine aus der Repo wurde als `backtesting/`-Paket ins
+Trading-Skill-Verzeichnis extrahiert und für yfinance adaptiert.
+
+**Architektur:**
+
+```
+AlphaModel (Interface)          DataClient (Interface)
+  ├─ QuantModel (Math)             └─ YFinanceDataClient (yfinance)
+  └─ LLMAgent (zukünftig)
+          │
+          ▼
+    BacktestEngine
+      ├─ run_alpha(model, tickers, client, start, end, holding_days)
+      ├─ _trade_ticker()       — Walkt Ticker durch Datumsraster
+      ├─ _build_trade()        — Signal → Trade (Equal-Dollar-Sizing)
+      ├─ _build_equity_curve() — Portfolio-Wert über Zeit
+      └─ _compute_metrics()    — Sharpe, MaxDD, Win Rate, Return
+```
+
+**Kern-Komponenten:**
+
+| Datei | Zweck |
+|-------|-------|
+| `backtesting/__init__.py` | Public API: `BacktestEngine`, `BacktestResult`, `PerformanceMetrics`, `Trade` |
+| `backtesting/engine.py` | `BacktestEngine`-Klasse: Trade-Simulation, Equity-Kurve, Metriken |
+| `backtesting/models.py` | Pydantic-Modelle: `Signal`, `Trade`, `PerformanceMetrics`, `BacktestResult` |
+| `backtesting/alpha_model.py` | `AlphaModel` (ABC), `QuantModel` (Base), `DataClient` (Protocol) |
+| `backtesting/data_client.py` | `YFinanceDataClient` (yfinance-Adapter mit Monkey-Patch) |
+| `backtesting/signals/pead.py` | `PEADModel` — Post-Earnings-Announcement Drift |
+
+**Usage:**
+
+```python
+from backtesting import BacktestEngine
+from backtesting.alpha_model import AlphaModel, DataClient
+from backtesting.models import Signal
+from backtesting.data_client import YFinanceDataClient
+
+class MySignal(AlphaModel):
+    @property
+    def name(self): return "my_signal"
+    def predict(self, ticker, date, client):
+        return Signal(model_name=self.name, ticker=ticker, date=date, value=0.5)
+
+client = YFinanceDataClient()
+engine = BacktestEngine(capital=100_000, per_trade=10_000)
+result = engine.run_alpha(MySignal(), ["AAPL"], client,
+                          "2025-01-01", "2025-06-01", holding_days=5)
+
+if result.metrics:
+    print(f"Sharpe: {result.metrics.sharpe_ratio:.2f}")
+    print(f"Win Rate: {result.metrics.win_rate:.0%}")
+```
+
+**Performance-Metriken:**
+
+| Metrik | Beschreibung |
+|--------|-------------|
+| `total_return_pct` | Gesamtrendite über den Backtest-Zeitraum |
+| `annualized_return_pct` | Annualisierte Rendite |
+| `sharpe_ratio` | Risikoadjustierte Rendite (>1.0 = solide) |
+| `max_drawdown_pct` | Maximaler Verlust vom Peak |
+| `win_rate` | Anteil profitabler Trades |
+| `n_trades` / `n_long` / `n_short` | Handelsanzahl |
+| `avg_return_pct` | Durchschnittliche Rendite pro Trade |
+
+**Wichtige Einschränkung:** Der Backtester verwendet Equal-Dollar-Sizing
+(10.000€ pro Trade). Das ist bewusst einfach — es testet das Signal, nicht
+die Portfolio-Konstruktion.
+
+### 16.3 PEAD-Signal (Post-Earnings-Announcement Drift)
+
+Das PEAD-Signal wurde aus der v2 als `backtesting/signals/pead.py` extrahiert.
+
+**Funktionsweise:**
+- Holt Earnings-Historie (EPS-Schätzungen vs. tatsächliche Werte)
+- Bei BEAT: bullish (Signal +1.0), bei MISS: bearish (Signal -1.0)
+- Nur innerhalb von `signal_window_days` (Default 4) nach Filing
+- 45-Day-Retrospective-Filter: alte Daten werden verworfen
+- 8-K bevorzugt vor 10-Q/K (weil 8-K die eigentliche Ankündigung ist)
+
+**Datenabhängigkeit:** yfinance earnings_dates liefert EPS Estimate + Reported
+EPS. BEAT/MISS wird selbst berechnet (`diff = actual - estimate`). **KEINE
+Paid-API nötig.** Der `YFinanceDataClient.get_earnings_history()` berechnet
+die Klassifikation automatisch.
+
+**Integration in die Pipeline (seit 11.07.2026):** PEAD ist im Watchlist
+Manager aktiv. `scripts/pead_signal.py` wird nach dem Thesis-Boost und
+vor dem Grok-Boost aufgerufen. Bei BEAT: +0.05 auf conviction_score (Long).
+Bei MISS: +0.05 auf conviction_score_bear (Short). Gecached in `pead_cache`-
+Tabelle (6h TTL). Funktioniert vollständig über yfinance, keine Paid-API.
+
+### 16.4 Multi-Agent-Voting (Konzept)
+
+Das Voting-Konzept aus ai-hedge-fund (19 Agenten stimmen ab) ist für unsere
+Pipeline zu teuer. Aber das **Prinzip der multiplen Perspektiven** ist
+bereits in unserem Conviction-Score umgesetzt:
+
+- **Technical-Lens** → `technical_validator.py` (EMA, RSI, MACD, ADX)
+- **Bullish/Bearish-Lens** → aus dem Signal-Extraktor: `sentiment` +
+  `strength` + `action_hint` liefern beide Perspektiven
+- **Weighted Voting** → Der Watchlist Manager aggregiert Mentions über
+  Kanäle: YouTube-Kanal A bullish, Kanal B bullish, Twitter bearish →
+  gemittelt
+
+**Fazit:** Unser existierender Conviction-Score ist bereits ein Multi-Agent-
+Voting über die Quellen. Der ai-hedge-fund-Ansatz (19 LLM-Agenten) wäre
+eine Verschlechterung: mehr Kosten, mehr Latenz, kein nachweislich besseres
+Signal.
+
+### 16.5 Zukünftige Optionen
+
+| Feature | Status | Voraussetzung |
+|---------|--------|---------------|
+| **Backtesting für existierende Signale** | ✅ Jetzt möglich | AlphaModel-Wrapper um signal_extractor |
+| **PEAD-Signal** | ✅ Live seit 11.07. | Im Watchlist Manager integriert (yfinance) |
+| **AlphaModel-Interface für Pipeline-Refactor** | 🗺 Vorgemerkt | Nächster Pipeline-Refactor |
+| **Point-in-Time Data Layer** | 🗺 Vorgemerkt | Verhindert Lookahead-Bias im Backtest |
+| **LLM-Persona-Agents** | ❌ Abgelehnt | Zu teuer, zu langsam, kein Mehrwert |
+
+### 16.6 Quickstart
+
+```bash
+cd /root/.hermes/profiles/hermes_trading/skills/trading
+python3 -c "
+from backtesting import BacktestEngine
+from backtesting.alpha_model import AlphaModel
+from backtesting.models import Signal
+from backtesting.data_client import YFinanceDataClient
+
+class AlwaysBullish(AlphaModel):
+    @property
+    def name(self): return 'bullish'
+    def predict(self, ticker, date, client):
+        return Signal(model_name=self.name, ticker=ticker, date=date, value=0.5)
+
+client = YFinanceDataClient()
+engine = BacktestEngine(capital=100_000, per_trade=10_000)
+result = engine.run_alpha(AlwaysBullish(), ['AAPL'], client,
+                          '2025-06-01', '2025-07-01', holding_days=5)
+if result.metrics:
+    m = result.metrics
+    print(f'Trades: {m.n_trades}, Sharpe: {m.sharpe_ratio:.2f}, WR: {m.win_rate:.0%}')
+"
+```

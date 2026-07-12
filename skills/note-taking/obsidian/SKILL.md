@@ -190,11 +190,13 @@ Nicht jeder `[[Wikilink]]` der auf keine Seite zeigt ist ein Broken Link. MOC-Pa
 3. **Noise-Prefixe rausfiltern:** `wiki`, `wiki/`, `wiki/concepts`, `wiki/entities`, `wiki/sources`, `wiki/index`
 4. Übrige Links prüfen: existiert ein Wiki-Page mit dem Namen (exakt oder als Dateiname ohne Pfad)?
 5. Bei `../../`-Links: vom Datei-Pfad aus auflösen — `os.path.normpath(os.path.join(os.path.dirname(fpath), target))` — und prüfen ob die Datei existiert
+6. **Vault-root-relative Links prüfen:** Links die weder `../../` noch `../` noch ein bekanntes Noise-Prefix haben, können vault-root-relative sein (z.B. `[[Projekte/MarineIT/Zeeslogger – Bauanleitung.md]]`). Obsidian lost diese vom Vault-Root aus auf, nicht vom Datei-Pfad. Prüfe ob die Datei als `{vault_root}/{target}` existiert. Nutze eine Prefix-Liste aller Vault-Ordner (`Trading/`, `hermes/`, `Projekte/`, `Clippings/`, etc.) als Lookup gegen `all_files` (alle `.md`-Dateien im Vault).
 
 **Häufige False Positives:**
 - `[[../../Trading/Watchlist]]` → Datei existiert, nur relativer Pfad — kein Broken Link
 - `[[../../hermes/dateiname]]` → Datei existiert im hermes/ Ordner — prüfen vor Meldung
 - `[[../Trading/Erklaerung]]` → Auflösung von wiki/ aus funktioniert (wiki/../Trading/ = Trading/)
+- `[[Projekte/MarineIT/Datei.md]]` → Vault-root-relative Link — Datei existiert unter `Projekte/MarineIT/`, kein Broken Link
 
 **Kritische Pitfall — `../../` Auflösung aus `wiki/`:**
 Aus `wiki/trading-index.md`: `[[../../Trading/Erklaerung]]` → `/root/Trading/Erklaerung` (geht 2 Ebenen hoch: wiki→vault-root→vault-parent).

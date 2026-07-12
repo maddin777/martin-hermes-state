@@ -6,9 +6,10 @@ yfinance `ValueError: unconverted data remains` beim Download von Kursdaten.
 Tritt auf, wenn Yahoo-Datumsstrings einen Zeitzonen-Suffix enthalten (z.B.
 `2026-06-28 00:00:00+00:00`), der nicht zum erwarteten Format `%Y-%m-%d` passt.
 
-Betrifft **alle** `yf.download()`-Calls in fundamental_data.py (Makrodaten,
-Regime-Detection, Benchmark-Tracking). Pro Nacht ~15+ Ticker-Downloads
-betroffen.
+Betrifft **alle** `yf.download()`-Calls. Pro Nacht ~15+ Ticker-Downloads
+betroffen. **Zweite Fundstelle (11.07.2026):** `backtesting/data_client.py`
+(YFinanceDataClient) — der gleiche Fix wurde dort ebenfalls eingebaut, damit
+der Backtester mit yfinance funktioniert.
 
 ## Root Cause
 

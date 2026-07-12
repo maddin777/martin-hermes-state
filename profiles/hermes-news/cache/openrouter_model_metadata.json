@@ -841,42 +841,42 @@
 },
 "z-ai/glm-5.2":{
 "context_length":1048576,
-"max_completion_tokens":101376,
+"max_completion_tokens":131072,
 "name":"Z.ai: GLM 5.2",
 "pricing":{
-"prompt":"0.00000054",
-"completion":"0.00000176",
-"input_cache_read":"0.0000001"
+"prompt":"0.00000042",
+"completion":"0.00000132",
+"input_cache_read":"0.000000078"
 }
 },
 "glm-5.2":{
 "context_length":1048576,
-"max_completion_tokens":101376,
+"max_completion_tokens":131072,
 "name":"Z.ai: GLM 5.2",
 "pricing":{
-"prompt":"0.00000054",
-"completion":"0.00000176",
-"input_cache_read":"0.0000001"
+"prompt":"0.00000042",
+"completion":"0.00000132",
+"input_cache_read":"0.000000078"
 }
 },
 "z-ai/glm-5.2-20260616":{
 "context_length":1048576,
-"max_completion_tokens":101376,
+"max_completion_tokens":131072,
 "name":"Z.ai: GLM 5.2",
 "pricing":{
-"prompt":"0.00000054",
-"completion":"0.00000176",
-"input_cache_read":"0.0000001"
+"prompt":"0.00000042",
+"completion":"0.00000132",
+"input_cache_read":"0.000000078"
 }
 },
 "glm-5.2-20260616":{
 "context_length":1048576,
-"max_completion_tokens":101376,
+"max_completion_tokens":131072,
 "name":"Z.ai: GLM 5.2",
 "pricing":{
-"prompt":"0.00000054",
-"completion":"0.00000176",
-"input_cache_read":"0.0000001"
+"prompt":"0.00000042",
+"completion":"0.00000132",
+"input_cache_read":"0.000000078"
 }
 },
 "openrouter/fusion":{
@@ -2403,42 +2403,42 @@
 },
 "deepseek/deepseek-v4-flash":{
 "context_length":1048576,
-"max_completion_tokens":65536,
+"max_completion_tokens":384000,
 "name":"DeepSeek: DeepSeek V4 Flash",
 "pricing":{
-"prompt":"0.00000009",
-"completion":"0.00000018",
-"input_cache_read":"0.000000018"
+"prompt":"0.000000084",
+"completion":"0.000000168",
+"input_cache_read":"0.0000000168"
 }
 },
 "deepseek-v4-flash":{
 "context_length":1048576,
-"max_completion_tokens":65536,
+"max_completion_tokens":384000,
 "name":"DeepSeek: DeepSeek V4 Flash",
 "pricing":{
-"prompt":"0.00000009",
-"completion":"0.00000018",
-"input_cache_read":"0.000000018"
+"prompt":"0.000000084",
+"completion":"0.000000168",
+"input_cache_read":"0.0000000168"
 }
 },
 "deepseek/deepseek-v4-flash-20260423":{
 "context_length":1048576,
-"max_completion_tokens":65536,
+"max_completion_tokens":384000,
 "name":"DeepSeek: DeepSeek V4 Flash",
 "pricing":{
-"prompt":"0.00000009",
-"completion":"0.00000018",
-"input_cache_read":"0.000000018"
+"prompt":"0.000000084",
+"completion":"0.000000168",
+"input_cache_read":"0.0000000168"
 }
 },
 "deepseek-v4-flash-20260423":{
 "context_length":1048576,
-"max_completion_tokens":65536,
+"max_completion_tokens":384000,
 "name":"DeepSeek: DeepSeek V4 Flash",
 "pricing":{
-"prompt":"0.00000009",
-"completion":"0.00000018",
-"input_cache_read":"0.000000018"
+"prompt":"0.000000084",
+"completion":"0.000000168",
+"input_cache_read":"0.0000000168"
 }
 },
 "inclusionai/ling-2.6-1t":{
@@ -5588,42 +5588,6 @@
 "prompt":"0.0000005",
 "completion":"0.0000015",
 "input_cache_read":"0.00000005"
-}
-},
-"arcee-ai/trinity-mini":{
-"context_length":131072,
-"max_completion_tokens":131072,
-"name":"Arcee AI: Trinity Mini",
-"pricing":{
-"prompt":"0.000000045",
-"completion":"0.00000015"
-}
-},
-"trinity-mini":{
-"context_length":131072,
-"max_completion_tokens":131072,
-"name":"Arcee AI: Trinity Mini",
-"pricing":{
-"prompt":"0.000000045",
-"completion":"0.00000015"
-}
-},
-"arcee-ai/trinity-mini-20251201":{
-"context_length":131072,
-"max_completion_tokens":131072,
-"name":"Arcee AI: Trinity Mini",
-"pricing":{
-"prompt":"0.000000045",
-"completion":"0.00000015"
-}
-},
-"trinity-mini-20251201":{
-"context_length":131072,
-"max_completion_tokens":131072,
-"name":"Arcee AI: Trinity Mini",
-"pricing":{
-"prompt":"0.000000045",
-"completion":"0.00000015"
 }
 },
 "deepseek/deepseek-v3.2":{
@@ -10331,24 +10295,6 @@
 "pricing":{
 "prompt":"0.0000025",
 "completion":"0.00001"
-}
-},
-"meta-llama/llama-3-8b-instruct":{
-"context_length":8192,
-"max_completion_tokens":null,
-"name":"Meta: Llama 3 8B Instruct",
-"pricing":{
-"prompt":"0.00000014",
-"completion":"0.00000014"
-}
-},
-"llama-3-8b-instruct":{
-"context_length":8192,
-"max_completion_tokens":null,
-"name":"Meta: Llama 3 8B Instruct",
-"pricing":{
-"prompt":"0.00000014",
-"completion":"0.00000014"
 }
 },
 "mistralai/mixtral-8x22b-instruct":{

@@ -30,6 +30,7 @@ from utils import get_logger
 log = get_logger("watchlist_manager")
 from config import (DB_PATH, SIGNALS_PATH, WATCHLIST_DAYS, MIN_MENTIONS, MIN_CONVICTION,
                     CONVICTION_HALF_LIFE_DAYS, CONVICTION_PRIOR_NEUTRAL, db_connect)
+from pead_signal import get_pead_boost_cached, ensure_pead_cache_table
 
 def get_channel_weights(con):
     """
@@ -381,6 +382,10 @@ def main():
             con.commit()
             print(f"  🔧 {_dirty_channels} watchlist.channels-JSONs normalisiert", flush=True)
     
+        # PEAD-Cache-Tabelle anlegen (idempotent)
+        ensure_pead_cache_table(con)
+        print("  📊 PEAD-Cache-Tabelle bereit", flush=True)
+    
         # Quellen-Gewichte aus source_registry laden (Lifecycle-Integration)
         channel_weights = get_channel_weights(con)
         if channel_weights:
@@ -551,6 +556,16 @@ def main():
             if thesis_boost > 0:
                 conviction = min(1.0, conviction + thesis_boost)
                 print(f"    📋 Thesis-Boost +{thesis_boost:.0%} → conviction={conviction:.2f}", flush=True)
+
+            # PEAD-Boost: Earnings-Surprise (BEAT → +Long, MISS → +Short)
+            if ticker:
+                pead_long, pead_short, pead_info = get_pead_boost_cached(ticker, con)
+                if pead_long > 0:
+                    conviction = min(1.0, conviction + pead_long)
+                    print(f"    📊 PEAD-Boost (BEAT) +{pead_long:.0%} → conviction={conviction:.2f}", flush=True)
+                if pead_short > 0:
+                    conviction_bear = min(1.0, conviction_bear + pead_short)
+                    print(f"    📊 PEAD-Boost (MISS) +{pead_short:.0%} → conviction_bear={conviction_bear:.2f}", flush=True)
     
             # Grok X-Boost: Nur Top 20 mit conviction ≥ 0.80 (reduziert API-Calls um ~75%)
             if conviction >= 0.80 and ticker and _grok_counter < 20:

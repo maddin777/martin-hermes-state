@@ -119,3 +119,37 @@ Alle Pipeline-Jobs laufen über die System-Crontab des Profils. Anzeigen mit:
 ```bash
 crontab -l | grep trading
 ```
+
+## Backtesting
+
+Seit 11.07.2026 gibt es eine Backtesting-Engine im Trading-Skill-Verzeichnis.
+Ermöglicht historische Validierung von Signalen bevor sie im Paper-Trading laufen.
+
+**Pfad:** `/root/.hermes/profiles/hermes_trading/skills/trading/backtesting/`
+
+**Quickstart:**
+```bash
+cd /root/.hermes/profiles/hermes_trading/skills/trading
+python3 -c "
+from backtesting import BacktestEngine
+from backtesting.alpha_model import AlphaModel
+from backtesting.models import Signal
+from backtesting.data_client import YFinanceDataClient
+
+class AlwaysBullish(AlphaModel):
+    @property
+    def name(self): return 'bullish'
+    def predict(self, ticker, date, client):
+        return Signal(model_name=self.name, ticker=ticker, date=date, value=0.5)
+
+client = YFinanceDataClient()
+engine = BacktestEngine(capital=100_000, per_trade=10_000)
+result = engine.run_alpha(AlwaysBullish(), ['AAPL'], client,
+                          '2025-06-01', '2025-07-01', holding_days=5)
+if result.metrics:
+    m = result.metrics
+    print(f'Trades: {m.n_trades}, Sharpe: {m.sharpe_ratio:.2f}, WR: {m.win_rate:.0%}')
+"
+```
+
+**Detaillierte Doku:** `Erklaerung.md` Section 16 (im Skill-Verzeichnis und Obsidian).

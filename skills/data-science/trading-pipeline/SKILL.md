@@ -37,6 +37,8 @@ Martin lehnt hardgecodete Mappings in Python-Code ab. ALLE Konfigurationen, Mapp
 
 **Migration-Pattern:** Neue Tabellen in `watchlist_manager.py` oder `signal_manager.py` anlegen (beide haben Migration-Blöcke mit `PRAGMA table_info` + `CREATE TABLE IF NOT EXISTS`). Seed-Daten im selben Block per `COUNT(*) = 0`-Check, nur bei leerer Tabelle.
 
+**Bekannte Tabellen:** `companies`, `company_aliases`, `source_registry`, `watchlist_mentions`, `watchlist`, `positions`, `portfolio`, `macro_data`, `regime_history`, `thesis_status_log`, `theme_definitions`, `theme_beneficiaries`, `canonical_tickers`, `validation_rejects`, `pead_cache` (6h TTL).
+
 **Nicht vergessen:** n8n läuft auf dem Server (Python-Prozesse + n8n-Workflows parallel möglich). YouTube-Faceless-Pipelines etc. sind infra-seitig möglich.
 
 **Faustregel:** Wenn der Vorschlag klingt wie ein HFT- Intraday- oder Hebel-Strategie → nein. Wenn er den daily/weekly Trendfilter verbessert oder bessere Entry-Qualität bei gleicher Haltedauer bringt → ja.
@@ -220,8 +222,9 @@ Details siehe `references/` im Skill-Verzeichnis sowie die Erläuterung.md im Ob
 | Sektor-Exposure-Cap (70%) | `references/sector-exposure-cap.md` |
 | **LLM API `content: null` — NoneType Crash** | `references/llm-api-content-none-pattern.md` |
 | **DB Lock: Transaction-in-Loop mit API-Calls** | `references/db-lock-short-transactions.md` |
-| **YouTube Scan Cleanup DB Lock (Inter-Cron-Job Kaskade)** | `references/yt-cleanup-db-lock.md` |
+| **YouTube Scan DB Lock: Inter-Cron-Job Kaskade** | `references/yt-cleanup-db-lock.md` |
 | **Cron Health: Pipeline-Block-Slicing** | `references/cron-health-slicing-bug.md` |
+| **PEAD Signal (Post-Earnings Drift)** | `references/pead-signal.md` |
 
 ### Session-Start-Protokoll: Proaktiver Pipeline-Check
 
@@ -511,6 +514,50 @@ Siehe `references/graduated-drawdown-reduction.md`.
 - Prüft ob S&P 500 (Proxy MSCI USA) über/unter SMA200 → Entscheidung für Amumbo (A0X8ZS)
 - Output: `🟢 AMUMBO HALTEN` / `🔴 AMUMBO RAUS`
 - Doku: `wiki/concepts/Leveraged ETFs.md` (LETF-Exit-Modus)
+
+## Backtesting Engine (`backtesting/`)
+
+Seit 11.07.2026 gibt es eine Backtesting-Engine im Trading-Skill-Verzeichnis.
+Extrahiert und adaptiert aus virattt/ai-hedge-fund v2 (MIT License). Ermöglicht
+historische Validierung von Signalen bevor sie im Paper-Trading laufen.
+
+**Pfad:** `/root/.hermes/profiles/hermes_trading/skills/trading/backtesting/`
+
+**Komponenten:**
+
+| Modul | Zweck |
+|-------|-------|
+| `backtesting/__init__.py` | Public API: `BacktestEngine`, `BacktestResult`, `PerformanceMetrics`, `Trade` |
+| `backtesting/engine.py` | `BacktestEngine` — Trade-Simulation, Equity-Kurve, Sharpe/MaxDD/WinRate |
+| `backtesting/models.py` | Pydantic: `Signal`, `Trade`, `PerformanceMetrics`, `BacktestResult` |
+| `backtesting/alpha_model.py` | `AlphaModel` (ABC), `QuantModel` (Base), `DataClient` (Protocol) |
+| `backtesting/data_client.py` | `YFinanceDataClient` (yfinance-Adapter) — inkl. Monkey-Patch |
+| `backtesting/signals/pead.py` | `PEADModel` — Post-Earnings-Announcement Drift |
+
+**Usage:**
+
+```python
+from backtesting import BacktestEngine
+from backtesting.alpha_model import AlphaModel
+from backtesting.models import Signal
+from backtesting.data_client import YFinanceDataClient
+
+class MySignal(AlphaModel):
+    @property
+    def name(self): return "my_signal"
+    def predict(self, ticker, date, client):
+        return Signal(model_name=self.name, ticker=ticker, date=date, value=0.5)
+
+client = YFinanceDataClient()
+engine = BacktestEngine(capital=100_000, per_trade=10_000)
+result = engine.run_alpha(MySignal(), ["AAPL"], client,
+                          "2025-01-01", "2025-06-01", holding_days=5)
+print(f"Sharpe: {result.metrics.sharpe_ratio:.2f}")
+```
+
+**Hinweis:** Equal-Dollar-Sizing (10.000€/Trade) — bewusst einfach. Testet das
+Signal, nicht die Portfolio-Konstruktion. Detaillierte Doku in der `Erklaerung.md`
+unter Section 16.
 
 ## Quick Debug
 
