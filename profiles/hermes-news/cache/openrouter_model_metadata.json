@@ -841,7 +841,7 @@
 },
 "z-ai/glm-5.2":{
 "context_length":1048576,
-"max_completion_tokens":131072,
+"max_completion_tokens":128000,
 "name":"Z.ai: GLM 5.2",
 "pricing":{
 "prompt":"0.00000042",
@@ -851,7 +851,7 @@
 },
 "glm-5.2":{
 "context_length":1048576,
-"max_completion_tokens":131072,
+"max_completion_tokens":128000,
 "name":"Z.ai: GLM 5.2",
 "pricing":{
 "prompt":"0.00000042",
@@ -861,7 +861,7 @@
 },
 "z-ai/glm-5.2-20260616":{
 "context_length":1048576,
-"max_completion_tokens":131072,
+"max_completion_tokens":128000,
 "name":"Z.ai: GLM 5.2",
 "pricing":{
 "prompt":"0.00000042",
@@ -871,7 +871,7 @@
 },
 "glm-5.2-20260616":{
 "context_length":1048576,
-"max_completion_tokens":131072,
+"max_completion_tokens":128000,
 "name":"Z.ai: GLM 5.2",
 "pricing":{
 "prompt":"0.00000042",
@@ -903,8 +903,8 @@
 "name":"MoonshotAI: Kimi K2.7 Code",
 "pricing":{
 "prompt":"0.00000072",
-"completion":"0.00000349",
-"input_cache_read":"0.000000159"
+"completion":"0.0000035",
+"input_cache_read":"0.00000015"
 }
 },
 "kimi-k2.7-code":{
@@ -913,8 +913,8 @@
 "name":"MoonshotAI: Kimi K2.7 Code",
 "pricing":{
 "prompt":"0.00000072",
-"completion":"0.00000349",
-"input_cache_read":"0.000000159"
+"completion":"0.0000035",
+"input_cache_read":"0.00000015"
 }
 },
 "moonshotai/kimi-k2.7-code-20260612":{
@@ -923,8 +923,8 @@
 "name":"MoonshotAI: Kimi K2.7 Code",
 "pricing":{
 "prompt":"0.00000072",
-"completion":"0.00000349",
-"input_cache_read":"0.000000159"
+"completion":"0.0000035",
+"input_cache_read":"0.00000015"
 }
 },
 "kimi-k2.7-code-20260612":{
@@ -933,8 +933,8 @@
 "name":"MoonshotAI: Kimi K2.7 Code",
 "pricing":{
 "prompt":"0.00000072",
-"completion":"0.00000349",
-"input_cache_read":"0.000000159"
+"completion":"0.0000035",
+"input_cache_read":"0.00000015"
 }
 },
 "~anthropic/claude-fable-latest":{
@@ -2406,9 +2406,9 @@
 "max_completion_tokens":384000,
 "name":"DeepSeek: DeepSeek V4 Flash",
 "pricing":{
-"prompt":"0.000000084",
-"completion":"0.000000168",
-"input_cache_read":"0.0000000168"
+"prompt":"0.000000077",
+"completion":"0.000000154",
+"input_cache_read":"0.0000000154"
 }
 },
 "deepseek-v4-flash":{
@@ -2416,9 +2416,9 @@
 "max_completion_tokens":384000,
 "name":"DeepSeek: DeepSeek V4 Flash",
 "pricing":{
-"prompt":"0.000000084",
-"completion":"0.000000168",
-"input_cache_read":"0.0000000168"
+"prompt":"0.000000077",
+"completion":"0.000000154",
+"input_cache_read":"0.0000000154"
 }
 },
 "deepseek/deepseek-v4-flash-20260423":{
@@ -2426,9 +2426,9 @@
 "max_completion_tokens":384000,
 "name":"DeepSeek: DeepSeek V4 Flash",
 "pricing":{
-"prompt":"0.000000084",
-"completion":"0.000000168",
-"input_cache_read":"0.0000000168"
+"prompt":"0.000000077",
+"completion":"0.000000154",
+"input_cache_read":"0.0000000154"
 }
 },
 "deepseek-v4-flash-20260423":{
@@ -2436,9 +2436,9 @@
 "max_completion_tokens":384000,
 "name":"DeepSeek: DeepSeek V4 Flash",
 "pricing":{
-"prompt":"0.000000084",
-"completion":"0.000000168",
-"input_cache_read":"0.0000000168"
+"prompt":"0.000000077",
+"completion":"0.000000154",
+"input_cache_read":"0.0000000154"
 }
 },
 "inclusionai/ling-2.6-1t":{
@@ -9289,22 +9289,20 @@
 },
 "qwen/qwen2.5-vl-72b-instruct":{
 "context_length":131072,
-"max_completion_tokens":128000,
+"max_completion_tokens":null,
 "name":"Qwen: Qwen2.5 VL 72B Instruct",
 "pricing":{
-"prompt":"0.0000008",
-"completion":"0.000001",
-"input_cache_read":"0.0000004"
+"prompt":"0.00000025",
+"completion":"0.00000075"
 }
 },
 "qwen2.5-vl-72b-instruct":{
 "context_length":131072,
-"max_completion_tokens":128000,
+"max_completion_tokens":null,
 "name":"Qwen: Qwen2.5 VL 72B Instruct",
 "pricing":{
-"prompt":"0.0000008",
-"completion":"0.000001",
-"input_cache_read":"0.0000004"
+"prompt":"0.00000025",
+"completion":"0.00000075"
 }
 },
 "qwen/qwen-plus":{
