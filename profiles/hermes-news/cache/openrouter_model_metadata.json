@@ -841,42 +841,42 @@
 },
 "z-ai/glm-5.2":{
 "context_length":1048576,
-"max_completion_tokens":128000,
+"max_completion_tokens":1048576,
 "name":"Z.ai: GLM 5.2",
 "pricing":{
-"prompt":"0.00000042",
-"completion":"0.00000132",
-"input_cache_read":"0.000000078"
+"prompt":"0.00000085",
+"completion":"0.0000025",
+"input_cache_read":"0.0000001"
 }
 },
 "glm-5.2":{
 "context_length":1048576,
-"max_completion_tokens":128000,
+"max_completion_tokens":1048576,
 "name":"Z.ai: GLM 5.2",
 "pricing":{
-"prompt":"0.00000042",
-"completion":"0.00000132",
-"input_cache_read":"0.000000078"
+"prompt":"0.00000085",
+"completion":"0.0000025",
+"input_cache_read":"0.0000001"
 }
 },
 "z-ai/glm-5.2-20260616":{
 "context_length":1048576,
-"max_completion_tokens":128000,
+"max_completion_tokens":1048576,
 "name":"Z.ai: GLM 5.2",
 "pricing":{
-"prompt":"0.00000042",
-"completion":"0.00000132",
-"input_cache_read":"0.000000078"
+"prompt":"0.00000085",
+"completion":"0.0000025",
+"input_cache_read":"0.0000001"
 }
 },
 "glm-5.2-20260616":{
 "context_length":1048576,
-"max_completion_tokens":128000,
+"max_completion_tokens":1048576,
 "name":"Z.ai: GLM 5.2",
 "pricing":{
-"prompt":"0.00000042",
-"completion":"0.00000132",
-"input_cache_read":"0.000000078"
+"prompt":"0.00000085",
+"completion":"0.0000025",
+"input_cache_read":"0.0000001"
 }
 },
 "openrouter/fusion":{
@@ -6547,22 +6547,22 @@
 }
 },
 "z-ai/glm-4.6":{
-"context_length":202752,
-"max_completion_tokens":131072,
+"context_length":200000,
+"max_completion_tokens":16384,
 "name":"Z.ai: GLM 4.6",
 "pricing":{
 "prompt":"0.00000043",
-"completion":"0.00000174",
+"completion":"0.00000175",
 "input_cache_read":"0.00000008"
 }
 },
 "glm-4.6":{
-"context_length":202752,
-"max_completion_tokens":131072,
+"context_length":200000,
+"max_completion_tokens":16384,
 "name":"Z.ai: GLM 4.6",
 "pricing":{
 "prompt":"0.00000043",
-"completion":"0.00000174",
+"completion":"0.00000175",
 "input_cache_read":"0.00000008"
 }
 },
@@ -7659,7 +7659,7 @@
 "name":"Qwen: Qwen3 235B A22B Instruct 2507",
 "pricing":{
 "prompt":"0.00000009",
-"completion":"0.0000001"
+"completion":"0.00000055"
 }
 },
 "qwen3-235b-a22b-2507":{
@@ -7668,7 +7668,7 @@
 "name":"Qwen: Qwen3 235B A22B Instruct 2507",
 "pricing":{
 "prompt":"0.00000009",
-"completion":"0.0000001"
+"completion":"0.00000055"
 }
 },
 "qwen/qwen3-235b-a22b-07-25":{
@@ -7677,7 +7677,7 @@
 "name":"Qwen: Qwen3 235B A22B Instruct 2507",
 "pricing":{
 "prompt":"0.00000009",
-"completion":"0.0000001"
+"completion":"0.00000055"
 }
 },
 "qwen3-235b-a22b-07-25":{
@@ -7686,7 +7686,7 @@
 "name":"Qwen: Qwen3 235B A22B Instruct 2507",
 "pricing":{
 "prompt":"0.00000009",
-"completion":"0.0000001"
+"completion":"0.00000055"
 }
 },
 "moonshotai/kimi-k2":{
@@ -8772,8 +8772,8 @@
 "max_completion_tokens":16384,
 "name":"Meta: Llama 4 Maverick",
 "pricing":{
-"prompt":"0.00000015",
-"completion":"0.0000006"
+"prompt":"0.0000002",
+"completion":"0.0000008"
 }
 },
 "llama-4-maverick":{
@@ -8781,8 +8781,8 @@
 "max_completion_tokens":16384,
 "name":"Meta: Llama 4 Maverick",
 "pricing":{
-"prompt":"0.00000015",
-"completion":"0.0000006"
+"prompt":"0.0000002",
+"completion":"0.0000008"
 }
 },
 "meta-llama/llama-4-maverick-17b-128e-instruct":{
@@ -8790,8 +8790,8 @@
 "max_completion_tokens":16384,
 "name":"Meta: Llama 4 Maverick",
 "pricing":{
-"prompt":"0.00000015",
-"completion":"0.0000006"
+"prompt":"0.0000002",
+"completion":"0.0000008"
 }
 },
 "llama-4-maverick-17b-128e-instruct":{
@@ -8799,8 +8799,8 @@
 "max_completion_tokens":16384,
 "name":"Meta: Llama 4 Maverick",
 "pricing":{
-"prompt":"0.00000015",
-"completion":"0.0000006"
+"prompt":"0.0000002",
+"completion":"0.0000008"
 }
 },
 "meta-llama/llama-4-scout":{

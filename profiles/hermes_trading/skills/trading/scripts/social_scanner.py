@@ -247,6 +247,7 @@ def main():
 
         print("\n✅ Social Scanner abgeschlossen", flush=True)
     finally:
+        con.rollback()  # Offene Transaktion schließen — verhindert DB-Lock für nachfolgende Prozesse
         con.close()
 
 if __name__ == "__main__":

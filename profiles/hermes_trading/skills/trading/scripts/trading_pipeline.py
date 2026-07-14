@@ -54,6 +54,19 @@ def main():
     _print(f"TRADING PIPELINE START: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     _print(f"{'='*60}")
 
+    # WAL-Checkpoint: Offene Transaktionen von vorgelagerten Prozessen
+    # (fundamental_data, social_scanner) aufräumen, damit die Pipeline
+    # nicht auf einen stale Lock läuft
+    import sqlite3
+    try:
+        from config import DB_PATH, db_connect
+        con = db_connect()
+        con.execute("PRAGMA wal_checkpoint(TRUNCATE);")
+        con.close()
+        _print("✅ WAL-Checkpoint: offene Transaktionen bereinigt")
+    except Exception as e:
+        _print(f"⚠️  WAL-Checkpoint: {e} (nicht kritisch)")
+
     steps = [
         ("yt_channel_monitor.py",  "YouTube Scan"),
         ("signal_extractor.py",    "KI Analyse"),

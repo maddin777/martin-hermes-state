@@ -88,6 +88,9 @@ def get_active_channels(con):
 
 def init_db():
     con = db_connect()
+    # 120s busy_timeout — der Default (30s aus config.db_connect) reicht nicht
+    # wenn vorgelagerte Prozesse (social_scanner, fundamental_data) den Lock halten
+    con.execute("PRAGMA busy_timeout=120000;")
     con.execute("""
         CREATE TABLE IF NOT EXISTS videos (
             video_id    TEXT PRIMARY KEY,

@@ -220,6 +220,19 @@
     "use_count": 0,
     "view_count": 0
   },
+  "computer-use": {
+    "archived_at": null,
+    "created_at": "2026-07-13T03:00:09.745597+00:00",
+    "created_by": null,
+    "last_patched_at": null,
+    "last_used_at": null,
+    "last_viewed_at": null,
+    "patch_count": 0,
+    "pinned": false,
+    "state": "active",
+    "use_count": 0,
+    "view_count": 0
+  },
   "daily-news-briefing": {
     "archived_at": null,
     "created_at": "2026-06-17T05:36:27.522356+00:00",
@@ -445,13 +458,13 @@
     "created_at": "2026-06-21T14:44:43.166718+00:00",
     "created_by": null,
     "last_patched_at": null,
-    "last_used_at": "2026-06-21T14:44:43.173421+00:00",
-    "last_viewed_at": "2026-06-21T14:44:43.166759+00:00",
+    "last_used_at": "2026-07-13T06:00:30.708835+00:00",
+    "last_viewed_at": "2026-07-13T06:00:30.702798+00:00",
     "patch_count": 0,
     "pinned": false,
     "state": "active",
-    "use_count": 1,
-    "view_count": 1
+    "use_count": 2,
+    "view_count": 2
   },
   "hermes-agent-skill-authoring": {
     "archived_at": null,
@@ -494,14 +507,14 @@
     "archived_at": null,
     "created_at": "2026-06-20T09:42:30.151568+00:00",
     "created_by": "agent",
-    "last_patched_at": "2026-06-21T18:57:42.342538+00:00",
-    "last_used_at": "2026-07-01T13:00:16.072734+00:00",
-    "last_viewed_at": "2026-07-01T13:00:16.061123+00:00",
-    "patch_count": 2,
+    "last_patched_at": "2026-07-13T08:04:36.505033+00:00",
+    "last_used_at": "2026-07-13T08:04:26.531464+00:00",
+    "last_viewed_at": "2026-07-13T08:04:26.526103+00:00",
+    "patch_count": 3,
     "pinned": false,
     "state": "active",
-    "use_count": 5,
-    "view_count": 5
+    "use_count": 7,
+    "view_count": 7
   },
   "hermes-profile-management": {
     "archived_at": null,
@@ -531,14 +544,14 @@
     "archived_at": null,
     "created_at": "2026-05-26T03:52:18.196606+00:00",
     "created_by": null,
-    "last_patched_at": "2026-06-23T21:26:08.739234+00:00",
-    "last_used_at": "2026-07-11T01:00:33.503062+00:00",
-    "last_viewed_at": "2026-07-11T01:00:33.490687+00:00",
-    "patch_count": 18,
+    "last_patched_at": "2026-07-13T07:59:00.111579+00:00",
+    "last_used_at": "2026-07-13T07:58:42.508246+00:00",
+    "last_viewed_at": "2026-07-13T07:58:42.502043+00:00",
+    "patch_count": 20,
     "pinned": false,
     "state": "active",
-    "use_count": 26,
-    "view_count": 26
+    "use_count": 27,
+    "view_count": 27
   },
   "hermes-voice": {
     "archived_at": null,
@@ -851,6 +864,19 @@
     "use_count": 0,
     "view_count": 0
   },
+  "petdex": {
+    "archived_at": null,
+    "created_at": "2026-07-13T03:00:09.762934+00:00",
+    "created_by": null,
+    "last_patched_at": null,
+    "last_used_at": null,
+    "last_viewed_at": null,
+    "patch_count": 0,
+    "pinned": false,
+    "state": "active",
+    "use_count": 0,
+    "view_count": 0
+  },
   "polymarket": {
     "archived_at": null,
     "created_at": "2026-06-22T01:24:12.405589+00:00",
@@ -1114,14 +1140,14 @@
     "archived_at": null,
     "created_at": "2026-05-27T06:29:36.528930+00:00",
     "created_by": "agent",
-    "last_patched_at": "2026-07-11T09:54:14.157598+00:00",
-    "last_used_at": "2026-07-12T08:00:09.211145+00:00",
-    "last_viewed_at": "2026-07-11T09:54:46.224551+00:00",
-    "patch_count": 166,
+    "last_patched_at": "2026-07-13T08:04:13.506700+00:00",
+    "last_used_at": "2026-07-13T08:03:25.157889+00:00",
+    "last_viewed_at": "2026-07-13T08:03:25.151578+00:00",
+    "patch_count": 176,
     "pinned": false,
     "state": "active",
-    "use_count": 193,
-    "view_count": 181
+    "use_count": 197,
+    "view_count": 185
   },
   "trading-scan": {
     "archived_at": null,

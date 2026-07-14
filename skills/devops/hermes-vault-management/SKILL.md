@@ -145,7 +145,7 @@ List all Hermes cron jobs and verify last-run status:
 hermes cron list
 ```
 Check specifically:
-- `f5eb3bfaf65e` (obsidian-vault-bisync-nightly) — last run date + `ok`/`error`
+- `f5eb3bfaf65e` (obsidian-vault-bisync-nightly) — **`last_status` + `last_run_at`** prüfen. Der Job ist `no_agent` → silent bei Erfolg. Wenn `last_status = "ok"` und `last_run_at` < 2 Tage alt, ist alles gut. `cronjob action=run` liefert hier **keinen Output** bei Erfolg!
 - `53f222b00811` (vault-insights-daily) — ran today?
 - All other jobs should show status and recent `ok` run
 
@@ -195,6 +195,7 @@ Layout:
 - Some files may be modified by the vault-insights pipeline at 02:45 — this is expected, not a concern
 - Gateway-watchdog runs every 5 min and its `ok` status is expected — brief Telegram timeout errors in trading/errors.log are NOT critical (polling noise)
 - [SILENT]: If nothing changed (no new files, no trading updates, no cron failures), respond with exactly `[SILENT]` to suppress delivery
+- **No-Agent Cron Status prüfen:** Wenn der weekly-review den `obsidian-vault-bisync-nightly` (f5eb3bfaf65e) prüft: `cronjob action=list` verwenden und `last_status` + `last_run_at` auswerten. `cronjob action=run` liefert bei no_agent-Scripts **keinen Output** bei Erfolg (exit 0, silent) → der weekly-review interpretiert das fälschlich als "Sync läuft nicht".
 
 ---
 

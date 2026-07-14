@@ -67,8 +67,8 @@ Database is at:
 
 | Zeit | Script | Tage | Purpose |
 |------|--------|------|---------|
-| 02:00 | `fundamental_data.py` | Mo–Fr | Macro data, insider trades, put/call ratios, regime detection |
-| 03:00 | `social_scanner.py` | Mo–Fr | RSS feeds (Seeking Alpha, Bloomberg etc.) + Twitter/X (twitterapi.io, 6 accounts) |
+| 01:30 | `fundamental_data.py` | Mo–Fr | Macro data, insider trades, put/call ratios, regime detection |
+| 02:00 | `social_scanner.py` | Mo–Fr | RSS feeds (Seeking Alpha, Bloomberg etc.) + Twitter/X (twitterapi.io, 6 accounts) |
 | 03:30 | `trading_pipeline.py` | Mo–Fr | Orchestrator: YouTube scan → KI Analyse → Watchlist Update → Technical Analysis (yfinance) → Signal Manager. Watchlist Update 2-3h (Grok + yfinance). Um 03:30 (statt 04:00) um mehr Puffer vor nightly_eval (05:00) zu haben. Social_scanner (03:00) läuft vorher durch. |
 | 04:50 | `llm_validator.py` | Mo–Fr | ⚠️ Noch in crontab obwohl Fix aussteht (DB-Lock) |
 | 05:00 | `nightly_eval.py` | Mo–Fr | ✅ Sauber (<5s) |
@@ -305,7 +305,7 @@ Die Referenz enthält 23 klassifizierte Unternehmen plus Implementierungsvorschl
 
 **Bekannte Fehlermuster auf einen Blick:**
 - Gelber Ghost-Eintrag → Pitfall 14 (Dashboard Ghost Entries)
-- `database is locked` → Transaction-in-Loop-Pattern (API-Call zwischen execute und commit) oder **Inter-Cron-Job Kaskade** (vorgelagerter Job hält Lock, crasht, und lässt offene Transaktion). Siehe `references/db-lock-short-transactions.md` und `references/yt-cleanup-db-lock.md`.
+- `database is locked` → Transaction-in-Loop-Pattern (API-Call zwischen execute und commit) oder **Inter-Cron-Job Kaskade** (vorgelagerter Job hält Lock, crasht, und lässt offene Transaktion). Siehe `references/db-lock-short-transactions.md` und `references/yt-cleanup-db-lock.md`. **Cascading Lock erkennen:** Wenn 4 Pipeline-Schritte ❌ sind (YouTube + Screener + Watchlist + Signal Manager), ist der YouTube Scan INSERT-Crash die Ursache — nicht einzeln debuggen.
 - `sqlite3.Row` AttributeError → Pitfall 16
 - Pipeline läuft länger als 1h → Watchlist Update zu langsam (Grok/yfinance API)
 | `Finnhub 403` → API-Key abgelaufen oder limitiert (siehe `references/finnhub-api-key-management.md`)
@@ -326,7 +326,7 @@ Die Referenz enthält 23 klassifizierte Unternehmen plus Implementierungsvorschl
 | **`fundamental_data.py` KeyError: `config["fred_indicators"]` (seit ~03.07.2026)** → `load_config()` lädt aus `STRATEGY_CONFIG_PATH` (= `strategy_config.json`), aber `fred_indicators` lebt in `SOURCES_CONFIG_PATH` (= `sources.json`). **Fix:** `SOURCES_CONFIG_PATH` importieren, `sources.json` laden, `sources_cfg.get("fred_indicators", [])` verwenden. |
 | **Source Lifecycle: Kanäle wurden suspended statt penalisiert** → Alte Logik (vor 07.07.2026) setzte `status='suspended', enabled=0` bei schlechter Performance. Neue Logik: `weight=0.3, enabled=1` (Scan läuft weiter, Signale haben kaum Gewicht). 10 Kanäle wurden am 07.07. reaktiviert. |
 | **DB Lock: Transaction-in-Loop mit API-Calls** → `con.execute("INSERT...")` im Loop, `con.commit()` erst nach allen API-Calls. Die Transaction blockiert andere Writer für Minuten. **Fix:** `commit()` nach jedem Item im Loop. Betrifft `fetch_fred_data`, `fetch_insider_trades`, `fetch_pcr` (fundamental_data.py) und `fetch_rss_feeds`, `fetch_twitter` (social_scanner.py). Siehe `references/db-lock-short-transactions.md`. |
-| **YouTube Scan DB Lock: Inter-Cron-Job Kaskade** → `yt_channel_monitor.py` crasht in `cleanup_db()` mit `database is locked` beim ersten Pipeline-Schritt. Ursache: `social_scanner.py` (03:00) hält Lock vom vorgelagerten `fundamental_data.py` (02:00), crasht, und lässt offene Transaktion. **Fix:** `cleanup_db()` hat 120s busy_timeout + 3 Retry-Versuche + rollback im Fehlerfall. Siehe `references/yt-cleanup-db-lock.md`. |
+| **YouTube Scan DB Lock: Inter-Cron-Job Kaskade** → `yt_channel_monitor.py` crasht (in `cleanup_db()` oder im INSERT bei Zeile 218) mit `database is locked`. **Zwei Szenarien:** (1) Nur YouTube Scan ❌ → Crash in `cleanup_db()`, 3 Retries reichen nicht. (2) 4 Pipeline-Schritte ❌ (YouTube + Screener + Watchlist + Signal Manager) → Crash im INSERT (Zeile 218), Cascading Lock. **4-Ebenen-Fix:** (a) `busy_timeout=120s` in `init_db()`, (b) Schedule-Puffer 90min, (c) WAL-Checkpoint(TRUNCATE) am Pipeline-Start, (d) `finally: con.rollback()` in allen DB-Scripts. Siehe `references/yt-cleanup-db-lock.md`. |
 
 ### Manuelles Nachholen eines YouTube-Kanals (außerhalb der Pipeline)
 
