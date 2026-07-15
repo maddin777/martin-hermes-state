@@ -43,9 +43,17 @@ def run(script, label, args=""):
     cmd = [PYTHON, f"{SCRIPTS_DIR}/{script}"]
     if args:
         cmd += args.split()
-    result = subprocess.run(cmd)
+    # PYTHONPATH an Subprozesse vererben — sonst finden Scripts config.py nicht
+    # (crontab setzt kein PYTHONPATH, und sys.path wird nicht vererbt)
+    env = os.environ.copy()
+    path = "/root/.hermes/profiles/hermes_trading/skills/trading"
+    if "PYTHONPATH" in env:
+        env["PYTHONPATH"] = f"{path}:{env['PYTHONPATH']}"
+    else:
+        env["PYTHONPATH"] = path
+    result = subprocess.run(cmd, env=env)
     status = "DONE" if result.returncode == 0 else f"ERROR (exit {result.returncode})"
-    _print(f"=== {datetime.now().strftime('%H:%M:%S')} {label} {status} ===")
+    _print(f"=== {datetime.now().strftime('%H:%M:%S')} {label} {status} ===\n")
     return result.returncode == 0
 
 
