@@ -34,9 +34,9 @@ THRESHOLDS = {
     "promote_min_win_rate": 0.45,
     "promote_min_avg_pnl": -0.5,
     "candidate_max_age_days": 30,
-    "boost_win_rate": 0.60,
+    "boost_avg_pnl": 10.0,         # Quelle boosten wenn avg_pnl >= +10€
     "boost_max_weight": 2.5,
-    "penalize_win_rate": 0.35,
+    "penalize_avg_pnl": -10.0,     # Quelle penalisieren wenn avg_pnl <= -10€
     "penalize_min_weight": 0.3,
     "max_candidates": 10,
     "min_subscribers_yt": 10000,
@@ -278,15 +278,16 @@ def promote_good_sources(con):
 
 
 def adjust_weights(con):
-    print("\n⚖️  Gewichte anpassen...", flush=True)
+    print("\n⚖️  Gewichte anpassen (basierend auf avg_pnl_per_trade)...", flush=True)
     T = THRESHOLDS
     for src in con.execute("SELECT * FROM source_registry WHERE status='active' AND total_bought >= ?",
                             (T["min_trades_for_eval"],)).fetchall():
         old_w = src["weight"]
-        if src["win_rate_90d"] >= T["boost_win_rate"]:
+        avg_pnl = src["avg_pnl_per_trade"] or 0.0
+        if avg_pnl >= T["boost_avg_pnl"]:
             new_w = round(min(T["boost_max_weight"], old_w * 1.15), 2)
             direction = "↑"
-        elif src["win_rate_90d"] < T["penalize_win_rate"]:
+        elif avg_pnl <= T["penalize_avg_pnl"]:
             new_w = round(max(T["penalize_min_weight"], old_w * 0.80), 2)
             direction = "↓"
         else:
@@ -294,7 +295,7 @@ def adjust_weights(con):
             direction = "="
         if new_w != old_w:
             con.execute("UPDATE source_registry SET weight=? WHERE id=?", (new_w, src["id"]))
-            print(f"  {direction} {src['display_name']:30} {old_w:.2f} → {new_w:.2f} (WR={src['win_rate_90d']:.0%})")
+            print(f"  {direction} {src['display_name']:30} {old_w:.2f} → {new_w:.2f} (P&L={avg_pnl:+.0f}€)", flush=True)
 
 
 def discover_new_sources(con):

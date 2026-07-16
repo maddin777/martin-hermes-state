@@ -1233,42 +1233,42 @@
 },
 "z-ai/glm-5.2":{
 "context_length":1048576,
-"max_completion_tokens":32768,
+"max_completion_tokens":128000,
 "name":"Z.ai: GLM 5.2",
 "pricing":{
-"prompt":"0.00000093",
-"completion":"0.000003",
-"input_cache_read":"0.00000018"
+"prompt":"0.000000903",
+"completion":"0.000002838",
+"input_cache_read":"0.0000001677"
 }
 },
 "glm-5.2":{
 "context_length":1048576,
-"max_completion_tokens":32768,
+"max_completion_tokens":128000,
 "name":"Z.ai: GLM 5.2",
 "pricing":{
-"prompt":"0.00000093",
-"completion":"0.000003",
-"input_cache_read":"0.00000018"
+"prompt":"0.000000903",
+"completion":"0.000002838",
+"input_cache_read":"0.0000001677"
 }
 },
 "z-ai/glm-5.2-20260616":{
 "context_length":1048576,
-"max_completion_tokens":32768,
+"max_completion_tokens":128000,
 "name":"Z.ai: GLM 5.2",
 "pricing":{
-"prompt":"0.00000093",
-"completion":"0.000003",
-"input_cache_read":"0.00000018"
+"prompt":"0.000000903",
+"completion":"0.000002838",
+"input_cache_read":"0.0000001677"
 }
 },
 "glm-5.2-20260616":{
 "context_length":1048576,
-"max_completion_tokens":32768,
+"max_completion_tokens":128000,
 "name":"Z.ai: GLM 5.2",
 "pricing":{
-"prompt":"0.00000093",
-"completion":"0.000003",
-"input_cache_read":"0.00000018"
+"prompt":"0.000000903",
+"completion":"0.000002838",
+"input_cache_read":"0.0000001677"
 }
 },
 "openrouter/fusion":{
@@ -5446,7 +5446,7 @@
 },
 "z-ai/glm-5":{
 "context_length":202752,
-"max_completion_tokens":null,
+"max_completion_tokens":128000,
 "name":"Z.ai: GLM 5",
 "pricing":{
 "prompt":"0.0000006",
@@ -5456,7 +5456,7 @@
 },
 "glm-5":{
 "context_length":202752,
-"max_completion_tokens":null,
+"max_completion_tokens":128000,
 "name":"Z.ai: GLM 5",
 "pricing":{
 "prompt":"0.0000006",
@@ -5466,7 +5466,7 @@
 },
 "z-ai/glm-5-20260211":{
 "context_length":202752,
-"max_completion_tokens":null,
+"max_completion_tokens":128000,
 "name":"Z.ai: GLM 5",
 "pricing":{
 "prompt":"0.0000006",
@@ -5476,7 +5476,7 @@
 },
 "glm-5-20260211":{
 "context_length":202752,
-"max_completion_tokens":null,
+"max_completion_tokens":128000,
 "name":"Z.ai: GLM 5",
 "pricing":{
 "prompt":"0.0000006",
@@ -10898,24 +10898,6 @@
 "pricing":{
 "prompt":"0.00000007",
 "completion":"0.00000014"
-}
-},
-"sao10k/l3.1-70b-hanami-x1":{
-"context_length":16000,
-"max_completion_tokens":null,
-"name":"Sao10K: Llama 3.1 70B Hanami x1",
-"pricing":{
-"prompt":"0.000003",
-"completion":"0.000003"
-}
-},
-"l3.1-70b-hanami-x1":{
-"context_length":16000,
-"max_completion_tokens":null,
-"name":"Sao10K: Llama 3.1 70B Hanami x1",
-"pricing":{
-"prompt":"0.000003",
-"completion":"0.000003"
 }
 },
 "deepseek/deepseek-chat":{

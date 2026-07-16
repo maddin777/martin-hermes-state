@@ -98,7 +98,7 @@ Quellen (YouTube-Kanäle, RSS-Feeds, Twitter-Accounts) werden in `source_registr
 
 **Wichtige Änderung (07.07.2026):** Früher wurden schlechte Quellen auf `status='suspended', enabled=0` gesetzt → Scan komplett gestoppt. Martin fand das nicht gut ("solche Quellen komplett rausschmeissen finde ich nicht gut"). **Neue Logik:** Statt suspendieren wird das Weight auf `penalize_min_weight` (0.3) gesetzt und `enabled=1` bleibt. Die Quelle wird weiter gescannt, aber ihre Signale haben kaum Einfluss. 10 vorher suspendierte Kanäle wurden am 07.07. reaktiviert.
 
-**Gewichtsanpassung (`adjust_weights()`):** Läuft sonntags im `source_lifecycle.py`. Quellen mit WR≥60% bekommen +15% Gewicht (max 2.5). Quellen mit WR<35% bekommen -20% Gewicht (min 0.3). Quellen mit <5 Trades bleiben unverändert.
+**Gewichtsanpassung (`adjust_weights()`):** Läuft sonntags im `source_lifecycle.py`. **Seit 15.07.2026 basierend auf `avg_pnl_per_trade` statt `win_rate_90d`** (Post-Mortem-Ergebnis: Quellen mit hoher WR aber negativem P&L, z.B. beating beta 67% WR / -18€/Trade, wurden überbewertet). Quellen mit P&L ≥ +10€ bekommen +15% Gewicht (max 2.5). Quellen mit P&L ≤ -10€ bekommen -20% Gewicht (min 0.3). Quellen mit <5 Trades bleiben unverändert.
 
 **Dashboard:** Im Quellen-Tab siehst du pro Channel:
 - **Status-Badge**: 🟢 Aktiv, 🧪 Probation, 🆕 Kandidat, ⏸ Deaktiviert
@@ -288,6 +288,27 @@ Wenn yfinance keinen Sektor liefert (Sektor = "OTHER"), landen private Companies
 
 Die Referenz enthält 23 klassifizierte Unternehmen plus Implementierungsvorschlag für `config.py`.
 
+### 🔴 PYTHONPATH — Subprozesse finden Module nicht
+
+**Problem:** Die `run()`-Funktion in `trading_pipeline.py` startet Subprozesse via `subprocess.run()`. Diese **erben kein PYTHONPATH** von der Crontab-Umgebung. Folge: `ModuleNotFoundError: No module named 'config'` (YouTube Scan) oder `ImportError` aus falschem `utils` (Hermes-eigenes statt Trading-utils).
+
+**Symptome:**
+- YouTube Scan ❌: `No module named 'config'`
+- Mehrere Pipeline-Schritte ❌: `ImportError: cannot import name 'get_technical_score' from 'utils' (/root/.hermes/hermes-agent/utils.py)`
+- **KEIN** DB-Lock (WAL-Checkpoint im Log zeigt ✅) — das ist das Unterscheidungsmerkmal zum DB-Lock-Kaskaden-Fehler
+
+**Fix:** In `trading_pipeline.py` `run()`-Funktion: `env = os.environ.copy()` + `env["PYTHONPATH"] = TRADING_ROOT` an `subprocess.run(cmd, env=env)` übergeben.
+
+**Prävention:** Bei jedem neuen Script das per `trading_pipeline.py` gestartet wird: prüfe dass es `from config import ...` verwendet (kein `sys.path.insert`).
+
+### 🔴 CRON HEALTH — Pipeline zeigt ⚠️ unknown (gelb)
+
+**Problem:** Der `cron_health.py` sucht nach `✅ ... DONE` im Pipeline-Block. Die Pipeline schrieb `TRADING PIPELINE DONE: HH:MM` ohne ✅ → `⚠️ unknown` (gelb) im Health-Check.
+
+**Symptom:** Alle Pipeline-Schritte sind ✅, aber `cron_health.py` zeigt `⚠️ trading_pipeline`.
+
+**Fix:** `_print(f"✅ TRADING PIPELINE DONE: ...")` — der ✅-Prefix ist notwendig für den Health-Check-Regex `✅\s*.*DONE`.
+
 ### 🔴 WICHTIG — Proaktive Fehleranalyse (Pflicht)
 
 **Martin hat sich zweimal am 18.06. darüber beschwert, dass auf gelbe Status keine RCA kam.** Diese Regel ist NICHT optional:
@@ -311,6 +332,9 @@ Die Referenz enthält 23 klassifizierte Unternehmen plus Implementierungsvorschl
 | `Finnhub 403` → API-Key abgelaufen oder limitiert (siehe `references/finnhub-api-key-management.md`)
 | `pos.get("asset_type")` → Pitfall 16 (sqlite3.Row) — `pos["asset_type"] if "asset_type" in pos.keys() else "STANDARD"` verwenden
 | **`cron_health.py` ❌ false-positive** → Timing-Konflikt: `cron-health-daily` und `strategy_optimizer` starten beide um 08:00 (Sonntag). Der Optimizer braucht ~2 Min, der Health-Check findet nur START ohne DONE → flagged als crashed. Fix: staggered Schedules (z.B. health um 08:30).
+| **`cron_health.py` ⚠️ trading_pipeline unknown (gelb)** → Pipeline schrieb `TRADING PIPELINE DONE` ohne ✅-Prefix. Der Health-Check-Regex `✅\s*.*DONE` matched nicht. **Fix:** `_print(f"✅ TRADING PIPELINE DONE: ...")`. Siehe `references/cron-health-slicing-bug.md`. |
+| **`ModuleNotFoundError: No module named 'config'`** → Subprozess findet Trading-Verzeichnis nicht. **Fix:** PYTHONPATH in `subprocess.run(env=...)` setzen. Kein DB-Lock — WAL-Checkpoint läuft sauber. |
+| **`ImportError: cannot import name 'get_technical_score' from 'utils'`** → Lädt Hermes-eigenes `utils.py` statt Trading-utils. Gleiche Ursache wie ModuleNotFoundError — PYTHONPATH fehlt. **Fix:** PYTHONPATH in `subprocess.run(env=...)` setzen. |
 | **`cron_health.py` false-negative "Keine Jobs"** → Regex `(\\d+)` scheiterte an eintstelligen Tagen (`Jul  7` = double space zwischen Monat und Tag). **Fix (07.07.2026):** `\\s+(\\d+)` im Datums-Regex. Betrifft Tage 1-9 jedes Monats. Alle 6 Tage im Monat wurden fälschlich als "keine Jobs" gemeldet. |
 | **`cron_health.py` ⚠️ Pipeline-interne Jobs ausserhalb des Blocks** → Pipeline-interne Marker (YouTube Scan DONE, KI Analyse DONE) werden vom Health-Check nur im Pipeline-Block gesucht. Wenn die Pipeline länger läuft als bis zum nächsten Cron-Job (z.B. YouTube Scan 04:00→05:45, nightly_eval feuert um 05:00), liegt der DONE-Marker **ausserhalb** des Pipeline-Blocks. Der Health-Check findet nur START ohne DONE → ⚠️. **Symptom:** `cron_health.py` zeigt ⚠️ für einen Pipeline-Schritt, obwohl der Scan erfolgreich war. **Diagnose:** Prüfe ob die DONE-Zeile (z.B. `=== HH:MM YouTube Scan DONE ===`) nach dem START-Marker des nächsten Cron-Jobs liegt. **Fix:** Entweder Pipeline-Block-Slicing erweitern (DONE-Marker auch im folgenden Block akzeptieren) oder Scan-Wartezeiten reduzieren (z.B. YouTube 120s→60s) damit er vor dem nächsten Cron-Job fertig ist. Siehe `references/cron-health-slicing-bug.md`.
 | **PM Scanner: `result["content"] is None` → AttributeError** → `llm_client.parse_json_response()` crasht wenn OpenRouter `content: null` liefert. Fix: None-Check in `parse_json_response()` vor `.strip()`.
@@ -326,7 +350,7 @@ Die Referenz enthält 23 klassifizierte Unternehmen plus Implementierungsvorschl
 | **`fundamental_data.py` KeyError: `config["fred_indicators"]` (seit ~03.07.2026)** → `load_config()` lädt aus `STRATEGY_CONFIG_PATH` (= `strategy_config.json`), aber `fred_indicators` lebt in `SOURCES_CONFIG_PATH` (= `sources.json`). **Fix:** `SOURCES_CONFIG_PATH` importieren, `sources.json` laden, `sources_cfg.get("fred_indicators", [])` verwenden. |
 | **Source Lifecycle: Kanäle wurden suspended statt penalisiert** → Alte Logik (vor 07.07.2026) setzte `status='suspended', enabled=0` bei schlechter Performance. Neue Logik: `weight=0.3, enabled=1` (Scan läuft weiter, Signale haben kaum Gewicht). 10 Kanäle wurden am 07.07. reaktiviert. |
 | **DB Lock: Transaction-in-Loop mit API-Calls** → `con.execute("INSERT...")` im Loop, `con.commit()` erst nach allen API-Calls. Die Transaction blockiert andere Writer für Minuten. **Fix:** `commit()` nach jedem Item im Loop. Betrifft `fetch_fred_data`, `fetch_insider_trades`, `fetch_pcr` (fundamental_data.py) und `fetch_rss_feeds`, `fetch_twitter` (social_scanner.py). Siehe `references/db-lock-short-transactions.md`. |
-| **YouTube Scan DB Lock: Inter-Cron-Job Kaskade** → `yt_channel_monitor.py` crasht (in `cleanup_db()` oder im INSERT bei Zeile 218) mit `database is locked`. **Zwei Szenarien:** (1) Nur YouTube Scan ❌ → Crash in `cleanup_db()`, 3 Retries reichen nicht. (2) 4 Pipeline-Schritte ❌ (YouTube + Screener + Watchlist + Signal Manager) → Crash im INSERT (Zeile 218), Cascading Lock. **4-Ebenen-Fix:** (a) `busy_timeout=120s` in `init_db()`, (b) Schedule-Puffer 90min, (c) WAL-Checkpoint(TRUNCATE) am Pipeline-Start, (d) `finally: con.rollback()` in allen DB-Scripts. Siehe `references/yt-cleanup-db-lock.md`. |
+| **YouTube Scan DB Lock: Inter-Cron-Job Kaskade** → `yt_channel_monitor.py` crasht (in `cleanup_db()` oder im INSERT bei Zeile 218) mit `database is locked`. **Zwei Szenarien:** (1) Nur YouTube Scan ❌ → Crash in `cleanup_db()`, 3 Retries reichen nicht. (2) 4 Pipeline-Schritte ❌ (YouTube + Screener + Watchlist + Signal Manager) → Crash im INSERT (Zeile 218), Cascading Lock. **4-Ebenen-Fix:** (a) `busy_timeout=120s` in `init_db()`, (b) Schedule-Puffer 90min, (c) WAL-Checkpoint(TRUNCATE) am Pipeline-Start, (d) `finally: con.rollback()` in allen DB-Scripts. Siehe `references/yt-cleanup-db-lock.md` und `references/trading-post-mortem-juli-2026.md`. |
 
 ### Manuelles Nachholen eines YouTube-Kanals (außerhalb der Pipeline)
 
@@ -437,6 +461,8 @@ cd /root/.hermes/profiles/hermes_trading/skills/trading && \
 
 > **Trailing Step geändert am 25.06.2026:** von 0.5× auf 0.75× (STANDARD/TECH). Der alte Wert (0.5×) führte dazu, dass ein normaler Pullback von 0.6× ATR den Trailing Stop auslöste bevor der Trade das Take-Profit erreichte. 0.75× gibt mehr Raum im Sideways-Markt.
 
+> **Trailing-Delay seit 15.07.2026:** Trailing wird **erst ab +2x ATR im Plus** aktiviert (`profit_lock_atr` in `strategy_config.json`). Bis dahin läuft der Trade ungestört mit initialem SL. Grund: Post-Mortem-Analyse ergab 75% SL_HIT, 0% TP_HIT — das Trailing triggert bei jedem normalen Pullback bevor der Trade laufen kann. Implementiert in `active_exit_check.py` AKTION 3: `if pnl_atr >= profit_lock_threshold:`.
+
 ### Code-Struktur
 
 - **`config.py`** — `SECTOR_TO_ASSET_TYPE`, `ASSET_TYPE_MULTIPLIERS`, `get_asset_type()`, `get_asset_multipliers()`
@@ -444,9 +470,9 @@ cd /root/.hermes/profiles/hermes_trading/skills/trading && \
 - **`active_exit_check.py`** — Nutzt asset_type-spezifische Multiplikatoren für Thesis-BROKEN und Trailing Stop
 - **DB:** `positions.asset_type`-Spalte (seit 18.06., per ALTER TABLE migriert)
 
-### 🔴 Strategie-Config-Drift (Critical)
+### 🔴 Strategie-Config-Drift (Critical) + Regime-Adaptive Parameter (15.07.2026)
 
-**Problem:** `adapt_strategy()` in `signal_manager.py` passt SL/TP-Multiplikatoren basierend auf Trade-Ergebnissen an — **ohne Marktregime-Prüfung**. Das führte zu einer Config-Drift von 1,5× SL / 2,5× TP → 1,0× SL / 4,0× TP.
+**Problem (25.06.):** `adapt_strategy()` in `signal_manager.py` passte SL/TP-Multiplikatoren basierend auf Trade-Ergebnissen an — **ohne Marktregime-Prüfung**. Das führte zu einer Config-Drift von 1,5× SL / 2,5× TP → 1,0× SL / 4,0× TP.
 
 **Abwärtsspirale im Sideways:**
 ```
@@ -461,7 +487,19 @@ Sideways → viele SL_HITs (normal) → SL enger → noch mehr SL_HITs → SL 1,
 5. Config auf SL=1,5×, TP=2,5× zurückgesetzt
 6. `trailing_step` von 0,5× auf 0,75× erhöht
 
-Siehe `references/adapt-strategy-regime-blindness.md`.
+**Regime-Adaptive Parameter (15.07.2026):** `adapt_strategy()` setzt jetzt **vor** den Trade-Anpassungen eine Regime-Basis. Die Default-Werte aus `strategy_config.json` werden pro Regime überschrieben:
+
+| Regime | SL Multi | TP Multi | Trailing ab | Min. Confidence |
+|--------|----------|----------|-------------|-----------------|
+| **Bull** | 1.5x | 3.5x | +1.5x ATR | 0.65 |
+| **Sideways** | 1.5x | 2.5x | +2.0x ATR | 0.70 |
+| **Bear** | 2.0x | 3.0x | +2.5x ATR | 0.75 |
+
+**Auslöser:** Post-Mortem-Analyse der 69 geschlossenen Trades: Mai (Bull) +1.179€ / 70.8% WR vs Juni (Sideways) -1.480€ / 31.3% WR. Die Strategie erkannte das Regime nicht und lief mit Bull-Parametern in den Sideways — fatal für die Performance.
+
+**Regime-Erkennung:** Läuft in `fundamental_data.py` (60% US-Indikatoren + 40% EU-Indikatoren), gespeichert in `regime_history`-Tabelle. `get_current_regime()` in `signal_manager.py` liest den letzten Eintrag.
+
+Siehe `references/adapt-strategy-regime-blindness.md` und `Erklaerung.md` im Skill-Verzeichnis.
 
 ### 🔴 Sector Blacklist + Probation (seit 25.06.2026)
 
@@ -533,29 +571,32 @@ historische Validierung von Signalen bevor sie im Paper-Trading laufen.
 | `backtesting/alpha_model.py` | `AlphaModel` (ABC), `QuantModel` (Base), `DataClient` (Protocol) |
 | `backtesting/data_client.py` | `YFinanceDataClient` (yfinance-Adapter) — inkl. Monkey-Patch |
 | `backtesting/signals/pead.py` | `PEADModel` — Post-Earnings-Announcement Drift |
+| `backtesting/signals/signal_extractor.py` | `SignalExtractorModel` — Wrapper um Pipeline-Signale (YouTube/RSS/Twitter/Screener) |
 
-**Usage:**
+**Usage (SignalExtractorModel):**
 
 ```python
 from backtesting import BacktestEngine
-from backtesting.alpha_model import AlphaModel
-from backtesting.models import Signal
 from backtesting.data_client import YFinanceDataClient
-
-class MySignal(AlphaModel):
-    @property
-    def name(self): return "my_signal"
-    def predict(self, ticker, date, client):
-        return Signal(model_name=self.name, ticker=ticker, date=date, value=0.5)
+from backtesting.signals import SignalExtractorModel
 
 client = YFinanceDataClient()
 engine = BacktestEngine(capital=100_000, per_trade=10_000)
-result = engine.run_alpha(MySignal(), ["AAPL"], client,
-                          "2025-01-01", "2025-06-01", holding_days=5)
+model = SignalExtractorModel()
+result = engine.run_alpha(
+    model, ["AAPL", "MSFT", "GOOGL"], client,
+    "2026-04-01", "2026-07-01",
+    threshold=0.5, holding_days=5,
+)
 print(f"Sharpe: {result.metrics.sharpe_ratio:.2f}")
 ```
 
-**Hinweis:** Equal-Dollar-Sizing (10.000€/Trade) — bewusst einfach. Testet das
+**Hinweise zum SignalExtractorModel:**
+- Liest `conviction_score + first_seen` aus der `watchlist`-Tabelle
+- Signale verfallen nach 60 Tagen (Gedächtnisverlust)
+- Approximiert Point-in-Time durch `first_seen` als Entry-Datum
+- 1.447 Signale von 1.447 Tippern geladen (Stand: 15.07.2026)
+- Equal-Dollar-Sizing (10.000€/Trade) — bewusst einfach. Testet das
 Signal, nicht die Portfolio-Konstruktion. Detaillierte Doku in der `Erklaerung.md`
 unter Section 16.
 

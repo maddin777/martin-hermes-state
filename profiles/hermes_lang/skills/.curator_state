@@ -1,9 +1,9 @@
 {
-  "last_report_path": "/root/.hermes/profiles/hermes_lang/logs/curator/20260708-234132",
-  "last_run_at": "2026-07-08T23:41:32.426001+00:00",
-  "last_run_duration_seconds": 135.982921,
-  "last_run_summary": "auto: no changes; llm: I have completed a consolidation pass for the agent-created skills.\n\nThe `polish-diss-lesson-generator` skill was identified as a narrow, language-specific implementation of the broader `language-learning-disss` (DiSSS framework) methodolog…\narchived 1 skill(s):\n  • polish-diss-lesson-generator — pruned (stale)\nfull report: hermes curator status",
+  "last_report_path": "/root/.hermes/profiles/hermes_lang/logs/curator/20260716-001902",
+  "last_run_at": "2026-07-16T00:19:02.319884+00:00",
+  "last_run_duration_seconds": 1.009459,
+  "last_run_summary": "auto: no changes; llm: skipped (no candidates)",
   "last_run_summary_shown_at": null,
   "paused": false,
-  "run_count": 8
+  "run_count": 9
 }

@@ -96,7 +96,7 @@ def main():
             _print(f"⚠️  {label} fehlgeschlagen - Pipeline laeuft weiter")
 
     _print(f"\n{'='*60}")
-    _print(f"TRADING PIPELINE DONE: {datetime.now().strftime('%H:%M:%S')}")
+    _print(f"✅ TRADING PIPELINE DONE: {datetime.now().strftime('%H:%M:%S')}")
     _print(f"{'='*60}")
     for label, ok in results:
         icon = "✅" if ok else "❌"

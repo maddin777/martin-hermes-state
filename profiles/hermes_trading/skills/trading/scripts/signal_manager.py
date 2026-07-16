@@ -250,10 +250,17 @@ def get_current_regime(con):
 
 
 def adapt_strategy(cfg, con):
-    """Passt Strategie nach Trade-Performance + Marktregime an.
+    """Passt Strategie nach Marktregime + Trade-Performance an.
     
-    Grundprinzip: Im Sideways-Markt werden SL/TP nicht verändert,
-    weil engere Stops Verluste verstärken und weitere TPs unerreichbar sind.
+    === REGIME-BASIS (15.07.2026) ===
+    Die Parameter werden zuerst auf das aktuelle Marktregime kalibriert,
+    DANN kommen die Trade-basierten Anpassungen (consecutive wins/losses).
+    
+    | Regime    | SL Multi | TP Multi | Trailing ab | Min. Confidence |
+    |-----------|----------|----------|-------------|-----------------|
+    | Bull      | 1.5x     | 3.5x     | +1.5x ATR  | 0.65            |
+    | Sideways  | 1.5x     | 2.5x     | +2.0x ATR  | 0.70            |
+    | Bear      | 2.0x     | 3.0x     | +2.5x ATR  | 0.75            |
     """
     if cfg["total_trades"] < 3:
         return cfg
@@ -261,6 +268,38 @@ def adapt_strategy(cfg, con):
     regime, vix = get_current_regime(con)
     win_rate = cfg["winning_trades"] / cfg["total_trades"] if cfg["total_trades"] > 0 else 0
     changes = []
+
+    # ── Regime-Basis setzen ──
+    # Überschreibt die Default-Werte aus strategy_config.json mit
+    # regime-spezifischen Werten. Trade-basierte Anpassungen kommen danach.
+    regime_configs = {
+        "bull":     {"sl": 1.5, "tp": 3.5, "trailing_atr": 1.5, "confidence": 0.65},
+        "sideways": {"sl": 1.5, "tp": 2.5, "trailing_atr": 2.0, "confidence": 0.70},
+        "bear":     {"sl": 2.0, "tp": 3.0, "trailing_atr": 2.5, "confidence": 0.75},
+    }
+    if regime in regime_configs:
+        rc = regime_configs[regime]
+        old_sl = cfg["atr_sl_multiplier"]
+        old_tp = cfg["atr_tp_multiplier"]
+        old_trailing = cfg.get("trailing_step_atr", 0.75)
+        old_conf = cfg.get("min_confidence", 0.60)
+
+        if old_sl != rc["sl"]:
+            cfg["atr_sl_multiplier"] = rc["sl"]
+            changes.append(f"Regime {regime}: SL {old_sl}→{rc['sl']}x ATR")
+        # TP nur anpassen wenn Regime wechselt (nicht durch Trade-Ergebnisse überschreiben)
+        if old_tp != rc["tp"]:
+            cfg["atr_tp_multiplier"] = rc["tp"]
+            changes.append(f"Regime {regime}: TP {old_tp}→{rc['tp']}x ATR")
+        # Trailing-Step: profit_lock_atr = ab wann Trailing aktiv wird
+        # (genutzt von active_exit_check.py — Trailing wird erst ab +Nx ATR aktiv)
+        if old_trailing < rc["trailing_atr"]:
+            cfg["trailing_step_atr"] = rc["trailing_atr"]
+            changes.append(f"Regime {regime}: Trailing ab +{rc['trailing_atr']}x ATR")
+        # Confidence-Floor pro Regime
+        if old_conf < rc["confidence"]:
+            cfg["min_confidence"] = rc["confidence"]
+            changes.append(f"Regime {regime}: Min. Confidence {old_conf:.0%}→{rc['confidence']:.0%}")
 
     if cfg["consecutive_wins"] >= 3:
         if regime == "sideways":
