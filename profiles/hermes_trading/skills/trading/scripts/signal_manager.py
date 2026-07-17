@@ -20,7 +20,7 @@ import requests
 import yfinance as yf
 import pandas_ta as ta
 from datetime import datetime, timedelta
-from utils import passes_liquidity_filter, apply_slippage, COMMISSION_EUR, get_price_data_cached, prefetch_prices, realized_pnl_from_effective_entry
+from utils import passes_liquidity_filter, apply_slippage, COMMISSION_EUR, get_price_data_cached, prefetch_prices, realized_pnl_from_effective_entry, get_crabel_patterns
 from utils import get_logger, price_to_eur, position_size_in_shares, open_positions_market_value_eur, calc_pnl_with_costs
 log = get_logger("signal_manager")
 from config import DB_PATH, SIGNALS_VALIDATED_PATH, STRATEGY_CONFIG_PATH, MACRO_SIGNAL_PATH, db_connect, get_asset_type, get_asset_multipliers
@@ -62,6 +62,15 @@ DEFAULT_CONFIG = {
     "max_correlation":        0.70,
     # Risiko-Parity: Zielrisiko pro Trade als % des Portfolios
     "risk_pct_per_trade":     0.015,  # 1.5% – jetzt konfigurierbar
+    # Crabel Breakout-Bestätigung (EOD-Adaption des Opening Range Breakout):
+    #   "contraction" (Default): Gate greift nur, wenn der letzte abgeschlossene
+    #                 Bar ein Kontraktions-Pattern war (NR4/NR7/ID/2Bar-NR) –
+    #                 verhindert Entries MITTEN in der Kompression, Entry erst
+    #                 wenn der Breakout über Vortages-Extrem + Stretch bestätigt.
+    #   "always":     Gate greift bei JEDEM Entry (restriktiv, senkt Frequenz)
+    #   "off":        Gate deaktiviert
+    "crabel_gate_mode":       "contraction",
+    "crabel_stretch_len":     10,     # Lookback für Stretch-Berechnung (Tage)
     # Drawdown-Cooldown: N Handelstage nach close_all blockiert
     "drawdown_cooldown_days": 7,
     "drawdown_close_all_date": None,  # ISO-Datum letzter close_all
@@ -164,6 +173,49 @@ def init_db(con):
             if sr and sr["sector"]:
                 from config import get_asset_type as _gat
                 con.execute("UPDATE positions SET asset_type=? WHERE id=?", (_gat(sr["sector"]), p["id"]))
+    # Crabel-Instrumentierung: Pattern-State beim Entry (Kohorten-Split).
+    # Redundant zu migrate_add_crabel_tracking.py – bewusst: ohne die Spalte
+    # crasht der positions-INSERT, das darf nicht von einem manuellen
+    # Migrationslauf abhängen.
+    if "crabel_at_entry" not in cols:
+        con.execute("ALTER TABLE positions ADD COLUMN crabel_at_entry TEXT")
+        print("  📝 positions: crabel_at_entry-Spalte hinzugefügt", flush=True)
+
+    # Shadow-Log geblockter Entries (Counterfactual für die Gate-Bewertung)
+    con.executescript("""
+        CREATE TABLE IF NOT EXISTS blocked_entries (
+            id              INTEGER PRIMARY KEY AUTOINCREMENT,
+            ticker          TEXT NOT NULL,
+            name            TEXT,
+            direction       TEXT NOT NULL,
+            gate            TEXT NOT NULL,
+            blocked_at      TEXT,
+            block_date      TEXT NOT NULL,
+            price_at_block  REAL,
+            would_entry     REAL,
+            would_sl        REAL,
+            would_tp        REAL,
+            atr_at_block    REAL,
+            asset_type      TEXT,
+            conviction      REAL,
+            tech_score      REAL,
+            crabel_state    TEXT,
+            breakout_level  REAL,
+            eval_status     TEXT DEFAULT 'pending',
+            eval_date       TEXT,
+            outcome         TEXT,
+            days_to_outcome INTEGER,
+            exit_price_sim  REAL,
+            pnl_pct_sim     REAL,
+            later_entered     INTEGER DEFAULT 0,
+            later_entry_days  INTEGER,
+            later_entry_price REAL
+        );
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_blocked_entries_dedup
+            ON blocked_entries(ticker, direction, block_date, gate);
+        CREATE INDEX IF NOT EXISTS idx_blocked_entries_status
+            ON blocked_entries(eval_status, block_date);
+    """)
 
     # Migration: watchlist – conviction_score_raw (Audit-Trail vor LLM-Validierung)
     wl_cols = [row[1] for row in con.execute("PRAGMA table_info(watchlist)")]
@@ -950,6 +1002,67 @@ def check_short_thesis(con, ticker: str, conviction_bear: float, cfg: dict) -> t
 _CORR_CACHE: dict = {}  # frozenset(t1,t2) → correlation
 _CORR_TTL = 1800        # 30 Minuten
 
+def compute_sl_tp(effective_entry: float, atr: float, asset_type: str, direction: str):
+    """
+    Zentrale SL/TP-Berechnung (asset_type-abhängig, Heimwährung des Tickers).
+
+    Bewusst DRY: wird sowohl beim echten Entry als auch beim Loggen eines
+    geblockten Entries (blocked_entries.would_sl/would_tp) und in
+    crabel_shadow_eval.py benutzt. Läge die Formel doppelt vor, würden Live-
+    und Shadow-Pfad bei der nächsten Änderung auseinanderdriften und die
+    Kohorten-Auswertung wäre still falsch.
+    """
+    mult = get_asset_multipliers(asset_type)
+    if direction == "LONG":
+        sl = effective_entry - (mult["atr_sl"] * atr)
+        tp = effective_entry + (mult["atr_tp"] * atr)
+        sl = min(sl, effective_entry * 0.995)   # SL darf nicht über Entry liegen
+    else:  # SHORT
+        sl = effective_entry + (mult["atr_sl"] * atr)
+        tp = effective_entry - (mult["atr_tp"] * atr)
+        sl = max(sl, effective_entry * 1.005)   # SL darf nicht unter Entry liegen
+    return sl, tp
+
+
+def log_blocked_entry(con, c, ticker, direction, gate, current_price, atr,
+                      ticker_sector, conviction, crabel, breakout_level):
+    """
+    Shadow-Log: schreibt einen vom Gate verhinderten Entry mit allen Levels,
+    die gegolten hätten. `crabel_shadow_eval.py` bepreist die Einträge später
+    vorwärts → Counterfactual-Datensatz für die Frage "hilft das Gate?".
+
+    Reines Logging, trifft KEINE Entscheidung. Fehler hier dürfen den Entry-Loop
+    niemals stoppen (deshalb breites except).
+
+    Dedup über UNIQUE(ticker, direction, block_date, gate) + INSERT OR IGNORE:
+    mehrfache signal_manager-Läufe am selben Tag erzeugen nur einen Eintrag.
+    """
+    try:
+        asset_type      = get_asset_type(ticker_sector)
+        effective_entry = apply_slippage(current_price, direction, is_entry=True)
+        would_sl, would_tp = compute_sl_tp(effective_entry, atr, asset_type, direction)
+        now = datetime.now()
+        con.execute("""
+            INSERT OR IGNORE INTO blocked_entries
+            (ticker, name, direction, gate, blocked_at, block_date,
+             price_at_block, would_entry, would_sl, would_tp, atr_at_block,
+             asset_type, conviction, tech_score, crabel_state, breakout_level)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+        """, (
+            ticker, c["name"], direction, gate,
+            now.strftime("%Y-%m-%d %H:%M"), now.strftime("%Y-%m-%d"),
+            round(current_price, 4), round(effective_entry, 4),
+            round(would_sl, 4), round(would_tp, 4), round(atr, 4),
+            asset_type, conviction,
+            (c["tech_score"] if "tech_score" in c.keys() else None),
+            json.dumps(crabel) if crabel else None,
+            round(breakout_level, 4) if breakout_level else None,
+        ))
+        con.commit()
+    except Exception as e:
+        log.warning("blocked_entries Logging fehlgeschlagen (%s): %s", ticker, e)
+
+
 def get_correlation(t1: str, t2: str) -> float | None:
     """Pearson-Korrelation der Tagesrenditen (letzte 60 Tage). Gecached 30min."""
     key = frozenset([t1, t2])
@@ -1361,6 +1474,48 @@ def open_new_positions(con, cfg):
         if math.isnan(current_price) or math.isnan(atr):
             continue
 
+        # Crabel Breakout-Bestätigung (EOD-Adaption des Opening Range Breakout)
+        # Kein Entry mitten in der Kompression: Nach einem Kontraktions-Tag
+        # (NR4/NR7/ID) muss der Kurs das Vortages-Extrem + Stretch durchbrochen
+        # haben, sonst warten wir auf die Bestätigung (Kandidat bleibt auf der
+        # Watchlist und wird beim nächsten Lauf erneut geprüft).
+        # Alle Level in Heimwährung des Tickers – konsistent zu current_price.
+        #
+        # crabel wird IMMER geholt (auch bei gate_mode='off'): der State wandert
+        # als crabel_at_entry in positions und ist die Basis der späteren
+        # Kohorten-Auswertung. Kostet nichts – get_crabel_patterns() liest aus
+        # dem Preis-Cache, der durch get_current_price_and_atr() eben gefüllt wurde.
+        gate_mode = cfg.get("crabel_gate_mode", "contraction")
+        crabel = get_crabel_patterns(
+            ticker, stretch_len=int(cfg.get("crabel_stretch_len", 10))
+        )
+        if crabel and gate_mode in ("contraction", "always"):
+            if gate_mode == "always" or crabel["contraction"]:
+                pat = "+".join(crabel["patterns"]) or "kein Pattern"
+                blocked, level = False, None
+                if direction == "LONG" and current_price < crabel["breakout_long_level"]:
+                    blocked, level = True, crabel["breakout_long_level"]
+                    print(f"  📏 {c['name']}: Crabel-Gate LONG [{pat}] – "
+                          f"Kurs {current_price:.2f} < Breakout-Level "
+                          f"{level:.2f} (Vortages-High {crabel['ref_high']:.2f} "
+                          f"+ Stretch {crabel['stretch']:.2f}) → warte auf Bestätigung",
+                          flush=True)
+                elif direction == "SHORT" and current_price > crabel["breakout_short_level"]:
+                    blocked, level = True, crabel["breakout_short_level"]
+                    print(f"  📏 {c['name']}: Crabel-Gate SHORT [{pat}] – "
+                          f"Kurs {current_price:.2f} > Breakout-Level "
+                          f"{level:.2f} (Vortages-Low {crabel['ref_low']:.2f} "
+                          f"− Stretch {crabel['stretch']:.2f}) → warte auf Bestätigung",
+                          flush=True)
+                if blocked:
+                    log_blocked_entry(con, c, ticker, direction, "crabel",
+                                      current_price, atr, ticker_sector,
+                                      cand_conviction, crabel, level)
+                    continue
+                if crabel["contraction"]:
+                    print(f"  📏 {c['name']}: Crabel-Breakout bestätigt "
+                          f"nach [{pat}] ✓", flush=True)
+
         # VIX-Halving: Bei VIX > 30 Positionsgröße halbieren
         vix_factor = 1.0
         try:
@@ -1452,17 +1607,10 @@ def open_new_positions(con, cfg):
         asset_type = get_asset_type(ticker_sector)
         mult = get_asset_multipliers(asset_type)
 
-        # SL/TP berechnen (asset_type-abhängig)
-        if direction == "LONG":
-            sl = effective_entry - (mult["atr_sl"] * atr)
-            tp = effective_entry + (mult["atr_tp"] * atr)
-            # Sicherheitscheck: SL darf nicht über Entry liegen
-            sl = min(sl, effective_entry * 0.995)
-        else:  # SHORT
-            sl = effective_entry + (mult["atr_sl"] * atr)
-            tp = effective_entry - (mult["atr_tp"] * atr)
-            # Sicherheitscheck: SL darf nicht unter Entry liegen
-            sl = max(sl, effective_entry * 1.005)
+        # SL/TP berechnen (asset_type-abhängig) – zentraler Helper, damit
+        # blocked_entries.would_sl/would_tp und die Shadow-Simulation garantiert
+        # dieselbe Formel benutzen.
+        sl, tp = compute_sl_tp(effective_entry, atr, asset_type, direction)
 
         sl_pct = abs(effective_entry - sl) / effective_entry * 100
         tp_pct = abs(tp - effective_entry) / effective_entry * 100
@@ -1473,8 +1621,8 @@ def open_new_positions(con, cfg):
             (ticker, name, direction, entry_price, entry_date,
              stop_loss, take_profit, trailing_sl, position_size, shares,
              atr_at_entry, confidence, source_channel, reason,
-             highest_price, lowest_price, asset_type)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+             highest_price, lowest_price, asset_type, crabel_at_entry)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
         """, (
             ticker, c["name"], direction,
             round(effective_entry, 2),
@@ -1486,7 +1634,9 @@ def open_new_positions(con, cfg):
             c["notes"] or "",
             effective_entry if direction == "LONG" else 0,
             effective_entry if direction == "SHORT" else 0,
-            asset_type
+            asset_type,
+            # Instrumentierung: Pattern-State beim Entry → Kohorten-Split später
+            json.dumps(crabel) if crabel else None
         ))
 
         # Watchlist Status updaten

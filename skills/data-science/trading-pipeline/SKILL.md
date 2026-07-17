@@ -553,6 +553,51 @@ Siehe `references/graduated-drawdown-reduction.md`.
 - Output: `🟢 AMUMBO HALTEN` / `🔴 AMUMBO RAUS`
 - Doku: `wiki/concepts/Leveraged ETFs.md` (LETF-Exit-Modus)
 
+## PEAD Signal Integration (seit 11.07.2026)
+
+Post-Earnings-Announcement Drift als zusätzlicher Conviction-Boost im
+Watchlist Manager. Funktioniert komplett über yfinance (KEINE Paid-API).
+
+### Komponenten
+
+| Datei | Zweck |
+|-------|-------|
+| `scripts/pead_signal.py` | `get_pead_boost(ticker)`, `get_pead_boost_cached(ticker, con)`, `ensure_pead_cache_table(con)` |
+| `scripts/watchlist_manager.py` | Ruft PEAD-Boost nach Thesis-Boost, vor Grok-Boost auf |
+
+### Funktionsweise
+
+1. `get_pead_boost(ticker)` holt yfinance earnings_dates
+2. Berechnet BEAT/MISS aus `Reported EPS - EPS Estimate`
+3. Nur innerhalb von 4 Tagen nach Filing (konfigurierbar via `PEAD_SIGNAL_WINDOW_DAYS`)
+4. 45-Day-Retrospective-Filter: alte Daten werden verworfen
+
+### Boost-Werte
+
+| Ergebnis | Effekt | Betroffene Conviction |
+|----------|--------|----------------------|
+| BEAT (EPS > Estimate) | `+0.05` | `conviction_score` (Long) |
+| MISS (EPS < Estimate) | `+0.05` | `conviction_score_bear` (Short) |
+| Kein Event / zu alt | `0.0` | Kein Effekt |
+
+### Cache
+
+- Tabelle: `pead_cache` in trading.db
+- TTL: 6 Stunden (konfigurierbar via `PEAD_CACHE_TTL_HOURS`)
+- Schlüssel: ticker
+- Ein Ticker kostet nur 1x yfinance-Call pro 6h
+
+### Watchlist-Manager-Integration
+
+```python
+# In watchlist_manager.py, nach Thesis-Boost, vor Grok-Boost:
+pead_long, pead_short, pead_info = get_pead_boost_cached(ticker, con)
+if pead_long > 0:
+    conviction = min(1.0, conviction + pead_long)
+if pead_short > 0:
+    conviction_bear = min(1.0, conviction_bear + pead_short)
+```
+
 ## Backtesting Engine (`backtesting/`)
 
 Seit 11.07.2026 gibt es eine Backtesting-Engine im Trading-Skill-Verzeichnis.

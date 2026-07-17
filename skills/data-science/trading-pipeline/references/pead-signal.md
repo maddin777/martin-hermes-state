@@ -1,13 +1,11 @@
-# PEAD Signal — Post-Earnings Announcement Drift
+# PEAD-Signal (Post-Earnings Announcement Drift)
 
-## Was es ist
-
-Ein Quant-Signal das auf Earnings Surprises reagiert: **Long nach BEAT,
-Short nach MISS**. Basierend auf der Theorie, dass der Markt unterreagiert
-und die Aktie für Tage in die Überraschungsrichtung driftet.
+## Konzept
+Long nach EPS BEAT (EPS actual > Estimate), short nach MISS (EPS actual < Estimate).
+Theorie: der Markt unterreagiert auf Earnings-Surprises → die Aktie driftet 4-5 Tage
+in die Überraschungsrichtung.
 
 ## Datenquelle
-
 yfinance `Ticker.earnings_dates` — komplett kostenlos, kein API-Key nötig.
 BEAT/MISS wird selbst berechnet: `diff = Reported - Estimate`, BEAT wenn > 0.
 
@@ -92,12 +90,28 @@ result = engine.run_alpha(
 print(result.metrics)
 ```
 
-## Usage (Live Pipeline in der Pipeline)
-
-Wird automatisch vom Watchlist Manager aufgerufen. Kein manueller Eingriff
-nötig. Bei Bedarf manuell testen:
+## Manueller Test (Live Pipeline)
 
 ```bash
 cd /root/.hermes/profiles/hermes_trading/skills/trading
 python3 scripts/pead_signal.py AAPL
 ```
+
+## Conviction-Boost-Kette (Watchlist Manager)
+
+Die Reihenfolge der Boosts im watchlist_manager.py ist wichtig:
+
+1. **Roh-Conviction** aus Mentions (Kanal-Gewichtung, Sentiment, Stärke)
+2. **Thesis-Boost** — +0.02 bis +0.08 bei aktiver Thesis
+3. **PEAD-Boost** — +0.05 bei BEAT/MISS (nach Thesis, vor Grok) ← hier
+4. **Grok-Boost** — +10% bei bullishem X-Sentiment (nur Top 20)
+
+## Bekannte Einschränkungen
+- **report_period:** yfinance liefert kein explizites report_period-Datum.
+  Wird auf filing_date gesetzt — für den 45-Day-Retrospective-Filter weniger
+  genau, aber für den Anwendungsfall ausreichend.
+- **source_type:** Immer "10-Q", da yfinance keine Unterscheidung liefert
+  (8-K vs 10-Q vs 10-K). Der Source-Priority-Mechanismus im PEADModel
+  (8-K > 10-Q > 10-K) wird dadurch umgangen.
+- **Nur US-Ticker:** yfinance earnings_dates funktioniert zuverlässig für
+  US-Ticker. Für DE/EU-Ticker (z.B. .DE, .PA) sind die Daten oft unvollständig.

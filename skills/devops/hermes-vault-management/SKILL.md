@@ -210,6 +210,104 @@ Layout:
 
 ---
 
+## Clippings Ingest — Automatische Wiki-Befüllung aus Rohquellen
+
+Seit 16.07.2026: Alle Rohquellen wurden von der Vault-Root-Ebene in
+`Clippings/` verschoben (15 Unterordner + diverse Root-Dateien). Der
+`clippings-ingest` Cron-Job verarbeitet sie täglich zu Wiki-Einträgen.
+
+### Design-Prinzip
+
+**ALLES was als Quelle dient, landet in Clippings/.** Die Unterscheidung
+ist Raw vs Knowledge, nicht Ordner-basiert. Eine Trading-Notiz, ein Rezept,
+ein Web-Clipping, ein YouTube-Transkript — alles wird in `wiki/` extrahiert.
+Dateien in `Projekte/` (Arbeitsdokumente) und `Trading/` (Pipeline-Output)
+bleiben separat, weil sie aktiv geschrieben werden, nicht konsumiert.
+
+### Vault-Architektur (seit 16.07.2026)
+
+```
+obsidian-vault/
+├── index.md, log.md               ← Wiki-Navigation
+├── wiki/                          ← LLM-generiertes Wissen
+│   ├── entities/ (27 Dateien)
+│   ├── concepts/ (74 Dateien)
+│   └── sources/ (172 Dateien)
+├── Clippings/                     ← ALLE Rohquellen (15 Subordner + Dateien)
+│   ├── Exil/                      ← Research
+│   ├── YouTube/                   ← YouTube-Transkripte
+│   ├── Lernen/                    ← Lernmaterial
+│   ├── Reisen/, Rezepte/...       ← Persönliche Notizen
+│   ├── boerse/, Geldverdienen/... ← Business/Börse
+│   └── (Einzel-Clippings)         ← Web-Clippings & Transkripte
+├── Projekte/                      ← Arbeitsdokumente (unverändert)
+├── Trading/                       ← Pipeline-Output (unverändert)
+├── System/                        ← Obsidian-Config
+├── raw/                           ← Bereits vorhandene Rohdaten
+└── SPEC.md, llm-wiki.md, README.md ← Standards
+```
+
+### Cron-Job: clippings-ingest
+
+| Eigenschaft | Wert |
+|-------------|------|
+| Job-ID | `5b2f87f87a1e` |
+| Schedule | `0 16 * * *` (täglich 16:00) |
+| Deliver | origin |
+| Skills | obsidian |
+
+**Ablauf:**
+1. `python3 ~/.hermes/scripts/clippings-scanner.py` — Findet neue/modifizierte
+   Dateien in Clippings/ (rekursiv, .md + .txt). Output: JSON mit path, title,
+   type, content_preview. Max 50 Dateien pro Lauf. Bei nichts Neuem: Silent (exit 0).
+2. **LLM-Analyse** — Für jede Datei: DeepSeek extrahiert Entities (max 5),
+   Concepts (max 3), Summary (1-2 Sätze)
+3. **Wiki-Schreibzugriffe:**
+   - `wiki/sources/<title>.md` — Source-Eintrag mit YAML Frontmatter + Summary
+   - `wiki/entities/<Name>.md` — Neue Entity, NUR anlegen, nie überschreiben
+   - `wiki/concepts/<Name>.md` — Neues Concept, NUR anlegen, nie überschreiben
+4. **log.md** — Chronologischer Eintrag mit Entities + Concepts
+5. **wiki/index.md** — Regeneriert aus allen Entities + Concepts
+6. **processed-DB** — `.hermes/clippings_processed.json` speichert SHA256-Hash
+
+### Wiederholungs-Skip
+
+Der Scanner speichert pro Datei einen SHA256-Hash. Nur Dateien deren Hash
+sich geändert hat werden neu verarbeitet. Erkannte Dateien geben keinen Output
+(Silent-on-Success). Neue Dateien werden priorisiert (neueste mtime zuerst).
+
+### Scripts
+
+| Script | Pfad | Typ | Zweck |
+|--------|------|-----|-------|
+| Scanner | `~/.hermes/scripts/clippings-scanner.py` | no_agent | Findet neue Dateien, gibt JSON |
+| Ingest | Cron-Prompt (Agent) | Agent | LLM-Analyse + Wiki-Schreibzugriffe |
+
+### Manueller Test
+
+```bash
+# Zeigt was verarbeitet würde
+python3 ~/.hermes/scripts/clippings-scanner.py
+
+# Cron-Job manuell triggern
+cronjob action=run job_id=5b2f87f87a1e
+
+# Status prüfen
+cat /root/obsidian-vault/.hermes/clippings_processed.json | python3 -m json.tool | head -20
+```
+
+### Bekannte Grenzen
+
+- **Max 50 Dateien/Lauf** — Kostenkontrolle (OpenRouter DeepSeek). Neue Dateien
+  werden priorisiert. Bei ~400+ unverarbeiteten: ~8 Tage bis vollständig.
+- **Nur .md + .txt** — PDFs, Bilder, Audio werden ignoriert
+- **Kein Cross-Doc-Dedup** — Zwei Clippings zum selben Thema erzeugen zwei
+  Source-Einträge. Der vault-insights-daily kann später mergen.
+- **File-Typ-Herleitung** — Typ wird aus dem Ordnernamen abgeleitet
+  (Exil→article, YouTube→transcript, boerse→market_note, etc.)
+
+---
+
 ## 2. Daily Vault Pipeline
 
 After setup, a daily pipeline runs at 02:45 UTC (after GDrive bisync at 02:00) to maintain the vault: sort new content, extract insights, make proactive suggestions.
@@ -276,22 +374,30 @@ Each suggestion must include:
 
 When an article brings new insights AND needs new wiki entries — do BOTH. Not one or the other.
 
-### Wiki Structure
+### Wiki Structure (seit Vault-Restrukturierung 16.07.2026)
 
 ```
 /root/obsidian-vault/
 ├── wiki/
-│   ├── concepts/         # Abstract concepts (Market Regime, Kelly, Out-of-the-Box Opportunity Scan)
-│   ├── entities/         # Concrete entities (Polymarket, SuperGrok, Quant Roadmap)
-│   ├── sources/          # Sources with references to originals
+│   ├── concepts/         # Abstract concepts (aktuell 74)
+│   ├── entities/         # Concrete entities (aktuell 27)
+│   ├── sources/          # Processed sources (aktuell 172)
 │   └── trading-index.md  # MOC
-├── 00-CAPTURE/           # Quick notes, no folder thinking (Anti-Breakdown)
-├── boerse/               # Raw data
-├── Trading/              # Watchlist
-├── Geldverdienen/        # Trading portion: Polymarket, Quant, BTC, OpenClaw
-├── hermes/               # Trading portion: Polymarket, KIMI Prompts, Analyst
-├── Clippings/            # Web clippings
-└── raw/                  # Raw data
+├── Clippings/            # ALLE Rohquellen (15 Subordner + Einzeldateien)
+│   ├── Exil/             # Research
+│   ├── YouTube/          # Transkripte
+│   ├── boerse/           # Börse
+│   ├── Geldverdienen/    # Business-Ideen
+│   ├── Lernen/           # Lernmaterial
+│   ├── Reisen/, Rezepte/, Sport/, ...  # Persönlich
+│   └── *.md              # Einzel-Clippings
+├── Projekte/             # Arbeitsdokumente
+├── Trading/              # Pipeline-Output
+├── System/               # Obsidian-Config
+├── 00-CAPTURE/           # Quick notes
+├── raw/                  # Legacy-Rohdaten
+├── index.md, log.md      # Wiki-Navigation
+└── SPEC.md, llm-wiki.md  # Standards
 ```
 
 ### D — Trading Pipeline Diagnostics

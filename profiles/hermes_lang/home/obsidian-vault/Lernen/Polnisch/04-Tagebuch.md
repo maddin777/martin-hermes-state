@@ -488,3 +488,62 @@ Lektion #26 abgeschlossen.
 10. Dziecko
 
 Lektion #27 abgeschlossen.
+
+
+**Lekcja #28**
+
+**Słownictwo (Top 500):**
+1. **w** `in`
+2. **do** `to / into`
+3. **po** `after / along`
+4. **bardzo** `very`
+5. **dom** `house`
+6. **ale** `but`
+7. **mniej** `less`
+8. **brzydki** `ugly`
+9. **jako** `as`
+10. **mały** `small`
+
+**Sentence Mining (n+1):**
+1. **On mieszka w dużym mieście.** `He lives in a big city.` (n: mieszka, +1: mieście)
+2. **Idę do sklepu.** `I am going to the shop.` (n: idę, +1: sklepu)
+3. **Piję kawę po śniadaniu.** `I drink coffee after breakfast.` (n: piję, +1: śniadaniu)
+4. **To jest bardzo dobre.** `This is very good.` (n: dobre, +1: bardzo)
+5. **Mój dom jest biały.** `My house is white.` (n: biały, +1: dom)
+6. **Chcę spać, ale nie mogę.** `I want to sleep, but I can't.` (n: spać, +1: ale)
+7. **Mam mniej czasu.** `I have less time.` (n: mam, +1: mniej)
+8. **Ten kwiat jest brzydki.** `This flower is ugly.` (n: kwiat, +1: brzydki)
+9. **Pracuje jako lekarz.** `He works as a doctor.` (n: pracuje, +1: jako)
+3. **Mam małego psa.** `I have a small dog.` (n: mam, +1: małego)
+
+**Aspekt i Gramatyka:**
+- **Verben (Aspekt):** 
+  **pisać** (imperfective) / **napisać** (perfective) `to write`
+- **Nomen (Kasus):** 
+  **dom** (Mianownik) / **domu** (Dopełniacz) `house`
+
+**Quiz (Lückentext):**
+1. Mieszkam ___ Warszawie.
+2. Idę ___ kina.
+3. Spotkamy się ___ pracy.
+4. On jest ___ miły.
+5. To jest mój ___.
+6. Chcę iść, ___ muszę pracować.
+7. Chcę ___ cukru.
+8. Ten pies jest ___.
+9. On pracuje ___ nauczyciel.
+10. To jest ___ kot.
+
+**Rozwiązania:**
+1. **w**
+2. **do**
+3. **po**
+4. **bardzo**
+5. **dom**
+6. **ale**
+7. **mniej**
+8. **brzydki**
+9. **jako**
+10. **mały**
+
+Lektion #28 abgeschlossen.

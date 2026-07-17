@@ -314,113 +314,12 @@ def run_exit_quality_review(con):
 
     print("[Exit Quality Review] DONE.", flush=True)
 
-# ── Crabel-Kohorten-Review ───────────────────────────────────────────────────
-MIN_COHORT_N = 30   # unterhalb davon wird NICHT interpretiert (Rausch-Schutz)
-
-
-def _cohort_stats(rows, pnl_key):
-    """Aggregiert N / Ø-P&L / Win-Rate über eine Trade-Kohorte."""
-    vals = [r[pnl_key] for r in rows if r[pnl_key] is not None]
-    if not vals:
-        return None
-    wins = sum(1 for v in vals if v > 0)
-    return {
-        "n":        len(vals),
-        "avg_pnl":  sum(vals) / len(vals),
-        "win_rate": wins / len(vals) * 100,
-    }
-
-
-def crabel_cohort_review(con):
-    """
-    Stufe 1 der Crabel-Auswertung: MESSEN, nicht entscheiden.
-
-    Vergleicht drei Kohorten:
-      A) Echte Trades, bei denen das Gate scharf war und der Breakout bestätigt
-         wurde (crabel_at_entry.contraction = true)
-      B) Echte Trades ohne Kontraktions-Pattern (Gate griff nicht)
-      C) Shadow: Trades, die das Gate verhindert hat (blocked_entries)
-
-    Die Kernfrage beantwortet C: Hätten die geblockten Trades Geld verdient,
-    kostet das Gate Performance. Verloren sie, hilft es. Diese Frage ist aus
-    `positions` allein prinzipiell nicht beantwortbar — dort stehen nur die
-    Trades, die der Filter durchgelassen hat.
-
-    Bewusst KEINE automatische Anpassung: bei N<30 pro Kohorte wäre jede
-    Parameter-Änderung Rauschen-Verfolgung. Die Config bleibt unangetastet.
-    """
-    print("\n[Crabel-Kohorten] Auswertung...", flush=True)
-
-    # ── Echte Trades nach Pattern-State splitten ──
-    closed = con.execute("""
-        SELECT pnl_pct, crabel_at_entry FROM positions
-        WHERE status='closed' AND crabel_at_entry IS NOT NULL
-    """).fetchall()
-
-    confirmed, no_pattern = [], []
-    for r in closed:
-        try:
-            st = json.loads(r["crabel_at_entry"])
-        except Exception:
-            continue
-        (confirmed if st.get("contraction") else no_pattern).append(
-            {"pnl_pct": r["pnl_pct"]}
-        )
-
-    a = _cohort_stats(confirmed, "pnl_pct")
-    b = _cohort_stats(no_pattern, "pnl_pct")
-
-    # ── Shadow-Kohorte ──
-    blocked = [dict(r) for r in con.execute("""
-        SELECT pnl_pct_sim, later_entered, outcome FROM blocked_entries
-        WHERE eval_status='evaluated'
-    """).fetchall()]
-    c = _cohort_stats(blocked, "pnl_pct_sim")
-
-    def _fmt(label, s):
-        if not s:
-            return f"  {label:34} —  keine Daten"
-        warn = "" if s["n"] >= MIN_COHORT_N else f"  ⚠ N<{MIN_COHORT_N}"
-        return (f"  {label:34} N={s['n']:3}  Ø {s['avg_pnl']:+6.2f}%  "
-                f"WR {s['win_rate']:3.0f}%{warn}")
-
-    print(_fmt("A) Breakout bestätigt (real)", a), flush=True)
-    print(_fmt("B) Kein Pattern (real)", b), flush=True)
-    print(_fmt("C) Vom Gate geblockt (Shadow)", c), flush=True)
-
-    if c:
-        later = sum(1 for r in blocked if r["later_entered"])
-        print(f"     davon später doch real eingekauft: {later}/{c['n']} "
-              f"({later / c['n'] * 100:.0f}%)", flush=True)
-
-    # ── Interpretation nur bei ausreichendem Sample ──
-    if not c or c["n"] < MIN_COHORT_N:
-        have = c["n"] if c else 0
-        print(f"\n  ⏳ Shadow-Sample {have}/{MIN_COHORT_N} – noch keine belastbare "
-              f"Aussage. Keine Anpassung.", flush=True)
-        return
-
-    verdict = ("Gate kostet Performance – geblockte Trades wären profitabel gewesen"
-               if c["avg_pnl"] > 0 else
-               "Gate hilft – geblockte Trades hätten Geld verloren")
-    print(f"\n  📊 Befund: {verdict} (Ø {c['avg_pnl']:+.2f}%)", flush=True)
-
-    if a and a["n"] >= MIN_COHORT_N and b and b["n"] >= MIN_COHORT_N:
-        delta = a["avg_pnl"] - b["avg_pnl"]
-        print(f"  📊 Bestätigte vs. musterlose Entries: {delta:+.2f}%-Punkte "
-              f"Unterschied", flush=True)
-
-    print("  → Entscheidung bleibt manuell (Stufe 2 der Adaption noch nicht aktiv).",
-          flush=True)
-
-
 def main():
     con = _db_connect()
     print(f"[Weekly Review] {date.today().isoformat()}", flush=True)
 
     _theme_lifecycle_review(con)
     _position_30day_review(con)
-    crabel_cohort_review(con)
 
     con.close()
     print("[Weekly Review] DONE.", flush=True)

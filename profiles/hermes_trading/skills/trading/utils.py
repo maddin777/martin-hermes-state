@@ -534,7 +534,41 @@ def get_technical_score(ticker):
         except Exception:
             pass
 
+        # 8. Crabel Kontraktions-Patterns — Bonus NUR in Trendrichtung.
+        # Crabel: Kontraktion in Richtung des übergeordneten Trends handeln.
+        # Ohne klaren EMA-Stack kein Bonus (Kompression ohne Trend = Rauschen).
+        # WS-Tag (Wide Spread): Expansion bereits erfolgt → Score Richtung
+        # neutral dämpfen, Entry käme zu spät.
+        crabel = get_crabel_patterns(ticker)
+        if crabel:
+            trend_bull = ema20.iloc[-1] > ema50.iloc[-1] > ema200.iloc[-1]
+            trend_bear = ema20.iloc[-1] < ema50.iloc[-1] < ema200.iloc[-1]
+            bonus, label = 0.0, None
+            if crabel["id_nr4"]:
+                bonus, label = 1.5, "ID/NR4"
+            elif crabel["nr7"]:
+                bonus, label = 1.0, "NR7"
+            elif crabel["nr4"] or crabel["inside_day"] or crabel["two_bar_nr"]:
+                bonus, label = 0.5, (crabel["patterns"][0] if crabel["patterns"] else "NR4")
+            if bonus and trend_bull:
+                score += bonus
+                reasons.append(f"Crabel {label} im Aufwärtstrend ✓")
+            elif bonus and trend_bear:
+                score -= bonus
+                reasons.append(f"Crabel {label} im Abwärtstrend ✗")
+            if crabel["wide_spread"]:
+                if trend_bull:
+                    score -= 1
+                    reasons.append("Crabel WS-Tag: Expansion bereits erfolgt ✗")
+                elif trend_bear:
+                    score += 1
+                    reasons.append("Crabel WS-Tag: Expansion bereits erfolgt ✗")
+
         # Normalisierung: -10…+10 → 0.0…1.0
+        # (max_score bleibt bewusst 10: Crabel-Bonus max ±1.5, Summe der
+        #  Maximal-Gewichte war schon vorher ~9.5 – confidence wird geclampt.
+        #  max_score anzuheben würde ALLE Confidences Richtung 0.5 stauchen
+        #  und die kalibrierten tech_score-Schwellen im signal_manager brechen.)
         confidence = round((score + max_score) / (2 * max_score), 3)
         confidence = max(0.0, min(1.0, confidence))
         direction  = "LONG" if score >= 2 else "SHORT" if score <= -2 else "NEUTRAL"
@@ -554,11 +588,117 @@ def get_technical_score(ticker):
             "ema50":         round(float(ema50.iloc[-1]), 4),
             "rsi":           round(float(rsi_val), 1),
             "weekly_trend":  weekly_trend,
+            "crabel":        crabel,   # Pattern-Flags + Breakout-Level (oder None)
         }
 
     except Exception as e:
         _log = get_logger("utils.tech")
         _log.warning("Technische Analyse Fehler (%s): %s", ticker, e)
+        return None
+
+
+# ── Crabel Short-Term Price Patterns ─────────────────────────────────────────
+# Daily-Bar-Adaption der Kontraktions-Patterns aus Toby Crabel,
+# "Day Trading with Short Term Price Patterns and Opening Range Breakout" (1990).
+# Kernprinzip: Volatilitäts-Kontraktion (enge Tage) → erhöhte Wahrscheinlichkeit
+# einer Expansion (Trendtag). Hermes handelt EOD, daher wird der klassische
+# Intraday-ORB als Bestätigungsprüfung adaptiert (siehe signal_manager).
+
+def get_crabel_patterns(ticker: str, stretch_len: int = 10):
+    """
+    Erkennt Crabel-Kontraktions-Patterns auf dem letzten ABGESCHLOSSENEN Tagesbar.
+
+    Nutzt get_price_data_cached() – bei bereits geladenem Ticker (z.B. nach
+    get_technical_score) entstehen KEINE zusätzlichen API-Calls.
+
+    Läuft der Handelstag noch (letzter Bar = heute), wird dieser unfertige Bar
+    für die Pattern-Erkennung verworfen: Range/High/Low eines laufenden Tages
+    sind noch nicht final und würden NR7/ID verfälschen.
+
+    Patterns (alle auf dem letzten abgeschlossenen Bar):
+        nr4         Range ist enger als die der 3 Vortage (Narrow Range 4)
+        nr7         Range ist enger als die der 6 Vortage (Narrow Range 7)
+        inside_day  High < Vortages-High UND Low > Vortages-Low
+        id_nr4      Inside Day + NR4 kombiniert (Crabels stärkstes Setup)
+        two_bar_nr  Engste 2-Tages-Range der letzten 20 Tage
+        wide_spread Range > 2× 10-Tage-Ø-Range (Expansion bereits erfolgt)
+        contraction True wenn mind. ein Kontraktions-Pattern aktiv
+
+    Breakout-Level (EOD-ORB-Adaption, Heimwährung des Tickers):
+        stretch              10-Tage-Ø der Distanz Open → näheres Tagesextrem
+        breakout_long_level  ref_high + stretch  (LONG-Bestätigung)
+        breakout_short_level ref_low  - stretch  (SHORT-Bestätigung)
+        ref_high / ref_low   High/Low des letzten abgeschlossenen Bars
+
+    Rückgabe: Dict (JSON-serialisierbar, reine Python-Typen) oder None.
+    """
+    import numpy as _np
+    from datetime import date as _date
+    try:
+        _, _, df = get_price_data_cached(ticker)
+        if df is None or df.empty or len(df) < 30 or "Open" not in df.columns:
+            return None
+
+        o = df["Open"].iloc[:, 0]  if df["Open"].ndim  > 1 else df["Open"]
+        h = df["High"].iloc[:, 0]  if df["High"].ndim  > 1 else df["High"]
+        l = df["Low"].iloc[:, 0]   if df["Low"].ndim   > 1 else df["Low"]
+
+        # Laufenden (unfertigen) Bar abschneiden: Pattern nur auf finalen Bars
+        try:
+            is_partial = df.index[-1].date() >= _date.today()
+        except Exception:
+            is_partial = False
+        if is_partial:
+            o, h, l = o.iloc[:-1], h.iloc[:-1], l.iloc[:-1]
+        if len(h) < 25:
+            return None
+
+        rng      = h - l
+        last_rng = float(rng.iloc[-1])
+
+        nr4 = last_rng < float(rng.iloc[-4:-1].min())
+        nr7 = last_rng < float(rng.iloc[-7:-1].min())
+        inside_day = (float(h.iloc[-1]) < float(h.iloc[-2])
+                      and float(l.iloc[-1]) > float(l.iloc[-2]))
+        id_nr4 = inside_day and nr4
+
+        # 2Bar NR: engste 2-Tages-Range im 20-Tage-Fenster
+        tb = h.rolling(2).max() - l.rolling(2).min()
+        two_bar_nr = float(tb.iloc[-1]) < float(tb.iloc[-20:-1].min())
+
+        # Wide Spread: Expansion bereits passiert → Entry wäre zu spät
+        wide_spread = last_rng > 2.0 * float(rng.iloc[-11:-1].mean())
+
+        # Stretch: Ø-Distanz vom Open zum NÄHEREN Tagesextrem (Crabel-Definition)
+        stretch_series = _np.minimum(o - l, h - o).clip(lower=0)
+        stretch = float(stretch_series.tail(stretch_len).mean())
+
+        ref_high = float(h.iloc[-1])
+        ref_low  = float(l.iloc[-1])
+
+        patterns = [name for name, flag in (
+            ("ID/NR4", id_nr4), ("NR7", nr7), ("NR4", nr4),
+            ("Inside Day", inside_day), ("2Bar NR", two_bar_nr),
+        ) if flag]
+
+        return {
+            "nr4":                  bool(nr4),
+            "nr7":                  bool(nr7),
+            "inside_day":           bool(inside_day),
+            "id_nr4":               bool(id_nr4),
+            "two_bar_nr":           bool(two_bar_nr),
+            "wide_spread":          bool(wide_spread),
+            "contraction":          bool(nr4 or nr7 or inside_day or two_bar_nr),
+            "patterns":             patterns,
+            "stretch":              round(stretch, 4),
+            "ref_high":             round(ref_high, 4),
+            "ref_low":              round(ref_low, 4),
+            "breakout_long_level":  round(ref_high + stretch, 4),
+            "breakout_short_level": round(ref_low - stretch, 4),
+        }
+    except Exception as e:
+        _log = get_logger("utils.crabel")
+        _log.warning("Crabel-Pattern Fehler (%s): %s", ticker, e)
         return None
 
 
