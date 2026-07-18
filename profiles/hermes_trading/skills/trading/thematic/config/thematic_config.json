@@ -5,7 +5,12 @@
     "beneficiary_a": "grok-lite",
     "beneficiary_b": "deepseek/deepseek-v4-flash",
     "beneficiary_c": "qwen/qwen3.5-flash-02-23",
-    "pm_classifier": "deepseek/deepseek-v4-flash"
+    "pm_classifier": "deepseek/deepseek-v4-flash",
+    "committee_bull": "deepseek/deepseek-v4-flash",
+    "committee_bear": "qwen/qwen3.5-flash-02-23",
+    "committee_risk": "google/gemini-2.5-flash-lite",
+    "devils_advocate": "deepseek/deepseek-v4-flash",
+    "extractor_analyst": "deepseek/deepseek-v4-flash"
   },
   "embedding": {
     "provider": "openrouter",

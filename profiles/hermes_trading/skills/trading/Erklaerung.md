@@ -1,184 +1,169 @@
 # Änderungshistorie — Trading Skill
 
-## 16.07.2026 — Crabel-Instrumentierung (Stufe 1: Messen)
+**Stand:** Paketen A–D + Sprints 1–7 + Bugfix-Sprint + Screener-Source + Watchlist-Performance-Fix + **Rollen-Sprint R1–R4**
 
-### Warum kein Auto-Tuning für das Crabel-Gate
+## 17.07.2026 — Hedgefonds-Rollen-Sprint (R1–R4)
 
-Naheliegende Idee: `crabel_gate_mode` und `crabel_stretch_len` ins `PARAM_GRID` des `strategy_optimizer` werfen und mitoptimieren lassen. **Das funktioniert prinzipiell nicht.**
+### Prinzip
+Der deterministische Pipeline-Backbone bleibt unangetastet. LLM-Rollen werden ausschließlich an Urteils-Stellen eingefügt — als kontrollierte, geloggte, budgetierte Bausteine mit Fail-Open-Fallback auf das heutige Verhalten. Exit-Pfade (`check_open_positions`, SL/TP, `_emergency_close_all`) wurden NICHT angefasst.
 
-`backtest_params()` resimuliert SL/TP auf Trades, die **stattgefunden haben** — für einen gelaufenen Trade existiert der Preispfad, also lässt sich fragen „was wäre bei SL 2.0 statt 1.5 passiert?". Das Crabel-Gate ist aber ein **Entry-Filter**: es verändert, *welche* Trades überhaupt existieren. Was es blockt, landet nie in `positions`. Der Optimizer sähe ausschließlich die Trades, die der Filter durchgelassen hat, und sollte daraus lernen, ob der Filter gut ist — **Survivorship Bias in Reinform**. Die Antwort ist nicht in den Daten, egal wie groß das Grid.
+### Neues Paket `roles/` (Trading-Root)
 
-Dazu das Sample-Problem: 69 geschlossene Trades. `adjust_from_eval_metrics()` schraubt bereits an `min_confidence` auf Basis von 7-Tage-Fenstern (bei aktueller Frequenz eine Handvoll Trades). Der Mai/Juni-Befund (+1.179€ → −1.480€ beim Regime-Flip) zeigt, wie solche Tuner Regimewechseln hinterherlaufen. Weitere Auto-Knöpfe auf derselben dünnen Basis machen das System nicht schlauer, nur schneller im Kreis.
+| Datei | Zweck |
+|---|---|
+| `roles/__init__.py` | `ensure_roles_schema(con)` — idempotente Migration (`llm_budget_log`, `committee_log`), prozessweit gecacht |
+| `roles/budget.py` | Harte Tages-Token-Budgets pro Rolle. `check_and_reserve()` / `record_spend()` / `remaining()` |
+| `roles/committee.py` | Investment Committee: Bull → Bear → Risk |
+| `roles/devils_advocate.py` | Devil's Advocate (Thesis-Monitor Stufe 2) |
 
-**Konsequenz — zweistufiges Vorgehen:**
-- **Stufe 1 (dieser Sprint):** Counterfactual-Datensatz aufbauen. Reines Messen, keine Entscheidungen, keine Config-Änderungen.
-- **Stufe 2 (~2–3 Monate, bei N≥30 pro Kohorte):** Adaption mit Guardrails — erst wenn die Daten existieren, die es heute nicht gibt.
+Nutzt den bestehenden `thematic/lib/llm_client.py` und `thematic/lib/prompt_loader.py` (DRY — kein zweiter HTTP-Wrapper). Neue Prompts liegen in `thematic/prompts/`.
 
-### Änderung 1: Migration `migrate_add_crabel_tracking.py` (neu)
-
-| Objekt | Zweck |
-|--------|-------|
-| Tabelle `blocked_entries` | Shadow-Log jedes vom Gate verhinderten Entries inkl. der SL/TP-Level, die gegolten hätten |
-| Spalte `positions.crabel_at_entry` | Pattern-State beim Entry als JSON → Kohorten-Split gelaufener Trades |
-
-**Dedup-Index** `UNIQUE(ticker, direction, block_date, gate)`: `signal_manager` kann mehrfach täglich laufen — ohne den Index würde derselbe geblockte Kandidat pro Lauf erneut geloggt und das Sample künstlich aufblähen. Insert läuft als `INSERT OR IGNORE`.
-
-Idempotent, mehrfach ausführbar. **Zusätzlich defensiv in `signal_manager.init_db()` dupliziert** — ohne die Spalte crasht der `positions`-INSERT, das darf nicht von einem manuell angestoßenen Migrationslauf abhängen.
-
-### Änderung 2: `signal_manager.py`
-
-**`compute_sl_tp()` — neuer zentraler Helper.** Die SL/TP-Formel wird jetzt an drei Stellen gebraucht (Live-Entry, `would_sl`/`would_tp` beim Block, Shadow-Simulation). Läge sie mehrfach vor, würden Live- und Shadow-Pfad bei der nächsten Änderung auseinanderdriften und die Kohorten-Auswertung wäre **still falsch**. Der Live-Entry nutzt jetzt denselben Helper — Formel unverändert, nur zentralisiert.
-
-**`log_blocked_entry()` — Shadow-Logger.** Schreibt beim Block: Kurs, `would_entry` (inkl. Slippage), `would_sl`/`would_tp`, ATR, asset_type, Conviction, tech_score, Crabel-State, verfehltes Breakout-Level. Reines Logging; breites `except`, damit ein Logging-Fehler nie den Entry-Loop stoppt.
-
-**Gate umgebaut:** `get_crabel_patterns()` wird jetzt **immer** aufgerufen — auch bei `crabel_gate_mode="off"`. Der State wandert als `crabel_at_entry` in `positions` und ist die Basis der Kohorten-Auswertung. Kostet nichts (Preis-Cache ist durch `get_current_price_and_atr()` bereits gefüllt).
-
-### Änderung 3: `crabel_shadow_eval.py` (neu) — Forward-Pricing
-
-Läuft täglich nach der Trading-Pipeline und bepreist geblockte Kandidaten vorwärts, sobald sie den Horizont erreicht haben (`crabel_shadow_horizon_days`, Default 21 Kalendertage ≈ 15 Handelstage — deckt die im Post-Mortem produktive Haltedauer von 8–14 Tagen ab).
-
-**Die Simulation spiegelt die Live-Exit-Logik aus `active_exit_check`:**
-- AKTION 2 (Profit-Lock ab `profit_lock_atr`) und AKTION 3 (Trailing ab `profit_lock_atr`) sind nachgebildet. **Ohne das würden die Shadow-Trades ihre Gewinner zu oft bis zum vollen TP laufen lassen und systematisch besser aussehen als die echten Trades → Bias *gegen* das Gate.**
-- SL/TP-Treffer auf Intrabar-Extremen (High/Low), SL-Nachführung auf Close-Basis — wie das EOD-laufende `active_exit_check`.
-- **Intrabar-Ambiguität** (SL *und* TP im selben Tagesbar getroffen): SL gewinnt. Tagesbars sagen nicht, was zuerst kam; die konservative Annahme verhindert geschönte Shadow-Ergebnisse.
-- `pnl_pct_sim` ohne Commission — konsistent zu `positions.pnl_pct`. Größen-invariant, damit keine Sizing-Annahmen nötig sind.
-
-**Bekannte Vereinfachungen (bewusst):** kein Partial-TP, keine Thesis-Exits, kein Breaking-News-Exit. Der Vergleich ist **richtungsweisend, nicht exakt**.
-
-**`later_entered` — der eigentlich interessante Teil.** Das Gate wirft den Kandidaten nicht weg, er bleibt auf der Watchlist. Die echte Alternative zum geblockten Entry ist also nicht „kein Trade", sondern „Entry ein paar Tage später zum bestätigten Kurs". Genau das misst das Feld (Entries nur innerhalb des Horizonts zählen — ein Entry drei Monate später hat mit dem Setup nichts mehr zu tun).
-
-### Änderung 4: `weekly_review.py` — `crabel_cohort_review()`
-
-Drei Kohorten:
-
-| Kohorte | Quelle |
-|---------|--------|
-| **A)** Breakout bestätigt (real) | `positions` mit `crabel_at_entry.contraction = true` |
-| **B)** Kein Pattern (real) | `positions`, Gate war nicht scharf |
-| **C)** Vom Gate geblockt (Shadow) | `blocked_entries` mit `eval_status='evaluated'` |
-
-Die Kernfrage beantwortet **C**: Hätten die geblockten Trades Geld verdient → Gate kostet Performance. Verloren sie → Gate hilft.
-
-**`MIN_COHORT_N = 30`:** Unterhalb wird ausgegeben, aber **nicht interpretiert** („Sample x/30 – keine belastbare Aussage"). Keine automatische Config-Anpassung — bei N<30 wäre jede Parameter-Änderung Rauschen-Verfolgung.
-
-`crabel_cohort_review(con)` ist in `main()` verdrahtet.
-
-### Deployment
-
-```bash
-# Zielpfade
-utils.py, config.py               → trading root
-signal_manager.py, weekly_review.py, crabel_shadow_eval.py,
-migrate_add_crabel_tracking.py    → trading/scripts/
-
-cd /root/.hermes/profiles/hermes_trading/skills/trading
-python3 scripts/migrate_add_crabel_tracking.py
+**Budgets** (Konstanten in `budget.py`, bewusst NICHT in der Strategy-Config — der `strategy_optimizer` soll daran nicht drehen):
+```python
+DAILY_TOKEN_BUDGET = {
+    "committee":       150_000,
+    "devils_advocate":  60_000,
+    "extractor_analyst": 400_000,
+}
 ```
+Überschreitung → `check_and_reserve()` liefert `False` → Aufrufer geht in den Fail-Open-Pfad + `⚠ Budget`-Zeile.
 
-**Neuer Cron-Eintrag** (nach der Trading-Pipeline, mit Puffer):
+### Modell-Konfiguration (`thematic/config/thematic_config.json`)
+```json
+"committee_bull":    "deepseek/deepseek-v4-flash",
+"committee_bear":    "qwen/qwen3.5-flash-02-23",
+"committee_risk":    "google/gemini-2.5-flash-lite",
+"devils_advocate":   "deepseek/deepseek-v4-flash",
+"extractor_analyst": "deepseek/deepseek-v4-flash"
 ```
-30 6 * * 1-5  cd /root/.hermes/profiles/hermes_trading/skills/trading && \
-              python3 scripts/crabel_shadow_eval.py >> data/cron.log 2>&1
-```
-
-**Neue Config-Keys:**
-
-| Key | Default | Bedeutung |
-|-----|---------|-----------|
-| `crabel_shadow_horizon_days` | `21` | Kalendertage Reifezeit vor Auswertung |
-
-### Erwartung
-Nach ~8 Wochen liegen ~30+ ausgewertete Shadow-Entries vor. Dann ist **gemessen** beantwortbar, ob das Gate hilft — und Stufe 2 (Auto-Adaption mit Mindest-N, Effektstärke-Schwelle und Hysterese gegen wöchentliches Hin-und-Her) hat eine Datenbasis. Bis dahin: Zwischenstand im `weekly_review`-Output beobachten.
-
-### Nebenbefund (nicht angefasst)
-`weekly_review.run_exit_quality_review()` (Zeile ~193) ist definiert, wird aber von `main()` **nie aufgerufen** — Dead Code. Die Funktion schreibt LLM-basierte Exit-Verdicts in eine Reporting-Tabelle. Falls gewollt, wäre ein Einzeiler in `main()` nötig; bewusst nicht in diesem Sprint mitgeändert.
+Bull und Bear MÜSSEN verschiedene Provider sein — sonst widerlegt sich das Modell nur selbst mit denselben Biases. `grok-lite` bewusst NICHT fürs Committee (wird vom Breaking-News-Check genutzt, Rate-Limits schonen).
 
 ---
 
-## 16.07.2026 — Crabel-Patterns Sprint
+### R1 — Investment Committee (Pre-Entry Gate, Shadow-Mode)
 
-### Hintergrund
-Adaption der Kontraktions-Patterns aus Toby Crabel, *"Day Trading with Short Term Price Patterns and Opening Range Breakout"* (1990). Kernprinzip: **Volatilitäts-Kontraktion führt zu Expansion** — enge Tage sagen mit erhöhter Wahrscheinlichkeit einen Trendtag voraus. Das Buch ist Intraday-orientiert (ORB mit Buy-Stops ab Eröffnung); Hermes läuft EOD mit Tagesdaten, daher wurden die Patterns auf Daily Bars adaptiert und der ORB als **Bestätigungsprüfung zum Scan-Zeitpunkt** umgesetzt. Passt direkt zum Post-Mortem-Befund vom 15.07.: die 0–3-Tage-Verlusttrades (-1.867€) waren überwiegend Entries ohne Momentum-Bestätigung.
+**Datei:** `scripts/signal_manager.py`, `open_new_positions()`
 
-### Pattern-Definitionen (Tagesbasis, letzter ABGESCHLOSSENER Bar)
+**Einbaupunkt:** im Kandidaten-Loop NACH dem Crabel-Gate, VOR dem VIX-Halving-Block. Begründung: das Committee ist das teuerste Gate und darf nur Kandidaten sehen, die alle billigen deterministischen Gates (Weekly Trend, Allokation, Sektor, Korrelation, Liquidität, Earnings, Segment, Breaking News, Crabel) passiert haben. So zahlen wir LLM-Kosten nur für Kandidaten, die sonst tatsächlich gekauft würden.
 
-| Pattern | Definition | Interpretation |
-|---------|-----------|----------------|
-| **NR4** | Range < min(Range der 3 Vortage) | Kontraktion |
-| **NR7** | Range < min(Range der 6 Vortage) | starke Kontraktion |
-| **Inside Day (ID)** | High < Vortages-High UND Low > Vortages-Low | Kompression |
-| **ID/NR4** | Inside Day + NR4 | Crabels stärkstes Setup |
-| **2Bar NR** | engste 2-Tages-Range der letzten 20 Tage | mehrtägige Kompression |
-| **Wide Spread (WS)** | Range > 2× 10-Tage-Ø-Range | Expansion **bereits erfolgt** → Entry zu spät |
-| **Stretch** | 10-Tage-Ø der Distanz Open → *näheres* Tagesextrem, `min(O−L, H−O)`, geclippt auf ≥0 (Gaps) | Rausch-Puffer für Breakout-Level |
-
-**Breakout-Level (EOD-ORB-Adaption):**
-- LONG: `ref_high + stretch` (Vortages-High + Stretch)
-- SHORT: `ref_low − stretch` (Vortages-Low − Stretch)
-
-Alle Level in **Heimwährung des Tickers** — konsistent zu `current_price` aus `get_current_price_and_atr()`, keine FX-Umrechnung nötig.
-
-### Änderung 1: `get_crabel_patterns()` in `utils.py`
-
-Neue zentrale Funktion, gibt Dict mit allen Pattern-Flags, `patterns`-Liste (aktive Pattern-Namen für Logging), `stretch`, `ref_high/ref_low` und beiden Breakout-Leveln zurück (oder `None` bei <30 Bars / fehlendem Open / Fehler).
-
-**Wichtige Implementierungs-Details:**
-- Nutzt `get_price_data_cached()` → bei bereits geladenem Ticker (z.B. direkt nach `get_technical_score`) **null zusätzliche API-Calls**
-- **Partial-Bar-Handling:** Läuft der Handelstag noch (letzter Bar-Index = heute), wird der unfertige Bar für die Pattern-Erkennung verworfen — Range/High/Low eines laufenden Tages sind nicht final und würden NR7/ID verfälschen. Die Breakout-Level referenzieren damit immer den letzten *abgeschlossenen* Tag
-- Alle Rückgabewerte sind reine Python-Typen (`bool()`/`float()`-Casts) — numpy-Bools wären **nicht JSON-serialisierbar** und würden `technical_validator.py` beim `json.dump` crashen
-- Verifiziert mit synthetischen OHLC-Tests: ID/NR4, WS, 2Bar-NR, neutraler Tag, Stretch-Clip bei Gap-Open
-
-### Änderung 2: Crabel-Bonus als 8. Indikator in `get_technical_score()` (`utils.py`)
-
-Nach dem ADX-Block, **vor** der Normalisierung:
-
-| Bedingung | Score-Wirkung |
-|-----------|---------------|
-| ID/NR4 | ±1.5 |
-| NR7 | ±1.0 |
-| NR4 / Inside Day / 2Bar NR | ±0.5 |
-| WS-Tag | ∓1.0 (Dämpfung Richtung neutral) |
-
-**Richtungslogik:** Bonus wird nur bei klarem EMA-Stack vergeben (Crabel: Kontraktion *in Trendrichtung* handeln). Bullisher Stack (20>50>200) → Bonus positiv (pro LONG), bearisher Stack → negativ (pro SHORT). **Ohne Stack: kein Bonus** — Kompression ohne Trend ist Rauschen. WS dämpft entsprechend entgegen der Trendrichtung.
-
-**`max_score` bleibt bewusst 10:** Die Summe der Maximal-Gewichte lag schon vorher bei ~9.5 (nicht exakt 10), `confidence` wird ohnehin auf 0–1 geclampt. `max_score` anzuheben würde *alle* Confidences Richtung 0.5 stauchen und die kalibrierten `tech_score`-Schwellen im `signal_manager` (Query-Filter + Regime-Confidence-Tabelle) brechen.
-
-Das `crabel`-Dict wird zusätzlich im Rückgabe-Dict von `get_technical_score()` mitgeliefert (Key `"crabel"`) — landet damit automatisch in `trading_signals_validated.json` und steht Dashboard/Auswertungen zur Verfügung. `watchlist_manager` liest weiterhin nur `confidence` + `direction`, keine Anpassung nötig.
-
-### Änderung 3: Crabel Breakout-Gate in `signal_manager.py` (`open_new_positions`)
-
-**Einbaupunkt:** Nach dem Preis/ATR-Fetch (+ NaN-Check), **vor** VIX-Halving/Sizing — der teuerste Filter läuft damit erst, nachdem alle billigen Gates (Sektor, Korrelation, Liquidität, Earnings, Segment) passiert sind, und nutzt den bereits gefüllten Preis-Cache.
-
-**Logik:**
+**Neue Config-Keys** (in `DEFAULT_CONFIG`):
+```python
+"committee_enabled":            True,
+"committee_mode":               "shadow",   # shadow | active
+"committee_max_checks_per_run": 6,
 ```
-gate_mode == "contraction" (Default):
-    Gate greift NUR wenn der letzte abgeschlossene Bar ein
-    Kontraktions-Pattern war (contraction == True).
-    → verhindert Entries MITTEN in der Kompression:
-      LONG  nur wenn current_price >= ref_high + stretch
-      SHORT nur wenn current_price <= ref_low  − stretch
-    Nicht bestätigt → skip mit 📏-Log; Kandidat bleibt auf der
-    Watchlist und wird beim nächsten Lauf erneut geprüft.
-gate_mode == "always": Gate bei JEDEM Entry (restriktiv, senkt Frequenz)
-gate_mode == "off":    deaktiviert
+Der Loop läuft nach `priority_score` absteigend → das Committee prüft automatisch die besten Kandidaten zuerst. Nach Erreichen des Limits laufen weitere Kandidaten OHNE Committee (Fail-Open + Log-Zeile).
+
+**Drei sequenzielle Calls** (Bear braucht Bulls These, Risk braucht beide — kein Threading, kein Async):
+1. **Bull Analyst** → `{"thesis", "conviction", "key_assumptions"}`
+2. **Bear Analyst** → erhält die Bull-These und MUSS sie angreifen → `{"counter_thesis", "severity", "dealbreaker", "dealbreaker_reason"}`
+3. **Risk Officer** → erhält beide Thesen + Portfolio-Kontext, bewertet die POSITION (Klumpenrisiko, Regime-Fit), nicht die Aktie → `{"verdict", "size_factor", "rationale"}`
+
+**Entscheidungsregel — deterministisch im Code, nicht im LLM:**
+```python
+if risk_verdict == "VETO" and bear_dealbreaker:
+    final = "VETO"
+elif risk_verdict in ("VETO", "REDUCE"):
+    final = "REDUCE"; size_factor = clamp(risk_size_factor, 0.5, 1.0)
+else:
+    final = "APPROVE"; size_factor = 1.0
 ```
+Ein VETO braucht ZWEI unabhängige Stimmen (Risk + Bear-Dealbreaker) — ein einzelnes Modell darf nie allein einen Trade killen. Ein Risk-VETO ohne Bear-Dealbreaker wird zu REDUCE mit `size_factor=0.5` abgeschwächt. Ein unbekanntes/unparsbares Verdict → APPROVE.
 
-Bei bestätigtem Breakout nach Kontraktion wird `📏 Crabel-Breakout bestätigt nach [Pattern] ✓` geloggt — auswertbar für spätere Performance-Analyse (Crabel-bestätigte vs. normale Entries).
+**Shadow-Mode (Default):** ändert NICHTS am Verhalten, schreibt nur `committee_log` (`would_block=1` bei VETO). Aktivierung erst nach 2–4 Wochen Auswertung (R4).
 
-**Neue Config-Keys** (`strategy_config.json`, Defaults in `DEFAULT_CONFIG`):
+**Kontext-Beschaffung:** Die offenen Positionen werden mit EINER Query VOR dem Loop geladen (`committee_positions_text`), nicht pro Kandidat — zusätzliche Queries unter der äußeren Connection sind in diesem Projekt eine bekannte Lock-Quelle. `regime`, `macro`, `sector_exposure`, `portfolio_value`, `drawdown_pct`, `current_price`, `atr`, `crabel` sind bereits im Scope. News via `tavily_client.fetch_ticker_news(ticker, days=1)`, max. 5 Snippets à 200 Zeichen; Tavily-Fehler → `"Keine News verfügbar."`, kein Abbruch.
 
-| Key | Default | Bedeutung |
-|-----|---------|-----------|
-| `crabel_gate_mode` | `"contraction"` | `off` / `contraction` / `always` |
-| `crabel_stretch_len` | `10` | Lookback für Stretch-Berechnung (Tage) |
+**Fail-Open:** Jeder Exception-Pfad in `run_committee()` → `{"final_verdict": "ERROR_FAIL_OPEN", "size_factor": 1.0}` + Log-Eintrag. Es wird NIE eine Exception in den Entry-Loop propagiert. Zusätzlich umschließt der Aufrufer den ganzen Block mit `try/except`.
 
-`load_config()` merged fehlende Keys automatisch aus `DEFAULT_CONFIG` — **keine Migration nötig**, bestehende `strategy_config.json` funktioniert unverändert.
+**Audit-Trail:** `committee_log.entry_happened` wird nach erfolgreichem `INSERT INTO positions` per `mark_entry_happened()` auf 1 gesetzt → Join-Basis für R4.
 
-### Erwartung & Verifikation
-- Weniger Entries in Seitwärts-Kompression (die 22,9%-WR-Kohorte der 0–3-Tage-Trades), Entries dafür mit Momentum-Bestätigung
-- Kontrollpunkte: 📏-Zeilen in `cron.log`; Verhältnis "warte auf Bestätigung" vs. "Breakout bestätigt"; nach ~4 Wochen WR-Vergleich Crabel-bestätigter Entries
-- Backtest über `backtester.py` empfohlen (Mai vs. Juni wie beim Post-Mortem)
-- Rollback jederzeit ohne Deployment: `"crabel_gate_mode": "off"` in `strategy_config.json` (Score-Bonus in `get_technical_score` bleibt dann trotzdem aktiv)
+---
+
+### R2 — Devil's Advocate im Thesis Monitor
+
+**Datei:** `scripts/thesis_monitor.py`
+
+**Problem:** Stufe 1 stellt mit einem einzigen Gemini-Prompt die Frage „ist die These intakt?" — das erzeugt Bestätigungsbias. Verlustpositionen bleiben zu lange INTACT.
+
+**Trigger für Stufe 2** (sonst 0 Zusatzkosten):
+- Stufe-1-Verdict ist `INTACT` oder `UNCERTAIN` **UND**
+- die Position steht ≥3 % im Minus (`DEVIL_PNL_TRIGGER = -0.03`)
+
+PnL richtungssicher in `_unrealized_pnl_pct()`:
+```
+LONG:  (price − entry) / entry
+SHORT: (entry − price) / entry
+```
+Preis über `get_price_data_cached()` aus `utils`. Preis nicht ermittelbar → Stufe 2 entfällt. Preis und `entry_price` sind beide in Heimwährung → keine FX-Umrechnung nötig, das Verhältnis ist währungsneutral.
+
+**Merge-Regel — deterministisch, konservativ:**
+```python
+if kill_probability >= 0.70 and verdict in ("INTACT", "UNCERTAIN"):
+    verdict = "WEAKENING"
+    rationale = f"[Devil's Advocate p={p:.2f}] " + "; ".join(kill_reasons) + " | " + rationale
+```
+Bewusst NUR Downgrade auf WEAKENING, nie direkt BROKEN: der bestehende, getestete 3-Tage-WEAKENING-Streak (`_check_weakening_streak`) übernimmt die Eskalation. **Es wird kein neuer Exit-Pfad gebaut** — das minimiert das Risiko neuer Short-/Exit-Bugs auf null.
+
+Ab `kill_probability >= 0.85` zusätzlich sofortige Telegram-Info mit den 3 Gründen (reine Information, keine Aktion).
+
+**Schema:** idempotente Migration `_migrate_devil_columns()` (Muster `PRAGMA table_info`):
+```sql
+ALTER TABLE thesis_status_log ADD COLUMN devil_kill_prob REAL;
+ALTER TABLE thesis_status_log ADD COLUMN devil_reasons TEXT;  -- JSON-Array
+```
+Beide Felder im bestehenden INSERT mitgeschrieben (NULL wenn Stufe 2 nicht lief). News werden aus Stufe 1 wiederverwendet — kein zweiter Tavily-Call. Budget erschöpft → Stufe 2 entfällt, Stufe-1-Verdict gilt.
+
+Zusätzlich: `busy_timeout=30000` in `main()` gesetzt (`_db_connect()` nutzt raw `sqlite3.connect`).
+
+---
+
+### R3 — 2-Pass-Extractor
+
+**Datei:** `scripts/signal_extractor.py`
+
+**Problem:** EIN Mega-Prompt pro 15k-Chunk erledigte gleichzeitig Firmenerkennung, Namens-Normalisierung, Sentiment, Stärke, Preisziele und Action-Hint. Die Erkennungsleistung ist gut, aber Sentiment/Stärke sind Nebenprodukte eines überladenen Prompts.
+
+**Pass A — „Scout"** (pro Chunk, `deepseek-v4-flash` wie heute): NUR Erkennung. Erkennungsregeln wortgleich zum Legacy-Prompt übernommen — die Erkennungsleistung soll sich durch den Umbau NICHT ändern. Zusätzlich pro Firma `context_snippet` (wörtliches Zitat, max 300 Zeichen) und `rough_sentiment`.
+
+**Pass B — „Analyst"** (EIN Call pro Video, Modell `extractor_analyst`): erhält NICHT das Transkript, sondern nur die deduplizierte Firmenliste mit Snippets (max. 3 pro Firma, `MAX_SNIPPETS_PER_COMPANY`). Liefert das fundierte Urteil.
+
+**Kompatibilität:** Das Ergebnis-Objekt pro Video bleibt feldkompatibel (`name/sentiment/strength/reason/mentioned_price/price_target/action_hint` + `market_outlook`, `key_themes`, `source`). `catalyst` ist rein additiv. **`watchlist_manager.py` wurde NICHT angefasst** — Katalysator-Nutzung in der Conviction ist Out-of-Scope (späterer Sprint, erst wenn Daten vorliegen).
+
+Der Name kommt IMMER aus dem Scout — der Analyst darf ihn nicht umschreiben, sonst bricht das Matching im `company_normalizer`. Ungültige Enum-Werte (sentiment/strength/action_hint/catalyst) werden auf sichere Defaults normalisiert.
+
+**Fallback-Kaskade:**
+1. Analyst schlägt fehl (Retries/Parse/Budget/Netzwerk) → Firmen aus Pass A mit `sentiment = rough_sentiment`, `strength = "moderate"`, `reason = context_snippet[:150]`, `action_hint = "watch_for_reversal"`, `catalyst = "none"`. Die Pipeline liefert damit NIE weniger als heute.
+2. Auch pro Firma: lässt der Analyst eine Firma aus, kommt sie über den Scout-Fallback rein → die Firmenmenge des 2-Pass-Pfads ist garantiert die des Scouts.
+3. Umschalter `EXTRACTOR_MODE` via Environment (Default `two_pass`, `legacy` = heutiger Code-Pfad vollständig erhalten). Rollback ist ein Einzeiler in der Crontab/Env, kein Deploy.
+
+**Refactoring:** `call_api` → generisches `_call(model, system_prompt, user_content)` + `_call_cascade()`, die Legacy-, Scout- und Analyst-Pfad teilen.
+
+> ⚠️ **Wichtiges Detail im Fehlerverhalten von `_call_cascade()`:** Nur ein `json.JSONDecodeError` eskaliert auf die nächste Kaskaden-Stufe. Alle anderen Exceptions (Netzwerk, `KeyError`) propagieren nach oben — genau wie im bisherigen `call_api()`. `main()` setzt das Video dann auf `status='error'` + `error_count+1` → Retry beim nächsten Lauf. Würde die Kaskade sie schlucken, wäre das Video `status='done'` mit 0 Firmen und käme nie wieder → stiller Datenverlust. Einzige Ausnahme: der Analyst-Call fängt selbst ab und fällt auf die Scout-Daten zurück, weil Pass A da bereits gelaufen und bezahlt ist.
+
+---
+
+### R4 — Auswertung & Aktivierung
+
+**Datei:** `scripts/nightly_eval.py` → neue Funktion `calc_committee_shadow(con, days)`
+
+Join `committee_log` × `positions` über (Ticker, Richtung, Entry-Datum). Nur Zeilen mit `entry_happened=1` sind auswertbar. Ausgabe im Tages-Report (14d) bzw. Wochen-Report (30d):
+- Checks gesamt, aufgeschlüsselt nach APPROVE / REDUCE / VETO / Fehler
+- **`veto_hit_rate`**: Anteil der VETO-Trades, die im Minus endeten. >50 % = das Committee hat überwiegend Verlierer erwischt
+- P&L der VETO- und APPROVE-Kohorte, noch offene VETO-Trades
+
+Fehlt `committee_log` (Sprint nicht deployed) → `None`, kein Fehler.
+
+**Aktivierung** nur, wenn die Shadow-Daten zeigen, dass VETOs überwiegend Verlusttrades getroffen hätten: `committee_mode` in der persistierten Strategy-Config auf `active` — über `save_config()`, damit die Config auf Disk landet (bekannte Persistenz-Bug-Klasse).
+
+---
+
+### Explizit Out-of-Scope (unverändert)
+- Keine autonome Agenten-Orchestrierung, kein LLM entscheidet über Pipeline-Ablauf
+- Keine Änderungen an Exit-Logik, SL/TP, Drawdown-Mechanik, `watchlist_manager`, Dashboard
+- Keine neuen Cronjobs, keine neuen Daemons
+- Katalysator-Feld fließt NICHT in Conviction/Scoring (nur Datensammlung)
+- Kein Multi-Turn-Debattieren zwischen den Rollen (genau eine Runde Bull → Bear → Risk)
 
 ---
 

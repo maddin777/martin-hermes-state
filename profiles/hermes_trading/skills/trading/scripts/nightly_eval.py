@@ -417,6 +417,95 @@ def calibrate_conviction(con):
         print(f"  ⚠ calibration Fehler: {e}", flush=True)
 
 
+def calc_committee_shadow(con, days=14):
+    """
+    Sprint R4: Auswertung des Investment Committees.
+
+    Kernfrage der Shadow-Phase: Hätten die VETOs Verlusttrades verhindert oder
+    Gewinner blockiert?
+
+    Join committee_log × positions über (ticker, Datum). Nur Zeilen mit
+    entry_happened=1 sind auswertbar – dort ist die Position tatsächlich
+    eröffnet worden, und wir wissen im Nachhinein, was sie gebracht hat.
+
+    Fail-Open: Tabelle fehlt (Sprint noch nicht deployed) → None.
+    """
+    try:
+        cutoff = (datetime.now() - timedelta(days=days)).strftime("%Y-%m-%d")
+
+        rows = con.execute("""
+            SELECT cl.final_verdict, cl.mode, cl.would_block, cl.entry_happened,
+                   cl.ticker, cl.direction, cl.size_factor,
+                   p.status, p.pnl_eur, p.entry_price, p.exit_price
+            FROM committee_log cl
+            LEFT JOIN positions p
+              ON p.ticker = cl.ticker
+             AND p.direction = cl.direction
+             AND substr(p.entry_date, 1, 10) = cl.check_date
+            WHERE cl.check_date >= ?
+        """, (cutoff,)).fetchall()
+
+        if not rows:
+            return None
+
+        stats = {
+            "days": days,
+            "total_checks": len(rows),
+            "approve": 0, "reduce": 0, "veto": 0, "errors": 0,
+            # Kernmetrik: Trades, die trotz VETO liefen (Shadow-Mode)
+            "veto_entries": 0,
+            "veto_pnl_eur": 0.0,
+            "veto_closed": 0,
+            "veto_losers": 0,
+            "approve_entries": 0,
+            "approve_pnl_eur": 0.0,
+            "approve_closed": 0,
+            "approve_losers": 0,
+            "open_veto": 0,
+        }
+
+        for r in rows:
+            v = r["final_verdict"]
+            if v == "APPROVE":
+                stats["approve"] += 1
+            elif v == "REDUCE":
+                stats["reduce"] += 1
+            elif v == "VETO":
+                stats["veto"] += 1
+            else:
+                stats["errors"] += 1
+
+            if not r["entry_happened"]:
+                continue
+
+            bucket = "veto" if v == "VETO" else "approve" if v == "APPROVE" else None
+            if bucket is None:
+                continue
+            stats[f"{bucket}_entries"] += 1
+
+            if r["status"] == "closed" and r["pnl_eur"] is not None:
+                stats[f"{bucket}_closed"] += 1
+                stats[f"{bucket}_pnl_eur"] += float(r["pnl_eur"])
+                if float(r["pnl_eur"]) < 0:
+                    stats[f"{bucket}_losers"] += 1
+            elif r["status"] == "open" and v == "VETO":
+                stats["open_veto"] += 1
+
+        # Trefferquote der VETOs: Anteil der VETO-Trades, die im Minus endeten.
+        # >50% = das Committee hat überwiegend Verlierer erwischt (gut).
+        stats["veto_hit_rate"] = (
+            stats["veto_losers"] / stats["veto_closed"]
+            if stats["veto_closed"] else 0.0
+        )
+        return stats
+
+    except sqlite3.OperationalError:
+        return None   # committee_log existiert noch nicht
+    except Exception as e:
+        print(f"  ⚠ Committee-Auswertung fehlgeschlagen: {e}", flush=True)
+        return None
+
+
 def main():
     print(f"📊 Nightly Eval {'(Woche)' if IS_SUNDAY else '(täglich)'} [{datetime.now().strftime('%Y-%m-%d %H:%M')}]", flush=True)
     con = db_connect()
@@ -467,6 +556,35 @@ def main():
               pm["exit_sl_pct"], pm["exit_tp_pct"], pm["exit_tech_pct"], datetime.now().isoformat()))
         con.commit()
 
+        # ── Investment Committee (Sprint R4) ─────────────────────────────
+        # Shadow-Auswertung: hätten die VETOs Verlusttrades verhindert oder
+        # Gewinner blockiert? Grundlage für die Entscheidung, committee_mode
+        # auf "active" zu setzen.
+        committee_line = ""
+        cshadow = calc_committee_shadow(con, days=30 if IS_SUNDAY else 14)
+        if cshadow:
+            print(f"\n🏛 Investment Committee ({cshadow['days']}d):", flush=True)
+            print(f"  Checks: {cshadow['total_checks']} "
+                  f"(APPROVE {cshadow['approve']} / REDUCE {cshadow['reduce']} / "
+                  f"VETO {cshadow['veto']} / Fehler {cshadow['errors']})", flush=True)
+            if cshadow["veto_closed"]:
+                print(f"  VETO-Trades geschlossen: {cshadow['veto_closed']} | "
+                      f"P&L: {cshadow['veto_pnl_eur']:+.2f}€ | "
+                      f"davon Verlierer: {cshadow['veto_hit_rate']:.0%}", flush=True)
+            if cshadow["approve_closed"]:
+                print(f"  APPROVE-Trades geschlossen: {cshadow['approve_closed']} | "
+                      f"P&L: {cshadow['approve_pnl_eur']:+.2f}€", flush=True)
+            if cshadow["open_veto"]:
+                print(f"  VETO-Trades noch offen: {cshadow['open_veto']} "
+                      f"(noch nicht auswertbar)", flush=True)
+            if cshadow["veto"]:
+                icon = "✅" if cshadow["veto_hit_rate"] >= 0.5 else "⚠️"
+                committee_line = (
+                    f"\n🏛 Committee ({cshadow['days']}d):\n"
+                    f"  VETOs: {cshadow['veto']} | "
+                    f"Vermiedene P&L: {-cshadow['veto_pnl_eur']:+.0f}€ {icon}\n"
+                )
+
         print("\n🔍 Source-Qualität...", flush=True)
         sources = calc_source_quality(con, today)
         for s in sources[:5]:
@@ -500,7 +618,8 @@ def main():
                 f"  Max DD: {pm['max_drawdown_30d']:.1f}% | Ø R: {pm['avg_r_multiple']:.2f}R\n"
                 f"  Exposure: LONG {pm['exposure_long_pct']:.0f}% SHORT {pm['exposure_short_pct']:.0f}%\n"
                 f"  SL/TP/Tech: {pm['exit_sl_pct']:.0%}/{pm['exit_tp_pct']:.0%}/{pm['exit_tech_pct']:.0%}\n"
-                f"{bm_line}\n"
+                f"{bm_line}"
+                f"{committee_line}\n"
                 f"{top_line}\n\n"
                 "🔧 Strategy Optimizer läuft um 08:00..."
             )
@@ -518,7 +637,8 @@ def main():
                 f"  Profit Factor: {pm['profit_factor_7d']:.2f}\n"
                 f"  Sortino: {pm['sortino_30d']:.2f} | Calmar: {pm['calmar_30d']:.2f}\n"
                 f"  Exposure: LONG {pm['exposure_long_pct']:.0f}% SHORT {pm['exposure_short_pct']:.0f}%\n"
-                f"{bm_line}\n"
+                f"{bm_line}"
+                f"{committee_line}\n"
                 f"{top_line}"
             )
 

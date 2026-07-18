@@ -71,6 +71,14 @@ DEFAULT_CONFIG = {
     #   "off":        Gate deaktiviert
     "crabel_gate_mode":       "contraction",
     "crabel_stretch_len":     10,     # Lookback für Stretch-Berechnung (Tage)
+    # ── Investment Committee (Rollen-Sprint R1) ────────────────────────────
+    #   Pre-Entry-Gate mit drei LLM-Rollen (Bull → Bear → Risk).
+    #   "shadow" (Default): loggt nur, was es entschieden HÄTTE – blockt NICHTS.
+    #   "active":           VETO blockt den Entry, REDUCE verkleinert die Position.
+    #   Aktivierung erst nach Auswertung der Shadow-Daten (Sprint R4).
+    "committee_enabled":            True,
+    "committee_mode":               "shadow",
+    "committee_max_checks_per_run": 6,
     # Drawdown-Cooldown: N Handelstage nach close_all blockiert
     "drawdown_cooldown_days": 7,
     "drawdown_close_all_date": None,  # ISO-Datum letzter close_all
@@ -257,6 +265,14 @@ def init_db(con):
             ct_seed
         )
         print(f"  📝 canonical_tickers: {len(ct_seed)} Mappings angelegt", flush=True)
+
+    # Rollen-Layer (R1): llm_budget_log + committee_log – idempotent.
+    # Fail-Open: ein Schema-Fehler hier darf den Trading-Lauf nicht stoppen.
+    try:
+        from roles import ensure_roles_schema
+        ensure_roles_schema(con)
+    except Exception as e:
+        log.warning("roles-Schema konnte nicht angelegt werden: %s", e)
 
     con.commit()
 
@@ -1242,6 +1258,28 @@ def open_new_positions(con, cfg):
     """).fetchall():
         sector_exposure[r["sector"]] = r["exposure"] or 0
 
+    # ── Committee-Kontext: offene Positionen als kompakter Text ────────────
+    # Bewusst EINE Query VOR dem Loop (nicht pro Kandidat) – der Entry-Loop
+    # läuft unter der äußeren Connection, zusätzliche Queries im Loop sind
+    # eine bekannte Lock-Quelle in diesem Projekt.
+    committee_positions_text = "  - keine"
+    try:
+        _pos_rows = con.execute("""
+            SELECT ticker, name, direction, position_size, entry_price, entry_date
+            FROM positions WHERE status='open' ORDER BY position_size DESC
+        """).fetchall()
+        if _pos_rows:
+            committee_positions_text = "\n".join(
+                f"  - {r['name']} ({r['ticker']}) {r['direction']}: "
+                f"{(r['position_size'] or 0):.0f} EUR, Entry {(r['entry_date'] or '')[:10]} "
+                f"@ {(r['entry_price'] or 0):.2f}"
+                for r in _pos_rows
+            )
+    except Exception as e:
+        log.warning("Committee-Positionskontext konnte nicht geladen werden: %s", e)
+
+    committee_checks_done = 0
+
     # Heute bereits gehandelte Ticker (24h-Sperre korrekt per datetime)
     cutoff_24h = (datetime.now() - timedelta(hours=24)).strftime("%Y-%m-%d %H:%M")
     recent_tickers = {r["ticker"] for r in con.execute(
@@ -1516,6 +1554,84 @@ def open_new_positions(con, cfg):
                     print(f"  📏 {c['name']}: Crabel-Breakout bestätigt "
                           f"nach [{pat}] ✓", flush=True)
 
+        # ── Investment Committee (Rollen-Sprint R1) ─────────────────────────
+        # Position im Loop bewusst hier: NACH allen billigen deterministischen
+        # Gates (Weekly Trend, Allokation, Sektor, Korrelation, Liquidität,
+        # Earnings, Segment, Breaking News, Crabel) und VOR dem Sizing. So
+        # zahlen wir LLM-Kosten nur für Kandidaten, die sonst tatsächlich
+        # gekauft würden.
+        #
+        # Fail-Open ist Pflicht: jeder Fehler-, Timeout- oder Budget-Pfad
+        # führt zum heutigen Verhalten (Entry findet statt).
+        committee_size_factor = 1.0
+        committee_log_id = None
+        if cfg.get("committee_enabled", True):
+            if committee_checks_done >= cfg.get("committee_max_checks_per_run", 6):
+                print(f"  🏛 {c['name']}: Committee-Limit "
+                      f"({cfg.get('committee_max_checks_per_run', 6)}/Lauf) erreicht "
+                      f"→ ohne Committee (Fail-Open)", flush=True)
+            else:
+                try:
+                    from roles import budget as _role_budget
+                    from roles import committee as _committee
+                    _today_iso = datetime.now().strftime("%Y-%m-%d")
+                    if _role_budget.check_and_reserve(con, "committee", _today_iso):
+                        _ctx = {
+                            "mode": cfg.get("committee_mode", "shadow"),
+                            "regime": regime,
+                            "macro": macro,
+                            "sector_exposure": sector_exposure,
+                            "open_positions_text": committee_positions_text,
+                            "current_price": current_price,
+                            "atr": atr,
+                            "crabel": crabel,
+                            "ticker_sector": ticker_sector,
+                            "portfolio_value": portfolio_value,
+                            "drawdown_pct": drawdown_pct,
+                        }
+                        cres = _committee.run_committee(con, c, direction, _ctx)
+                        committee_checks_done += 1
+                        committee_log_id = cres.get("log_id")
+                        verdict = cres.get("final_verdict")
+
+                        if verdict == "VETO":
+                            if cfg.get("committee_mode") == "active":
+                                print(f"  🏛 {c['name']}: Committee-VETO → Entry geblockt",
+                                      flush=True)
+                                log_blocked_entry(con, c, ticker, direction, "committee",
+                                                  current_price, atr, ticker_sector,
+                                                  cand_conviction, crabel, None)
+                                send_telegram(
+                                    f"🏛 <b>COMMITTEE-VETO: {c['name']} ({ticker})</b>\n"
+                                    f"Richtung: {direction}\n"
+                                    f"Risk: {(cres.get('risk') or {}).get('rationale', '–')}\n"
+                                    f"Bear: {(cres.get('bear') or {}).get('dealbreaker_reason', '–')}"
+                                )
+                                # committee_log.entry_happened bleibt 0
+                                continue
+                            else:
+                                print(f"  🏛 {c['name']}: Committee-VETO "
+                                      f"(SHADOW – Entry läuft weiter)", flush=True)
+                        elif verdict == "REDUCE":
+                            if cfg.get("committee_mode") == "active":
+                                committee_size_factor = cres.get("size_factor", 1.0)
+                                print(f"  🏛 {c['name']}: Committee-REDUCE → Size "
+                                      f"×{committee_size_factor:.2f}", flush=True)
+                            else:
+                                print(f"  🏛 {c['name']}: Committee-REDUCE "
+                                      f"×{cres.get('size_factor', 1.0):.2f} "
+                                      f"(SHADOW – ohne Wirkung)", flush=True)
+                        elif verdict == "APPROVE":
+                            print(f"  🏛 {c['name']}: Committee-APPROVE", flush=True)
+                        else:
+                            print(f"  🏛 {c['name']}: Committee ERROR → Fail-Open",
+                                  flush=True)
+                except Exception as e:
+                    # Darf NIE den Entry-Loop stoppen.
+                    log.warning("Committee fehlgeschlagen (%s): %s", ticker, e)
+                    print(f"  🏛 {c['name']}: Committee-Fehler ({e}) → Fail-Open",
+                          flush=True)
+
         # VIX-Halving: Bei VIX > 30 Positionsgröße halbieren
         vix_factor = 1.0
         try:
@@ -1556,6 +1672,11 @@ def open_new_positions(con, cfg):
         if dd_size_factor < 1.0:
             pct = pct * dd_size_factor
             sizing_label += f" | Drawdown ({dd_size_factor:.0%})"
+
+        # Committee-REDUCE: nur im active-Mode gesetzt, im Shadow-Mode immer 1.0
+        if committee_size_factor < 1.0:
+            pct = pct * committee_size_factor
+            sizing_label += f" | Committee ({committee_size_factor:.0%})"
 
         # Volatilitätsbereinigtes Positionsgrößensystem (Risk-Parity)
         # Risiko pro Trade capped auf risk_pct_per_trade % des Gesamtportfolios
@@ -1638,6 +1759,14 @@ def open_new_positions(con, cfg):
             # Instrumentierung: Pattern-State beim Entry → Kohorten-Split später
             json.dumps(crabel) if crabel else None
         ))
+
+        # Committee-Audit: Entry hat stattgefunden → Join-Basis für nightly_eval
+        if committee_log_id:
+            try:
+                from roles import committee as _committee
+                _committee.mark_entry_happened(con, committee_log_id)
+            except Exception as e:
+                log.warning("committee_log entry_happened fehlgeschlagen: %s", e)
 
         # Watchlist Status updaten
         con.execute(
