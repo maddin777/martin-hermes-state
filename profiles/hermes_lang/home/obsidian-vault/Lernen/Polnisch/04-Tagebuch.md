@@ -547,3 +547,71 @@ Lektion #27 abgeschlossen.
 10. **mały**
 
 Lektion #28 abgeschlossen.
+## Lektion #29
+
+### 1. Słownictwo (Top 500)
+- **po** `nach`
+- **co** `was`
+- **pod** `unter`
+- **do** `zu`
+- **o** `über`
+- **oni** `sie`
+- **bogaty** `reich`
+- **ciepły** `warm`
+- **inny** `ander`
+- **dobry** `gut`
+
+### 2. Sentence Mining (n+1)
+- To jest mój **dom**. `Das ist mein `Haus`.`
+- On **robi** kawę. `Er `macht` Kaffee.`
+- Widzę **dużą** kobietę. `Ich sehe eine `große` Frau.`
+- On **napisał** list. `Er `hat` einen Brief `geschrieben`.`
+- Piję **zimną** wodę. `Ich trinke `kaltes` Wasser.`
+- Mamy **nowy** samochód. `Wir haben ein `neues` Auto.`
+- To jest **bardzo** dobre. `Das ist `sehr` gut.`
+- On **kupuje** chleb. `Er `kauft` Brot.`
+- Gdzie jest **mój** pies? `Wo ist `mein` Hund?`
+- Ona jest **szczęśliwa**. `Sie ist `glücklich`.`
+
+### 3. Aspekt & Kasus
+**Czasowniki (Aspekt):**
+- **pisać** / **napisać** `schreiben`
+- **mówić** / **powiedzieć** `sagen`
+- **jeść** / **zjeść** `essen`
+- **słuchać** / **usłyszeć** `hören`
+- **czytać** / **przeczytać** `lesen`
+
+**Rzeczowniki (Kasus):**
+- **kobieta** (Gen: **kobiety**) `Frau`
+- **dom** (Gen: **domu**) `Haus`
+- **chleb** (Gen: **chleba**) `Brot`
+- **dziecko** (Gen: **dziecka**) `Kind`
+- **miasto** (Gen: **miasta**) `Stadt`
+
+### 4. Lueckentext-Quiz
+1. To jest ____ dom.
+2. Ona ____ kawę.
+3. Widzę ____ psa.
+4. On ____ książkę.
+5. To jest ____ dobre.
+6. Mamy ____ auto.
+7. Gdzie jest ____?
+8. On ____ list.
+9. Piję ____ wodę.
+10. To jest ____ miasto.
+
+### 5. Auflösung
+1. mein
+2. pije
+3. dużego
+4. czyta
+5. bardzo
+6. nowy
+7. woda
+8. napisał
+9. zimną
+10. duże
+
+Lektion #29 abgeschlossen.
+
+

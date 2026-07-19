@@ -305,6 +305,13 @@ cat /root/obsidian-vault/.hermes/clippings_processed.json | python3 -m json.tool
   Source-Einträge. Der vault-insights-daily kann später mergen.
 - **File-Typ-Herleitung** — Typ wird aus dem Ordnernamen abgeleitet
   (Exil→article, YouTube→transcript, boerse→market_note, etc.)
+- **entitys/ Typo-Folder Bug** — Der LLM-Schritt (Schritt 2) erstellt Entity-Seiten
+  manchmal im falschen Ordner `wiki/entitys/` statt `wiki/entities/`. Ursache: Der
+  LLM-Prompt referenziert wahrscheinlich `entitys/` statt `entities/` als Zielordner.
+  **Fix:** Nach jeder Ingest-Runde prüfen ob `wiki/entitys/` existiert. Wenn ja:
+  Einzigartige Dateien nach `entities/` migrieren, Duplikate mergen (entities/
+  ist kanonisch), `entitys/` löschen. Der vault-self-write-health Cron (Sa 03:00)
+  führt diese Prüfung automatisch durch.
 
 ---
 
@@ -471,3 +478,8 @@ If trading system scripts are added/removed from the crontab, `cron_health.py` s
 - **X Bookmarks (paused)**: SuperGrok is integrated as a news-agent provider, but X Bookmarks access is still unresolved. Skip until further notice.
 - **Obsidian Diary gets overwritten on vault refresh** — `04-Tagebuch.md` is on GDrive. After vault refresh, recreate diary entries manually.
 - **`-maxdepth 3` ist zu flach für den Vault-Scan** — Dateien in `Projekte/MarineIT/` liegen auf Tiefe 4. Der vault-insights-daily Cron verwendet `-maxdepth 5` (gefixt 10.06.2026) um Project-Unterordner zu erfassen. Bei neuen Ordnerstrukturen immer zuerst `find /root/obsidian-vault/ -maxdepth 6 -type d` laufen lassen um die Tiefe zu prüfen.
+- **entitys/ Folder — Health Check Schritt** — Der vault-self-write-health Cron (Sa 03:00) muss als ersten Schritt prüfen ob `wiki/entitys/` existiert:
+  ```bash
+  ls /root/obsidian-vault/wiki/entitys/ 2>/dev/null && echo "TYPO-FOLDER EXISTS" || echo "OK"
+  ```
+  Bei Existenz: Dateien nach `entities/` migrieren (unique kopieren, Duplikate mergen), `entitys/` löschen. Dies verhindert dass Entity-Seiten im falschen Ordner verwaisten.
