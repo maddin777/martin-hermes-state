@@ -733,13 +733,13 @@
 "prompt":"0.000002",
 "completion":"0.000006",
 "web_search":"0.005",
-"input_cache_read":"0.0000005",
+"input_cache_read":"0.0000003",
 "overrides":[
 {
 "min_prompt_tokens":200000,
 "prompt":"0.000004",
 "completion":"0.000012",
-"input_cache_read":"0.000001"
+"input_cache_read":"0.0000006"
 }
 ]
 }
@@ -752,13 +752,13 @@
 "prompt":"0.000002",
 "completion":"0.000006",
 "web_search":"0.005",
-"input_cache_read":"0.0000005",
+"input_cache_read":"0.0000003",
 "overrides":[
 {
 "min_prompt_tokens":200000,
 "prompt":"0.000004",
 "completion":"0.000012",
-"input_cache_read":"0.000001"
+"input_cache_read":"0.0000006"
 }
 ]
 }
@@ -771,13 +771,13 @@
 "prompt":"0.000002",
 "completion":"0.000006",
 "web_search":"0.005",
-"input_cache_read":"0.0000005",
+"input_cache_read":"0.0000003",
 "overrides":[
 {
 "min_prompt_tokens":200000,
 "prompt":"0.000004",
 "completion":"0.000012",
-"input_cache_read":"0.000001"
+"input_cache_read":"0.0000006"
 }
 ]
 }
@@ -790,13 +790,13 @@
 "prompt":"0.000002",
 "completion":"0.000006",
 "web_search":"0.005",
-"input_cache_read":"0.0000005",
+"input_cache_read":"0.0000003",
 "overrides":[
 {
 "min_prompt_tokens":200000,
 "prompt":"0.000004",
 "completion":"0.000012",
-"input_cache_read":"0.000001"
+"input_cache_read":"0.0000006"
 }
 ]
 }
@@ -809,13 +809,13 @@
 "prompt":"0.000002",
 "completion":"0.000006",
 "web_search":"0.005",
-"input_cache_read":"0.0000005",
+"input_cache_read":"0.0000003",
 "overrides":[
 {
 "min_prompt_tokens":200000,
 "prompt":"0.000004",
 "completion":"0.000012",
-"input_cache_read":"0.000001"
+"input_cache_read":"0.0000006"
 }
 ]
 }
@@ -828,13 +828,13 @@
 "prompt":"0.000002",
 "completion":"0.000006",
 "web_search":"0.005",
-"input_cache_read":"0.0000005",
+"input_cache_read":"0.0000003",
 "overrides":[
 {
 "min_prompt_tokens":200000,
 "prompt":"0.000004",
 "completion":"0.000012",
-"input_cache_read":"0.000001"
+"input_cache_read":"0.0000006"
 }
 ]
 }
@@ -1378,9 +1378,9 @@
 "max_completion_tokens":131072,
 "name":"Z.ai: GLM 5.2",
 "pricing":{
-"prompt":"0.000000413",
-"completion":"0.000001298",
-"input_cache_read":"0.0000000767"
+"prompt":"0.0000002548",
+"completion":"0.0000008008",
+"input_cache_read":"0.00000004732"
 }
 },
 "glm-5.2":{
@@ -1388,9 +1388,9 @@
 "max_completion_tokens":131072,
 "name":"Z.ai: GLM 5.2",
 "pricing":{
-"prompt":"0.000000413",
-"completion":"0.000001298",
-"input_cache_read":"0.0000000767"
+"prompt":"0.0000002548",
+"completion":"0.0000008008",
+"input_cache_read":"0.00000004732"
 }
 },
 "z-ai/glm-5.2-20260616":{
@@ -1398,9 +1398,9 @@
 "max_completion_tokens":131072,
 "name":"Z.ai: GLM 5.2",
 "pricing":{
-"prompt":"0.000000413",
-"completion":"0.000001298",
-"input_cache_read":"0.0000000767"
+"prompt":"0.0000002548",
+"completion":"0.0000008008",
+"input_cache_read":"0.00000004732"
 }
 },
 "glm-5.2-20260616":{
@@ -1408,9 +1408,9 @@
 "max_completion_tokens":131072,
 "name":"Z.ai: GLM 5.2",
 "pricing":{
-"prompt":"0.000000413",
-"completion":"0.000001298",
-"input_cache_read":"0.0000000767"
+"prompt":"0.0000002548",
+"completion":"0.0000008008",
+"input_cache_read":"0.00000004732"
 }
 },
 "openrouter/fusion":{
@@ -1436,9 +1436,9 @@
 "max_completion_tokens":262144,
 "name":"MoonshotAI: Kimi K2.7 Code",
 "pricing":{
-"prompt":"0.000001",
-"completion":"0.0000044",
-"input_cache_read":"0.0000002"
+"prompt":"0.00000085",
+"completion":"0.0000038",
+"input_cache_read":"0.00000017"
 }
 },
 "kimi-k2.7-code":{
@@ -1446,9 +1446,9 @@
 "max_completion_tokens":262144,
 "name":"MoonshotAI: Kimi K2.7 Code",
 "pricing":{
-"prompt":"0.000001",
-"completion":"0.0000044",
-"input_cache_read":"0.0000002"
+"prompt":"0.00000085",
+"completion":"0.0000038",
+"input_cache_read":"0.00000017"
 }
 },
 "moonshotai/kimi-k2.7-code-20260612":{
@@ -1456,9 +1456,9 @@
 "max_completion_tokens":262144,
 "name":"MoonshotAI: Kimi K2.7 Code",
 "pricing":{
-"prompt":"0.000001",
-"completion":"0.0000044",
-"input_cache_read":"0.0000002"
+"prompt":"0.00000085",
+"completion":"0.0000038",
+"input_cache_read":"0.00000017"
 }
 },
 "kimi-k2.7-code-20260612":{
@@ -1466,9 +1466,9 @@
 "max_completion_tokens":262144,
 "name":"MoonshotAI: Kimi K2.7 Code",
 "pricing":{
-"prompt":"0.000001",
-"completion":"0.0000044",
-"input_cache_read":"0.0000002"
+"prompt":"0.00000085",
+"completion":"0.0000038",
+"input_cache_read":"0.00000017"
 }
 },
 "~anthropic/claude-fable-latest":{
@@ -3539,42 +3539,42 @@
 },
 "moonshotai/kimi-k2.6":{
 "context_length":262144,
-"max_completion_tokens":null,
+"max_completion_tokens":262144,
 "name":"MoonshotAI: Kimi K2.6",
 "pricing":{
-"prompt":"0.00000095",
-"completion":"0.000004",
-"input_cache_read":"0.00000016"
+"prompt":"0.000000684",
+"completion":"0.00000342",
+"input_cache_read":"0.000000144"
 }
 },
 "kimi-k2.6":{
 "context_length":262144,
-"max_completion_tokens":null,
+"max_completion_tokens":262144,
 "name":"MoonshotAI: Kimi K2.6",
 "pricing":{
-"prompt":"0.00000095",
-"completion":"0.000004",
-"input_cache_read":"0.00000016"
+"prompt":"0.000000684",
+"completion":"0.00000342",
+"input_cache_read":"0.000000144"
 }
 },
 "moonshotai/kimi-k2.6-20260420":{
 "context_length":262144,
-"max_completion_tokens":null,
+"max_completion_tokens":262144,
 "name":"MoonshotAI: Kimi K2.6",
 "pricing":{
-"prompt":"0.00000095",
-"completion":"0.000004",
-"input_cache_read":"0.00000016"
+"prompt":"0.000000684",
+"completion":"0.00000342",
+"input_cache_read":"0.000000144"
 }
 },
 "kimi-k2.6-20260420":{
 "context_length":262144,
-"max_completion_tokens":null,
+"max_completion_tokens":262144,
 "name":"MoonshotAI: Kimi K2.6",
 "pricing":{
-"prompt":"0.00000095",
-"completion":"0.000004",
-"input_cache_read":"0.00000016"
+"prompt":"0.000000684",
+"completion":"0.00000342",
+"input_cache_read":"0.000000144"
 }
 },
 "anthropic/claude-opus-4.7":{
@@ -3671,20 +3671,20 @@
 },
 "google/gemma-4-26b-a4b-it":{
 "context_length":262144,
-"max_completion_tokens":256000,
+"max_completion_tokens":16384,
 "name":"Google: Gemma 4 26B A4B ",
 "pricing":{
-"prompt":"0.0000001",
-"completion":"0.0000003"
+"prompt":"0.00000007",
+"completion":"0.00000034"
 }
 },
 "gemma-4-26b-a4b-it":{
 "context_length":262144,
-"max_completion_tokens":256000,
+"max_completion_tokens":16384,
 "name":"Google: Gemma 4 26B A4B ",
 "pricing":{
-"prompt":"0.0000001",
-"completion":"0.0000003"
+"prompt":"0.00000007",
+"completion":"0.00000034"
 }
 },
 "google/gemma-4-26b-a4b-it-20260403":{
@@ -3698,11 +3698,11 @@
 },
 "gemma-4-26b-a4b-it-20260403":{
 "context_length":262144,
-"max_completion_tokens":256000,
+"max_completion_tokens":16384,
 "name":"Google: Gemma 4 26B A4B ",
 "pricing":{
-"prompt":"0.0000001",
-"completion":"0.0000003"
+"prompt":"0.00000007",
+"completion":"0.00000034"
 }
 },
 "google/gemma-4-26b-a4b-it:free":{
@@ -7340,8 +7340,9 @@
 "max_completion_tokens":131072,
 "name":"MiniMax: MiniMax M2",
 "pricing":{
-"prompt":"0.000000255",
-"completion":"0.00000102"
+"prompt":"0.0000003",
+"completion":"0.0000012",
+"input_cache_read":"0.00000003"
 }
 },
 "minimax-m2":{
@@ -7349,8 +7350,9 @@
 "max_completion_tokens":131072,
 "name":"MiniMax: MiniMax M2",
 "pricing":{
-"prompt":"0.000000255",
-"completion":"0.00000102"
+"prompt":"0.0000003",
+"completion":"0.0000012",
+"input_cache_read":"0.00000003"
 }
 },
 "qwen/qwen3-vl-32b-instruct":{
@@ -9870,38 +9872,38 @@
 },
 "qwen/qwen3-14b":{
 "context_length":131702,
-"max_completion_tokens":16384,
+"max_completion_tokens":8192,
 "name":"Qwen: Qwen3 14B",
 "pricing":{
-"prompt":"0.00000012",
-"completion":"0.00000024"
+"prompt":"0.0000002275",
+"completion":"0.00000091"
 }
 },
 "qwen3-14b":{
 "context_length":131702,
-"max_completion_tokens":16384,
+"max_completion_tokens":8192,
 "name":"Qwen: Qwen3 14B",
 "pricing":{
-"prompt":"0.00000012",
-"completion":"0.00000024"
+"prompt":"0.0000002275",
+"completion":"0.00000091"
 }
 },
 "qwen/qwen3-14b-04-28":{
 "context_length":131702,
-"max_completion_tokens":16384,
+"max_completion_tokens":8192,
 "name":"Qwen: Qwen3 14B",
 "pricing":{
-"prompt":"0.00000012",
-"completion":"0.00000024"
+"prompt":"0.0000002275",
+"completion":"0.00000091"
 }
 },
 "qwen3-14b-04-28":{
 "context_length":131702,
-"max_completion_tokens":16384,
+"max_completion_tokens":8192,
 "name":"Qwen: Qwen3 14B",
 "pricing":{
-"prompt":"0.00000012",
-"completion":"0.00000024"
+"prompt":"0.0000002275",
+"completion":"0.00000091"
 }
 },
 "qwen/qwen3-32b":{
