@@ -94,15 +94,28 @@ def calculate_metrics(trades):
         dd      = (peak - equity) / peak * 100
         max_dd  = max(max_dd, dd)
 
-    # Composite Score (höher = besser)
-    # Gewichtung: Win Rate 30%, Profit Factor 30%, Sharpe 25%, -MaxDD 15%
-    pf_score = min(profit_factor, 5) / 5  # normalisiert auf 0-1
-    dd_score = max(0, 1 - max_dd/50)      # 50% DD = 0 Score
+    # Asymmetrie-Kennzahlen (Turtle-Denkweise): nicht die Trefferquote zählt,
+    # sondern Payoff-Ratio × Trefferquote = Erwartungswert pro Trade. Das
+    # Turtle-System hatte ~35-40% Win-Rate und lebte allein davon, dass die
+    # Gewinner 3-5× so groß waren wie die Verlierer.
+    payoff_ratio = (avg_win / avg_loss) if avg_loss > 0 else float('inf')
+    expectancy   = win_rate * avg_win - (1 - win_rate) * avg_loss  # % pro Trade
+
+    # Composite Score (höher = besser) – bewusst OHNE eigenständigen Win-Rate-
+    # Term. Ein Trendfolge-Profil darf nicht dafür bestraft werden, oft falsch
+    # zu liegen, solange der Erwartungswert stimmt. Gewichtung:
+    #   Expectancy 35% | Payoff-Ratio 20% | Profit Factor 20% | Sharpe 15% | -MaxDD 10%
+    pf_score     = min(profit_factor, 5) / 5              # 0-1
+    dd_score     = max(0, 1 - max_dd / 50)                # 50% DD = 0 Score
+    exp_score    = max(0.0, min(expectancy / 2.0, 1.0))   # 2% Erwartung/Trade = voll
+    payoff_score = 1.0 if payoff_ratio == float('inf') \
+                   else max(0.0, min(payoff_ratio / 4.0, 1.0))  # 4:1 = voll (Ziel 3-5:1)
     composite = (
-        win_rate * 0.30 +
-        pf_score * 0.30 +
-        min(max(sharpe, 0), 3) / 3 * 0.25 +
-        dd_score * 0.15
+        exp_score    * 0.35 +
+        payoff_score * 0.20 +
+        pf_score     * 0.20 +
+        min(max(sharpe, 0), 3) / 3 * 0.15 +
+        dd_score     * 0.10
     )
 
     return {
@@ -110,6 +123,8 @@ def calculate_metrics(trades):
         "win_rate":       round(win_rate * 100, 1),
         "avg_win":        round(avg_win, 2),
         "avg_loss":       round(avg_loss, 2),
+        "payoff_ratio":   round(payoff_ratio, 2) if payoff_ratio != float('inf') else None,
+        "expectancy":     round(expectancy, 3),
         "profit_factor":  round(profit_factor, 2),
         "sharpe":         round(sharpe, 2),
         "max_drawdown":   round(max_dd, 2),
@@ -264,7 +279,9 @@ def main():
     current_metrics = calculate_metrics(trades)
     print(f"  Aktuell: Composite={current_metrics['composite']:.4f} "
           f"WR={current_metrics['win_rate']}% "
-          f"PF={current_metrics['profit_factor']}", flush=True)
+          f"PF={current_metrics['profit_factor']} "
+          f"Payoff={current_metrics.get('payoff_ratio')} "
+          f"Exp={current_metrics.get('expectancy')}%/Trade", flush=True)
 
     # Grid Search
     print("  Starte Grid Search...", flush=True)
@@ -415,28 +432,41 @@ def adjust_from_eval_metrics(con, cfg):
 
     avg_wr, avg_pf, avg_sl, avg_tp = metrics
     changes = []
+    pf = avg_pf if avg_pf is not None else 1.0
 
-    # Min Confidence dynamisch
-    if avg_wr < 0.40:
+    # Min Confidence dynamisch — ASYMMETRIE-BEWUSST.
+    # Eine niedrige Win-Rate allein ist KEIN Grund, strenger zu werden: ein
+    # Trendfolge-Profil (WR ~35-40%) ist profitabel, solange die Payoff-Ratio
+    # stimmt. Nur enger stellen, wenn zusätzlich der Profit Factor kippt
+    # (echter Edge-Verlust, nicht nur „oft falsch, aber groß richtig").
+    if avg_wr < 0.40 and pf < 1.1:
         old = cfg.get("min_confidence", 0.65)
         cfg["min_confidence"] = round(min(0.85, old + 0.05), 2)
-        changes.append(f"📊 Min Konfidenz: {old:.0%}→{cfg['min_confidence']:.0%} (WR:{avg_wr:.0%})")
-    elif avg_wr > 0.65:
+        changes.append(f"📊 Min Konfidenz: {old:.0%}→{cfg['min_confidence']:.0%} "
+                       f"(WR:{avg_wr:.0%} UND PF:{pf:.2f} < 1.1)")
+    elif avg_wr > 0.65 and pf > 1.5:
         old = cfg.get("min_confidence", 0.65)
         cfg["min_confidence"] = round(max(0.55, old - 0.05), 2)
-        changes.append(f"📊 Min Konfidenz: {old:.0%}→{cfg['min_confidence']:.0%} (WR:{avg_wr:.0%})")
+        changes.append(f"📊 Min Konfidenz: {old:.0%}→{cfg['min_confidence']:.0%} "
+                       f"(WR:{avg_wr:.0%}, PF:{pf:.2f} – Edge robust)")
 
-    # SL anpassen bei zu vielen SL-Hits
+    # SL anpassen bei zu vielen SL-Hits (unverändert – Risikoschutz)
     if avg_sl and avg_sl > 0.60:
         old = cfg.get("atr_sl_multiplier", 1.5)
         cfg["atr_sl_multiplier"] = round(min(2.5, old + 0.25), 2)
         changes.append(f"🛑 SL: {old}x→{cfg['atr_sl_multiplier']}x ATR (SL-Hits:{avg_sl:.0%})")
 
-    # TP enger wenn kaum erreicht
-    if avg_tp and avg_tp < 0.20:
+    # TP NICHT reflexartig kürzen, nur weil er selten getroffen wird.
+    # Bei einem Trendfolge-/Asymmetrie-Profil kommen die Gewinne aus dem
+    # Trailing (Winner laufen lassen), nicht aus einem fixen TP – eine niedrige
+    # TP-Hit-Quote ist dann ERWARTET und gesund. TP nur verengen, wenn der
+    # Profit Factor gleichzeitig schwach ist (die weiten Ziele zahlen sich
+    # also nicht aus).
+    if avg_tp and avg_tp < 0.20 and pf < 1.2:
         old = cfg.get("atr_tp_multiplier", 3.0)
         cfg["atr_tp_multiplier"] = round(max(2.0, old - 0.25), 2)
-        changes.append(f"🎯 TP: {old}x→{cfg['atr_tp_multiplier']}x ATR (TP-Hits:{avg_tp:.0%})")
+        changes.append(f"🎯 TP: {old}x→{cfg['atr_tp_multiplier']}x ATR "
+                       f"(TP-Hits:{avg_tp:.0%} UND PF:{pf:.2f} < 1.2)")
 
     return cfg, changes
 

@@ -6,8 +6,8 @@
     "beneficiary_b": "deepseek/deepseek-v4-flash",
     "beneficiary_c": "qwen/qwen3.5-flash-02-23",
     "pm_classifier": "deepseek/deepseek-v4-flash",
-    "committee_bull": "deepseek/deepseek-v4-flash",
-    "committee_bear": "qwen/qwen3.5-flash-02-23",
+    "committee_bull": "deepseek/deepseek-v4-pro",
+    "committee_bear": "openai/gpt-5.4-nano",
     "committee_risk": "google/gemini-2.5-flash-lite",
     "devils_advocate": "deepseek/deepseek-v4-flash",
     "extractor_analyst": "deepseek/deepseek-v4-flash"
@@ -23,13 +23,13 @@
     "min_avg_volume_eur": 500000,
     "max_open_positions": 8,
     "max_themes_in_portfolio": 3,
-    "max_portfolio_allocation": 0.70,
-    "min_eur_allocation": 0.40,
+    "max_portfolio_allocation": 0.7,
+    "min_eur_allocation": 0.4,
     "min_hold_days": 21,
     "thesis_weakening_days_to_alert": 3,
-    "drawdown_soft_warning_pct": 0.10,
+    "drawdown_soft_warning_pct": 0.1,
     "drawdown_hard_restriction_pct": 0.15,
-    "drawdown_auto_pause_pct": 0.20,
+    "drawdown_auto_pause_pct": 0.2,
     "reactivation_cooling_off_hours": 72,
     "trailing_stop_normal_pct": 0.25,
     "trailing_stop_hard_mode_pct": 0.15,
@@ -39,24 +39,24 @@
     "news_volltext_ttl_days": 30,
     "pm_min_total_volume_usd": 100000,
     "pm_min_24h_volume_usd": 5000,
-    "pm_significant_move_delta_7d": 0.10
+    "pm_significant_move_delta_7d": 0.1
   },
   "factor_weights": {
-    "momentum": 0.30,
+    "momentum": 0.3,
     "quality": 0.25,
-    "value": 0.20,
+    "value": 0.2,
     "revision": 0.15,
-    "lowvol": 0.10
+    "lowvol": 0.1
   },
   "conviction_weights": {
-    "llm_consensus": 0.30,
+    "llm_consensus": 0.3,
     "factor_composite": 0.25,
-    "timing": 0.20,
+    "timing": 0.2,
     "theme_momentum": 0.15,
-    "asymmetry_bonus": 0.10
+    "asymmetry_bonus": 0.1
   },
   "pm_conviction_multipliers": {
-    "supporting": 1.10,
+    "supporting": 1.1,
     "mixed": 1.0,
     "contradicting": 0.85,
     "no_data": 1.0

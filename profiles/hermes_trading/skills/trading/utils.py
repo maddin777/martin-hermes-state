@@ -564,11 +564,34 @@ def get_technical_score(ticker):
                     score += 1
                     reasons.append("Crabel WS-Tag: Expansion bereits erfolgt ✗")
 
+        # 9. Donchian-Breakout (Turtle-Konfluenz) — Bonus in Ausbruchsrichtung.
+        # Ein neues N-Tage-Hoch/Tief IST das Trendbestätigungs-Signal (Donchian
+        # war die Grundlage des Turtle-Systems). Wirkt hier als ZUSÄTZLICHES
+        # Konfluenz-Kriterium neben EMA/RSI/MACD, nicht als alleiniges Signal.
+        # Gewichtung bewusst moderat (±1.0 max), damit ein reiner Range-Ausbruch
+        # ohne sonstige Bestätigung keinen Trade allein trägt. Wie beim Crabel-
+        # Bonus wird max_score NICHT angehoben (confidence-Clamp fängt die Summe).
+        donchian = get_donchian_breakout(ticker)
+        if donchian:
+            if donchian["breakout_long_slow"]:
+                score += 1.0
+                reasons.append("Donchian 55-Tage-Hoch (S2-Ausbruch) ✓✓")
+            elif donchian["breakout_long"]:
+                score += 0.5
+                reasons.append("Donchian 20-Tage-Hoch (S1-Ausbruch) ✓")
+            elif donchian["breakout_short_slow"]:
+                score -= 1.0
+                reasons.append("Donchian 55-Tage-Tief (S2-Ausbruch) ✗✗")
+            elif donchian["breakout_short"]:
+                score -= 0.5
+                reasons.append("Donchian 20-Tage-Tief (S1-Ausbruch) ✗")
+
         # Normalisierung: -10…+10 → 0.0…1.0
-        # (max_score bleibt bewusst 10: Crabel-Bonus max ±1.5, Summe der
-        #  Maximal-Gewichte war schon vorher ~9.5 – confidence wird geclampt.
-        #  max_score anzuheben würde ALLE Confidences Richtung 0.5 stauchen
-        #  und die kalibrierten tech_score-Schwellen im signal_manager brechen.)
+        # (max_score bleibt bewusst 10: Crabel-Bonus max ±1.5, Donchian ±1.0,
+        #  Summe der Maximal-Gewichte war schon vorher ~9.5 – confidence wird
+        #  geclampt. max_score anzuheben würde ALLE Confidences Richtung 0.5
+        #  stauchen und die kalibrierten tech_score-Schwellen im signal_manager
+        #  brechen.)
         confidence = round((score + max_score) / (2 * max_score), 3)
         confidence = max(0.0, min(1.0, confidence))
         direction  = "LONG" if score >= 2 else "SHORT" if score <= -2 else "NEUTRAL"
@@ -589,6 +612,7 @@ def get_technical_score(ticker):
             "rsi":           round(float(rsi_val), 1),
             "weekly_trend":  weekly_trend,
             "crabel":        crabel,   # Pattern-Flags + Breakout-Level (oder None)
+            "donchian":      donchian, # Donchian-Kanäle + Breakout-Flags (oder None)
         }
 
     except Exception as e:
@@ -699,6 +723,92 @@ def get_crabel_patterns(ticker: str, stretch_len: int = 10):
     except Exception as e:
         _log = get_logger("utils.crabel")
         _log.warning("Crabel-Pattern Fehler (%s): %s", ticker, e)
+        return None
+
+
+# ── Donchian-Channel-Breakout (Turtle) ───────────────────────────────────────
+# Kernindikator des Turtle-Systems (Richard Dennis / William Eckhardt, 1983).
+# S1 (schnell): Entry 20-Tage-Ausbruch, Exit 10-Tage-Gegen-Extrem.
+# S2 (langsam): Entry 55-Tage-Ausbruch, Exit 20-Tage-Gegen-Extrem.
+# Hier nur als KONFLUENZ-Baustein neben den bestehenden Indikatoren –
+# das eigentliche Turtle-System handelte einen diversifizierten Futures-Korb,
+# nicht einen korrelierten Aktien-Basket. Deshalb bewusst kein Standalone-Trigger.
+
+def get_donchian_breakout(ticker: str, entry_period: int = 20,
+                          exit_period: int = 10, slow_period: int = 55):
+    """
+    Berechnet Donchian-Kanäle und Breakout-Flags im Turtle-Stil.
+
+    Nutzt get_price_data_cached() – bei bereits geladenem Ticker (z.B. nach
+    get_technical_score) entstehen KEINE zusätzlichen API-Calls.
+
+    Der letzte (evtl. unfertige) Tagesbar wird für die Kanal-REFERENZ
+    ausgeschlossen: ein Breakout gilt erst, wenn der aktuelle Close das Extrem
+    der N vorherigen ABGESCHLOSSENEN Bars überschreitet (verhindert, dass ein
+    laufender Tag sein eigenes Kanal-Extrem setzt und den Ausbruch maskiert).
+
+    Alle Levels in der Heimwährung des Tickers (nicht EUR-umgerechnet) – für
+    Trailing/Vergleich mit Kursen in derselben Skala nutzbar.
+
+    Rückgabe: Dict (JSON-serialisierbar) oder None.
+        entry_period / exit_period / slow_period  verwendete Lookbacks
+        upper_20 / lower_20    Donchian-Grenzen über entry_period
+        upper_55 / lower_55    Donchian-Grenzen über slow_period
+        exit_low / exit_high   Gegen-Extrem über exit_period (Trailing-Referenz)
+        breakout_long          Close > 20-Tage-Hoch (S1 Long-Trigger)
+        breakout_short         Close < 20-Tage-Tief (S1 Short-Trigger)
+        breakout_long_slow     Close > 55-Tage-Hoch (S2 Long-Trigger)
+        breakout_short_slow    Close < 55-Tage-Tief (S2 Short-Trigger)
+        last_close             letzter Close (Heimwährung)
+    """
+    from datetime import date as _date
+    try:
+        _, _, df = get_price_data_cached(ticker)
+        if df is None or df.empty or len(df) < slow_period + 5:
+            return None
+
+        high  = df["High"].iloc[:, 0]  if df["High"].ndim  > 1 else df["High"]
+        low   = df["Low"].iloc[:, 0]   if df["Low"].ndim   > 1 else df["Low"]
+        close = df["Close"].iloc[:, 0] if df["Close"].ndim > 1 else df["Close"]
+
+        last_close = float(close.iloc[-1])
+
+        # Laufenden (unfertigen) Bar aus der Kanal-Referenz herausnehmen
+        try:
+            is_partial = df.index[-1].date() >= _date.today()
+        except Exception:
+            is_partial = False
+        h = high.iloc[:-1] if is_partial else high
+        l = low.iloc[:-1]  if is_partial else low
+        if len(h) < slow_period + 1:
+            return None
+
+        upper_20 = float(h.iloc[-entry_period:].max())
+        lower_20 = float(l.iloc[-entry_period:].min())
+        upper_55 = float(h.iloc[-slow_period:].max())
+        lower_55 = float(l.iloc[-slow_period:].min())
+        exit_low  = float(l.iloc[-exit_period:].min())
+        exit_high = float(h.iloc[-exit_period:].max())
+
+        return {
+            "entry_period":        entry_period,
+            "exit_period":         exit_period,
+            "slow_period":         slow_period,
+            "upper_20":            round(upper_20, 4),
+            "lower_20":            round(lower_20, 4),
+            "upper_55":            round(upper_55, 4),
+            "lower_55":            round(lower_55, 4),
+            "exit_low":            round(exit_low, 4),
+            "exit_high":           round(exit_high, 4),
+            "breakout_long":       bool(last_close > upper_20),
+            "breakout_short":      bool(last_close < lower_20),
+            "breakout_long_slow":  bool(last_close > upper_55),
+            "breakout_short_slow": bool(last_close < lower_55),
+            "last_close":          round(last_close, 4),
+        }
+    except Exception as e:
+        _log = get_logger("utils.donchian")
+        _log.warning("Donchian-Breakout Fehler (%s): %s", ticker, e)
         return None
 
 

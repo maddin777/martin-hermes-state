@@ -20,7 +20,7 @@ import requests
 import yfinance as yf
 import pandas_ta as ta
 from datetime import datetime, timedelta
-from utils import passes_liquidity_filter, apply_slippage, COMMISSION_EUR, get_price_data_cached, prefetch_prices, realized_pnl_from_effective_entry, get_crabel_patterns
+from utils import passes_liquidity_filter, apply_slippage, COMMISSION_EUR, get_price_data_cached, prefetch_prices, realized_pnl_from_effective_entry, get_crabel_patterns, get_donchian_breakout
 from utils import get_logger, price_to_eur, position_size_in_shares, open_positions_market_value_eur, calc_pnl_with_costs
 log = get_logger("signal_manager")
 from config import DB_PATH, SIGNALS_VALIDATED_PATH, STRATEGY_CONFIG_PATH, MACRO_SIGNAL_PATH, db_connect, get_asset_type, get_asset_multipliers
@@ -71,6 +71,20 @@ DEFAULT_CONFIG = {
     #   "off":        Gate deaktiviert
     "crabel_gate_mode":       "contraction",
     "crabel_stretch_len":     10,     # Lookback für Stretch-Berechnung (Tage)
+    # ── Donchian-Trailing-Exit (Turtle-Stil) ───────────────────────────────
+    #   Trailing-Stop folgt dem N-Tage-Gegen-Extrem statt (bzw. zusätzlich zum)
+    #   ATR-Chandelier. Idee: Trends Raum geben statt eng nachzuziehen – die
+    #   Turtle-Asymmetrie (wenige große Gewinner) lebt davon, Winner laufen zu
+    #   lassen. Monoton: ein bereits gesetzter Stop wird NIE gelockert, damit
+    #   das Ist-Risiko und der Drawdown-Circuit-Breaker konsistent bleiben.
+    #   "off":     deaktiviert, reiner ATR-Chandelier (Default, Verhalten unverändert)
+    #   "ratchet": Donchian-Tief/-Hoch als ZUSÄTZLICHER Verengungs-Floor über dem
+    #              Chandelier (konservativ; bindet selten, aber nie riskanter)
+    #   "primary": Donchian-Extrem ERSETZT den Chandelier als Trail (echter
+    #              Turtle-Exit, gibt Trends Raum) – Initial-SL bleibt harter Floor
+    "donchian_exit_enabled":  False,
+    "donchian_exit_mode":     "off",
+    "donchian_exit_period":   10,     # Turtle S1-Exit: 10-Tage-Gegen-Extrem
     # ── Investment Committee (Rollen-Sprint R1) ────────────────────────────
     #   Pre-Entry-Gate mit drei LLM-Rollen (Bull → Bear → Risk).
     #   "shadow" (Default): loggt nur, was es entschieden HÄTTE – blockt NICHTS.
@@ -672,8 +686,16 @@ def check_open_positions(con, cfg):
                 )
                 print(f"  ✂ Partial TP {pos['name']}: {partial_pct:.0%} geschlossen", flush=True)
 
-        # --- Trailing Stop ---
-        if atr:
+        # Donchian-Exit-Modus für diese Position bestimmen (steuert, ob der
+        # ATR-Chandelier unten läuft oder vom Donchian-Trail ersetzt wird).
+        _donchian_enabled = bool(cfg.get("donchian_exit_enabled"))
+        _donchian_mode    = cfg.get("donchian_exit_mode", "off") if _donchian_enabled else "off"
+        _donchian_primary = _donchian_mode == "primary"
+
+        # --- Trailing Stop (ATR-Chandelier) ---
+        # Im primary-Modus übernimmt der Donchian-Trail (unten) das Nachziehen –
+        # sonst würde der engere Chandelier den weiteren Turtle-Stop dominieren.
+        if atr and not _donchian_primary:
             if direction == "LONG":
                 prev_high = pos["highest_price"] or entry
                 new_high  = max(prev_high, current_price)
@@ -730,6 +752,54 @@ def check_open_positions(con, cfg):
                         (round(new_low, 2), pos["id"])
                     )
                     con.commit()
+
+        # --- Donchian-Trailing (Turtle-Exit) ---
+        # Zieht den Stop hinter dem N-Tage-Gegen-Extrem nach. Monoton: hebt den
+        # Stop für LONG nur an bzw. senkt ihn für SHORT nur ab – lockert nie.
+        #   ratchet: läuft ZUSÄTZLICH zum Chandelier (nur wenn Donchian enger ist)
+        #   primary: Chandelier ist oben deaktiviert, Donchian ist der Trail
+        if _donchian_enabled and _donchian_mode != "off":
+            donch = get_donchian_breakout(
+                ticker, exit_period=cfg.get("donchian_exit_period", 10)
+            )
+            if donch:
+                if direction == "LONG":
+                    cand_sl = donch["exit_low"]
+                    if cand_sl > sl:
+                        was_breakeven = not pos["breakeven_set"] and cand_sl >= entry
+                        con.execute(
+                            "UPDATE positions SET stop_loss=?, trailing_sl=?, "
+                            "highest_price=?, breakeven_set=? WHERE id=?",
+                            (round(cand_sl, 2), round(cand_sl, 2),
+                             round(max(pos["highest_price"] or entry, current_price), 2),
+                             1 if cand_sl >= entry else pos["breakeven_set"],
+                             pos["id"])
+                        )
+                        con.commit()
+                        sl = cand_sl
+                        print(f"  🐢 {pos['name']}: Donchian-Trail SL → {cand_sl:.2f} "
+                              f"({donch['exit_period']}-Tage-Tief, {_donchian_mode})", flush=True)
+                        if was_breakeven:
+                            send_telegram(
+                                "🔒 <b>Breakeven (Donchian-Trail)</b>\n"
+                                f"{pos['name']} ({ticker})\n"
+                                f"Trailing SL: {cand_sl:.2f}"
+                            )
+                elif direction == "SHORT":
+                    cand_sl = donch["exit_high"]
+                    if cand_sl < sl:
+                        con.execute(
+                            "UPDATE positions SET stop_loss=?, trailing_sl=?, "
+                            "lowest_price=?, breakeven_set=? WHERE id=?",
+                            (round(cand_sl, 2), round(cand_sl, 2),
+                             round(min(pos["lowest_price"] or entry, current_price), 2),
+                             1 if cand_sl <= entry else pos["breakeven_set"],
+                             pos["id"])
+                        )
+                        con.commit()
+                        sl = cand_sl
+                        print(f"  🐢 {pos['name']}: Donchian-Trail SL → {cand_sl:.2f} "
+                              f"({donch['exit_period']}-Tage-Hoch, {_donchian_mode})", flush=True)
 
         # --- Position schließen ---
         exit_reason = None

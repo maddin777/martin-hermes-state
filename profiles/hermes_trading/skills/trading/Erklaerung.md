@@ -1,6 +1,80 @@
 # Änderungshistorie — Trading Skill
 
-**Stand:** Paketen A–D + Sprints 1–7 + Bugfix-Sprint + Screener-Source + Watchlist-Performance-Fix + **Rollen-Sprint R1–R4**
+**Stand:** Paketen A–D + Sprints 1–7 + Bugfix-Sprint + Screener-Source + Watchlist-Performance-Fix + Rollen-Sprint R1–R4 + **Turtle-Konfluenz-Sprint**
+
+## 20.07.2026 — Turtle-Konfluenz-Sprint (Donchian + Asymmetrie)
+
+### Prinzip
+Ausgewählte Bausteine des Turtle-Systems (Dennis/Eckhardt 1983) übernommen — bewusst NICHT als Standalone-System. Das Original handelte einen diversifizierten Futures-Korb; Hermes handelt einen korrelierten Aktien-Basket (DAX/MDAX/S&P100), wo der reine Breakout-Edge dünn und diversifikationsschwach ist (Studien: ~5–7% p.a. auf Aktien vs. Futures; Sharpe-Verfall post-2005). Übernommen wurden daher nur die assetklassen-robusten Teile: Donchian-Breakout als Konfluenz-Signal, Donchian-Trailing-Exit (opt-in) und die Asymmetrie-Denkweise im Optimizer. Deterministischer Backbone und bestehende Exit-Pfade bleiben per Default unverändert.
+
+### Punkt 1 — ATR-Risk-Parity-Sizing: bereits vorhanden, NICHT dupliziert
+`signal_manager.open_new_positions()` (Vol-Adj-Block) rechnet bereits:
+```
+risk_amount     = portfolio_value × risk_pct_per_trade   (1.5%)
+sl_distance_eur = sl_multiplier(asset_type) × ATR_eur
+position_size   = (risk_amount / sl_distance_eur) × price_eur
+```
+Ein SL-Hit verliert damit exakt `risk_pct_per_trade` des Portfolios — über die ECHTE SL-Distanz (asset-type × ATR), nicht nur „1 ATR". Das ist die korrektere Form der Turtle-N-Idee, FX-aware. Kein Code-Change nötig.
+
+### Punkt 2 — Donchian-Breakout als Konfluenz (`utils.py`)
+Neuer Helfer `get_donchian_breakout(ticker, entry_period=20, exit_period=10, slow_period=55)`:
+- Nutzt `get_price_data_cached()` → KEINE zusätzlichen API-Calls (df ist nach `get_technical_score` bereits im 5-min-TTL-Cache; gleiche Mechanik wie `get_crabel_patterns`).
+- Schließt den laufenden (unfertigen) Tagesbar aus der Kanal-Referenz aus → ein Ausbruch kann sich nicht selbst maskieren.
+- Rückgabe: `upper_20/lower_20`, `upper_55/lower_55`, `exit_low/exit_high` (Trailing-Referenz), Breakout-Flags (`breakout_long`, `breakout_short`, `breakout_long_slow`, `breakout_short_slow`).
+
+Integriert als **Score-Komponente 9** in `get_technical_score()`:
+
+| Bedingung | Score |
+|---|---|
+| 55-Tage-Hoch (S2-Ausbruch) | +1.0 |
+| 20-Tage-Hoch (S1-Ausbruch) | +0.5 |
+| 20-Tage-Tief (S1-Ausbruch) | −0.5 |
+| 55-Tage-Tief (S2-Ausbruch) | −1.0 |
+
+`max_score` bleibt bewusst **10** (wie beim Crabel-Bonus) — sonst würden alle Confidences Richtung 0.5 gestaucht und die kalibrierten `tech_score`-Schwellen im `signal_manager` brechen. Das `donchian`-Dict landet im Return und fließt automatisch in `technical_validator.py`.
+
+### Punkt 3 — Donchian-Trailing-Exit (`signal_manager.py`, `check_open_positions()`)
+Config-gated, **Default `off`** (Verhalten unverändert bis manuell aktiviert). Neue Keys in `DEFAULT_CONFIG`:
+```python
+"donchian_exit_enabled": False,
+"donchian_exit_mode":    "off",    # off | ratchet | primary
+"donchian_exit_period":  10,       # Turtle S1-Exit: 10-Tage-Gegen-Extrem
+```
+- **`ratchet`**: Donchian-Extrem als ZUSÄTZLICHER Verengungs-Floor über dem ATR-Chandelier (konservativ; bindet selten, nie riskanter).
+- **`primary`**: Donchian-Extrem ERSETZT den Chandelier als Trail (echter Turtle-Exit, gibt Trends Raum). Der Chandelier-Block wird dann übersprungen; der Initial-SL aus `compute_sl_tp` bleibt harter Floor.
+
+Beide Modi **monoton**: heben den Stop für LONG nur an / senken ihn für SHORT nur ab — lockern nie. Damit bleiben Ist-Risiko und Drawdown-Circuit-Breaker (mark-to-market) konsistent. Fixe TP + Partial-TP bleiben unangetastet (Donchian = Zusatz, kein Ersatz). Log-Marker: `🐢 Donchian-Trail`.
+
+### Punkt 4 — Asymmetrie-Denkweise im Optimizer (`strategy_optimizer.py` + `backtester.py`)
+**Composite-Score neu** — kein eigenständiger Win-Rate-Term mehr:
+```
+Expectancy 35% | Payoff-Ratio 20% | Profit Factor 20% | Sharpe 15% | −MaxDD 10%
+```
+mit `expectancy = WR × avg_win − (1−WR) × avg_loss` und `payoff_ratio = avg_win / avg_loss`. Begründung: ein Trendfolge-Profil (WR ~35–40%, große Winner) darf nicht dafür bestraft werden, oft falsch zu liegen, solange der Erwartungswert stimmt. **BEIDE** `calculate_metrics`-Kopien angepasst — sonst optimiert der Walk-Forward-Pfad (nutzt `backtester`) weiter auf Win-Rate.
+
+**`adjust_from_eval_metrics` entschärft** (zwei anti-asymmetrische Auto-Regeln):
+
+| Alt | Neu |
+|---|---|
+| WR < 40% → `min_confidence` +5% | nur wenn ZUSÄTZLICH PF < 1.1 (echter Edge-Verlust) |
+| TP-Hits < 20% → `atr_tp_multiplier` −0.25 | nur wenn ZUSÄTZLICH PF < 1.2 (weite Ziele zahlen sich nicht aus) |
+
+Bei gesundem Profit Factor ist eine niedrige TP-Hit-Quote ERWARTET — die Gewinne kommen aus dem Trailing, nicht aus dem Fix-TP. `payoff_ratio` + `expectancy` zusätzlich im Metrics-Return und im Optimizer-Log.
+
+**Verifikation** (`verify_turtle.py`, standalone): Turtle-Profil (35% WR, Payoff 3.75, Exp +2.65%/Trade) vs. Mean-Reverter (70% WR, Payoff 0.5, Exp +0.20%/Trade) → NEU-Composite **0.786 vs. 0.221** (alt: 0.503 vs. 0.461, kaum getrennt — der Win-Rate-Term stützte den Mean-Reverter künstlich).
+
+### Deploy-Hinweis
+Die erweiterte `get_technical_score`-Rückgabe (`donchian`-Key) + der neue Score-Anteil verschieben die Confidence-Verteilung minimal. Da `max_score` bei 10 bleibt, sollten die Schwellen halten. Nach Deploy einmal `refresh_tech_scores.py` laufen lassen und Watchlist-Confidences gegenprüfen.
+
+### Geänderte Dateien
+| Datei | Änderung |
+|---|---|
+| `utils.py` | `get_donchian_breakout()` neu; Score-Komponente 9 + `donchian`-Key in `get_technical_score()` |
+| `signal_manager.py` | Donchian-Trailing in `check_open_positions()`; 3 Config-Keys; Import `get_donchian_breakout` |
+| `strategy_optimizer.py` | Composite auf Expectancy/Payoff; `adjust_from_eval_metrics` asymmetrie-bewusst; Expectancy/Payoff im Log |
+| `backtester.py` | Composite in `calculate_metrics` konsistent umgestellt |
+
+---
 
 ## 17.07.2026 — Hedgefonds-Rollen-Sprint (R1–R4)
 
@@ -30,13 +104,20 @@ DAILY_TOKEN_BUDGET = {
 
 ### Modell-Konfiguration (`thematic/config/thematic_config.json`)
 ```json
-"committee_bull":    "deepseek/deepseek-v4-flash",
-"committee_bear":    "qwen/qwen3.5-flash-02-23",
+"committee_bull":    "deepseek/deepseek-v4-pro",
+"committee_bear":    "openai/gpt-5.4-nano",
 "committee_risk":    "google/gemini-2.5-flash-lite",
 "devils_advocate":   "deepseek/deepseek-v4-flash",
 "extractor_analyst": "deepseek/deepseek-v4-flash"
 ```
-Bull und Bear MÜSSEN verschiedene Provider sein — sonst widerlegt sich das Modell nur selbst mit denselben Biases. `grok-lite` bewusst NICHT fürs Committee (wird vom Breaking-News-Check genutzt, Rate-Limits schonen).
+Bull, Bear und Risk sind DREI verschiedene Provider (DeepSeek / OpenAI / Google) — Bull und Bear MÜSSEN verschieden sein, sonst widerlegt sich dasselbe Modell nur mit denselben Biases. `grok-lite` bewusst NICHT fürs Committee (wird vom Breaking-News-Check genutzt, Rate-Limits schonen).
+
+**Modellwahl-Historie (20.07.2026, live per Sonde `probe_model.py` verifiziert):**
+- **Bear: Qwen3.5-flash → gpt-5.4-nano.** Qwen ist ein Reasoning-Modell und verbrannte ~5400 nicht-abschaltbare Reasoning-Tokens pro Call — bei `max_tokens=800` lief der Denkprozess voll und lieferte `content=""` (`finish_reason=error`), was jeden Bear-Call in Fail-Open trieb. `reasoning:{exclude:true}` unterdrückt nur die Ausgabe, nicht die Abrechnung. gpt-5.4-nano ist denkfrei (`reasoning_tokens=0`) und liefert die inhaltlich schärfste Gegenanalyse der getesteten Kandidaten (benennt konkrete fehlende Trigger statt höflicher Relativierung).
+- **Bull: DeepSeek-flash → DeepSeek-pro.** Bessere Argumentationsqualität, ebenfalls denkfrei.
+- Ergebnis: **~3500 Tokens pro 3-Rollen-Check** statt ~9000 mit Qwen. 150k-Committee-Budget trägt damit ~40 Checks/Tag.
+- **Verworfen:** tencent/hy3 (nur höfliche Relativierung, kein scharfer Angriff), grok-4-fast (bei OpenRouter deprecated → Grok 4.3), gemini-3.1-flash-lite & deepseek-v4-pro-als-Bear (Provider-Kollision mit Risk bzw. Bull).
+- **Bekannter Rest-Ausreißer:** DeepSeek-pro (Bull) läuft in ~1 von 7 Calls in einen Longtail und stößt an den 800er-Deckel → Truncation → Fail-Open. Im Shadow-Mode kosmetisch (Trade läuft durch wie ohne Committee). JSON-Repair-Fallback erst bauen, wenn echte Läufe eine Ausreißerquote >5 % zeigen.
 
 ---
 

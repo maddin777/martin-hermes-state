@@ -615,3 +615,64 @@ Lektion #28 abgeschlossen.
 Lektion #29 abgeschlossen.
 
 
+
+## Lektion #30
+
+### 1. Wortschatz (Top 500)
+1. **dom** `Haus`
+2. **miejsce** `Ort`
+3. **praca** `Arbeit`
+4. **miasto** `Stadt`
+5. **rok** `Jahr`
+6. **człowiek** `Mensch`
+7. **ręka** `Hand`
+8. **woda** `Wasser`
+9. **pieniądze** `Geld`
+10. **okulary** `Brille`
+
+### 2. n+1 Sentence Mining
+1. **Mój dom jest duży.** `Mein Haus ist groß.`
+2. **To jest ważne miejsce.** `Das ist ein wichtiger Ort.`
+3. **Gdzie jest twoja praca?** `Wo ist deine Arbeit?`
+4. **To miasto jest piękne.** `Diese Stadt ist schön.`
+5. **Ten rok jest dobry.** `Dieses Jahr ist gut.`
+6. **Każdy człowiek jest inny.** `Jeder Mensch ist anders.`
+7. **Mam brudną rękę.** `Ich habe eine schmutzige Hand.`
+8. **Piję zimną wodę.** `Ich trinke kaltes Wasser.`
+9. **Nie mam pieniędzy.** `Ich habe kein Geld.`
+10. **Gdzie są moje okulary?** `Wo ist meine Brille?`
+
+### 3. Grammatik: Aspekt & Kasus
+**Verben (Aspekt-Paare):**
+* **robić** (imperf.) / **zrobić** (perf.) `machen`
+* **pisać** (imperf.) / **napisać** (perf.) `schreiben`
+
+**Nomen (Kasus-Beispiel):**
+* **dom** (Nom.) -> **domu** (Gen.) `Haus`
+* **woda** (Nom.) -> **wodę** (Akk.) `Wasser`
+
+### 4. Lückentext-Quiz
+1. To jest mój ______. (Haus)
+2. Bardzo lubię to ______. (Ort)
+3. Gdzie jest ______? (Arbeit)
+4. To ______ jest piękne. (Stadt)
+5. Ten ______ jest dobry. (Jahr)
+6. Każdy ______ jest inny. (Mensch)
+7. Mam brudną ______. (Hand)
+8. Piję zimną ______. (Wasser)
+9. Nie mam ______. (Geld)
+10. Gdzie są moje ______? (Brille)
+
+### 5. Auflösung
+1. **dom**
+2. **miejsce**
+3. **praca**
+4. **miasto**
+5. **rok**
+6. **człowiek**
+7. **ręka**
+8. **woda**
+9. **pieniądze**
+10. **okulary**
+
+Lektion #30 abgeschlossen.

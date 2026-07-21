@@ -90,12 +90,24 @@ def calculate_metrics(trades):
         max_dd = max(max_dd, (peak - equity) / peak * 100)
     total_ret = (equity - 10000) / 10000 * 100
     calmar = total_ret / max_dd if max_dd > 0 else 0
-    pf_score = min(pf, 5) / 5
-    dd_score = max(0, 1 - max_dd / 50)
-    composite = wr * 0.30 + pf_score * 0.30 + min(max(sharpe, 0), 3) / 3 * 0.25 + dd_score * 0.15
+    # Asymmetrie-Kennzahlen (Turtle): Payoff-Ratio × Trefferquote = Erwartungswert.
+    payoff_ratio = (avg_win / avg_loss) if avg_loss > 0 else float('inf')
+    expectancy   = wr * avg_win - (1 - wr) * avg_loss  # % pro Trade
+    # Composite konsistent mit strategy_optimizer.calculate_metrics – bewusst
+    # OHNE eigenständigen Win-Rate-Term (Trendfolge-Profil nicht bestrafen):
+    #   Expectancy 35% | Payoff 20% | Profit Factor 20% | Sharpe 15% | -MaxDD 10%
+    pf_score     = min(pf, 5) / 5
+    dd_score     = max(0, 1 - max_dd / 50)
+    exp_score    = max(0.0, min(expectancy / 2.0, 1.0))
+    payoff_score = 1.0 if payoff_ratio == float('inf') \
+                   else max(0.0, min(payoff_ratio / 4.0, 1.0))
+    composite = (exp_score * 0.35 + payoff_score * 0.20 + pf_score * 0.20
+                 + min(max(sharpe, 0), 3) / 3 * 0.15 + dd_score * 0.10)
     return {
         "total_trades": len(trades), "win_rate": round(wr * 100, 1),
         "avg_win": round(avg_win, 2), "avg_loss": round(avg_loss, 2),
+        "payoff_ratio": round(payoff_ratio, 2) if payoff_ratio != float('inf') else None,
+        "expectancy": round(expectancy, 3),
         "profit_factor": round(pf, 2), "sharpe": round(sharpe, 2),
         "sortino": round(sortino, 2), "calmar": round(calmar, 2),
         "max_drawdown": round(max_dd, 2), "total_pnl_pct": round(total_ret, 2),
