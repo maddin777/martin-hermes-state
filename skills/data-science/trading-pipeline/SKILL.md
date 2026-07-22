@@ -63,22 +63,34 @@ Database is at:
 
 ### Cron Schedule
 
-**Grundsatz:** Pipeline-Jobs (Analyse/Screening) laufen Mo–Fr. Safety-Jobs (Exit-Checks, SL/TP-Management, Breaking News) laufen **täglich** — seit 07.07.2026. Samstag war vorher eine tote Zone (kein `6` in der Crontab).
+**Grundsatz:** Pipeline-Jobs (Analyse/Screening) laufen Mo–Fr. Safety-Jobs (Exit-Checks, SL/TP-Management, Breaking News) laufen **täglich** — seit 07.07.2026.
 
 | Zeit | Script | Tage | Purpose |
 |------|--------|------|---------|
 | 01:30 | `fundamental_data.py` | Mo–Fr | Macro data, insider trades, put/call ratios, regime detection |
-| 02:00 | `social_scanner.py` | Mo–Fr | RSS feeds (Seeking Alpha, Bloomberg etc.) + Twitter/X (twitterapi.io, 6 accounts) |
-| 03:30 | `trading_pipeline.py` | Mo–Fr | Orchestrator: YouTube scan → KI Analyse → Watchlist Update → Technical Analysis (yfinance) → Signal Manager. Watchlist Update 2-3h (Grok + yfinance). Um 03:30 (statt 04:00) um mehr Puffer vor nightly_eval (05:00) zu haben. Social_scanner (03:00) läuft vorher durch. |
-| 04:50 | `llm_validator.py` | Mo–Fr | ⚠️ Noch in crontab obwohl Fix aussteht (DB-Lock) |
+| 02:00 | `social_scanner.py` | Mo–Fr | RSS feeds (Seeking Alpha, Bloomberg etc.) + Twitter/X |
+| 03:30 | `trading_pipeline.py` | Mo–Fr | Orchestrator: YouTube → KI Analyse → Watchlist → Technicals → Signal Manager |
 | 05:00 | `nightly_eval.py` | Mo–Fr | ✅ Sauber (<5s) |
-| 09:30 | `active_exit_check.py` | **täglich** | Mid-day exit checks |
-| 10-17h | `breaking_news_monitor.py` | **täglich** | Stündlicher Breaking-News-Scan |
-| 13-20h | `signal_manager.py check_only` | **täglich** | Intraday SL/TP check |
-| 15:30 | `active_exit_check.py` | **täglich** | Afternoon exit checks |
+| 06:30 | `crabel_shadow_eval.py` | Mo–Fr | Crabel-Style Shadow Eval (21d Horizont) |
+| 09:30 | `active_exit_check.py` | täglich | Mid-day exit checks |
+| 10-17h | `breaking_news_monitor.py` | täglich | Stündlicher Breaking-News-Scan |
+| 13-20h | `signal_manager.py check_only` | täglich | Intraday SL/TP check |
+| 15:30 | `active_exit_check.py` | täglich | Afternoon exit checks |
 | 20:00 (Fr) | `signal_manager.py full` | Fr | Weekly signal review |
+| 23:15 | `refresh_tech_scores.py` (Hermes-Cron) | Mo–Fr | Tech-Scores für Watchlist neu berechnen |
 
-**Wochenend-Crontab-Änderung (07.07.2026):** `active_exit_check`, `signal_manager check_only`, `breaking_news_monitor` wurden von `* 1-5` auf `* *` (täglich) umgestellt. Die Pipeline-Jobs blieben Mo–Fr. Samstag (`6`) war vorher in keiner Crontab-Regel definiert — absolute tote Zone.
+**Wochenend-Crontab:**
+| Zeit | Script | Purpose |
+|------|--------|---------|
+| 05:30 | `watchlist_dedup.py` (Hermes-Cron) | Wöchentliche Deduplizierung |
+| 06:00 | `nightly_eval.py` | Wöchentliches Eval |
+| 07:00 | `source_lifecycle.py` | Quellen-Management: adjust_weights(P&L), promote/demote, discover |
+| 10:00 | `ttwo-catalyst-alarm` (Hermes-Cron) | TTWO Katalysator-Alarm |
+| 10:00 | `agent-reach-watchdog.sh` (Hermes-Cron) | Agent Reach Watchdog |
+
+**Wochenend-Änderung (07.07.2026):** Safety-Jobs (exit_check, signal_manager, breaking_news) laufen täglich. Pipeline-Jobs (fundamental, social, trading_pipeline) bleiben Mo–Fr.
+
+**Hinweis:** `source_lifecycle.py` (So 07:00) führt `adjust_weights()` aus — seit 15.07.2026 basierend auf `avg_pnl_per_trade` statt `win_rate_90d`. Quellen mit P&L ≥ +10€ → +15% Weight, P&L ≤ -10€ → -20% Weight.
 
 **Nicht-Selbstständige Scripts:** technical_validator, signal_extractor, watchlist_manager laufen innerhalb von trading_pipeline.py.
 
@@ -226,6 +238,18 @@ Details siehe `references/` im Skill-Verzeichnis sowie die Erläuterung.md im Ob
 | **Cron Health: Pipeline-Block-Slicing** | `references/cron-health-slicing-bug.md` |
 | **PEAD Signal (Post-Earnings Drift)** | `references/pead-signal.md` |
 
+### User Preference: Änderungen in Erklaerung.md dokumentieren (15.07.2026)
+
+Jede Code-Änderung am Trading-System muss in der `Erklaerung.md` im
+Skill-Verzeichnis dokumentiert werden (`/root/.hermes/profiles/hermes_trading/skills/trading/Erklaerung.md`).
+Das ist KEIN Wiki-Eintrag — es ist die Live-Doku im Trading-Verzeichnis.
+
+**Workflow:**
+1. Code ändern → testen
+2. `Erklaerung.md` mit Datum, Problem, Fix, Erwartung aktualisieren
+3. Bei Wiki-Seiten (z.B. `wiki/concepts/Exit Management.md`): wenn die Wiki-Seite
+   neuer ist als die Quelle, dann die Quelle (Erklaerung.md) updaten — nicht andersrum.
+
 ### Session-Start-Protokoll: Proaktiver Pipeline-Check
 
 **Regel (aus Martins Korrektur vom 18.06.2026):** Sobald Martin eine Session startet — bevor er irgendwas fragt — den Dashboard- und Cron-Status checken. Nicht warten bis er ein Problem meldet.
@@ -332,7 +356,9 @@ Die Referenz enthält 23 klassifizierte Unternehmen plus Implementierungsvorschl
 | `Finnhub 403` → API-Key abgelaufen oder limitiert (siehe `references/finnhub-api-key-management.md`)
 | `pos.get("asset_type")` → Pitfall 16 (sqlite3.Row) — `pos["asset_type"] if "asset_type" in pos.keys() else "STANDARD"` verwenden
 | **`cron_health.py` ❌ false-positive** → Timing-Konflikt: `cron-health-daily` und `strategy_optimizer` starten beide um 08:00 (Sonntag). Der Optimizer braucht ~2 Min, der Health-Check findet nur START ohne DONE → flagged als crashed. Fix: staggered Schedules (z.B. health um 08:30).
+| **`refresh_tech_scores.py` ModuleNotFoundError** → `sys.path.insert(0, ...)` zeigte auf `scripts/` statt `skills/trading/`. `env_loader.py` liegt im Trading-Root, nicht in `scripts/`. **Fix:** `sys.path.insert(0, "/root/.hermes/profiles/hermes_trading/skills/trading")` — nicht auf `scripts/`. |
 | **`cron_health.py` ⚠️ trading_pipeline unknown (gelb)** → Pipeline schrieb `TRADING PIPELINE DONE` ohne ✅-Prefix. Der Health-Check-Regex `✅\s*.*DONE` matched nicht. **Fix:** `_print(f"✅ TRADING PIPELINE DONE: ...")`. Siehe `references/cron-health-slicing-bug.md`. |
+| **`cron_health.py` ⚠️ no_agent Cron gelb (generisch)** → Jeder Cron-Job (system crontab oder Hermes-Cron) muss `✅ ... DONE` im Log-Output haben. `=== ... DONE ===` ohne ✅ wird als ⚠️ unknown gewertet. **Fix:** `echo "=== $(date) === ✅ jobname DONE ==="` im Cron-Befehl. |
 | **`ModuleNotFoundError: No module named 'config'`** → Subprozess findet Trading-Verzeichnis nicht. **Fix:** PYTHONPATH in `subprocess.run(env=...)` setzen. Kein DB-Lock — WAL-Checkpoint läuft sauber. |
 | **`ImportError: cannot import name 'get_technical_score' from 'utils'`** → Lädt Hermes-eigenes `utils.py` statt Trading-utils. Gleiche Ursache wie ModuleNotFoundError — PYTHONPATH fehlt. **Fix:** PYTHONPATH in `subprocess.run(env=...)` setzen. |
 | **`cron_health.py` false-negative "Keine Jobs"** → Regex `(\\d+)` scheiterte an eintstelligen Tagen (`Jul  7` = double space zwischen Monat und Tag). **Fix (07.07.2026):** `\\s+(\\d+)` im Datums-Regex. Betrifft Tage 1-9 jedes Monats. Alle 6 Tage im Monat wurden fälschlich als "keine Jobs" gemeldet. |

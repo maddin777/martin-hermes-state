@@ -545,13 +545,13 @@
     "created_at": "2026-05-26T03:52:18.196606+00:00",
     "created_by": null,
     "last_patched_at": "2026-07-18T01:04:59.966299+00:00",
-    "last_used_at": "2026-07-18T01:04:38.635828+00:00",
-    "last_viewed_at": "2026-07-18T01:04:38.629698+00:00",
+    "last_used_at": "2026-07-21T06:43:38.798293+00:00",
+    "last_viewed_at": "2026-07-21T06:43:38.792575+00:00",
     "patch_count": 27,
     "pinned": false,
     "state": "active",
-    "use_count": 34,
-    "view_count": 34
+    "use_count": 35,
+    "view_count": 35
   },
   "hermes-voice": {
     "archived_at": null,
@@ -804,12 +804,12 @@
     "created_at": "2026-06-22T01:24:12.348954+00:00",
     "created_by": null,
     "last_patched_at": "2026-07-11T01:10:31.710850+00:00",
-    "last_used_at": "2026-07-20T14:00:15.316517+00:00",
+    "last_used_at": "2026-07-21T14:00:34.104840+00:00",
     "last_viewed_at": "2026-07-18T01:04:18.866239+00:00",
     "patch_count": 11,
     "pinned": false,
     "state": "active",
-    "use_count": 30,
+    "use_count": 31,
     "view_count": 22
   },
   "ocr-and-documents": {
@@ -1140,14 +1140,14 @@
     "archived_at": null,
     "created_at": "2026-05-27T06:29:36.528930+00:00",
     "created_by": "agent",
-    "last_patched_at": "2026-07-16T13:09:11.432373+00:00",
-    "last_used_at": "2026-07-19T08:00:52.211905+00:00",
-    "last_viewed_at": "2026-07-16T19:35:49.695880+00:00",
-    "patch_count": 187,
+    "last_patched_at": "2026-07-21T06:43:46.808894+00:00",
+    "last_used_at": "2026-07-21T06:43:18.900734+00:00",
+    "last_viewed_at": "2026-07-21T06:43:18.894508+00:00",
+    "patch_count": 191,
     "pinned": false,
     "state": "active",
-    "use_count": 213,
-    "view_count": 199
+    "use_count": 216,
+    "view_count": 202
   },
   "trading-scan": {
     "archived_at": null,
