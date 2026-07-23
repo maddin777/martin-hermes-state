@@ -1,4 +1,189 @@
 {
+"poolside/laguna-s-2.1":{
+"context_length":1048576,
+"max_completion_tokens":131072,
+"name":"Poolside: Laguna S 2.1",
+"pricing":{
+"prompt":"0.0000001",
+"completion":"0.0000002",
+"input_cache_read":"0.00000001"
+}
+},
+"laguna-s-2.1":{
+"context_length":1048576,
+"max_completion_tokens":131072,
+"name":"Poolside: Laguna S 2.1",
+"pricing":{
+"prompt":"0.0000001",
+"completion":"0.0000002",
+"input_cache_read":"0.00000001"
+}
+},
+"poolside/laguna-s-2.1-20260720":{
+"context_length":262144,
+"max_completion_tokens":32768,
+"name":"Poolside: Laguna S 2.1 (free)",
+"pricing":{
+"prompt":"0",
+"completion":"0"
+}
+},
+"laguna-s-2.1-20260720":{
+"context_length":1048576,
+"max_completion_tokens":131072,
+"name":"Poolside: Laguna S 2.1",
+"pricing":{
+"prompt":"0.0000001",
+"completion":"0.0000002",
+"input_cache_read":"0.00000001"
+}
+},
+"poolside/laguna-s-2.1:free":{
+"context_length":262144,
+"max_completion_tokens":32768,
+"name":"Poolside: Laguna S 2.1 (free)",
+"pricing":{
+"prompt":"0",
+"completion":"0"
+}
+},
+"laguna-s-2.1:free":{
+"context_length":262144,
+"max_completion_tokens":32768,
+"name":"Poolside: Laguna S 2.1 (free)",
+"pricing":{
+"prompt":"0",
+"completion":"0"
+}
+},
+"google/gemini-3.6-flash":{
+"context_length":1048576,
+"max_completion_tokens":65536,
+"name":"Google: Gemini 3.6 Flash",
+"pricing":{
+"prompt":"0.0000015",
+"completion":"0.0000075",
+"image":"0.0000015",
+"audio":"0.0000015",
+"input_audio_cache":"0.00000015",
+"web_search":"0.014",
+"internal_reasoning":"0.0000075",
+"input_cache_read":"0.00000015",
+"input_cache_write":"0.00000008333333333333334"
+}
+},
+"gemini-3.6-flash":{
+"context_length":1048576,
+"max_completion_tokens":65536,
+"name":"Google: Gemini 3.6 Flash",
+"pricing":{
+"prompt":"0.0000015",
+"completion":"0.0000075",
+"image":"0.0000015",
+"audio":"0.0000015",
+"input_audio_cache":"0.00000015",
+"web_search":"0.014",
+"internal_reasoning":"0.0000075",
+"input_cache_read":"0.00000015",
+"input_cache_write":"0.00000008333333333333334"
+}
+},
+"google/gemini-3.6-flash-20260721":{
+"context_length":1048576,
+"max_completion_tokens":65536,
+"name":"Google: Gemini 3.6 Flash",
+"pricing":{
+"prompt":"0.0000015",
+"completion":"0.0000075",
+"image":"0.0000015",
+"audio":"0.0000015",
+"input_audio_cache":"0.00000015",
+"web_search":"0.014",
+"internal_reasoning":"0.0000075",
+"input_cache_read":"0.00000015",
+"input_cache_write":"0.00000008333333333333334"
+}
+},
+"gemini-3.6-flash-20260721":{
+"context_length":1048576,
+"max_completion_tokens":65536,
+"name":"Google: Gemini 3.6 Flash",
+"pricing":{
+"prompt":"0.0000015",
+"completion":"0.0000075",
+"image":"0.0000015",
+"audio":"0.0000015",
+"input_audio_cache":"0.00000015",
+"web_search":"0.014",
+"internal_reasoning":"0.0000075",
+"input_cache_read":"0.00000015",
+"input_cache_write":"0.00000008333333333333334"
+}
+},
+"google/gemini-3.5-flash-lite":{
+"context_length":1048576,
+"max_completion_tokens":65536,
+"name":"Google: Gemini 3.5 Flash-Lite",
+"pricing":{
+"prompt":"0.0000003",
+"completion":"0.0000025",
+"image":"0.0000003",
+"audio":"0.0000003",
+"input_audio_cache":"0.00000003",
+"web_search":"0.014",
+"internal_reasoning":"0.0000025",
+"input_cache_read":"0.00000003",
+"input_cache_write":"0.00000008333333333333334"
+}
+},
+"gemini-3.5-flash-lite":{
+"context_length":1048576,
+"max_completion_tokens":65536,
+"name":"Google: Gemini 3.5 Flash-Lite",
+"pricing":{
+"prompt":"0.0000003",
+"completion":"0.0000025",
+"image":"0.0000003",
+"audio":"0.0000003",
+"input_audio_cache":"0.00000003",
+"web_search":"0.014",
+"internal_reasoning":"0.0000025",
+"input_cache_read":"0.00000003",
+"input_cache_write":"0.00000008333333333333334"
+}
+},
+"google/gemini-3.5-flash-lite-20260721":{
+"context_length":1048576,
+"max_completion_tokens":65536,
+"name":"Google: Gemini 3.5 Flash-Lite",
+"pricing":{
+"prompt":"0.0000003",
+"completion":"0.0000025",
+"image":"0.0000003",
+"audio":"0.0000003",
+"input_audio_cache":"0.00000003",
+"web_search":"0.014",
+"internal_reasoning":"0.0000025",
+"input_cache_read":"0.00000003",
+"input_cache_write":"0.00000008333333333333334"
+}
+},
+"gemini-3.5-flash-lite-20260721":{
+"context_length":1048576,
+"max_completion_tokens":65536,
+"name":"Google: Gemini 3.5 Flash-Lite",
+"pricing":{
+"prompt":"0.0000003",
+"completion":"0.0000025",
+"image":"0.0000003",
+"audio":"0.0000003",
+"input_audio_cache":"0.00000003",
+"web_search":"0.014",
+"internal_reasoning":"0.0000025",
+"input_cache_read":"0.00000003",
+"input_cache_write":"0.00000008333333333333334"
+}
+},
 "meituan/longcat-2.0":{
 "context_length":1048756,
 "max_completion_tokens":262144,
@@ -40,7 +225,7 @@
 }
 },
 "thinkingmachines/inkling":{
-"context_length":1048576,
+"context_length":524288,
 "max_completion_tokens":null,
 "name":"Thinking Machines: Inkling",
 "pricing":{
@@ -50,7 +235,7 @@
 }
 },
 "inkling":{
-"context_length":1048576,
+"context_length":524288,
 "max_completion_tokens":null,
 "name":"Thinking Machines: Inkling",
 "pricing":{
@@ -60,7 +245,7 @@
 }
 },
 "thinkingmachines/inkling-20260715":{
-"context_length":1048576,
+"context_length":524288,
 "max_completion_tokens":null,
 "name":"Thinking Machines: Inkling",
 "pricing":{
@@ -70,7 +255,7 @@
 }
 },
 "inkling-20260715":{
-"context_length":1048576,
+"context_length":524288,
 "max_completion_tokens":null,
 "name":"Thinking Machines: Inkling",
 "pricing":{
@@ -1293,7 +1478,7 @@
 }
 },
 "google/gemini-3-pro-image":{
-"context_length":65536,
+"context_length":131072,
 "max_completion_tokens":32768,
 "name":"Google: Nano Banana Pro (Gemini 3 Pro Image)",
 "pricing":{
@@ -1310,7 +1495,7 @@
 }
 },
 "gemini-3-pro-image":{
-"context_length":65536,
+"context_length":131072,
 "max_completion_tokens":32768,
 "name":"Google: Nano Banana Pro (Gemini 3 Pro Image)",
 "pricing":{
@@ -1327,7 +1512,7 @@
 }
 },
 "google/gemini-3-pro-image-20260528":{
-"context_length":65536,
+"context_length":131072,
 "max_completion_tokens":32768,
 "name":"Google: Nano Banana Pro (Gemini 3 Pro Image)",
 "pricing":{
@@ -1344,7 +1529,7 @@
 }
 },
 "gemini-3-pro-image-20260528":{
-"context_length":65536,
+"context_length":131072,
 "max_completion_tokens":32768,
 "name":"Google: Nano Banana Pro (Gemini 3 Pro Image)",
 "pricing":{
@@ -1401,9 +1586,9 @@
 "max_completion_tokens":131072,
 "name":"Z.ai: GLM 5.2",
 "pricing":{
-"prompt":"0.0000009688",
-"completion":"0.0000030448",
-"input_cache_read":"0.00000017992"
+"prompt":"0.000000819",
+"completion":"0.000002574",
+"input_cache_read":"0.0000001521"
 }
 },
 "glm-5.2":{
@@ -1411,9 +1596,9 @@
 "max_completion_tokens":131072,
 "name":"Z.ai: GLM 5.2",
 "pricing":{
-"prompt":"0.0000009688",
-"completion":"0.0000030448",
-"input_cache_read":"0.00000017992"
+"prompt":"0.000000819",
+"completion":"0.000002574",
+"input_cache_read":"0.0000001521"
 }
 },
 "z-ai/glm-5.2-20260616":{
@@ -1421,9 +1606,9 @@
 "max_completion_tokens":131072,
 "name":"Z.ai: GLM 5.2",
 "pricing":{
-"prompt":"0.0000009688",
-"completion":"0.0000030448",
-"input_cache_read":"0.00000017992"
+"prompt":"0.000000819",
+"completion":"0.000002574",
+"input_cache_read":"0.0000001521"
 }
 },
 "glm-5.2-20260616":{
@@ -1431,9 +1616,9 @@
 "max_completion_tokens":131072,
 "name":"Z.ai: GLM 5.2",
 "pricing":{
-"prompt":"0.0000009688",
-"completion":"0.0000030448",
-"input_cache_read":"0.00000017992"
+"prompt":"0.000000819",
+"completion":"0.000002574",
+"input_cache_read":"0.0000001521"
 }
 },
 "openrouter/fusion":{
@@ -1623,7 +1808,7 @@
 }
 },
 "nvidia/nemotron-3-ultra-550b-a55b":{
-"context_length":1000000,
+"context_length":512288,
 "max_completion_tokens":null,
 "name":"NVIDIA: Nemotron 3 Ultra",
 "pricing":{
@@ -1633,7 +1818,7 @@
 }
 },
 "nemotron-3-ultra-550b-a55b":{
-"context_length":1000000,
+"context_length":512288,
 "max_completion_tokens":null,
 "name":"NVIDIA: Nemotron 3 Ultra",
 "pricing":{
@@ -1652,7 +1837,7 @@
 }
 },
 "nemotron-3-ultra-550b-a55b-20260604":{
-"context_length":1000000,
+"context_length":512288,
 "max_completion_tokens":null,
 "name":"NVIDIA: Nemotron 3 Ultra",
 "pricing":{
@@ -1800,7 +1985,7 @@
 }
 },
 "stepfun/step-3.7-flash":{
-"context_length":256000,
+"context_length":262144,
 "max_completion_tokens":256000,
 "name":"StepFun: Step 3.7 Flash",
 "pricing":{
@@ -1810,7 +1995,7 @@
 }
 },
 "step-3.7-flash":{
-"context_length":256000,
+"context_length":262144,
 "max_completion_tokens":256000,
 "name":"StepFun: Step 3.7 Flash",
 "pricing":{
@@ -1820,7 +2005,7 @@
 }
 },
 "stepfun/step-3.7-flash-20260528":{
-"context_length":256000,
+"context_length":262144,
 "max_completion_tokens":256000,
 "name":"StepFun: Step 3.7 Flash",
 "pricing":{
@@ -1830,7 +2015,7 @@
 }
 },
 "step-3.7-flash-20260528":{
-"context_length":256000,
+"context_length":262144,
 "max_completion_tokens":256000,
 "name":"StepFun: Step 3.7 Flash",
 "pricing":{
@@ -2734,12 +2919,12 @@
 "name":"Google Gemini Flash Latest",
 "pricing":{
 "prompt":"0.0000015",
-"completion":"0.000009",
+"completion":"0.0000075",
 "image":"0.0000015",
-"audio":"0.000003",
-"input_audio_cache":"0.0000003",
+"audio":"0.0000015",
+"input_audio_cache":"0.00000015",
 "web_search":"0.014",
-"internal_reasoning":"0.000009",
+"internal_reasoning":"0.0000075",
 "input_cache_read":"0.00000015",
 "input_cache_write":"0.00000008333333333333334"
 }
@@ -2750,12 +2935,12 @@
 "name":"Google Gemini Flash Latest",
 "pricing":{
 "prompt":"0.0000015",
-"completion":"0.000009",
+"completion":"0.0000075",
 "image":"0.0000015",
-"audio":"0.000003",
-"input_audio_cache":"0.0000003",
+"audio":"0.0000015",
+"input_audio_cache":"0.00000015",
 "web_search":"0.014",
-"internal_reasoning":"0.000009",
+"internal_reasoning":"0.0000075",
 "input_cache_read":"0.00000015",
 "input_cache_write":"0.00000008333333333333334"
 }
@@ -3349,7 +3534,7 @@
 }
 },
 "xiaomi/mimo-v2.5-pro":{
-"context_length":1048576,
+"context_length":1050000,
 "max_completion_tokens":131072,
 "name":"Xiaomi: MiMo-V2.5-Pro",
 "pricing":{
@@ -3359,7 +3544,7 @@
 }
 },
 "mimo-v2.5-pro":{
-"context_length":1048576,
+"context_length":1050000,
 "max_completion_tokens":131072,
 "name":"Xiaomi: MiMo-V2.5-Pro",
 "pricing":{
@@ -3369,7 +3554,7 @@
 }
 },
 "xiaomi/mimo-v2.5-pro-20260422":{
-"context_length":1048576,
+"context_length":1050000,
 "max_completion_tokens":131072,
 "name":"Xiaomi: MiMo-V2.5-Pro",
 "pricing":{
@@ -3379,7 +3564,7 @@
 }
 },
 "mimo-v2.5-pro-20260422":{
-"context_length":1048576,
+"context_length":1050000,
 "max_completion_tokens":131072,
 "name":"Xiaomi: MiMo-V2.5-Pro",
 "pricing":{
@@ -3389,7 +3574,7 @@
 }
 },
 "xiaomi/mimo-v2.5":{
-"context_length":1048576,
+"context_length":1050000,
 "max_completion_tokens":131072,
 "name":"Xiaomi: MiMo-V2.5",
 "pricing":{
@@ -3399,7 +3584,7 @@
 }
 },
 "mimo-v2.5":{
-"context_length":1048576,
+"context_length":1050000,
 "max_completion_tokens":131072,
 "name":"Xiaomi: MiMo-V2.5",
 "pricing":{
@@ -3409,7 +3594,7 @@
 }
 },
 "xiaomi/mimo-v2.5-20260422":{
-"context_length":1048576,
+"context_length":1050000,
 "max_completion_tokens":131072,
 "name":"Xiaomi: MiMo-V2.5",
 "pricing":{
@@ -3419,7 +3604,7 @@
 }
 },
 "mimo-v2.5-20260422":{
-"context_length":1048576,
+"context_length":1050000,
 "max_completion_tokens":131072,
 "name":"Xiaomi: MiMo-V2.5",
 "pricing":{
@@ -3653,7 +3838,7 @@
 }
 },
 "z-ai/glm-5.1":{
-"context_length":202752,
+"context_length":204800,
 "max_completion_tokens":128000,
 "name":"Z.ai: GLM 5.1",
 "pricing":{
@@ -3663,7 +3848,7 @@
 }
 },
 "glm-5.1":{
-"context_length":202752,
+"context_length":204800,
 "max_completion_tokens":128000,
 "name":"Z.ai: GLM 5.1",
 "pricing":{
@@ -3673,7 +3858,7 @@
 }
 },
 "z-ai/glm-5.1-20260406":{
-"context_length":202752,
+"context_length":204800,
 "max_completion_tokens":128000,
 "name":"Z.ai: GLM 5.1",
 "pricing":{
@@ -3683,7 +3868,7 @@
 }
 },
 "glm-5.1-20260406":{
-"context_length":202752,
+"context_length":204800,
 "max_completion_tokens":128000,
 "name":"Z.ai: GLM 5.1",
 "pricing":{
@@ -4157,7 +4342,7 @@
 }
 },
 "kwaipilot/kat-coder-pro-v2":{
-"context_length":256000,
+"context_length":262144,
 "max_completion_tokens":80000,
 "name":"Kwaipilot: KAT-Coder-Pro V2",
 "pricing":{
@@ -4167,7 +4352,7 @@
 }
 },
 "kat-coder-pro-v2":{
-"context_length":256000,
+"context_length":262144,
 "max_completion_tokens":80000,
 "name":"Kwaipilot: KAT-Coder-Pro V2",
 "pricing":{
@@ -4177,7 +4362,7 @@
 }
 },
 "kwaipilot/kat-coder-pro-v2-20260327":{
-"context_length":256000,
+"context_length":262144,
 "max_completion_tokens":80000,
 "name":"Kwaipilot: KAT-Coder-Pro V2",
 "pricing":{
@@ -4187,7 +4372,7 @@
 }
 },
 "kat-coder-pro-v2-20260327":{
-"context_length":256000,
+"context_length":262144,
 "max_completion_tokens":80000,
 "name":"Kwaipilot: KAT-Coder-Pro V2",
 "pricing":{
@@ -4439,7 +4624,7 @@
 }
 },
 "nvidia/nemotron-3-super-120b-a12b-20230311":{
-"context_length":1000000,
+"context_length":262144,
 "max_completion_tokens":262144,
 "name":"NVIDIA: Nemotron 3 Super (free)",
 "pricing":{
@@ -4457,7 +4642,7 @@
 }
 },
 "nvidia/nemotron-3-super-120b-a12b:free":{
-"context_length":1000000,
+"context_length":262144,
 "max_completion_tokens":262144,
 "name":"NVIDIA: Nemotron 3 Super (free)",
 "pricing":{
@@ -4466,7 +4651,7 @@
 }
 },
 "nemotron-3-super-120b-a12b:free":{
-"context_length":1000000,
+"context_length":262144,
 "max_completion_tokens":262144,
 "name":"NVIDIA: Nemotron 3 Super (free)",
 "pricing":{
@@ -4932,7 +5117,7 @@
 },
 "google/gemini-3.1-flash-image-preview":{
 "context_length":131072,
-"max_completion_tokens":32768,
+"max_completion_tokens":65536,
 "name":"Google: Nano Banana 2 (Gemini 3.1 Flash Image Preview)",
 "pricing":{
 "prompt":"0.0000005",
@@ -4943,7 +5128,7 @@
 },
 "gemini-3.1-flash-image-preview":{
 "context_length":131072,
-"max_completion_tokens":32768,
+"max_completion_tokens":65536,
 "name":"Google: Nano Banana 2 (Gemini 3.1 Flash Image Preview)",
 "pricing":{
 "prompt":"0.0000005",
@@ -4954,7 +5139,7 @@
 },
 "google/gemini-3.1-flash-image-preview-20260226":{
 "context_length":131072,
-"max_completion_tokens":32768,
+"max_completion_tokens":65536,
 "name":"Google: Nano Banana 2 (Gemini 3.1 Flash Image Preview)",
 "pricing":{
 "prompt":"0.0000005",
@@ -4965,7 +5150,7 @@
 },
 "gemini-3.1-flash-image-preview-20260226":{
 "context_length":131072,
-"max_completion_tokens":32768,
+"max_completion_tokens":65536,
 "name":"Google: Nano Banana 2 (Gemini 3.1 Flash Image Preview)",
 "pricing":{
 "prompt":"0.0000005",
@@ -5119,7 +5304,7 @@
 }
 },
 "google/gemini-3.1-pro-preview-customtools":{
-"context_length":1048756,
+"context_length":1048576,
 "max_completion_tokens":65536,
 "name":"Google: Gemini 3.1 Pro Preview Custom Tools",
 "pricing":{
@@ -5145,7 +5330,7 @@
 }
 },
 "gemini-3.1-pro-preview-customtools":{
-"context_length":1048756,
+"context_length":1048576,
 "max_completion_tokens":65536,
 "name":"Google: Gemini 3.1 Pro Preview Custom Tools",
 "pricing":{
@@ -5171,7 +5356,7 @@
 }
 },
 "google/gemini-3.1-pro-preview-customtools-20260219":{
-"context_length":1048756,
+"context_length":1048576,
 "max_completion_tokens":65536,
 "name":"Google: Gemini 3.1 Pro Preview Custom Tools",
 "pricing":{
@@ -5197,7 +5382,7 @@
 }
 },
 "gemini-3.1-pro-preview-customtools-20260219":{
-"context_length":1048756,
+"context_length":1048576,
 "max_completion_tokens":65536,
 "name":"Google: Gemini 3.1 Pro Preview Custom Tools",
 "pricing":{
@@ -6035,7 +6220,7 @@
 }
 },
 "z-ai/glm-4.7-flash":{
-"context_length":200000,
+"context_length":202752,
 "max_completion_tokens":131072,
 "name":"Z.ai: GLM 4.7 Flash",
 "pricing":{
@@ -6044,7 +6229,7 @@
 }
 },
 "glm-4.7-flash":{
-"context_length":200000,
+"context_length":202752,
 "max_completion_tokens":131072,
 "name":"Z.ai: GLM 4.7 Flash",
 "pricing":{
@@ -6053,7 +6238,7 @@
 }
 },
 "z-ai/glm-4.7-flash-20260119":{
-"context_length":200000,
+"context_length":202752,
 "max_completion_tokens":131072,
 "name":"Z.ai: GLM 4.7 Flash",
 "pricing":{
@@ -6062,7 +6247,7 @@
 }
 },
 "glm-4.7-flash-20260119":{
-"context_length":200000,
+"context_length":202752,
 "max_completion_tokens":131072,
 "name":"Z.ai: GLM 4.7 Flash",
 "pricing":{
@@ -6263,7 +6448,7 @@
 }
 },
 "z-ai/glm-4.7":{
-"context_length":202752,
+"context_length":204800,
 "max_completion_tokens":131072,
 "name":"Z.ai: GLM 4.7",
 "pricing":{
@@ -6273,7 +6458,7 @@
 }
 },
 "glm-4.7":{
-"context_length":202752,
+"context_length":204800,
 "max_completion_tokens":131072,
 "name":"Z.ai: GLM 4.7",
 "pricing":{
@@ -6283,7 +6468,7 @@
 }
 },
 "z-ai/glm-4.7-20251222":{
-"context_length":202752,
+"context_length":204800,
 "max_completion_tokens":131072,
 "name":"Z.ai: GLM 4.7",
 "pricing":{
@@ -6293,7 +6478,7 @@
 }
 },
 "glm-4.7-20251222":{
-"context_length":202752,
+"context_length":204800,
 "max_completion_tokens":131072,
 "name":"Z.ai: GLM 4.7",
 "pricing":{
@@ -7373,7 +7558,7 @@
 }
 },
 "qwen/qwen3-vl-32b-instruct":{
-"context_length":262144,
+"context_length":131072,
 "max_completion_tokens":32768,
 "name":"Qwen: Qwen3 VL 32B Instruct",
 "pricing":{
@@ -7382,7 +7567,7 @@
 }
 },
 "qwen3-vl-32b-instruct":{
-"context_length":262144,
+"context_length":131072,
 "max_completion_tokens":32768,
 "name":"Qwen: Qwen3 VL 32B Instruct",
 "pricing":{
@@ -7485,7 +7670,7 @@
 }
 },
 "qwen/qwen3-vl-8b-thinking":{
-"context_length":256000,
+"context_length":131072,
 "max_completion_tokens":32768,
 "name":"Qwen: Qwen3 VL 8B Thinking",
 "pricing":{
@@ -7494,7 +7679,7 @@
 }
 },
 "qwen3-vl-8b-thinking":{
-"context_length":256000,
+"context_length":131072,
 "max_completion_tokens":32768,
 "name":"Qwen: Qwen3 VL 8B Thinking",
 "pricing":{
@@ -7503,7 +7688,7 @@
 }
 },
 "qwen/qwen3-vl-8b-instruct":{
-"context_length":256000,
+"context_length":262144,
 "max_completion_tokens":32768,
 "name":"Qwen: Qwen3 VL 8B Instruct",
 "pricing":{
@@ -7512,7 +7697,7 @@
 }
 },
 "qwen3-vl-8b-instruct":{
-"context_length":256000,
+"context_length":262144,
 "max_completion_tokens":32768,
 "name":"Qwen: Qwen3 VL 8B Instruct",
 "pricing":{
@@ -7667,7 +7852,7 @@
 }
 },
 "qwen/qwen3-vl-30b-a3b-thinking":{
-"context_length":131072,
+"context_length":262144,
 "max_completion_tokens":32768,
 "name":"Qwen: Qwen3 VL 30B A3B Thinking",
 "pricing":{
@@ -7676,7 +7861,7 @@
 }
 },
 "qwen3-vl-30b-a3b-thinking":{
-"context_length":131072,
+"context_length":262144,
 "max_completion_tokens":32768,
 "name":"Qwen: Qwen3 VL 30B A3B Thinking",
 "pricing":{
@@ -7743,7 +7928,7 @@
 }
 },
 "z-ai/glm-4.6":{
-"context_length":202752,
+"context_length":204800,
 "max_completion_tokens":131072,
 "name":"Z.ai: GLM 4.6",
 "pricing":{
@@ -7753,7 +7938,7 @@
 }
 },
 "glm-4.6":{
-"context_length":202752,
+"context_length":204800,
 "max_completion_tokens":131072,
 "name":"Z.ai: GLM 4.6",
 "pricing":{
@@ -7929,7 +8114,7 @@
 }
 },
 "qwen/qwen3-vl-235b-a22b-instruct":{
-"context_length":131072,
+"context_length":262144,
 "max_completion_tokens":32768,
 "name":"Qwen: Qwen3 VL 235B A22B Instruct",
 "pricing":{
@@ -7939,7 +8124,7 @@
 }
 },
 "qwen3-vl-235b-a22b-instruct":{
-"context_length":131072,
+"context_length":262144,
 "max_completion_tokens":32768,
 "name":"Qwen: Qwen3 VL 235B A22B Instruct",
 "pricing":{
@@ -8079,7 +8264,7 @@
 }
 },
 "deepseek/deepseek-v3.1-terminus":{
-"context_length":131072,
+"context_length":163840,
 "max_completion_tokens":32768,
 "name":"DeepSeek: DeepSeek V3.1 Terminus",
 "pricing":{
@@ -8089,7 +8274,7 @@
 }
 },
 "deepseek-v3.1-terminus":{
-"context_length":131072,
+"context_length":163840,
 "max_completion_tokens":32768,
 "name":"DeepSeek: DeepSeek V3.1 Terminus",
 "pricing":{
@@ -8190,38 +8375,42 @@
 },
 "qwen/qwen3-next-80b-a3b-instruct":{
 "context_length":262144,
-"max_completion_tokens":32768,
+"max_completion_tokens":262144,
 "name":"Qwen: Qwen3 Next 80B A3B Instruct",
 "pricing":{
-"prompt":"0.0000000975",
-"completion":"0.00000078"
+"prompt":"0.0000001",
+"completion":"0.0000011",
+"input_cache_read":"0.00000007"
 }
 },
 "qwen3-next-80b-a3b-instruct":{
 "context_length":262144,
-"max_completion_tokens":32768,
+"max_completion_tokens":262144,
 "name":"Qwen: Qwen3 Next 80B A3B Instruct",
 "pricing":{
-"prompt":"0.0000000975",
-"completion":"0.00000078"
+"prompt":"0.0000001",
+"completion":"0.0000011",
+"input_cache_read":"0.00000007"
 }
 },
 "qwen/qwen3-next-80b-a3b-instruct-2509":{
 "context_length":262144,
-"max_completion_tokens":32768,
+"max_completion_tokens":262144,
 "name":"Qwen: Qwen3 Next 80B A3B Instruct",
 "pricing":{
-"prompt":"0.0000000975",
-"completion":"0.00000078"
+"prompt":"0.0000001",
+"completion":"0.0000011",
+"input_cache_read":"0.00000007"
 }
 },
 "qwen3-next-80b-a3b-instruct-2509":{
 "context_length":262144,
-"max_completion_tokens":32768,
+"max_completion_tokens":262144,
 "name":"Qwen: Qwen3 Next 80B A3B Instruct",
 "pricing":{
-"prompt":"0.0000000975",
-"completion":"0.00000078"
+"prompt":"0.0000001",
+"completion":"0.0000011",
+"input_cache_read":"0.00000007"
 }
 },
 "qwen/qwen-plus-2025-07-28":{
@@ -8349,7 +8538,7 @@
 }
 },
 "qwen/qwen3-30b-a3b-thinking-2507":{
-"context_length":131072,
+"context_length":81920,
 "max_completion_tokens":32768,
 "name":"Qwen: Qwen3 30B A3B Thinking 2507",
 "pricing":{
@@ -8358,7 +8547,7 @@
 }
 },
 "qwen3-30b-a3b-thinking-2507":{
-"context_length":131072,
+"context_length":81920,
 "max_completion_tokens":32768,
 "name":"Qwen: Qwen3 30B A3B Thinking 2507",
 "pricing":{
@@ -8784,7 +8973,7 @@
 }
 },
 "qwen/qwen3-coder-30b-a3b-instruct":{
-"context_length":160000,
+"context_length":262144,
 "max_completion_tokens":32768,
 "name":"Qwen: Qwen3 Coder 30B A3B Instruct",
 "pricing":{
@@ -8793,7 +8982,7 @@
 }
 },
 "qwen3-coder-30b-a3b-instruct":{
-"context_length":160000,
+"context_length":262144,
 "max_completion_tokens":32768,
 "name":"Qwen: Qwen3 Coder 30B A3B Instruct",
 "pricing":{
@@ -8878,7 +9067,7 @@
 }
 },
 "qwen/qwen3-coder":{
-"context_length":1048576,
+"context_length":262144,
 "max_completion_tokens":65536,
 "name":"Qwen: Qwen3 Coder 480B A35B",
 "pricing":{
@@ -8888,7 +9077,7 @@
 }
 },
 "qwen3-coder":{
-"context_length":1048576,
+"context_length":262144,
 "max_completion_tokens":65536,
 "name":"Qwen: Qwen3 Coder 480B A35B",
 "pricing":{
@@ -8898,7 +9087,7 @@
 }
 },
 "qwen/qwen3-coder-480b-a35b-07-25":{
-"context_length":1048576,
+"context_length":262144,
 "max_completion_tokens":65536,
 "name":"Qwen: Qwen3 Coder 480B A35B",
 "pricing":{
@@ -8908,7 +9097,7 @@
 }
 },
 "qwen3-coder-480b-a35b-07-25":{
-"context_length":1048576,
+"context_length":262144,
 "max_completion_tokens":65536,
 "name":"Qwen: Qwen3 Coder 480B A35B",
 "pricing":{
@@ -9114,7 +9303,7 @@
 }
 },
 "baidu/ernie-4.5-vl-424b-a47b":{
-"context_length":131072,
+"context_length":123000,
 "max_completion_tokens":16000,
 "name":"Baidu: ERNIE 4.5 VL 424B A47B ",
 "pricing":{
@@ -9123,7 +9312,7 @@
 }
 },
 "ernie-4.5-vl-424b-a47b":{
-"context_length":131072,
+"context_length":123000,
 "max_completion_tokens":16000,
 "name":"Baidu: ERNIE 4.5 VL 424B A47B ",
 "pricing":{
@@ -9132,7 +9321,7 @@
 }
 },
 "mistralai/mistral-small-3.2-24b-instruct":{
-"context_length":131072,
+"context_length":256000,
 "max_completion_tokens":null,
 "name":"Mistral: Mistral Small 3.2 24B",
 "pricing":{
@@ -9142,7 +9331,7 @@
 }
 },
 "mistral-small-3.2-24b-instruct":{
-"context_length":131072,
+"context_length":256000,
 "max_completion_tokens":null,
 "name":"Mistral: Mistral Small 3.2 24B",
 "pricing":{
@@ -9152,7 +9341,7 @@
 }
 },
 "mistralai/mistral-small-3.2-24b-instruct-2506":{
-"context_length":131072,
+"context_length":256000,
 "max_completion_tokens":null,
 "name":"Mistral: Mistral Small 3.2 24B",
 "pricing":{
@@ -9162,7 +9351,7 @@
 }
 },
 "mistral-small-3.2-24b-instruct-2506":{
-"context_length":131072,
+"context_length":256000,
 "max_completion_tokens":null,
 "name":"Mistral: Mistral Small 3.2 24B",
 "pricing":{
@@ -9742,7 +9931,7 @@
 }
 },
 "meta-llama/llama-guard-4-12b":{
-"context_length":163840,
+"context_length":1048576,
 "max_completion_tokens":16384,
 "name":"Meta: Llama Guard 4 12B",
 "pricing":{
@@ -9751,7 +9940,7 @@
 }
 },
 "llama-guard-4-12b":{
-"context_length":163840,
+"context_length":1048576,
 "max_completion_tokens":16384,
 "name":"Meta: Llama Guard 4 12B",
 "pricing":{
@@ -9832,7 +10021,7 @@
 }
 },
 "qwen/qwen3-14b":{
-"context_length":131702,
+"context_length":131072,
 "max_completion_tokens":16384,
 "name":"Qwen: Qwen3 14B",
 "pricing":{
@@ -9841,7 +10030,7 @@
 }
 },
 "qwen3-14b":{
-"context_length":131702,
+"context_length":131072,
 "max_completion_tokens":16384,
 "name":"Qwen: Qwen3 14B",
 "pricing":{
@@ -9850,7 +10039,7 @@
 }
 },
 "qwen/qwen3-14b-04-28":{
-"context_length":131702,
+"context_length":131072,
 "max_completion_tokens":16384,
 "name":"Qwen: Qwen3 14B",
 "pricing":{
@@ -9859,7 +10048,7 @@
 }
 },
 "qwen3-14b-04-28":{
-"context_length":131702,
+"context_length":131072,
 "max_completion_tokens":16384,
 "name":"Qwen: Qwen3 14B",
 "pricing":{
@@ -10240,7 +10429,7 @@
 }
 },
 "meta-llama/llama-4-scout":{
-"context_length":10000000,
+"context_length":1310720,
 "max_completion_tokens":16384,
 "name":"Meta: Llama 4 Scout",
 "pricing":{
@@ -10249,7 +10438,7 @@
 }
 },
 "llama-4-scout":{
-"context_length":10000000,
+"context_length":1310720,
 "max_completion_tokens":16384,
 "name":"Meta: Llama 4 Scout",
 "pricing":{
@@ -10258,7 +10447,7 @@
 }
 },
 "meta-llama/llama-4-scout-17b-16e-instruct":{
-"context_length":10000000,
+"context_length":1310720,
 "max_completion_tokens":16384,
 "name":"Meta: Llama 4 Scout",
 "pricing":{
@@ -10267,7 +10456,7 @@
 }
 },
 "llama-4-scout-17b-16e-instruct":{
-"context_length":10000000,
+"context_length":1310720,
 "max_completion_tokens":16384,
 "name":"Meta: Llama 4 Scout",
 "pricing":{
@@ -10522,7 +10711,7 @@
 }
 },
 "google/gemma-3-27b-it":{
-"context_length":131072,
+"context_length":262144,
 "max_completion_tokens":null,
 "name":"Google: Gemma 3 27B",
 "pricing":{
@@ -10531,7 +10720,7 @@
 }
 },
 "gemma-3-27b-it":{
-"context_length":131072,
+"context_length":262144,
 "max_completion_tokens":null,
 "name":"Google: Gemma 3 27B",
 "pricing":{
@@ -10724,7 +10913,7 @@
 }
 },
 "qwen/qwen2.5-vl-72b-instruct":{
-"context_length":131072,
+"context_length":128000,
 "max_completion_tokens":128000,
 "name":"Qwen: Qwen2.5 VL 72B Instruct",
 "pricing":{
@@ -10734,7 +10923,7 @@
 }
 },
 "qwen2.5-vl-72b-instruct":{
-"context_length":131072,
+"context_length":128000,
 "max_completion_tokens":128000,
 "name":"Qwen: Qwen2.5 VL 72B Instruct",
 "pricing":{
@@ -10906,7 +11095,7 @@
 }
 },
 "deepseek/deepseek-r1-distill-llama-70b":{
-"context_length":128000,
+"context_length":8192,
 "max_completion_tokens":8192,
 "name":"DeepSeek: R1 Distill Llama 70B",
 "pricing":{
@@ -10915,7 +11104,7 @@
 }
 },
 "deepseek-r1-distill-llama-70b":{
-"context_length":128000,
+"context_length":8192,
 "max_completion_tokens":8192,
 "name":"DeepSeek: R1 Distill Llama 70B",
 "pricing":{
@@ -10978,7 +11167,7 @@
 }
 },
 "deepseek/deepseek-chat":{
-"context_length":131072,
+"context_length":163840,
 "max_completion_tokens":16000,
 "name":"DeepSeek: DeepSeek V3",
 "pricing":{
@@ -10987,7 +11176,7 @@
 }
 },
 "deepseek-chat":{
-"context_length":131072,
+"context_length":163840,
 "max_completion_tokens":16000,
 "name":"DeepSeek: DeepSeek V3",
 "pricing":{
@@ -10996,7 +11185,7 @@
 }
 },
 "deepseek/deepseek-chat-v3":{
-"context_length":131072,
+"context_length":163840,
 "max_completion_tokens":16000,
 "name":"DeepSeek: DeepSeek V3",
 "pricing":{
@@ -11005,7 +11194,7 @@
 }
 },
 "deepseek-chat-v3":{
-"context_length":131072,
+"context_length":163840,
 "max_completion_tokens":16000,
 "name":"DeepSeek: DeepSeek V3",
 "pricing":{
@@ -11224,7 +11413,7 @@
 }
 },
 "qwen/qwen-2.5-coder-32b-instruct":{
-"context_length":128000,
+"context_length":32768,
 "max_completion_tokens":32768,
 "name":"Qwen2.5 Coder 32B Instruct",
 "pricing":{
@@ -11233,7 +11422,7 @@
 }
 },
 "qwen-2.5-coder-32b-instruct":{
-"context_length":128000,
+"context_length":32768,
 "max_completion_tokens":32768,
 "name":"Qwen2.5 Coder 32B Instruct",
 "pricing":{
@@ -11260,7 +11449,7 @@
 }
 },
 "anthracite-org/magnum-v4-72b":{
-"context_length":32768,
+"context_length":16384,
 "max_completion_tokens":2048,
 "name":"Magnum v4 72B",
 "pricing":{
@@ -11269,7 +11458,7 @@
 }
 },
 "magnum-v4-72b":{
-"context_length":32768,
+"context_length":16384,
 "max_completion_tokens":2048,
 "name":"Magnum v4 72B",
 "pricing":{
@@ -11278,7 +11467,7 @@
 }
 },
 "qwen/qwen-2.5-7b-instruct":{
-"context_length":131072,
+"context_length":32768,
 "max_completion_tokens":32768,
 "name":"Qwen: Qwen2.5 7B Instruct",
 "pricing":{
@@ -11287,7 +11476,7 @@
 }
 },
 "qwen-2.5-7b-instruct":{
-"context_length":131072,
+"context_length":32768,
 "max_completion_tokens":32768,
 "name":"Qwen: Qwen2.5 7B Instruct",
 "pricing":{
@@ -11350,7 +11539,7 @@
 }
 },
 "meta-llama/llama-3.2-1b-instruct":{
-"context_length":131072,
+"context_length":60000,
 "max_completion_tokens":60000,
 "name":"Meta: Llama 3.2 1B Instruct",
 "pricing":{
@@ -11359,7 +11548,7 @@
 }
 },
 "llama-3.2-1b-instruct":{
-"context_length":131072,
+"context_length":60000,
 "max_completion_tokens":60000,
 "name":"Meta: Llama 3.2 1B Instruct",
 "pricing":{
@@ -11386,7 +11575,7 @@
 }
 },
 "qwen/qwen-2.5-72b-instruct":{
-"context_length":131072,
+"context_length":32768,
 "max_completion_tokens":16384,
 "name":"Qwen2.5 72B Instruct",
 "pricing":{
@@ -11395,7 +11584,7 @@
 }
 },
 "qwen-2.5-72b-instruct":{
-"context_length":131072,
+"context_length":32768,
 "max_completion_tokens":16384,
 "name":"Qwen2.5 72B Instruct",
 "pricing":{
@@ -11704,7 +11893,7 @@
 }
 },
 "microsoft/wizardlm-2-8x22b":{
-"context_length":65536,
+"context_length":65535,
 "max_completion_tokens":8000,
 "name":"WizardLM-2 8x22B",
 "pricing":{
@@ -11713,7 +11902,7 @@
 }
 },
 "wizardlm-2-8x22b":{
-"context_length":65536,
+"context_length":65535,
 "max_completion_tokens":8000,
 "name":"WizardLM-2 8x22B",
 "pricing":{
@@ -11895,7 +12084,7 @@
 },
 "undi95/remm-slerp-l2-13b":{
 "context_length":6144,
-"max_completion_tokens":4096,
+"max_completion_tokens":2048,
 "name":"ReMM SLERP 13B",
 "pricing":{
 "prompt":"0.00000045",
@@ -11904,7 +12093,7 @@
 },
 "remm-slerp-l2-13b":{
 "context_length":6144,
-"max_completion_tokens":4096,
+"max_completion_tokens":2048,
 "name":"ReMM SLERP 13B",
 "pricing":{
 "prompt":"0.00000045",
@@ -11912,7 +12101,7 @@
 }
 },
 "gryphe/mythomax-l2-13b":{
-"context_length":4096,
+"context_length":8192,
 "max_completion_tokens":4096,
 "name":"MythoMax 13B",
 "pricing":{
@@ -11921,7 +12110,7 @@
 }
 },
 "mythomax-l2-13b":{
-"context_length":4096,
+"context_length":8192,
 "max_completion_tokens":4096,
 "name":"MythoMax 13B",
 "pricing":{
