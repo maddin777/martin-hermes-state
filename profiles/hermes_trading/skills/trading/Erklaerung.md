@@ -332,5 +332,36 @@ regime_configs = {
 
 ### Offene Punkte / Nächste Schritte
 - Regime-Erkennung verbessern: aktuell 60/40 US/EU, könnte um VIX-Term-Structure ergänzt werden
+
+---
+
+## 23.07.2026 — PnL-Update für offene Positionen
+
+### Problem
+Offene Positionen hatten `pnl_eur = NULL` in der DB, weil das PnL zwar im `check_open_positions`-Loop berechnet (`pnl_pct * position_size - commission`), aber nie zurück in die DB geschrieben wurde. Geschlossene Positionen bekamen ihren PnL beim Exit-Code (Routine 5), offene blieben NULL.
+
+### Fix
+`signal_manager.py` Zeile 639–646: Direkt nach der PnL-Berechnung wird jetzt ein UPDATE in die DB geschrieben:
+
+```python
+con.execute(
+    "UPDATE positions SET pnl_eur=?, pnl_pct=? WHERE id=?",
+    (round(pnl_eur, 2), round(pnl_pct * 100, 2), pos["id"])
+)
+con.commit()
+```
+
+Das Update läuft **vor** den Exit-Checks (SL/TP/Trailing/Partial-TP). Wenn ein Exit triggert, überschreibt der Exit den PnL mit dem finalen Wert. Das ist Absicht — der Zwischenstand wird pro Tick erfasst, der finale Wert beim Close.
+
+### Aktuelle Positionen (23.07., nach Fix)
+| Ticker | Entry | Jetzt | P&L |
+|--------|-------|-------|-----|
+| AAPL | 314.47 | 325.89 | +8.60€ (+3.6%) |
+| PANW | 326.35 | 335.28 | +19.44€ (+2.7%) |
+| ANET | 186.26 | 174.87 | -43.44€ (-6.1%) |
+| DIS | 95.85 | 95.87 | -0.20€ (-0.0%) |
+
+### Nächster Pipeline-Lauf
+Ab morgen 03:30 aktualisiert der signal_manager das PnL automatisch bei jedem Tick.
 - Backtest der neuen Parameter auf historischen Daten (Mai vs Juni)
 - Short-Trade-Regel: aktuell 28,6% WR — prüfen ob Shorts im Sideways pausiert werden sollen

@@ -441,10 +441,16 @@ def main():
             channel = source.get("channel", "").lower().strip()  # Normalisierung: "der Aktionaer" == "der aktionaer"
             video_id= source.get("video_id", "")
             title   = source.get("title", "")
-            date    = source.get("date", datetime.now().strftime("%Y%m%d"))
+            date    = source.get("date", datetime.now().strftime("%Y-%m-%d"))
     
             try:
-                mention_date = datetime.strptime(str(date), "%Y%m%d").strftime("%Y-%m-%d")
+                # Unterstützt beide Formate: YYYYMMDD (YouTube) und YYYY-MM-DD (normiert)
+                date_str = str(date).strip()
+                if len(date_str) == 8 and date_str.isdigit():
+                    mention_date = (datetime.strptime(date_str, "%Y%m%d")
+                                    .strftime("%Y-%m-%d"))
+                else:
+                    mention_date = date_str[:10]
             except Exception:
                 mention_date = datetime.now().strftime("%Y-%m-%d")
     

@@ -628,7 +628,10 @@ def main():
             result["source"] = {
                 "channel":  row['channel'],
                 "title":    row['title'],
-                "date":     row['upload_date'],
+                # upload_date von YouTube ist YYYYMMDD — in YYYY-MM-DD normieren
+                "date":     row['upload_date'][:4] + '-' + row['upload_date'][4:6] + '-' + row['upload_date'][6:8]
+                            if row['upload_date'] and len(row['upload_date']) == 8
+                            else row['upload_date'],
                 "video_id": row['video_id']
             }
             companies = result.get('companies', [])

@@ -1,14 +1,7 @@
 {
-  "updated_at": "2026-07-23T02:56:07.803621",
+  "updated_at": "2026-07-24T02:56:14.927973",
   "platforms": {
-    "telegram": [
-      {
-        "id": "216051232",
-        "name": "Martin",
-        "type": "dm",
-        "thread_id": null
-      }
-    ],
+    "telegram": [],
     "discord": [],
     "whatsapp": [],
     "slack": [],

@@ -676,3 +676,59 @@ Lektion #29 abgeschlossen.
 10. **okulary**
 
 Lektion #30 abgeschlossen.
+
+
+### 📚 Polnisch-Lektion #31 (DiSSS)
+
+#### 1. Vokabeln (Top 500)
+1. **kobieta** `Frau`
+2. **mężczyzna** `Mann`
+3. **dziecko** `Kind`
+4. **dom** `Haus`
+5. **woda** `Wasser`
+6. **piwo** `Bier`
+7. **chleb** `Brot`
+8. **książka** `Buch`
+9. **drzwi** `Tür`
+10. **miasto** `Stadt`
+
+#### 2. n+1 Sentence Mining
+- **kobieta** (Frau): **Ta kobieta czyta książkę.** `Diese Frau liest ein Buch.`
+- **dom** (Haus): **Mój dom jest blisko miasta.** `Mein Haus ist nah an der Stadt.`
+- **woda** (Wasser): **Chcę pić wodę.** `Ich möchte Wasser trinken.`
+
+#### 3. Aspekt-Paare (Verben)
+- **czytać** `lesen` (imp.) $ightarrow$ **przeczytać** `lesen` (perf.)
+- **pić** `trinken` (imp.) $ightarrow$ **wypić** `trinken` (perf.)
+- **robić** `machen` (imp.) $ightarrow$ **zrobić** `machen` (perf.)
+
+#### 4. Kasus-Paare (Nomen)
+- **miasto** (Nom: **miasto** / Loc: **mieście**)
+- **dom** (Nom: **dom** / Loc: **domu**)
+- **woda** (Nom: **woda** / Acc: **wodę**)
+
+#### 5. Lueckentext-Quiz
+1. Ta _______ (Frau) jest miła.
+2. Moje _______ (Haus) jest małe.
+3. Widzę _______ (Kind).
+4. Piję _______ (Bier).
+5. Kupuję _______ (Brot).
+6. To jest moja _______ (Buch).
+7. _______ (Tür) są zamknięte.
+8. Mieszkam w _______ (Stadt).
+9. On jest dobrym _______ (Mann).
+10. Gdzie jest _______ (Wasser)?
+
+#### 6. Aufloesung
+1. **kobieta**
+2. **dom**
+3. **dziecko**
+4. **piwo**
+5. **chleb**
+6. **książka**
+7. **drzwi**
+8. **mieście**
+9. **mężczyzną**
+10. **woda**
+
+Lektion #31 abgeschlossen.

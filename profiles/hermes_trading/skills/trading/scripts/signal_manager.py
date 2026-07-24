@@ -636,6 +636,13 @@ def check_open_positions(con, cfg):
 
         pnl_eur = pnl_pct * original_position_size - COMMISSION_EUR
 
+        # PnL in DB schreiben (Zwischenstand für offene Positionen)
+        con.execute(
+            "UPDATE positions SET pnl_eur=?, pnl_pct=? WHERE id=?",
+            (round(pnl_eur, 2), round(pnl_pct * 100, 2), pos["id"])
+        )
+        con.commit()
+
         # --- Partial Take-Profit ---
         # asset_type-spezifische Multiplikatoren für Exit-Regeln
         pos_asset_type = pos["asset_type"] if "asset_type" in pos.keys() else "STANDARD"
