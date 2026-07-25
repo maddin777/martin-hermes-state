@@ -173,6 +173,40 @@
       },
       "installed_at": "2026-06-20T14:40:31.345473+00:00",
       "updated_at": "2026-06-20T14:40:31.345473+00:00"
+    },
+    "segment-anything": {
+      "source": "official",
+      "identifier": "official/mlops/models/segment-anything",
+      "trust_level": "builtin",
+      "scan_verdict": "backfilled",
+      "content_hash": "sha256:5c04334042931003",
+      "install_path": "mlops/models/segment-anything",
+      "files": [
+        "SKILL.md",
+        "references/advanced-usage.md",
+        "references/troubleshooting.md"
+      ],
+      "metadata": {
+        "backfilled_from": "optional-skills"
+      },
+      "installed_at": "2026-07-24T07:08:32.723230+00:00",
+      "updated_at": "2026-07-24T07:08:32.723230+00:00"
+    },
+    "yuanbao": {
+      "source": "official",
+      "identifier": "official/yuanbao",
+      "trust_level": "builtin",
+      "scan_verdict": "backfilled",
+      "content_hash": "sha256:881625ad1581ec37",
+      "install_path": "yuanbao",
+      "files": [
+        "SKILL.md"
+      ],
+      "metadata": {
+        "backfilled_from": "optional-skills"
+      },
+      "installed_at": "2026-07-24T07:08:32.775130+00:00",
+      "updated_at": "2026-07-24T07:08:32.775130+00:00"
     }
   }
 }

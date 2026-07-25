@@ -363,5 +363,63 @@ Das Update läuft **vor** den Exit-Checks (SL/TP/Trailing/Partial-TP). Wenn ein 
 
 ### Nächster Pipeline-Lauf
 Ab morgen 03:30 aktualisiert der signal_manager das PnL automatisch bei jedem Tick.
+
+---
+
+## 23.07.2026 — Finn-loop (Hermes-Adaption)
+
+### Was ist der Finn-loop?
+3-Skill-System von Alex Finn (finna) für deterministische Agent-Workflows:
+**Spec → Build → Review, Humans merge.**
+
+Adaptiert von Claude Code + Linear auf Hermes + Obsidian Vault.
+
+### Skills (3 neue)
+| Skill | Datei | Zweck |
+|-------|-------|-------|
+| `finn-spec` | `~/.hermes/skills/meta/finn-spec/SKILL.md` | Interviewt Martin, schreibt Task-Spec mit ACs + NGs |
+| `finn-build` | `~/.hermes/skills/meta/finn-build/SKILL.md` | Claimt agent-ready Task, implementiert, reviewed |
+| `finn-review` | `~/.hermes/skills/meta/finn-review/SKILL.md` | Reviewt gegen Spec, 3-stufiges Verdict |
+
+### Queue
+- Tasks: `/root/obsidian-vault/wiki/tasks/<name>.md`
+- Queue: `/root/obsidian-vault/wiki/tasks/README.md`
+- Martin setzt `agent-ready: true` im Frontmatter — das ist das Approval-Gate
+
+### Workflow
+```
+Idee → finn-spec → Spec-Datei → Martin: agent-ready
+  → finn-build → Implementierung → needs-review
+  → finn-review → Verdict
+    → approved → Martin merged
+    → changes-requested → Build fix → Re-Review
+    → needs-human-review → Martin entscheidet
+```
+- Wiki-Seite: `wiki/concepts/Finn-loop (Hermes Adaption).md`
+
+---
+
+## 24.07.2026 — Last30days Integration ins Trading
+
+### Was
+Zwei Integrationen des Last30days-Skills in den Trading-Agenten:
+
+**Option A: Weekly Cron** `last30days-trading-weekly` (fc93e6e82376)
+- Sonntag 08:00, Telegram
+- Analysiert Top-5 Watchlist-Kandidaten über Reddit, HN, X, GitHub, Web
+- Report mit Sentiment, Risikofaktoren, Kauf-Empfehlung pro Kandidat
+
+**Option B: Pre-Trade Gate** (signal_manager.py, nach Zeile 1582)
+- `last30days_gate.py` — Standalone Python-Script, Google News RSS (kein API-Key)
+- Keyword-basierte Sentiment-Analyse: 32 negative + 18 positive Keywords
+- Drei Stufen: `ok` (exit 0), `warning` (exit 1), `block` (exit 2)
+- Nur für HIGH-Conviction Kandidaten (≥0.80)
+- Shadow-Validator: block → kein Entry, warning → Log, ok → kein Eingriff
+- Fail-Open: Fehler im Gate stoppen den Entry nicht
+
+### Relevante Dateien
+- `scripts/last30days_gate.py` — Pre-Trade Gate Script
+- `scripts/signal_manager.py` — Integration als letzter Filter vor Entry
+- `~/.hermes/skills/meta/last30days/SKILL.md` — Hermes Skill
 - Backtest der neuen Parameter auf historischen Daten (Mai vs Juni)
 - Short-Trade-Regel: aktuell 28,6% WR — prüfen ob Shorts im Sideways pausiert werden sollen

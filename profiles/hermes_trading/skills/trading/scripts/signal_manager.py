@@ -1581,6 +1581,27 @@ def open_new_positions(con, cfg):
             except Exception:
                 pass  # Grok-Fehler stoppen den Entry nicht
 
+        # Last30days Gate: Shadow Validator — prüft News-Sentiment
+        if cand_conviction >= cfg.get("conviction_high", 0.80):
+            try:
+                import subprocess
+                script = os.path.join(os.path.dirname(__file__), "last30days_gate.py")
+                if os.path.exists(script):
+                    r = subprocess.run(
+                        ["python3", script, ticker, "--name", c["name"]],
+                        capture_output=True, text=True, timeout=15
+                    )
+                    if r.returncode == 2:
+                        print(f"  📰 {c['name']}: Last30days-Gate BLOCK (" 
+                              f"stark negative News) → Entry abgebrochen", flush=True)
+                        continue
+                    elif r.returncode == 1:
+                        print(f"  📰 {c['name']}: Last30days-Gate WARNING "
+                              f"(negative News-Stimmung im Markt)", flush=True)
+                    # returncode 0 = OK, kein Eingriff
+            except Exception:
+                pass  # Gate-Fehler stoppen den Entry nicht
+
         # Preis und ATR holen
         current_price, atr = get_current_price_and_atr(ticker)
         if not current_price or not atr:

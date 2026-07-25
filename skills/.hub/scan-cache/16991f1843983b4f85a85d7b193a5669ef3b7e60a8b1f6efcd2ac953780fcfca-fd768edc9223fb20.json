@@ -1,0 +1,35 @@
+{
+  "source": "official",
+  "source_url": "official/creative/tldraw-offline",
+  "bundle_hash": "sha256:16991f1843983b4f85a85d7b193a5669ef3b7e60a8b1f6efcd2ac953780fcfca",
+  "scanner_version": "skills-guard-v1",
+  "verdict": "dangerous",
+  "trust_level": "builtin",
+  "findings": [
+    {
+      "pattern_id": "env_exfil_curl",
+      "severity": "critical",
+      "category": "exfiltration",
+      "file": "SKILL.md",
+      "line": 87,
+      "match": "curl -s \"$BASE/api/doc/$DOC/script-status\" -H \"Authorization: Bearer $TOKEN\"",
+      "description": "curl command interpolating secret environment variable"
+    },
+    {
+      "pattern_id": "backtick_subshell",
+      "severity": "medium",
+      "category": "execution",
+      "file": "SKILL.md",
+      "line": 55,
+      "match": "`PORT=$(jq -r .port <server.json>); TOKEN=$(jq -r .token <server.json>)`.",
+      "description": "backtick string with command substitution"
+    }
+  ],
+  "rules": [
+    "backtick_subshell",
+    "env_exfil_curl"
+  ],
+  "scanned_at": "2026-07-24T07:18:23.930113+00:00",
+  "summary": "tldraw-offline: dangerous \u2014 2 finding(s) in execution, exfiltration",
+  "fresh": true
+}

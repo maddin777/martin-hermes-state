@@ -173,6 +173,92 @@
       },
       "installed_at": "2026-06-20T14:40:27.100727+00:00",
       "updated_at": "2026-06-20T14:40:27.100727+00:00"
+    },
+    "segment-anything": {
+      "source": "official",
+      "identifier": "official/mlops/models/segment-anything",
+      "trust_level": "builtin",
+      "scan_verdict": "backfilled",
+      "content_hash": "sha256:5c04334042931003",
+      "install_path": "mlops/models/segment-anything",
+      "files": [
+        "SKILL.md",
+        "references/advanced-usage.md",
+        "references/troubleshooting.md"
+      ],
+      "metadata": {
+        "backfilled_from": "optional-skills"
+      },
+      "installed_at": "2026-07-24T07:08:28.541800+00:00",
+      "updated_at": "2026-07-24T07:08:28.541800+00:00"
+    },
+    "yuanbao": {
+      "source": "official",
+      "identifier": "official/yuanbao",
+      "trust_level": "builtin",
+      "scan_verdict": "backfilled",
+      "content_hash": "sha256:881625ad1581ec37",
+      "install_path": "yuanbao",
+      "files": [
+        "SKILL.md"
+      ],
+      "metadata": {
+        "backfilled_from": "optional-skills"
+      },
+      "installed_at": "2026-07-24T07:08:28.592399+00:00",
+      "updated_at": "2026-07-24T07:08:28.592399+00:00"
+    },
+    "tldraw-offline": {
+      "source": "official",
+      "identifier": "official/creative/tldraw-offline",
+      "trust_level": "builtin",
+      "scan_verdict": "dangerous",
+      "content_hash": "sha256:16991f1843983b4f",
+      "install_path": "creative/tldraw-offline",
+      "files": [
+        "SKILL.md",
+        "scripts/validate_shapes.mjs",
+        "scripts/main.js",
+        "scripts/counter.js"
+      ],
+      "metadata": {},
+      "scan_provenance": {
+        "source": "official",
+        "source_url": "official/creative/tldraw-offline",
+        "bundle_hash": "sha256:16991f1843983b4f85a85d7b193a5669ef3b7e60a8b1f6efcd2ac953780fcfca",
+        "scanner_version": "skills-guard-v1",
+        "verdict": "dangerous",
+        "trust_level": "builtin",
+        "findings": [
+          {
+            "pattern_id": "env_exfil_curl",
+            "severity": "critical",
+            "category": "exfiltration",
+            "file": "SKILL.md",
+            "line": 87,
+            "match": "curl -s \"$BASE/api/doc/$DOC/script-status\" -H \"Authorization: Bearer $TOKEN\"",
+            "description": "curl command interpolating secret environment variable"
+          },
+          {
+            "pattern_id": "backtick_subshell",
+            "severity": "medium",
+            "category": "execution",
+            "file": "SKILL.md",
+            "line": 55,
+            "match": "`PORT=$(jq -r .port <server.json>); TOKEN=$(jq -r .token <server.json>)`.",
+            "description": "backtick string with command substitution"
+          }
+        ],
+        "rules": [
+          "backtick_subshell",
+          "env_exfil_curl"
+        ],
+        "scanned_at": "2026-07-24T07:18:23.930113+00:00",
+        "summary": "tldraw-offline: dangerous — 2 finding(s) in execution, exfiltration",
+        "fresh": true
+      },
+      "installed_at": "2026-07-24T07:18:30.756288+00:00",
+      "updated_at": "2026-07-24T07:18:30.756311+00:00"
     }
   }
 }
