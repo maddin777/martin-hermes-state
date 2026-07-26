@@ -97,6 +97,18 @@ hermes cron create \
   --prompt "Vault Self-Write: (1) Health check - broken links, orphans (2) Backward integration - new wikilinks (3) Gap detection - missing wiki pages (4) Synthesis - cross-topic analysis/MOC"
 ```
 
+**Broken Link Detection Script:** `scripts/broken-link-detection.py` — Python-Skript das alle Wiki-Dateien scannt, Noise-Patterns filtert (Selbstreferenzen, Known Folders, Twitter-Handles, Manuskript-Kapitel) und nur echte Broken Links meldet. Nutzbar im Cron als:
+```bash
+python3 /root/.hermes/skills/devops/hermes-vault-management/scripts/broken-link-detection.py
+```
+
+**Bekannte Noise-Patterns (müssen vom Script gefiltert werden):**
+- `wiki/index.md` → `[[entities/Name]]` — relativ zu `wiki/`, nicht Vault-Root
+- `[[boerse]]`, `[[Geldverdienen]]` — Ordner-Referenzen, keine Wiki-Seiten
+- `[[@itsmichaelluu]]` — Twitter-Handle
+- `[[Kapitel_10]]` — Manuskript-Kapitel
+- `[[Aktien (KI Zulieferer)]]` — kann echter Broken Link ODER fehlende Entity-Seite sein
+
 ### Verification
 
 ```bash
