@@ -1726,9 +1726,9 @@
 "max_completion_tokens":131072,
 "name":"Z.ai: GLM 5.2",
 "pricing":{
-"prompt":"0.00000077",
-"completion":"0.00000242",
-"input_cache_read":"0.000000143"
+"prompt":"0.0000007168",
+"completion":"0.0000022528",
+"input_cache_read":"0.00000013312"
 }
 },
 "glm-5.2":{
@@ -1736,9 +1736,9 @@
 "max_completion_tokens":131072,
 "name":"Z.ai: GLM 5.2",
 "pricing":{
-"prompt":"0.00000077",
-"completion":"0.00000242",
-"input_cache_read":"0.000000143"
+"prompt":"0.0000007168",
+"completion":"0.0000022528",
+"input_cache_read":"0.00000013312"
 }
 },
 "z-ai/glm-5.2-20260616":{
@@ -1746,9 +1746,9 @@
 "max_completion_tokens":131072,
 "name":"Z.ai: GLM 5.2",
 "pricing":{
-"prompt":"0.00000077",
-"completion":"0.00000242",
-"input_cache_read":"0.000000143"
+"prompt":"0.0000007168",
+"completion":"0.0000022528",
+"input_cache_read":"0.00000013312"
 }
 },
 "glm-5.2-20260616":{
@@ -1756,9 +1756,9 @@
 "max_completion_tokens":131072,
 "name":"Z.ai: GLM 5.2",
 "pricing":{
-"prompt":"0.00000077",
-"completion":"0.00000242",
-"input_cache_read":"0.000000143"
+"prompt":"0.0000007168",
+"completion":"0.0000022528",
+"input_cache_read":"0.00000013312"
 }
 },
 "openrouter/fusion":{
@@ -1784,7 +1784,7 @@
 "max_completion_tokens":262144,
 "name":"MoonshotAI: Kimi K2.7 Code",
 "pricing":{
-"prompt":"0.00000078",
+"prompt":"0.00000075",
 "completion":"0.0000035",
 "input_cache_read":"0.00000015"
 }
@@ -1794,7 +1794,7 @@
 "max_completion_tokens":262144,
 "name":"MoonshotAI: Kimi K2.7 Code",
 "pricing":{
-"prompt":"0.00000078",
+"prompt":"0.00000075",
 "completion":"0.0000035",
 "input_cache_read":"0.00000015"
 }
@@ -1804,7 +1804,7 @@
 "max_completion_tokens":262144,
 "name":"MoonshotAI: Kimi K2.7 Code",
 "pricing":{
-"prompt":"0.00000078",
+"prompt":"0.00000075",
 "completion":"0.0000035",
 "input_cache_read":"0.00000015"
 }
@@ -1814,7 +1814,7 @@
 "max_completion_tokens":262144,
 "name":"MoonshotAI: Kimi K2.7 Code",
 "pricing":{
-"prompt":"0.00000078",
+"prompt":"0.00000075",
 "completion":"0.0000035",
 "input_cache_read":"0.00000015"
 }
@@ -3335,38 +3335,42 @@
 },
 "qwen/qwen3.6-27b":{
 "context_length":262144,
-"max_completion_tokens":131072,
+"max_completion_tokens":65536,
 "name":"Qwen: Qwen3.6 27B",
 "pricing":{
-"prompt":"0.000000289",
-"completion":"0.0000024"
+"prompt":"0.0000003",
+"completion":"0.000002",
+"input_cache_read":"0.00000015"
 }
 },
 "qwen3.6-27b":{
 "context_length":262144,
-"max_completion_tokens":131072,
+"max_completion_tokens":65536,
 "name":"Qwen: Qwen3.6 27B",
 "pricing":{
-"prompt":"0.000000289",
-"completion":"0.0000024"
+"prompt":"0.0000003",
+"completion":"0.000002",
+"input_cache_read":"0.00000015"
 }
 },
 "qwen/qwen3.6-27b-20260422":{
 "context_length":262144,
-"max_completion_tokens":131072,
+"max_completion_tokens":65536,
 "name":"Qwen: Qwen3.6 27B",
 "pricing":{
-"prompt":"0.000000289",
-"completion":"0.0000024"
+"prompt":"0.0000003",
+"completion":"0.000002",
+"input_cache_read":"0.00000015"
 }
 },
 "qwen3.6-27b-20260422":{
 "context_length":262144,
-"max_completion_tokens":131072,
+"max_completion_tokens":65536,
 "name":"Qwen: Qwen3.6 27B",
 "pricing":{
-"prompt":"0.000000289",
-"completion":"0.0000024"
+"prompt":"0.0000003",
+"completion":"0.000002",
+"input_cache_read":"0.00000015"
 }
 },
 "openai/gpt-5.5-pro":{
@@ -3555,42 +3559,42 @@
 },
 "deepseek/deepseek-v4-flash":{
 "context_length":1048576,
-"max_completion_tokens":null,
+"max_completion_tokens":393216,
 "name":"DeepSeek: DeepSeek V4 Flash",
 "pricing":{
-"prompt":"0.0000000938",
-"completion":"0.0000001876",
-"input_cache_read":"0.00000001876"
+"prompt":"0.00000014",
+"completion":"0.00000028",
+"input_cache_read":"0.000000028"
 }
 },
 "deepseek-v4-flash":{
 "context_length":1048576,
-"max_completion_tokens":null,
+"max_completion_tokens":393216,
 "name":"DeepSeek: DeepSeek V4 Flash",
 "pricing":{
-"prompt":"0.0000000938",
-"completion":"0.0000001876",
-"input_cache_read":"0.00000001876"
+"prompt":"0.00000014",
+"completion":"0.00000028",
+"input_cache_read":"0.000000028"
 }
 },
 "deepseek/deepseek-v4-flash-20260423":{
 "context_length":1048576,
-"max_completion_tokens":null,
+"max_completion_tokens":393216,
 "name":"DeepSeek: DeepSeek V4 Flash",
 "pricing":{
-"prompt":"0.0000000938",
-"completion":"0.0000001876",
-"input_cache_read":"0.00000001876"
+"prompt":"0.00000014",
+"completion":"0.00000028",
+"input_cache_read":"0.000000028"
 }
 },
 "deepseek-v4-flash-20260423":{
 "context_length":1048576,
-"max_completion_tokens":null,
+"max_completion_tokens":393216,
 "name":"DeepSeek: DeepSeek V4 Flash",
 "pricing":{
-"prompt":"0.0000000938",
-"completion":"0.0000001876",
-"input_cache_read":"0.00000001876"
+"prompt":"0.00000014",
+"completion":"0.00000028",
+"input_cache_read":"0.000000028"
 }
 },
 "inclusionai/ling-2.6-1t":{
@@ -4242,21 +4246,21 @@
 },
 "arcee-ai/trinity-large-thinking":{
 "context_length":262144,
-"max_completion_tokens":80000,
+"max_completion_tokens":262144,
 "name":"Arcee AI: Trinity Large Thinking",
 "pricing":{
-"prompt":"0.00000025",
-"completion":"0.0000008",
+"prompt":"0.00000022",
+"completion":"0.00000085",
 "input_cache_read":"0.00000006"
 }
 },
 "trinity-large-thinking":{
 "context_length":262144,
-"max_completion_tokens":80000,
+"max_completion_tokens":262144,
 "name":"Arcee AI: Trinity Large Thinking",
 "pricing":{
-"prompt":"0.00000025",
-"completion":"0.0000008",
+"prompt":"0.00000022",
+"completion":"0.00000085",
 "input_cache_read":"0.00000006"
 }
 },
@@ -9023,8 +9027,7 @@
 "name":"OpenAI: gpt-oss-20b",
 "pricing":{
 "prompt":"0.00000003",
-"completion":"0.00000013",
-"input_cache_read":"0.00000003"
+"completion":"0.00000014"
 }
 },
 "openai/gpt-oss-20b:free":{
@@ -9137,20 +9140,20 @@
 },
 "qwen/qwen3-30b-a3b-instruct-2507":{
 "context_length":262144,
-"max_completion_tokens":null,
+"max_completion_tokens":32000,
 "name":"Qwen: Qwen3 30B A3B Instruct 2507",
 "pricing":{
-"prompt":"0.0000001",
-"completion":"0.0000003"
+"prompt":"0.00000004815",
+"completion":"0.00000019305"
 }
 },
 "qwen3-30b-a3b-instruct-2507":{
 "context_length":262144,
-"max_completion_tokens":null,
+"max_completion_tokens":32000,
 "name":"Qwen: Qwen3 30B A3B Instruct 2507",
 "pricing":{
-"prompt":"0.0000001",
-"completion":"0.0000003"
+"prompt":"0.00000004815",
+"completion":"0.00000019305"
 }
 },
 "z-ai/glm-4.5":{
