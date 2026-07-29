@@ -77,6 +77,7 @@ Database is at:
 | 13-20h | `signal_manager.py check_only` | täglich | Intraday SL/TP check |
 | 15:30 | `active_exit_check.py` | täglich | Afternoon exit checks |
 | 20:00 (Fr) | `signal_manager.py full` | Fr | Weekly signal review |
+| 22:15 | `export_watchlist.py` (Hermes-Cron, no_agent) | Mo–Fr | Watchlist aus DB → Obsidian Vault exportieren (Cron-ID: `446aad622784`, Wrapper: `~/.hermes/scripts/export_watchlist.sh`) |
 | 23:15 | `refresh_tech_scores.py` (Hermes-Cron) | Mo–Fr | Tech-Scores für Watchlist neu berechnen |
 
 **Wochenend-Crontab:**
@@ -86,6 +87,7 @@ Database is at:
 | 06:00 | `nightly_eval.py` | Wöchentliches Eval |
 | 07:00 | `source_lifecycle.py` | Quellen-Management: adjust_weights(P&L), promote/demote, discover |
 | 07:30 | `watchlist_cleanup.py` (Hermes-Cron) | Watchlist-Bereinigung: >60d → dropped, 30-60d → notes='stale' |
+| 08:00 | `ki-blase-alert-daily` (Hermes-Cron, no_agent) | Mo–Fr | KI-Hyperscaler-Klumpenrisiko Check (Cron-ID: `9f4e3cc91675`, Wrapper: `~/.hermes/scripts/ki_blase_alert.sh`) |
 | 08:00 | `last30days-trading-weekly` (Hermes-Cron) | Wöchentlicher Research-Report für Top-5 Watchlist-Kandidaten (Reddit, HN, X, GitHub, Web) |
 | 10:00 | `ttwo-catalyst-alarm` (Hermes-Cron) | TTWO Katalysator-Alarm |
 | 10:00 | `agent-reach-watchdog.sh` (Hermes-Cron) | Agent Reach Watchdog |
