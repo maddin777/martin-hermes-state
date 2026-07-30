@@ -713,12 +713,12 @@
     "created_at": "2026-07-24T06:52:24.038883+00:00",
     "created_by": null,
     "last_patched_at": null,
-    "last_used_at": "2026-07-26T13:00:42.766845+00:00",
+    "last_used_at": "2026-07-29T12:00:44.418631+00:00",
     "last_viewed_at": "2026-07-24T06:57:20.922055+00:00",
     "patch_count": 0,
     "pinned": false,
     "state": "active",
-    "use_count": 4,
+    "use_count": 5,
     "view_count": 1
   },
   "llama-cpp": {
@@ -856,12 +856,12 @@
     "created_at": "2026-06-22T01:24:12.348954+00:00",
     "created_by": null,
     "last_patched_at": "2026-07-11T01:10:31.710850+00:00",
-    "last_used_at": "2026-07-28T14:00:24.887942+00:00",
+    "last_used_at": "2026-07-29T14:00:46.154213+00:00",
     "last_viewed_at": "2026-07-25T01:04:40.316859+00:00",
     "patch_count": 11,
     "pinned": false,
     "state": "active",
-    "use_count": 40,
+    "use_count": 41,
     "view_count": 24
   },
   "ocr-and-documents": {
@@ -1205,14 +1205,14 @@
     "archived_at": null,
     "created_at": "2026-05-27T06:29:36.528930+00:00",
     "created_by": "agent",
-    "last_patched_at": "2026-07-28T05:46:55.124966+00:00",
-    "last_used_at": "2026-07-28T05:46:46.317243+00:00",
-    "last_viewed_at": "2026-07-28T05:46:46.309613+00:00",
-    "patch_count": 203,
+    "last_patched_at": "2026-07-29T06:00:03.343858+00:00",
+    "last_used_at": "2026-07-29T05:59:31.474101+00:00",
+    "last_viewed_at": "2026-07-29T05:59:31.468394+00:00",
+    "patch_count": 208,
     "pinned": false,
     "state": "active",
-    "use_count": 229,
-    "view_count": 213
+    "use_count": 232,
+    "view_count": 216
   },
   "trading-scan": {
     "archived_at": null,

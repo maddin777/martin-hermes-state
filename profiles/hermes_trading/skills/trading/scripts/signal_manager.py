@@ -516,9 +516,15 @@ def update_sector_blacklist(con, cfg):
             # Prüfen ob Cooldown abgelaufen + Probation möglich
             blocked_since = datetime.fromisoformat(blacklist[sector]["blocked_since"])
             days_blocked = (datetime.now() - blocked_since).days
-            if days_blocked >= cooldown and blacklist[sector].get("probation_done"):
-                del blacklist[sector]
-                print(f"  ✅ Sektor '{sector}' von Blacklist entfernt (Cooldown + Probation bestanden)", flush=True)
+            if days_blocked >= cooldown:
+                if blacklist[sector].get("probation_done"):
+                    del blacklist[sector]
+                    print(f"  ✅ Sektor '{sector}' von Blacklist entfernt (Cooldown + Probation bestanden)", flush=True)
+                else:
+                    # Sektor hat keine neuen Trades im 14d-Fenster → automatisch freigeben
+                    # Der Grund für die Blockade (frühere Verluste) ist nicht mehr aktiv
+                    del blacklist[sector]
+                    print(f"  ✅ Sektor '{sector}' von Blacklist entfernt (Cooldown abgelaufen, keine neuen Trades)", flush=True)
     
     cfg["sector_blacklist"] = blacklist
     return cfg

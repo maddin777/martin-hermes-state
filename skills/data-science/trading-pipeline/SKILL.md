@@ -243,6 +243,7 @@ Details siehe `references/` im Skill-Verzeichnis sowie die Erläuterung.md im Ob
 | **Stale-Analyse: Immer die volle Watchlist, nicht nur offene Positionen** → Bei Fragen zu "stale Einträgen >30 Tage" oder "was hat keine Mentions" IMMER die gesamte Watchlist (`status IN ('watching','bought')`) scannen, nicht nur offene Positionen (`positions WHERE exit_date IS NULL`). Der vault-insights-daily scannt die Watchlist. Eine Position kann frisch sein, aber die Watchlist hat hunderte stale Kandidaten. |
 | **Last30days Pre-Trade Gate** → `scripts/last30days_gate.py` prüft News-Sentiment via Google News RSS (kein API-Key). Keyword-basiert (32 neg + 18 pos). Nur für HIGH-Conviction (≥0.80). Drei Stufen: ok/warning/block. Fail-Open. Siehe `references/last30days-gate.md`. |
 | **PEAD Signal (Post-Earnings Drift)** | `references/pead-signal.md` |
+| **High-Conviction-Crash Diagnose** → Wenn die ≥76%-Anzahl drastisch fällt: aging-Effekt prüfen (14d-Halbwertszeit), nicht nur nach Bugs suchen. Siehe `references/high-conviction-diagnostic.md`. |
 
 ### User Preference: Änderungen in Erklaerung.md dokumentieren (15.07.2026)
 
@@ -550,6 +551,11 @@ Sektoren mit negativer 14d-P&L (≥3 Trades) werden automatisch auf eine Blackli
 **Ausgelöst von:** `update_sector_blacklist()` am Start von `open_new_positions()`.
 **Geprüft von:** `is_sector_allowed()` vor jedem Entry.
 **Config:** `strategy_config.json` → `sector_blacklist {}`, `sector_cooldown_days: 14`, `sector_probation_size_pct: 0.5`.
+
+**⚠️ Bekannter Bugfix (29.07.2026):** Wenn ein Sektor nach 14d Cooldown keinen Probation-Trade
+bekommt (kein passender Kandidat), bleibt `probation_done=false` → Sektor für immer blockiert.
+**Fix:** `update_sector_blacklist()` gibt Sektoren ohne neue Trades im 14d-Fenster automatisch
+frei, auch ohne Probation. Siehe `references/sector-blacklist-probation.md` für Details.
 
 Siehe `references/sector-blacklist-probation.md`.
 
