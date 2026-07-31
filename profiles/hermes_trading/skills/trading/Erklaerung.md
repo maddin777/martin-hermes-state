@@ -423,3 +423,80 @@ Zwei Integrationen des Last30days-Skills in den Trading-Agenten:
 - `~/.hermes/skills/meta/last30days/SKILL.md` — Hermes Skill
 - Backtest der neuen Parameter auf historischen Daten (Mai vs Juni)
 - Short-Trade-Regel: aktuell 28,6% WR — prüfen ob Shorts im Sideways pausiert werden sollen
+|
+|---
+|
+|## 30.07.2026 — Sector-Blacklist (Probation-Mechanismus)
+|
+|### Problem
+|Der Industrials-Sektor war 19 Tage geblockt, aber der Probation-Trade wurde nie ausgeführt. Der Blacklist-Mechanismus war nur ein statischer Hinweis in `strategy_config.json` — keine echte Blockade-Logik.
+|
+|### Lösung
+|**Neue DB-Tabelle `sector_blacklist`** (idempotent in `watchlist_manager.py`):
+|```sql
+|sector TEXT PK, blocked_at, cooldown_days (14), probation_status (NULL/active/success/failed),
+|probation_entry_ticker, probation_opened_at, probation_pnl
+|```
+|
+|**Helper `get_sector_blockade_info(con)`** in `watchlist_manager.py`:
+|- Berechnet Cooldown-Resttage und Probation-Status
+|- Cooldown abgelaufen + kein Probation-Status → Fenster OFFEN
+|- Ausgabe im Watchlist Manager Output
+|
+|**`export_watchlist.py`**: Liest jetzt aus DB statt `strategy_config.json`. Zeigt echten Status: Cooldown-Resttage, Probation-Fenster, aktive Trades.
+|
+|**Dashboard**: Sektor-Status aus DB statt JSON. Farbcodiert: 🚫 Cooldown, 🟡 Fenster offen, 🟢 aktiv, ✅ bestanden, ❌ fehlgeschlagen.
+|
+|**Migration**: Alte `sector_blacklist` aus `strategy_config.json` wird einmalig in DB überführt.
+|
+|**Industrials-Reset**: `blocked_at = 2026-07-11` (vor 19 Tagen) → Cooldown (14d) endete 25.07. → Probation-Fenster ist offen, ein Trade möglich.
+|
+|### Geänderte Dateien
+|| Datei | Änderung |
+||---|---|
+|| `watchlist_manager.py` | `get_sector_blockade_info()` neu; Migration + Output; Import STRATEGY_CONFIG_PATH |
+|| `export_watchlist.py` | DB-Ladung statt JSON; echter Status in Markdown |
+|| `dashboard.py` | DB-Ladung statt JSON; farbcodierte Anzeige mit Resttagen |
+|
+|---
+|
+|## 30.07.2026 — Signal-Kalibrierung + Top-Band-Validierung
+|
+|### Auslöser
+|Post über Pattern-Detection-Pipeline: zwei Probleme identifiziert — (1) keine Kalibrierung zwischen lauten und leisen Signalquellen, (2) keine separate Validierung der Top-Band-Einträge.
+|
+|### Punkt 1: Signal-Kalibrierung nach avg_pnl_per_trade
+|
+|**Neue Funktion `get_channel_calibration(con)`** in `watchlist_manager.py`:
+|Liest `avg_pnl_per_trade` aus `source_registry` und wandelt in Faktor [0.3, 2.0]:
+|| avg_pnl | Faktor | Bedeutung |
+||---------|--------|-----------|
+|| ≥ +50€  | 1.5x   | Starke Quelle |
+|| ≥ +20€  | 1.2x   | Gute Quelle |
+|| ≥ -5€   | 1.0x   | Neutral |
+|| ≥ -20€  | 0.7x   | Schwache Quelle |
+|| < -20€  | 0.3x   | Schlechte Quelle |
+|| Keine Daten | 1.0x | Unbekannt |
+|
+|**Integration**: `calculate_conviction()`, `calculate_conviction_bear()`, `calculate_conviction_aged()` — alle drei akzeptieren jetzt optionalen `calibration`-Parameter. Der Faktor multipliziert das Channel-Weight pro Mention. Eine Quelle mit +50€/Trade bekommt 1.5x Gewicht, eine mit -30€/Trade nur 0.3x.
+|
+|**Effekt**: Eine leise, präzise Quelle (z.B. 5 Mentions, +50€/Trade) überstimmt eine laute, mittelmäßige Quelle (100 Mentions, -10€/Trade) nicht mehr.
+|
+|### Punkt 2: Top-Band-Validierung
+|
+|**Neue Funktion `calc_top_band_metrics(con)`** in `nightly_eval.py`:
+|Validiert separat die Top-3/5/10 der Watchlist (nach conviction_score):
+|- Wieviele wurden gekauft (bought_count)
+|- Win Rate der gekauften
+|- Sum P&L
+|- Zeitfenster: 30 Tage
+|
+|**Migration**: `eval_metrics` Tabelle um Spalten `top3_win_rate`, `top5_win_rate`, `top10_win_rate`, `top3_bought`, `top5_bought`, `top10_bought`, `top3_pnl`, `top5_pnl`, `top10_pnl` erweitert.
+|
+|**Output**: Tägliche Ausgabe im Nightly Eval — separate Metriken für das Top-Band, nicht nur den Durchschnitt.
+|
+|### Geänderte Dateien
+|| Datei | Änderung |
+||---|---|
+|| `watchlist_manager.py` | `get_channel_calibration()` neu; Kalibrierung in allen 3 Conviction-Funktionen |
+|| `nightly_eval.py` | `calc_top_band_metrics()` neu; Migration + INSERT; Tägliche Ausgabe |

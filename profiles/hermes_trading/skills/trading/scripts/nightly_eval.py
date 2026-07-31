@@ -162,10 +162,47 @@ def calc_portfolio_metrics(con):
         "exit_tech_pct": round(exit_map.get("TECH_BROKEN", 0) / total_exits, 3),
     }
 
+
+def calc_top_band_metrics(con):
+    """
+    Top-Band-Validierung: evaluiert die Top-3/5/10 der Watchlist separat.
+    Der Post-Insight: "you validate the top of the ranking specifically, not
+    the average. Since the top band is all that ever ships, that's the only
+    place quality matters."
+    """
+    d30 = (datetime.now() - timedelta(days=30)).strftime("%Y-%m-%d")
+    result = {}
+    for n in [3, 5, 10]:
+        top = con.execute("""
+            SELECT ticker, name, conviction_score
+            FROM watchlist
+            WHERE status = 'watching'
+              AND ticker IS NOT NULL
+            ORDER BY conviction_score DESC
+            LIMIT ?
+        """, (n,)).fetchall()
+        bought = 0; wins = 0; losses = 0; sum_pnl = 0.0
+        for t in top:
+            pos = con.execute("""
+                SELECT pnl_eur, status FROM positions
+                WHERE ticker = ? AND entry_date >= ?
+                  AND status IN ('closed', 'open')
+                ORDER BY entry_date DESC LIMIT 1
+            """, (t["ticker"], d30)).fetchone()
+            if pos:
+                bought += 1
+                if pos["status"] == "closed" and pos["pnl_eur"] is not None:
+                    if pos["pnl_eur"] > 0: wins += 1
+                    else: losses += 1
+                    sum_pnl += pos["pnl_eur"]
+        result[f"top{n}_bought"] = bought
+        result[f"top{n}_win_rate"] = round(wins / (wins + losses), 3) if (wins + losses) > 0 else 0
+        result[f"top{n}_pnl"] = round(sum_pnl, 2)
+    return result
+
+
 def calc_source_quality(con, today):
     """
-    Berechnet Quellen-Qualität mit zwei Metriken:
-
     1. Trade-Qualität (für etablierte Quellen mit ≥1 Trade):
        quality = win_rate * 0.6 + consistency * 0.4
 
@@ -556,6 +593,36 @@ def main():
               pm["exit_sl_pct"], pm["exit_tp_pct"], pm["exit_tech_pct"], datetime.now().isoformat()))
         con.commit()
 
+        # Top-Band-Validierung (Top-3/5/10 der Watchlist)
+        print("\n📊 Top-Band-Validierung...", flush=True)
+        tb = calc_top_band_metrics(con)
+        for n in [3, 5, 10]:
+            print(f"  Top {n}: {tb[f'top{n}_bought']} gekauft, "
+                  f"WR {tb[f'top{n}_win_rate']:.0%}, "
+                  f"P&L {tb[f'top{n}_pnl']:+.0f}€", flush=True)
+
+        # Migration: eval_metrics top_N Spalten (idempotent)
+        em_cols = [r[1] for r in con.execute("PRAGMA table_info(eval_metrics)").fetchall()]
+        for col in ["top3_win_rate", "top5_win_rate", "top10_win_rate",
+                     "top3_bought", "top5_bought", "top10_bought",
+                     "top3_pnl", "top5_pnl", "top10_pnl"]:
+            if col not in em_cols:
+                typ = "REAL" if "win_rate" in col or "pnl" in col else "INTEGER"
+                con.execute(f"ALTER TABLE eval_metrics ADD COLUMN {col} {typ} DEFAULT 0")
+
+        # Top-Band-Werte in eval_metrics nachtragen
+        con.execute("""
+            UPDATE eval_metrics SET
+                top3_win_rate=?, top5_win_rate=?, top10_win_rate=?,
+                top3_bought=?, top5_bought=?, top10_bought=?,
+                top3_pnl=?, top5_pnl=?, top10_pnl=?
+            WHERE date=? AND metric_type=?
+        """, (tb["top3_win_rate"], tb["top5_win_rate"], tb["top10_win_rate"],
+              tb["top3_bought"], tb["top5_bought"], tb["top10_bought"],
+              tb["top3_pnl"], tb["top5_pnl"], tb["top10_pnl"],
+              today, metric_type))
+        con.commit()
+
         # ── Investment Committee (Sprint R4) ─────────────────────────────
         # Shadow-Auswertung: hätten die VETOs Verlusttrades verhindert oder
         # Gewinner blockiert? Grundlage für die Entscheidung, committee_mode
@@ -585,7 +652,7 @@ def main():
                     f"Vermiedene P&L: {-cshadow['veto_pnl_eur']:+.0f}€ {icon}\n"
                 )
 
-        print("\n🔍 Source-Qualität...", flush=True)
+        print("🔍 Source-Qualität...", flush=True)
         sources = calc_source_quality(con, today)
         for s in sources[:5]:
             print(f"  {s['channel']:25} WR:{s['win_rate_30d']:.0%} Q:{s['quality_score']:.2f} ({s['mentions_30d']}x)", flush=True)

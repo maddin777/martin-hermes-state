@@ -537,25 +537,31 @@ Sideways → viele SL_HITs (normal) → SL enger → noch mehr SL_HITs → SL 1,
 
 Siehe `references/adapt-strategy-regime-blindness.md` und `Erklaerung.md` im Skill-Verzeichnis.
 
-### 🔴 Sector Blacklist + Probation (seit 25.06.2026)
+### 🔴 Sector Blacklist + Probation (DB-backed, seit 30.07.2026)
 
-Sektoren mit negativer 14d-P&L (≥3 Trades) werden automatisch auf eine Blacklist gesetzt:
+Sektoren können manuell oder automatisch auf eine Blacklist gesetzt werden.
+Nach einem Cooldown (Default: 14 Tage) öffnet sich ein Probation-Fenster für
+genau einen Trade. Bei Gewinn → Sektor frei, bei Verlust → erneuter Cooldown.
 
-| Phase | Dauer | Regel |
-|-------|-------|-------|
-| **Gesperrt** | 14d Cooldown | Keine Entries in diesem Sektor |
-| **Probation** | 1 Trade | 50% Position Size erlaubt |
-| **Re-Entry** | Gewinn → frei | Sektor von Blacklist entfernt |
-| **Re-Entry** | Verlust → +14d | Erneuter Cooldown |
+**Architektur (Single Source of Truth = DB):**
+- **DB-Tabelle `sector_blacklist`** in `trading.db` — `sector` (PK), `blocked_at`, `cooldown_days`, `probation_status`, `probation_entry_ticker`
+- **`get_sector_blockade_info()`** in `watchlist_manager.py` — Helper, berechnet Cooldown-Resttage + Probation-Status
+- **Migration** — `watchlist_manager.py` main() migriert alte `strategy_config.json`-Einträge einmalig in die DB
+- **Export** — `export_watchlist.py` liest aus DB statt JSON
+- **Dashboard** — Sektor-Status aus DB, farbcodiert mit Resttagen
 
-**Ausgelöst von:** `update_sector_blacklist()` am Start von `open_new_positions()`.
-**Geprüft von:** `is_sector_allowed()` vor jedem Entry.
-**Config:** `strategy_config.json` → `sector_blacklist {}`, `sector_cooldown_days: 14`, `sector_probation_size_pct: 0.5`.
+| Phase | `probation_status` | Cooldown Rest | Bedeutung |
+|-------|-------------------|---------------|-----------|
+| Gesperrt | NULL | > 0 | Keine Entries. Cooldown läuft. |
+| Probation offen | NULL | ≤ 0 | Cooldown abgelaufen, 1 Trade erlaubt. |
+| Probation aktiv | 'active' | — | Trade läuft, kein weiterer Entry. |
+| Bestanden | 'success' | — | Sektor frei. |
+| Fehlgeschlagen | 'failed' | — | Neuer Cooldown ab heute. |
 
-**⚠️ Bekannter Bugfix (29.07.2026):** Wenn ein Sektor nach 14d Cooldown keinen Probation-Trade
-bekommt (kein passender Kandidat), bleibt `probation_done=false` → Sektor für immer blockiert.
-**Fix:** `update_sector_blacklist()` gibt Sektoren ohne neue Trades im 14d-Fenster automatisch
-frei, auch ohne Probation. Siehe `references/sector-blacklist-probation.md` für Details.
+**Manuelles Setzen:** Siehe `references/sector-blacklist-probation.md`.
+
+**⚠️ Alte `signal_manager.py`-Logik** (`update_sector_blacklist()`, `is_sector_allowed()`) 
+nutzt noch `strategy_config.json` und muss separat auf die DB umgestellt werden.
 
 Siehe `references/sector-blacklist-probation.md`.
 
@@ -638,6 +644,51 @@ if pead_long > 0:
 if pead_short > 0:
     conviction_bear = min(1.0, conviction_bear + pead_short)
 ```
+
+## Signal-Kalibrierung nach avg_pnl_per_trade (seit 30.07.2026)
+
+Kalibriert Signalstärke zwischen lauten unpräzisen und leisen präzisen Quellen.
+Basierend auf dem Insight: "a mediocre detection from a loud detector must lose
+to a strong detection from a quiet one."
+
+**Neue Funktion `get_channel_calibration(con)`** in `watchlist_manager.py`:
+- Liest `avg_pnl_per_trade` aus `source_registry`
+- Wandelt in Faktor: ≥ +50€ → 1.5x, ≥ +20€ → 1.2x, ≥ -5€ → 1.0x, ≥ -20€ → 0.7x, < -20€ → 0.3x
+
+**Integration:** Alle drei Conviction-Funktionen (`calculate_conviction()`,
+`calculate_conviction_bear()`, `calculate_conviction_aged()`) akzeptieren
+optionalen `calibration`-Parameter. Der Faktor multipliziert das Channel-Weight
+pro Mention.
+
+**Kalibrierung wird geladen** in `watchlist_manager.main()` direkt nach
+`get_channel_weights()`. Output:
+```
+📐 Quellen-Kalibrierung: 12 Quellen, 3 mit abweichendem Faktor
+```
+
+Siehe `references/signal-calibration.md`.
+
+## Top-Band-Validierung (seit 30.07.2026)
+
+Validiert die Top-3/5/10 der Watchlist separat. Basierend auf dem Insight:
+"you validate the top of the ranking specifically, not the average. Since the
+top band is all that ever ships, that's the only place quality matters."
+
+**Neue Funktion `calc_top_band_metrics(con)`** in `nightly_eval.py`:
+- Prüft für Top 3/5/10 der Watchlist (nach conviction_score): bought_count,
+  win_rate, sum_pnl (30d-Fenster)
+- Läuft im Main-Loop des nightly_eval
+- **Migration:** 9 neue Spalten in `eval_metrics`: `top3/5/10_win_rate`,
+  `top3/5/10_bought`, `top3/5/10_pnl`
+
+**Output:**
+```
+📊 Top-Band-Validierung...
+  Top 3: 2 gekauft, WR 50%, P&L +124€
+  Top 5: 3 gekauft, WR 67%, P&L +89€
+```
+
+Siehe `references/top-band-validation.md`.
 
 ## Backtesting Engine (`backtesting/`)
 

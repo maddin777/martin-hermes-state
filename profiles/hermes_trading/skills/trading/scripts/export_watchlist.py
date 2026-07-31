@@ -5,11 +5,11 @@ Nutzt canonical_tickers-Tabelle zum Zusammenführen von Duplikaten.
 import sqlite3
 import json
 import re
-from datetime import datetime
+from datetime import datetime, timedelta
 
 
 import os
-from config import DB_PATH, OBSIDIAN_WATCHLIST_PATH, db_connect
+from config import DB_PATH, OBSIDIAN_WATCHLIST_PATH, STRATEGY_CONFIG_PATH, db_connect
 os.makedirs(os.path.dirname(OBSIDIAN_WATCHLIST_PATH), exist_ok=True)
 
 
@@ -45,12 +45,49 @@ raw = con.execute("""
     ORDER BY w.conviction_score DESC
 """).fetchall()
 
-# ── Sector Blacklist laden ────────────────────────────────────────────
-sector_blacklist = {}
+# ── Sector Blacklist aus DB laden ──────────────────────────────────────
+sector_blacklist = {}  # sector -> {blocked, cooldown_remaining, probation_status}
 try:
-    with open(CONFIG_PATH if 'CONFIG_PATH' in dir() else '/root/.hermes/profiles/hermes_trading/skills/trading/data/strategy_config.json') as f:
-        scfg = json.load(f)
-        sector_blacklist = scfg.get("sector_blacklist", {})
+    bl_rows = con.execute("""
+        SELECT sector, blocked_at, cooldown_days,
+               probation_status, probation_entry_ticker
+        FROM sector_blacklist
+    """).fetchall()
+    today = datetime.now().date()
+    for r in bl_rows:
+        blocked = datetime.strptime(r["blocked_at"], "%Y-%m-%d").date()
+        cooldown_end = blocked + timedelta(days=r["cooldown_days"])
+        remaining = (cooldown_end - today).days
+        if remaining > 0:
+            # Noch im Cooldown
+            sector_blacklist[r["sector"]] = {
+                "blocked": True,
+                "cooldown_remaining": remaining,
+                "cooldown_end": cooldown_end.isoformat(),
+                "probation_status": "cooldown"
+            }
+        elif r["probation_status"] is None:
+            # Cooldown abgelaufen, Probation-Fenster offen
+            sector_blacklist[r["sector"]] = {
+                "blocked": False,
+                "cooldown_remaining": 0,
+                "probation_status": "open"
+            }
+        elif r["probation_status"] in ("active", "success"):
+            # Probation aktiv oder bestanden
+            sector_blacklist[r["sector"]] = {
+                "blocked": False,
+                "cooldown_remaining": 0,
+                "probation_status": r["probation_status"],
+                "probation_entry_ticker": r["probation_entry_ticker"]
+            }
+        elif r["probation_status"] == "failed":
+            # Probation fehlgeschlagen, neuer Cooldown
+            sector_blacklist[r["sector"]] = {
+                "blocked": True,
+                "cooldown_remaining": remaining,
+                "probation_status": "failed"
+            }
 except Exception:
     pass
 
@@ -134,8 +171,23 @@ lines.append(f"*Filter: conviction ≥ 76% oder bereits gekauft*"
 
 # Sector Blacklist Info
 if sector_blacklist:
-    bl_notes = " | ".join(f"🚫 {s}" for s in sector_blacklist)
-    lines.append(f"> **Geblockte Sektoren:** {bl_notes} (keine Käufe für 14 Tage)\n")
+    bl_parts = []
+    for sector, info in sorted(sector_blacklist.items()):
+        status = info.get("probation_status", "cooldown")
+        if status == "cooldown":
+            rem = info.get("cooldown_remaining", 0)
+            bl_parts.append(f"🚫 {sector} (Cooldown {rem}T, bis {info.get('cooldown_end','?')})")
+        elif status == "open":
+            bl_parts.append(f"🟡 {sector} (Probation-Fenster OFFEN)")
+        elif status == "active":
+            t = info.get("probation_entry_ticker", "?")
+            bl_parts.append(f"🟢 {sector} (Probation-Trade: {t})")
+        elif status == "success":
+            bl_parts.append(f"✅ {sector} (Probation bestanden)")
+        elif status == "failed":
+            bl_parts.append(f"❌ {sector} (Probation fehlgeschlagen)")
+    bl_notes = " | ".join(bl_parts)
+    lines.append(f"> **Geblockte Sektoren:** {bl_notes}\n")
 
 lines.append("---\n")
 

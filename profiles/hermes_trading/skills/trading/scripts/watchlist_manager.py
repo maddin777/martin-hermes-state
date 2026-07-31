@@ -29,7 +29,7 @@ from company_normalizer import (                   # war lokale Kopie
 from utils import get_logger
 log = get_logger("watchlist_manager")
 from config import (DB_PATH, SIGNALS_PATH, WATCHLIST_DAYS, MIN_MENTIONS, MIN_CONVICTION,
-                    CONVICTION_HALF_LIFE_DAYS, CONVICTION_PRIOR_NEUTRAL, db_connect)
+                    CONVICTION_HALF_LIFE_DAYS, CONVICTION_PRIOR_NEUTRAL, STRATEGY_CONFIG_PATH, db_connect)
 from pead_signal import get_pead_boost_cached, ensure_pead_cache_table
 
 def get_channel_weights(con):
@@ -45,6 +45,47 @@ def get_channel_weights(con):
             WHERE status IN ('active', 'probation') AND enabled = 1
         """).fetchall()
         return {r["display_name"]: r["weight"] for r in rows}
+    except Exception:
+        return {}
+
+
+def get_channel_calibration(con):
+    """
+    Kalibrierungsfaktoren pro Quelle basierend auf avg_pnl_per_trade.
+    
+    Der Post-Insight: "scores from different signal types have to be calibrated
+    against each other — a mediocre detection from a loud detector must lose to
+    a strong detection from a quiet one."
+    
+    Wandelt avg_pnl_per_trade in einen Faktor [0.3, 2.0]:
+      avg_pnl >= +50€ → 1.5x (starke Quelle)
+      avg_pnl >= +20€ → 1.2x
+      avg_pnl >=  -5€ → 1.0x (neutral)
+      avg_pnl >= -20€ → 0.7x
+      avg_pnl <  -20€ → 0.3x (schlechte Quelle)
+      Keine Daten     → 1.0x (unbekannt = neutral)
+    """
+    try:
+        rows = con.execute("""
+            SELECT display_name, avg_pnl_per_trade
+            FROM source_registry
+            WHERE status IN ('active', 'probation') AND enabled = 1
+              AND avg_pnl_per_trade IS NOT NULL
+        """).fetchall()
+        result = {}
+        for r in rows:
+            pnl = r["avg_pnl_per_trade"]
+            if pnl >= 50.0:
+                result[r["display_name"]] = 1.5
+            elif pnl >= 20.0:
+                result[r["display_name"]] = 1.2
+            elif pnl >= -5.0:
+                result[r["display_name"]] = 1.0
+            elif pnl >= -20.0:
+                result[r["display_name"]] = 0.7
+            else:
+                result[r["display_name"]] = 0.3
+        return result
     except Exception:
         return {}
 
@@ -66,14 +107,15 @@ PRIOR_NEUTRAL  = CONVICTION_PRIOR_NEUTRAL
 def calculate_conviction_aged(con, name, channel_weights=None,
                               half_life=HALF_LIFE_DAYS,
                               prior_neutral=PRIOR_NEUTRAL,
-                              ref_date=None):
+                              ref_date=None, calibration=None):
     """
     Conviction-Score mit zeitlichem Decay + Bayesian Prior.
     
     Liest watchlist_mentions(mention_date, channel, sentiment) und berechnet:
       - time_weight   = 0.5 ^ (age_days / half_life)
       - channel_w     = source_registry.weight (fallback 1.0)
-      - combined      = time_w * channel_w pro Mention
+      - calibration   = avg_pnl_per_trade Faktor (fallback 1.0)
+      - combined      = time_w * channel_w * calib pro Mention
       - sentiment     = sum_w_bull / (sum_w_bull + sum_w_bear), default 0.5
       - confidence    = directional_w / (sum_w_all + prior_neutral)  ← Bayesian
       - volume        = log(directional_n + 1) / log(11), capped 1.0
@@ -117,6 +159,7 @@ def calculate_conviction_aged(con, name, channel_weights=None,
         age = max(0, (ref_date - md).days)
         tw = 0.5 ** (age / half_life)
         chw = (channel_weights or {}).get(r["channel"], 1.0)
+        chw *= (calibration or {}).get(r["channel"], 1.0)
         w = tw * chw
         sum_w_all += w
         s = r["sentiment"]
@@ -140,13 +183,16 @@ def calculate_conviction_aged(con, name, channel_weights=None,
 
 def calculate_conviction(bullish, bearish, neutral, mention_count, unique_channels,
                          channels_list=None, channel_weights=None,
-                         bullish_weighted=None):
+                         bullish_weighted=None, calibration=None):
     """
     Conviction Score 0-1 für bullish-Signale.
     
     bullish_weighted: Summe der Stärke-gewichteten Bull-Mentions
       (strong=1.0, moderate=0.6, weak=0.3).
       Falls None: einfache Zählung (Rückwärtskompatibilität).
+    
+    calibration: Dict channel -> Faktor aus get_channel_calibration().
+      Kalibriert Signalstärke nach avg_pnl_per_trade der Quelle.
     """
     if mention_count == 0:
         return 0.0
@@ -157,7 +203,7 @@ def calculate_conviction(bullish, bearish, neutral, mention_count, unique_channe
     effective_total   = (mention_count * 0.6) if bullish_weighted is not None else mention_count
 
     if channel_weights and channels_list and mention_count > 0:
-        weights    = {ch.strip(): channel_weights.get(ch.strip(), 1.0) for ch in channels_list}
+        weights    = {ch.strip(): channel_weights.get(ch.strip(), 1.0) * (calibration or {}).get(ch.strip(), 1.0) for ch in channels_list}
         avg_weight = sum(weights.values()) / len(weights) if weights else 1.0
         sentiment_score = (effective_bullish / effective_total) * avg_weight if effective_total > 0 else 0
     else:
@@ -170,12 +216,14 @@ def calculate_conviction(bullish, bearish, neutral, mention_count, unique_channe
 
 def calculate_conviction_bear(bullish, bearish, neutral, mention_count, unique_channels,
                                channels_list=None, channel_weights=None,
-                               bearish_weighted=None):
+                               bearish_weighted=None, calibration=None):
     """
     Conviction Score 0-1 für bearish/SHORT-Signale.
     
     bearish_weighted: Summe der Stärke-gewichteten Bear-Mentions.
     Falls None: einfache Zählung (Rückwärtskompatibilität).
+    
+    calibration: Dict channel -> Faktor aus get_channel_calibration().
     """
     if mention_count == 0:
         return 0.0
@@ -184,7 +232,7 @@ def calculate_conviction_bear(bullish, bearish, neutral, mention_count, unique_c
     effective_total   = (mention_count * 0.6) if bearish_weighted is not None else mention_count
 
     if channel_weights and channels_list and mention_count > 0:
-        weights    = {ch.strip(): channel_weights.get(ch.strip(), 1.0) for ch in channels_list}
+        weights    = {ch.strip(): channel_weights.get(ch.strip(), 1.0) * (calibration or {}).get(ch.strip(), 1.0) for ch in channels_list}
         avg_weight = sum(weights.values()) / len(weights) if weights else 1.0
         bear_ratio = (effective_bearish / effective_total) * avg_weight if effective_total > 0 else 0
     else:
@@ -200,6 +248,33 @@ def calculate_conviction_bear(bullish, bearish, neutral, mention_count, unique_c
 
 # Normalisierungslogik ist nach company_normalizer.py ausgelagert (DRY).
 # Import steht im Dateikopf: from company_normalizer import ...
+
+
+def get_sector_blockade_info(con):
+    """Liest sector_blacklist und gibt Dict sector -> {blocked, cooldown_remaining, probation_status} zurück."""
+    rows = con.execute("""
+        SELECT sector, blocked_at, cooldown_days,
+               probation_opened_at, probation_status, probation_entry_ticker
+        FROM sector_blacklist
+    """).fetchall()
+    today = datetime.now().date()
+    result = {}
+    for r in rows:
+        blocked = datetime.strptime(r["blocked_at"], "%Y-%m-%d").date()
+        cooldown_end = blocked + timedelta(days=r["cooldown_days"])
+        remaining = (cooldown_end - today).days
+        probation = r["probation_status"]
+        if probation is None and remaining <= 0:
+            # Cooldown abgelaufen, Probation-Fenster offen
+            probation = "open"
+        result[r["sector"]] = {
+            "blocked": True,
+            "cooldown_remaining": max(0, remaining),
+            "cooldown_end": cooldown_end.isoformat(),
+            "probation_status": probation,
+            "probation_entry_ticker": r["probation_entry_ticker"],
+        }
+    return result
 
 
 def get_thesis_conviction_boost(con, ticker):
@@ -385,6 +460,46 @@ def main():
         # PEAD-Cache-Tabelle anlegen (idempotent)
         ensure_pead_cache_table(con)
         print("  📊 PEAD-Cache-Tabelle bereit", flush=True)
+
+        # Sector-Blacklist-Tabelle anlegen (idempotent)
+        con.execute("""
+            CREATE TABLE IF NOT EXISTS sector_blacklist (
+                sector TEXT PRIMARY KEY,
+                blocked_at DATE NOT NULL,
+                cooldown_days INTEGER DEFAULT 14,
+                probation_entry_id INTEGER,
+                probation_entry_ticker TEXT,
+                probation_opened_at DATE,
+                probation_status TEXT DEFAULT NULL,
+                probation_pnl REAL,
+                re_entry_threshold_pnl REAL DEFAULT 0,
+                created_at TEXT DEFAULT (datetime('now')),
+                updated_at TEXT
+            )
+        """)
+        # sector_cooldown_days aus strategy_config.json einmalig in DB migrieren
+        try:
+            scfg = json.load(open(STRATEGY_CONFIG_PATH))
+            if "sector_cooldown_days" in scfg:
+                cd = scfg["sector_cooldown_days"]
+                con.execute("UPDATE sector_blacklist SET cooldown_days=? WHERE cooldown_days=14", (cd,))
+            # Alte sector_blacklist aus JSON in DB migrieren (einmalig)
+            old_bl = scfg.get("sector_blacklist", {})
+            if old_bl:
+                for sector, entry in old_bl.items():
+                    blocked_at = entry.get("blocked_at", datetime.now().strftime("%Y-%m-%d"))
+                    con.execute("""
+                        INSERT OR IGNORE INTO sector_blacklist (sector, blocked_at, cooldown_days)
+                        VALUES (?, ?, ?)
+                    """, (sector, blocked_at, scfg.get("sector_cooldown_days", 14)))
+                con.commit()
+                # JSON leeren (Daten sind jetzt in DB)
+                scfg["sector_blacklist"] = {}
+                json.dump(scfg, open(STRATEGY_CONFIG_PATH, "w"), indent=2)
+                print(f"  📦 {len(old_bl)} Sektoren aus strategy_config.json in DB migriert", flush=True)
+        except Exception:
+            pass
+        print("  🚫 Sector-Blacklist-Tabelle bereit", flush=True)
     
         # Quellen-Gewichte aus source_registry laden (Lifecycle-Integration)
         channel_weights = get_channel_weights(con)
@@ -392,6 +507,13 @@ def main():
             print(f"  ⚖️  {len(channel_weights)} Quellen-Gewichte aus source_registry geladen", flush=True)
         else:
             print("  ⚖️  source_registry leer – Standardgewichte (1.0) verwendet", flush=True)
+
+        # Kalibrierung: Signalstärke nach avg_pnl_per_trade pro Quelle
+        channel_calibration = get_channel_calibration(con)
+        if channel_calibration:
+            calib_count = sum(1 for v in channel_calibration.values() if v != 1.0)
+            if calib_count:
+                print(f"  📐 Quellen-Kalibrierung: {len(channel_calibration)} Quellen, {calib_count} mit abweichendem Faktor", flush=True)
     
         # 1. Alte Einträge bereinigen (> 14 Tage ohne Mention)
         cutoff = (datetime.now() - timedelta(days=WATCHLIST_DAYS)).strftime("%Y-%m-%d")
@@ -524,12 +646,14 @@ def main():
                 m["mention_count"], m["unique_channels"],
                 channels_list=channels_list, channel_weights=channel_weights,
                 bullish_weighted=m["bullish_weighted"],
+                calibration=channel_calibration,
             )
             conviction_bear = calculate_conviction_bear(
                 m["bullish"], m["bearish"], m["neutral"],
                 m["mention_count"], m["unique_channels"],
                 channels_list=channels_list, channel_weights=channel_weights,
                 bearish_weighted=m["bearish_weighted"],
+                calibration=channel_calibration,
             )
     
             # --- Validierungs-Pipeline (Paket B): Cache-Hit, neue Firma anlegen, oder skippen ---
@@ -553,7 +677,7 @@ def main():
             sector         = (sector_row["sector"] if sector_row else None) or "Other"
     
             # Aged Conviction (Bayesian + Time-Decay) zusaetzlich berechnen
-            conviction_aged = calculate_conviction_aged(con, name, channel_weights)
+            conviction_aged = calculate_conviction_aged(con, name, channel_weights, calibration=channel_calibration)
             if conviction_aged is None:
                 conviction_aged = 0
     
@@ -691,7 +815,7 @@ def main():
             WHERE status='watching' AND ticker IS NULL
             ORDER BY mention_count DESC
         """).fetchall()
-    
+
         if unresolved:
             print(f"\n❓ UNRESOLVED TICKER ({len(unresolved)} Eintrage ohne Ticker):")
             print(f"  {'Name':30} {'Mentions':8} {'Conv':6}")
@@ -702,7 +826,29 @@ def main():
             if len(unresolved) > 15:
                 print(f"  ... und {len(unresolved) - 15} weitere (insg. {len(unresolved)})")
             print()
-    
+
+        # Sector-Blockade Status ausgeben
+        sector_info = get_sector_blockade_info(con)
+        if sector_info:
+            print(f"\n🚫 GEBLOCKTE SEKTOREN ({len(sector_info)}):")
+            for sector, info in sorted(sector_info.items()):
+                cd = info["cooldown_remaining"]
+                ps = info["probation_status"]
+                ticker = info["probation_entry_ticker"] or ""
+                if cd > 0:
+                    print(f"  🚫 {sector}: Cooldown noch {cd} Tage (bis {info['cooldown_end']})")
+                elif ps == "open":
+                    print(f"  🟡 {sector}: Probation-Fenster OFFEN – ein Trade möglich")
+                elif ps == "active":
+                    print(f"  🟢 {sector}: Probation-Trade aktiv ({ticker})")
+                elif ps == "success":
+                    print(f"  ✅ {sector}: Probation bestanden – Sektor wieder freigegeben")
+                elif ps == "failed":
+                    print(f"  ❌ {sector}: Probation fehlgeschlagen – Cooldown resettet")
+            print()
+        else:
+            print("\n  🚫 Keine Sektoren geblockt ✅\n")
+
     finally:
         con.close()
     print("\n✅ Watchlist Manager abgeschlossen", flush=True)

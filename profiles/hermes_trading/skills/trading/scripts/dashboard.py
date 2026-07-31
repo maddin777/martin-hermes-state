@@ -3,7 +3,7 @@ import sqlite3, json, os, subprocess, html, re, sys
 from collections import deque
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from urllib.parse import parse_qs, urlparse
-from datetime import datetime
+from datetime import datetime, timedelta
 import sys, os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from config import DB_PATH, SCRIPTS_DIR, CRON_LOG_PATH, SOURCES_CONFIG_PATH, STRATEGY_CONFIG_PATH, THEMATIC_LOG_PATH, db_connect
@@ -747,21 +747,61 @@ def build_html(data):
     else:
         regime_html = "<div style='color:#555'>Noch keine Daten – läuft täglich 02:00</div>"
 
-    # Sector Blacklist HTML
-    sector_blacklist = cfg.get("sector_blacklist", {})
-    if sector_blacklist:
-        bl_rows = ""
-        for sector, entry in sector_blacklist.items():
-            bl_rows += f"""<tr>
-                <td style="font-weight:bold;color:#ff5252">🚫 {sector}</td>
-                <td>{html.escape(str(entry.get('reason', '–')))}</td>
-                <td style="color:#ffd740">{'✅ Probation' if entry.get('probation_done', False) else '⏳ Cooldown'}</td>
-            </tr>"""
-        sector_blacklist_html = f"""<table style="font-size:0.85em">
-            <tr><th>Sektor</th><th>Grund</th><th>Status</th></tr>
-            {bl_rows}
-        </table>"""
-    else:
+    # Sector Blacklist HTML aus DB
+    sector_blacklist_html = "<div style='color:#555'>Keine Sektoren geblockt ✅</div>"
+    try:
+        con = db_connect()
+        bl_rows = con.execute("""
+            SELECT sector, blocked_at, cooldown_days,
+                   probation_status, probation_entry_ticker
+            FROM sector_blacklist
+            ORDER BY sector
+        """).fetchall()
+        con.close()
+        if bl_rows:
+            bl_rows_html = ""
+            today = datetime.now().date()
+            for r in bl_rows:
+                blocked = datetime.strptime(r["blocked_at"], "%Y-%m-%d").date()
+                cooldown_end = blocked + timedelta(days=r["cooldown_days"])
+                remaining = (cooldown_end - today).days
+                ps = r["probation_status"]
+                ticker = r["probation_entry_ticker"] or ""
+
+                if remaining > 0:
+                    status_icon = "🚫"
+                    status_text = f"Cooldown noch {remaining}T (bis {cooldown_end})"
+                    color = "#ff5252"
+                elif ps is None:
+                    status_icon = "🟡"
+                    status_text = "Probation-Fenster OFFEN – ein Trade möglich"
+                    color = "#ffd740"
+                elif ps == "active":
+                    status_icon = "🟢"
+                    status_text = f"Probation-Trade aktiv ({ticker})"
+                    color = "#00e676"
+                elif ps == "success":
+                    status_icon = "✅"
+                    status_text = "Probation bestanden – Sektor frei"
+                    color = "#00e676"
+                elif ps == "failed":
+                    status_icon = "❌"
+                    status_text = "Probation fehlgeschlagen"
+                    color = "#ff5252"
+                else:
+                    status_icon = "🚫"
+                    status_text = "Geblockt"
+                    color = "#ff5252"
+
+                bl_rows_html += f"""<tr>
+                    <td style="font-weight:bold;color:{color}">{status_icon} {html.escape(r['sector'])}</td>
+                    <td style="color:#888">{html.escape(status_text)}</td>
+                </tr>"""
+            sector_blacklist_html = f"""<table style="font-size:0.85em">
+                <tr><th>Sektor</th><th>Status</th></tr>
+                {bl_rows_html}
+            </table>"""
+    except Exception:
         sector_blacklist_html = "<div style='color:#555'>Keine Sektoren geblockt ✅</div>"
 
     # Benchmark + Equity-Kurve HTML (Phase 5.4)
