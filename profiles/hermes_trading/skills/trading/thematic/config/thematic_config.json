@@ -2,7 +2,7 @@
   "llm_models": {
     "theme_discovery": "deepseek/deepseek-v4-flash",
     "thesis_monitor": "google/gemini-2.5-flash-lite",
-    "beneficiary_a": "grok-lite",
+    "beneficiary_a": "deepseek/deepseek-v4-flash",
     "beneficiary_b": "deepseek/deepseek-v4-flash",
     "beneficiary_c": "qwen/qwen3.5-flash-02-23",
     "pm_classifier": "deepseek/deepseek-v4-flash",

@@ -123,6 +123,9 @@ for w in raw:
             new_chans.add(c)
         existing["channels_raw"] = json.dumps(list(new_chans))
         existing["merge_note"] = f"⚠️ Mergeb mit {raw_ticker}"
+        # Status auf 'bought' setzen wenn einer der beiden Einträge gekauft ist
+        if w["status"] == "bought" and existing.get("status") != "bought":
+            existing["status"] = "bought"
     else:
         merged[canonical] = {
             "name": w["name"],
@@ -144,16 +147,20 @@ for w in raw:
 watchlist = list(merged.values())
 watchlist.sort(key=lambda x: x["conviction_score"] or 0, reverse=True)
 
-# ── Statistiken ───────────────────────────────────────────────────────
-stats = con.execute("""
-    SELECT COUNT(*) as total,
-           SUM(CASE WHEN status='watching' THEN 1 ELSE 0 END) as watching,
-           SUM(CASE WHEN status='bought'   THEN 1 ELSE 0 END) as bought,
-           SUM(CASE WHEN status='watching' AND conviction_score >= 0.76
-                    THEN 1 ELSE 0 END) as high_conviction
-    FROM watchlist
-    WHERE status IN ('watching','bought')
-""").fetchone()
+# ── Statistiken aus merged watchlist (nicht aus raw DB) ──────────────
+# Bugfix: Stats vorher zählten raw DB-Rows → Gap bei canonical merges
+merged_bought = sum(1 for w in watchlist if w["status"] == "bought")
+merged_watching = len(watchlist) - merged_bought
+merged_high_conviction = sum(
+    1 for w in watchlist
+    if w["status"] == "watching" and (w["conviction_score"] or 0) >= 0.76
+)
+stats = {
+    "total": len(watchlist),
+    "watching": merged_watching,
+    "bought": merged_bought,
+    "high_conviction": merged_high_conviction,
+}
 
 con.close()
 

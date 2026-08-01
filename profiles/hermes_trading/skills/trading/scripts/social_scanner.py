@@ -22,11 +22,316 @@ log = get_logger("social_scanner")
 OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY")
 MODEL = "google/gemini-2.5-flash-lite"
 
+# xAI / Grok — OAuth-Token aus auth.json
+AUTH_PATH = "/root/.hermes/auth.json"
+XAI_BASE = "https://api.x.ai/v1"
+XAI_MODEL = "grok-4.5"
+_XAI_TOKEN_CACHE = None  # globaler Cache fuer die Session
+
 DAYS = 2
 
 def load_config():
     with open(SOURCES_CONFIG_PATH) as f:
         return json.load(f)
+
+
+# ── xAI / Grok Helpers ──────────────────────────────────────────────
+
+def _resolve_xai_token() -> str:
+    """Liest xAI OAuth-Token aus auth.json (credential_pool.xai-oauth).
+
+    Nimmt den zuletzt hinzugefuegten/refreshten Eintrag (hoechster Priority = aktuellster).
+    Gecached fuer die Session. Returns Leerstring wenn kein Token verfuegbar.
+    """
+    global _XAI_TOKEN_CACHE
+    if _XAI_TOKEN_CACHE:
+        return _XAI_TOKEN_CACHE
+
+    try:
+        with open(AUTH_PATH) as f:
+            auth = json.load(f)
+
+        # 1. credential_pool.xai-oauth — nimm den aktuellsten (letzter Eintrag)
+        pool = auth.get("credential_pool", {})
+        entries = pool.get("xai-oauth", [])
+        if entries:
+            # Sortiere nach last_refresh (desc), nimm aktuellsten
+            valid = [e for e in entries if e.get("access_token")]
+            valid.sort(key=lambda e: e.get("last_refresh", ""), reverse=True)
+            if valid:
+                _XAI_TOKEN_CACHE = valid[0]["access_token"]
+                return _XAI_TOKEN_CACHE
+
+        # 2. providers.xai-oauth.tokens (fallback)
+        providers = auth.get("providers", {})
+        xai_state = providers.get("xai-oauth", {})
+        tokens = xai_state.get("tokens", {})
+        if tokens.get("access_token"):
+            _XAI_TOKEN_CACHE = tokens["access_token"]
+            return _XAI_TOKEN_CACHE
+    except Exception as e:
+        log.warning("xAI Token-Lesen fehlgeschlagen: %s", e)
+
+    # 3. XAI_API_KEY env var (letzter Fallback)
+    api_key = os.environ.get("XAI_API_KEY", "").strip()
+    if api_key:
+        _XAI_TOKEN_CACHE = api_key
+        return _XAI_TOKEN_CACHE
+
+    return ""
+
+
+def _call_x_search(query: str, handles: list = None,
+                   from_date: str = "", to_date: str = "") -> dict:
+    """Ruft xAI Responses API mit x_search-Tool auf.
+
+    Single-Call: Grok sucht auf X/Twitter und extrahiert Unternehmen.
+    Returns {"answer": str, "citations": list} oder None bei Fehler.
+    """
+    token = _resolve_xai_token()
+    if not token:
+        return None
+
+    tool_def = {"type": "x_search"}
+    if handles:
+        tool_def["allowed_x_handles"] = [h.lstrip("@") for h in handles]
+    if from_date:
+        tool_def["from_date"] = from_date
+    if to_date:
+        tool_def["to_date"] = to_date
+
+    payload = {
+        "model": XAI_MODEL,
+        "input": [{"role": "user", "content": query}],
+        "tools": [tool_def],
+        "store": False,
+    }
+
+    for attempt in range(3):
+        try:
+            r = requests.post(
+                f"{XAI_BASE}/responses",
+                headers={
+                    "Authorization": f"Bearer {token}",
+                    "Content-Type": "application/json",
+                },
+                json=payload,
+                timeout=90,
+            )
+            if r.status_code == 429:
+                time.sleep(2 ** attempt)
+                continue
+            if r.status_code != 200:
+                log.warning("xAI API HTTP %s: %s", r.status_code, r.text[:200])
+                return None
+            data = r.json()
+
+            # Antwort aus output[] extrahieren (Responses API Format)
+            # output_text ist None, die Antwort steckt in output[].content[].text
+            parts = []
+            for item in data.get("output", []) or []:
+                if item.get("type") != "message":
+                    continue
+                for content in item.get("content", []) or []:
+                    ctype = content.get("type")
+                    if ctype in ("output_text", "text"):
+                        text = (content.get("text") or "").strip()
+                        if text:
+                            parts.append(text)
+            answer = "\n\n".join(parts).strip()
+
+            # Citations aus inline annotations
+            citations = list(data.get("citations") or [])
+            if not citations:
+                # Fallback: aus annotations extrahieren
+                for item in data.get("output", []) or []:
+                    if item.get("type") != "message":
+                        continue
+                    for content in item.get("content", []) or []:
+                        for ann in content.get("annotations", []) or []:
+                            if ann.get("type") == "url_citation" and ann.get("url"):
+                                citations.append(ann["url"])
+
+            if not answer:
+                log.warning("xAI API: leere Antwort")
+                return None
+            return {"answer": answer, "citations": citations}
+        except requests.Timeout:
+            if attempt == 2:
+                log.warning("xAI API Timeout nach 90s")
+                return None
+            time.sleep(2)
+        except Exception as e:
+            if attempt == 2:
+                log.warning("xAI API Fehler: %s", e)
+                return None
+            time.sleep(2)
+
+    return None
+
+
+def _parse_grok_json(text: str) -> dict:
+    """Extrahiert JSON aus Grok-Antwort — bereinigt Markdown-Wrapper."""
+    text = text.strip()
+    for marker in ["```json\n", "```json", "```"]:
+        if marker in text:
+            parts = text.split(marker)
+            if len(parts) > 1:
+                text = parts[1].split("```")[0].strip()
+                break
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        # Regex-Fallback: erstes JSON-Objekt
+        import re
+        match = re.search(r'\{[^{}]*\}', text, re.DOTALL)
+        if match:
+            return json.loads(match.group(0))
+        raise
+
+
+def fetch_twitter_grok(con, accounts) -> bool:
+    """Twitter/X via xAI x_search — Single-Call: Suche + Extraktion.
+
+    Returns True wenn Grok erfolgreich war, False fuer Fallback.
+    """
+    print("\n🐦 Twitter/X Accounts (Grok x_search)...", flush=True)
+    token = _resolve_xai_token()
+    if not token:
+        _send_telegram_alert("⚠️ Grok Twitter: xAI Token nicht verfügbar — Fallback auf twitterapi.io")
+        print("  ⚠ xAI Token nicht verfuegbar — fallback zu twitterapi.io", flush=True)
+        return False
+
+    enabled = [a for a in accounts if a.get("enabled")]
+    print(f"  Verarbeite {len(enabled)} Accounts via Grok...", flush=True)
+    any_ok = False
+
+    for acc in enabled:
+        handle = acc["handle"]
+        try:
+            today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+            query = (
+                f"Search X for tweets from @{handle} in the last 24h (since {today}). "
+                f"Extract ALL publicly traded companies mentioned in these tweets. "
+                f"Return ONLY valid JSON — no markdown, no explanation, no extra text:\n"
+                f'{{"companies": [{{"name": "CompanyName", "sentiment": "bullish|bearish|neutral"}}], '
+                f'"market_outlook": "bullish|bearish|neutral"}}'
+            )
+            result = _call_x_search(query=query, handles=[handle],
+                                    from_date=today)
+            if not result or not result.get("answer"):
+                print(f"  ✗ @{handle}: keine Antwort von Grok", flush=True)
+                continue
+
+            answer = result["answer"]
+            citations = result.get("citations", [])
+            parsed = _parse_grok_json(answer)
+            companies = parsed.get("companies", [])
+            outlook = parsed.get("market_outlook", "neutral")
+            url = citations[0] if citations else f"https://x.com/{handle}"
+
+            companies_json = json.dumps(companies, ensure_ascii=False)
+            con.execute(
+                """INSERT OR IGNORE INTO external_mentions
+                   (source_type, source_name, title, content, url,
+                    published_at, fetched_at, companies, sentiment)
+                   VALUES (?,?,?,?,?,?,?,?,?)""",
+                ("twitter", acc["name"], answer[:200], answer, url,
+                 datetime.now().strftime("%Y-%m-%d %H:%M"),
+                 datetime.now().isoformat(), companies_json, outlook))
+            con.commit()
+
+            print(f"  ✓ @{handle:20} {len(companies)} Unternehmen, "
+                  f"{len(citations)} Tweets", flush=True)
+            any_ok = True
+
+        except json.JSONDecodeError as e:
+            print(f"  ✗ @{handle}: JSON-Fehler: {e}", flush=True)
+            if result:
+                print(f"    Antwort: {result.get('answer', '')[:150]}...", flush=True)
+        except Exception as e:
+            print(f"  ✗ @{handle}: {e}", flush=True)
+
+    if not any_ok and token:
+        _send_telegram_alert("⚠️ Grok Twitter: Alle Accounts fehlgeschlagen — Fallback auf twitterapi.io")
+    return any_ok
+
+
+def _send_telegram_alert(msg: str) -> None:
+    """Sendet eine Telegram-Benachrichtigung in den Trading-Channel."""
+    token = os.environ.get("TELEGRAM_BOT_TOKEN")
+    chat_id = os.environ.get("TELEGRAM_CHAT_ID", "")
+    if not token or not chat_id:
+        return
+    try:
+        requests.post(
+            f"https://api.telegram.org/bot{token}/sendMessage",
+            json={"chat_id": chat_id, "text": msg, "parse_mode": "HTML"},
+            timeout=10,
+        )
+    except Exception:
+        pass  # silent fail — Benachrichtigung darf den Scanner nicht blockieren
+
+
+def fetch_x_search_grok(con, queries) -> None:
+    """Generische X-Searches via Grok — Keyword/Thema statt Account-Scan.
+
+    source_type='x_search' in external_mentions.
+    """
+    print("\n🔍 X Search Queries (Grok x_search)...", flush=True)
+    token = _resolve_xai_token()
+    if not token:
+        print("  ⚠ xAI Token nicht verfuegbar — ueberspringe X Searches", flush=True)
+        return
+
+    enabled = [q for q in queries if q.get("enabled")]
+    print(f"  Verarbeite {len(enabled)} Queries via Grok...", flush=True)
+
+    for q in enabled:
+        query_text = q["query"]
+        name = q["name"]
+        try:
+            today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+            prompt = (
+                f"Search X for posts matching: {query_text} (last 24h, since {today}). "
+                f"Extract ALL publicly traded companies mentioned. "
+                f"Return ONLY valid JSON — no markdown, no explanation:\n"
+                f'{{"companies": [{{"name": "CompanyName", "sentiment": "bullish|bearish|neutral"}}], '
+                f'"market_outlook": "bullish|bearish|neutral"}}'
+            )
+            result = _call_x_search(query=prompt, from_date=today)
+            if not result or not result.get("answer"):
+                print(f"  ✗ {name}: keine Antwort von Grok", flush=True)
+                continue
+
+            answer = result["answer"]
+            citations = result.get("citations", [])
+            parsed = _parse_grok_json(answer)
+            companies = parsed.get("companies", [])
+            outlook = parsed.get("market_outlook", "neutral")
+            url = citations[0] if citations else f"https://x.com/search?q={query_text}"
+
+            companies_json = json.dumps(companies, ensure_ascii=False)
+            con.execute(
+                """INSERT OR IGNORE INTO external_mentions
+                   (source_type, source_name, title, content, url,
+                    published_at, fetched_at, companies, sentiment)
+                   VALUES (?,?,?,?,?,?,?,?,?)""",
+                ("x_search", name, answer[:200], answer, url,
+                 datetime.now().strftime("%Y-%m-%d %H:%M"),
+                 datetime.now().isoformat(), companies_json, outlook))
+            con.commit()
+
+            print(f"  ✓ {name:25} {len(companies)} Unternehmen, "
+                  f"{len(citations)} Tweets", flush=True)
+
+        except json.JSONDecodeError as e:
+            print(f"  ✗ {name}: JSON-Fehler: {e}", flush=True)
+            if result:
+                print(f"    Antwort: {result.get('answer', '')[:150]}...", flush=True)
+        except Exception as e:
+            print(f"  ✗ {name}: {e}", flush=True)
+
 
 def parse_date(entry):
     for attr in ["published_parsed", "updated_parsed"]:
@@ -223,6 +528,22 @@ def get_active_twitter_accounts(con):
     return [{"handle": r["handle"], "name": r["name"], "enabled": True,
              "weight": r["weight"], "category": r["category"]} for r in rows]
 
+
+def get_active_x_search_queries(con):
+    """Lädt generische X-Search-Queries aus source_registry DB.
+
+    source_type='x_search', source_key = Such-Query-String.
+    """
+    rows = con.execute("""
+        SELECT source_key as query, display_name as name, weight, category
+        FROM source_registry
+        WHERE source_type = 'x_search'
+        AND status IN ('active', 'probation')
+        AND enabled = 1
+    """).fetchall()
+    return [{"query": r["query"], "name": r["name"], "enabled": True,
+             "weight": r["weight"], "category": r["category"]} for r in rows]
+
 def main():
     print("📡 Social Scanner gestartet", flush=True)
     con = db_connect()
@@ -231,18 +552,26 @@ def main():
         try:
             rss_feeds = get_active_rss_feeds(con)
             twitter_accounts = get_active_twitter_accounts(con)
-            if not rss_feeds and not twitter_accounts:
+            x_search_queries = get_active_x_search_queries(con)
+            if not rss_feeds and not twitter_accounts and not x_search_queries:
                 config = load_config()
                 rss_feeds = [f for f in config.get("rss_feeds", []) if f.get("enabled")]
                 twitter_accounts = [a for a in config.get("twitter_accounts", []) if a.get("enabled")]
+                x_search_queries = [q for q in config.get("x_search_queries", []) if q.get("enabled")]
         except Exception:
             config = load_config()
             rss_feeds = [f for f in config.get("rss_feeds", []) if f.get("enabled")]
             twitter_accounts = [a for a in config.get("twitter_accounts", []) if a.get("enabled")]
+            x_search_queries = [q for q in config.get("x_search_queries", []) if q.get("enabled")]
 
         fetch_rss_feeds(con, rss_feeds)
         if twitter_accounts:
-            fetch_twitter(con, twitter_accounts)
+            # Grok primär, twitterapi.io als Fallback
+            if not fetch_twitter_grok(con, twitter_accounts):
+                print("  → Fallback zu twitterapi.io", flush=True)
+                fetch_twitter(con, twitter_accounts)
+        if x_search_queries:
+            fetch_x_search_grok(con, x_search_queries)
         inject_into_watchlist(con)
 
         print("\n✅ Social Scanner abgeschlossen", flush=True)

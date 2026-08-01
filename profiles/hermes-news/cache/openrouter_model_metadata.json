@@ -252,9 +252,9 @@
 "max_completion_tokens":131072,
 "name":"Poolside: Laguna S 2.1",
 "pricing":{
-"prompt":"0.0000001",
-"completion":"0.0000002",
-"input_cache_read":"0.00000001"
+"prompt":"0.00000009",
+"completion":"0.00000018",
+"input_cache_read":"0.000000009"
 }
 },
 "laguna-s-2.1":{
@@ -262,9 +262,9 @@
 "max_completion_tokens":131072,
 "name":"Poolside: Laguna S 2.1",
 "pricing":{
-"prompt":"0.0000001",
-"completion":"0.0000002",
-"input_cache_read":"0.00000001"
+"prompt":"0.00000009",
+"completion":"0.00000018",
+"input_cache_read":"0.000000009"
 }
 },
 "poolside/laguna-s-2.1-20260720":{
@@ -281,9 +281,9 @@
 "max_completion_tokens":131072,
 "name":"Poolside: Laguna S 2.1",
 "pricing":{
-"prompt":"0.0000001",
-"completion":"0.0000002",
-"input_cache_read":"0.00000001"
+"prompt":"0.00000009",
+"completion":"0.00000018",
+"input_cache_read":"0.000000009"
 }
 },
 "poolside/laguna-s-2.1:free":{
@@ -760,18 +760,18 @@
 "max_completion_tokens":128000,
 "name":"OpenAI: GPT-5.6 Luna Pro",
 "pricing":{
-"prompt":"0.0000005",
-"completion":"0.000003",
+"prompt":"0.0000001",
+"completion":"0.0000006000000000000001",
 "web_search":"0.005",
-"input_cache_read":"0.00000005",
-"input_cache_write":"0.000000625",
+"input_cache_read":"0.00000001",
+"input_cache_write":"0.00000012500000000000002",
 "overrides":[
 {
 "min_prompt_tokens":272000,
-"prompt":"0.000001",
-"completion":"0.0000045",
-"input_cache_read":"0.0000001",
-"input_cache_write":"0.00000125"
+"prompt":"0.0000002",
+"completion":"0.00000090000000000000005",
+"input_cache_read":"0.00000002",
+"input_cache_write":"0.00000025000000000000005"
 }
 ]
 }
@@ -781,18 +781,18 @@
 "max_completion_tokens":128000,
 "name":"OpenAI: GPT-5.6 Luna Pro",
 "pricing":{
-"prompt":"0.0000005",
-"completion":"0.000003",
+"prompt":"0.0000001",
+"completion":"0.0000006000000000000001",
 "web_search":"0.005",
-"input_cache_read":"0.00000005",
-"input_cache_write":"0.000000625",
+"input_cache_read":"0.00000001",
+"input_cache_write":"0.00000012500000000000002",
 "overrides":[
 {
 "min_prompt_tokens":272000,
-"prompt":"0.000001",
-"completion":"0.0000045",
-"input_cache_read":"0.0000001",
-"input_cache_write":"0.00000125"
+"prompt":"0.0000002",
+"completion":"0.00000090000000000000005",
+"input_cache_read":"0.00000002",
+"input_cache_write":"0.00000025000000000000005"
 }
 ]
 }
@@ -802,18 +802,18 @@
 "max_completion_tokens":128000,
 "name":"OpenAI: GPT-5.6 Luna Pro",
 "pricing":{
-"prompt":"0.0000005",
-"completion":"0.000003",
+"prompt":"0.0000001",
+"completion":"0.0000006000000000000001",
 "web_search":"0.005",
-"input_cache_read":"0.00000005",
-"input_cache_write":"0.000000625",
+"input_cache_read":"0.00000001",
+"input_cache_write":"0.00000012500000000000002",
 "overrides":[
 {
 "min_prompt_tokens":272000,
-"prompt":"0.000001",
-"completion":"0.0000045",
-"input_cache_read":"0.0000001",
-"input_cache_write":"0.00000125"
+"prompt":"0.0000002",
+"completion":"0.00000090000000000000005",
+"input_cache_read":"0.00000002",
+"input_cache_write":"0.00000025000000000000005"
 }
 ]
 }
@@ -823,18 +823,18 @@
 "max_completion_tokens":128000,
 "name":"OpenAI: GPT-5.6 Luna Pro",
 "pricing":{
-"prompt":"0.0000005",
-"completion":"0.000003",
+"prompt":"0.0000001",
+"completion":"0.0000006000000000000001",
 "web_search":"0.005",
-"input_cache_read":"0.00000005",
-"input_cache_write":"0.000000625",
+"input_cache_read":"0.00000001",
+"input_cache_write":"0.00000012500000000000002",
 "overrides":[
 {
 "min_prompt_tokens":272000,
-"prompt":"0.000001",
-"completion":"0.0000045",
-"input_cache_read":"0.0000001",
-"input_cache_write":"0.00000125"
+"prompt":"0.0000002",
+"completion":"0.00000090000000000000005",
+"input_cache_read":"0.00000002",
+"input_cache_write":"0.00000025000000000000005"
 }
 ]
 }
@@ -844,18 +844,18 @@
 "max_completion_tokens":128000,
 "name":"OpenAI: GPT-5.6 Luna",
 "pricing":{
-"prompt":"0.0000005",
-"completion":"0.000003",
+"prompt":"0.0000001",
+"completion":"0.0000006000000000000001",
 "web_search":"0.005",
-"input_cache_read":"0.00000005",
-"input_cache_write":"0.000000625",
+"input_cache_read":"0.00000001",
+"input_cache_write":"0.00000012500000000000002",
 "overrides":[
 {
 "min_prompt_tokens":272000,
-"prompt":"0.000001",
-"completion":"0.0000045",
-"input_cache_read":"0.0000001",
-"input_cache_write":"0.00000125"
+"prompt":"0.0000002",
+"completion":"0.00000090000000000000005",
+"input_cache_read":"0.00000002",
+"input_cache_write":"0.00000025000000000000005"
 }
 ]
 }
@@ -865,18 +865,18 @@
 "max_completion_tokens":128000,
 "name":"OpenAI: GPT-5.6 Luna",
 "pricing":{
-"prompt":"0.0000005",
-"completion":"0.000003",
+"prompt":"0.0000001",
+"completion":"0.0000006000000000000001",
 "web_search":"0.005",
-"input_cache_read":"0.00000005",
-"input_cache_write":"0.000000625",
+"input_cache_read":"0.00000001",
+"input_cache_write":"0.00000012500000000000002",
 "overrides":[
 {
 "min_prompt_tokens":272000,
-"prompt":"0.000001",
-"completion":"0.0000045",
-"input_cache_read":"0.0000001",
-"input_cache_write":"0.00000125"
+"prompt":"0.0000002",
+"completion":"0.00000090000000000000005",
+"input_cache_read":"0.00000002",
+"input_cache_write":"0.00000025000000000000005"
 }
 ]
 }
@@ -886,18 +886,18 @@
 "max_completion_tokens":128000,
 "name":"OpenAI: GPT-5.6 Luna",
 "pricing":{
-"prompt":"0.0000005",
-"completion":"0.000003",
+"prompt":"0.0000001",
+"completion":"0.0000006000000000000001",
 "web_search":"0.005",
-"input_cache_read":"0.00000005",
-"input_cache_write":"0.000000625",
+"input_cache_read":"0.00000001",
+"input_cache_write":"0.00000012500000000000002",
 "overrides":[
 {
 "min_prompt_tokens":272000,
-"prompt":"0.000001",
-"completion":"0.0000045",
-"input_cache_read":"0.0000001",
-"input_cache_write":"0.00000125"
+"prompt":"0.0000002",
+"completion":"0.00000090000000000000005",
+"input_cache_read":"0.00000002",
+"input_cache_write":"0.00000025000000000000005"
 }
 ]
 }
@@ -907,18 +907,18 @@
 "max_completion_tokens":128000,
 "name":"OpenAI: GPT-5.6 Luna",
 "pricing":{
-"prompt":"0.0000005",
-"completion":"0.000003",
+"prompt":"0.0000001",
+"completion":"0.0000006000000000000001",
 "web_search":"0.005",
-"input_cache_read":"0.00000005",
-"input_cache_write":"0.000000625",
+"input_cache_read":"0.00000001",
+"input_cache_write":"0.00000012500000000000002",
 "overrides":[
 {
 "min_prompt_tokens":272000,
-"prompt":"0.000001",
-"completion":"0.0000045",
-"input_cache_read":"0.0000001",
-"input_cache_write":"0.00000125"
+"prompt":"0.0000002",
+"completion":"0.00000090000000000000005",
+"input_cache_read":"0.00000002",
+"input_cache_write":"0.00000025000000000000005"
 }
 ]
 }
@@ -928,18 +928,18 @@
 "max_completion_tokens":128000,
 "name":"OpenAI: GPT-5.6 Terra Pro",
 "pricing":{
-"prompt":"0.00000125",
-"completion":"0.0000075",
+"prompt":"0.00000100000000000000015",
+"completion":"0.000006",
 "web_search":"0.005",
-"input_cache_read":"0.000000125",
-"input_cache_write":"0.0000015625",
+"input_cache_read":"0.0000001",
+"input_cache_write":"0.00000125",
 "overrides":[
 {
 "min_prompt_tokens":272000,
-"prompt":"0.0000025",
-"completion":"0.00001125",
-"input_cache_read":"0.00000025",
-"input_cache_write":"0.000003125"
+"prompt":"0.0000020000000000000005",
+"completion":"0.000009",
+"input_cache_read":"0.0000002",
+"input_cache_write":"0.0000025"
 }
 ]
 }
@@ -949,18 +949,18 @@
 "max_completion_tokens":128000,
 "name":"OpenAI: GPT-5.6 Terra Pro",
 "pricing":{
-"prompt":"0.00000125",
-"completion":"0.0000075",
+"prompt":"0.00000100000000000000015",
+"completion":"0.000006",
 "web_search":"0.005",
-"input_cache_read":"0.000000125",
-"input_cache_write":"0.0000015625",
+"input_cache_read":"0.0000001",
+"input_cache_write":"0.00000125",
 "overrides":[
 {
 "min_prompt_tokens":272000,
-"prompt":"0.0000025",
-"completion":"0.00001125",
-"input_cache_read":"0.00000025",
-"input_cache_write":"0.000003125"
+"prompt":"0.0000020000000000000005",
+"completion":"0.000009",
+"input_cache_read":"0.0000002",
+"input_cache_write":"0.0000025"
 }
 ]
 }
@@ -970,18 +970,18 @@
 "max_completion_tokens":128000,
 "name":"OpenAI: GPT-5.6 Terra Pro",
 "pricing":{
-"prompt":"0.00000125",
-"completion":"0.0000075",
+"prompt":"0.00000100000000000000015",
+"completion":"0.000006",
 "web_search":"0.005",
-"input_cache_read":"0.000000125",
-"input_cache_write":"0.0000015625",
+"input_cache_read":"0.0000001",
+"input_cache_write":"0.00000125",
 "overrides":[
 {
 "min_prompt_tokens":272000,
-"prompt":"0.0000025",
-"completion":"0.00001125",
-"input_cache_read":"0.00000025",
-"input_cache_write":"0.000003125"
+"prompt":"0.0000020000000000000005",
+"completion":"0.000009",
+"input_cache_read":"0.0000002",
+"input_cache_write":"0.0000025"
 }
 ]
 }
@@ -991,18 +991,18 @@
 "max_completion_tokens":128000,
 "name":"OpenAI: GPT-5.6 Terra Pro",
 "pricing":{
-"prompt":"0.00000125",
-"completion":"0.0000075",
+"prompt":"0.00000100000000000000015",
+"completion":"0.000006",
 "web_search":"0.005",
-"input_cache_read":"0.000000125",
-"input_cache_write":"0.0000015625",
+"input_cache_read":"0.0000001",
+"input_cache_write":"0.00000125",
 "overrides":[
 {
 "min_prompt_tokens":272000,
-"prompt":"0.0000025",
-"completion":"0.00001125",
-"input_cache_read":"0.00000025",
-"input_cache_write":"0.000003125"
+"prompt":"0.0000020000000000000005",
+"completion":"0.000009",
+"input_cache_read":"0.0000002",
+"input_cache_write":"0.0000025"
 }
 ]
 }
@@ -1012,18 +1012,18 @@
 "max_completion_tokens":128000,
 "name":"OpenAI: GPT-5.6 Terra",
 "pricing":{
-"prompt":"0.00000125",
-"completion":"0.0000075",
+"prompt":"0.00000100000000000000015",
+"completion":"0.000006",
 "web_search":"0.005",
-"input_cache_read":"0.000000125",
-"input_cache_write":"0.0000015625",
+"input_cache_read":"0.0000001",
+"input_cache_write":"0.00000125",
 "overrides":[
 {
 "min_prompt_tokens":272000,
-"prompt":"0.0000025",
-"completion":"0.00001125",
-"input_cache_read":"0.00000025",
-"input_cache_write":"0.000003125"
+"prompt":"0.0000020000000000000005",
+"completion":"0.000009",
+"input_cache_read":"0.0000002",
+"input_cache_write":"0.0000025"
 }
 ]
 }
@@ -1033,18 +1033,18 @@
 "max_completion_tokens":128000,
 "name":"OpenAI: GPT-5.6 Terra",
 "pricing":{
-"prompt":"0.00000125",
-"completion":"0.0000075",
+"prompt":"0.00000100000000000000015",
+"completion":"0.000006",
 "web_search":"0.005",
-"input_cache_read":"0.000000125",
-"input_cache_write":"0.0000015625",
+"input_cache_read":"0.0000001",
+"input_cache_write":"0.00000125",
 "overrides":[
 {
 "min_prompt_tokens":272000,
-"prompt":"0.0000025",
-"completion":"0.00001125",
-"input_cache_read":"0.00000025",
-"input_cache_write":"0.000003125"
+"prompt":"0.0000020000000000000005",
+"completion":"0.000009",
+"input_cache_read":"0.0000002",
+"input_cache_write":"0.0000025"
 }
 ]
 }
@@ -1054,18 +1054,18 @@
 "max_completion_tokens":128000,
 "name":"OpenAI: GPT-5.6 Terra",
 "pricing":{
-"prompt":"0.00000125",
-"completion":"0.0000075",
+"prompt":"0.00000100000000000000015",
+"completion":"0.000006",
 "web_search":"0.005",
-"input_cache_read":"0.000000125",
-"input_cache_write":"0.0000015625",
+"input_cache_read":"0.0000001",
+"input_cache_write":"0.00000125",
 "overrides":[
 {
 "min_prompt_tokens":272000,
-"prompt":"0.0000025",
-"completion":"0.00001125",
-"input_cache_read":"0.00000025",
-"input_cache_write":"0.000003125"
+"prompt":"0.0000020000000000000005",
+"completion":"0.000009",
+"input_cache_read":"0.0000002",
+"input_cache_write":"0.0000025"
 }
 ]
 }
@@ -1075,18 +1075,18 @@
 "max_completion_tokens":128000,
 "name":"OpenAI: GPT-5.6 Terra",
 "pricing":{
-"prompt":"0.00000125",
-"completion":"0.0000075",
+"prompt":"0.00000100000000000000015",
+"completion":"0.000006",
 "web_search":"0.005",
-"input_cache_read":"0.000000125",
-"input_cache_write":"0.0000015625",
+"input_cache_read":"0.0000001",
+"input_cache_write":"0.00000125",
 "overrides":[
 {
 "min_prompt_tokens":272000,
-"prompt":"0.0000025",
-"completion":"0.00001125",
-"input_cache_read":"0.00000025",
-"input_cache_write":"0.000003125"
+"prompt":"0.0000020000000000000005",
+"completion":"0.000009",
+"input_cache_read":"0.0000002",
+"input_cache_write":"0.0000025"
 }
 ]
 }
@@ -1921,9 +1921,9 @@
 "max_completion_tokens":128000,
 "name":"Z.ai: GLM 5.2",
 "pricing":{
-"prompt":"0.0000006769",
-"completion":"0.0000021274",
-"input_cache_read":"0.00000012571"
+"prompt":"0.00000119",
+"completion":"0.00000374",
+"input_cache_read":"0.000000221"
 }
 },
 "glm-5.2":{
@@ -1931,9 +1931,9 @@
 "max_completion_tokens":128000,
 "name":"Z.ai: GLM 5.2",
 "pricing":{
-"prompt":"0.0000006769",
-"completion":"0.0000021274",
-"input_cache_read":"0.00000012571"
+"prompt":"0.00000119",
+"completion":"0.00000374",
+"input_cache_read":"0.000000221"
 }
 },
 "z-ai/glm-5.2-20260616":{
@@ -1941,9 +1941,9 @@
 "max_completion_tokens":128000,
 "name":"Z.ai: GLM 5.2",
 "pricing":{
-"prompt":"0.0000006769",
-"completion":"0.0000021274",
-"input_cache_read":"0.00000012571"
+"prompt":"0.00000119",
+"completion":"0.00000374",
+"input_cache_read":"0.000000221"
 }
 },
 "glm-5.2-20260616":{
@@ -1951,9 +1951,9 @@
 "max_completion_tokens":128000,
 "name":"Z.ai: GLM 5.2",
 "pricing":{
-"prompt":"0.0000006769",
-"completion":"0.0000021274",
-"input_cache_read":"0.00000012571"
+"prompt":"0.00000119",
+"completion":"0.00000374",
+"input_cache_read":"0.000000221"
 }
 },
 "openrouter/fusion":{
@@ -2176,22 +2176,22 @@
 },
 "nvidia/nemotron-3-ultra-550b-a55b":{
 "context_length":512288,
-"max_completion_tokens":16384,
+"max_completion_tokens":null,
 "name":"NVIDIA: Nemotron 3 Ultra",
 "pricing":{
-"prompt":"0.0000005",
-"completion":"0.0000022",
-"input_cache_read":"0.0000001"
+"prompt":"0.0000006",
+"completion":"0.0000036",
+"input_cache_read":"0.0000002"
 }
 },
 "nemotron-3-ultra-550b-a55b":{
 "context_length":512288,
-"max_completion_tokens":16384,
+"max_completion_tokens":null,
 "name":"NVIDIA: Nemotron 3 Ultra",
 "pricing":{
-"prompt":"0.0000005",
-"completion":"0.0000022",
-"input_cache_read":"0.0000001"
+"prompt":"0.0000006",
+"completion":"0.0000036",
+"input_cache_read":"0.0000002"
 }
 },
 "nvidia/nemotron-3-ultra-550b-a55b-20260604":{
@@ -2205,12 +2205,12 @@
 },
 "nemotron-3-ultra-550b-a55b-20260604":{
 "context_length":512288,
-"max_completion_tokens":16384,
+"max_completion_tokens":null,
 "name":"NVIDIA: Nemotron 3 Ultra",
 "pricing":{
-"prompt":"0.0000005",
-"completion":"0.0000022",
-"input_cache_read":"0.0000001"
+"prompt":"0.0000006",
+"completion":"0.0000036",
+"input_cache_read":"0.0000002"
 }
 },
 "nvidia/nemotron-3-ultra-550b-a55b:free":{
@@ -3309,22 +3309,22 @@
 },
 "~moonshotai/kimi-latest":{
 "context_length":1048576,
-"max_completion_tokens":null,
+"max_completion_tokens":1048576,
 "name":"MoonshotAI Kimi Latest",
 "pricing":{
-"prompt":"0.000003",
-"completion":"0.000015",
-"input_cache_read":"0.0000003"
+"prompt":"0.0000029",
+"completion":"0.000014",
+"input_cache_read":"0.00000029"
 }
 },
 "kimi-latest":{
 "context_length":1048576,
-"max_completion_tokens":null,
+"max_completion_tokens":1048576,
 "name":"MoonshotAI Kimi Latest",
 "pricing":{
-"prompt":"0.000003",
-"completion":"0.000015",
-"input_cache_read":"0.0000003"
+"prompt":"0.0000029",
+"completion":"0.000014",
+"input_cache_read":"0.00000029"
 }
 },
 "~google/gemini-flash-latest":{
@@ -4206,9 +4206,9 @@
 "max_completion_tokens":262144,
 "name":"MoonshotAI: Kimi K2.6",
 "pricing":{
-"prompt":"0.000000646",
-"completion":"0.00000272",
-"input_cache_read":"0.0000001088"
+"prompt":"0.00000095",
+"completion":"0.000004",
+"input_cache_read":"0.00000016"
 }
 },
 "kimi-k2.6":{
@@ -4216,9 +4216,9 @@
 "max_completion_tokens":262144,
 "name":"MoonshotAI: Kimi K2.6",
 "pricing":{
-"prompt":"0.000000646",
-"completion":"0.00000272",
-"input_cache_read":"0.0000001088"
+"prompt":"0.00000095",
+"completion":"0.000004",
+"input_cache_read":"0.00000016"
 }
 },
 "moonshotai/kimi-k2.6-20260420":{
@@ -4226,9 +4226,9 @@
 "max_completion_tokens":262144,
 "name":"MoonshotAI: Kimi K2.6",
 "pricing":{
-"prompt":"0.000000646",
-"completion":"0.00000272",
-"input_cache_read":"0.0000001088"
+"prompt":"0.00000095",
+"completion":"0.000004",
+"input_cache_read":"0.00000016"
 }
 },
 "kimi-k2.6-20260420":{
@@ -4236,9 +4236,9 @@
 "max_completion_tokens":262144,
 "name":"MoonshotAI: Kimi K2.6",
 "pricing":{
-"prompt":"0.000000646",
-"completion":"0.00000272",
-"input_cache_read":"0.0000001088"
+"prompt":"0.00000095",
+"completion":"0.000004",
+"input_cache_read":"0.00000016"
 }
 },
 "anthropic/claude-opus-4.7":{
@@ -7219,12 +7219,12 @@
 },
 "nemotron-3-nano-30b-a3b":{
 "context_length":262144,
-"max_completion_tokens":228000,
+"max_completion_tokens":262144,
 "name":"NVIDIA: Nemotron 3 Nano 30B A3B",
 "pricing":{
 "prompt":"0.00000005",
 "completion":"0.0000002",
-"input_cache_read":"0.000000025"
+"input_cache_read":"0.00000003"
 }
 },
 "nvidia/nemotron-3-nano-30b-a3b:free":{
@@ -8481,94 +8481,6 @@
 "input_cache_read":"0.00000125"
 }
 },
-"openai/o3-deep-research":{
-"context_length":200000,
-"max_completion_tokens":100000,
-"name":"OpenAI: o3 Deep Research",
-"pricing":{
-"prompt":"0.00001",
-"completion":"0.00004",
-"web_search":"0.01",
-"input_cache_read":"0.0000025"
-}
-},
-"o3-deep-research":{
-"context_length":200000,
-"max_completion_tokens":100000,
-"name":"OpenAI: o3 Deep Research",
-"pricing":{
-"prompt":"0.00001",
-"completion":"0.00004",
-"web_search":"0.01",
-"input_cache_read":"0.0000025"
-}
-},
-"openai/o3-deep-research-2025-06-26":{
-"context_length":200000,
-"max_completion_tokens":100000,
-"name":"OpenAI: o3 Deep Research",
-"pricing":{
-"prompt":"0.00001",
-"completion":"0.00004",
-"web_search":"0.01",
-"input_cache_read":"0.0000025"
-}
-},
-"o3-deep-research-2025-06-26":{
-"context_length":200000,
-"max_completion_tokens":100000,
-"name":"OpenAI: o3 Deep Research",
-"pricing":{
-"prompt":"0.00001",
-"completion":"0.00004",
-"web_search":"0.01",
-"input_cache_read":"0.0000025"
-}
-},
-"openai/o4-mini-deep-research":{
-"context_length":200000,
-"max_completion_tokens":100000,
-"name":"OpenAI: o4 Mini Deep Research",
-"pricing":{
-"prompt":"0.000002",
-"completion":"0.000008",
-"web_search":"0.01",
-"input_cache_read":"0.0000005"
-}
-},
-"o4-mini-deep-research":{
-"context_length":200000,
-"max_completion_tokens":100000,
-"name":"OpenAI: o4 Mini Deep Research",
-"pricing":{
-"prompt":"0.000002",
-"completion":"0.000008",
-"web_search":"0.01",
-"input_cache_read":"0.0000005"
-}
-},
-"openai/o4-mini-deep-research-2025-06-26":{
-"context_length":200000,
-"max_completion_tokens":100000,
-"name":"OpenAI: o4 Mini Deep Research",
-"pricing":{
-"prompt":"0.000002",
-"completion":"0.000008",
-"web_search":"0.01",
-"input_cache_read":"0.0000005"
-}
-},
-"o4-mini-deep-research-2025-06-26":{
-"context_length":200000,
-"max_completion_tokens":100000,
-"name":"OpenAI: o4 Mini Deep Research",
-"pricing":{
-"prompt":"0.000002",
-"completion":"0.000008",
-"web_search":"0.01",
-"input_cache_read":"0.0000005"
-}
-},
 "google/gemini-2.5-flash-image":{
 "context_length":32768,
 "max_completion_tokens":8192,
@@ -9037,28 +8949,6 @@
 "input_cache_write":"0.0000024375"
 }
 ]
-}
-},
-"openai/gpt-5-codex":{
-"context_length":400000,
-"max_completion_tokens":128000,
-"name":"OpenAI: GPT-5 Codex",
-"pricing":{
-"prompt":"0.00000125",
-"completion":"0.00001",
-"web_search":"0.01",
-"input_cache_read":"0.000000125"
-}
-},
-"gpt-5-codex":{
-"context_length":400000,
-"max_completion_tokens":128000,
-"name":"OpenAI: GPT-5 Codex",
-"pricing":{
-"prompt":"0.00000125",
-"completion":"0.00001",
-"web_search":"0.01",
-"input_cache_read":"0.000000125"
 }
 },
 "deepseek/deepseek-v3.1-terminus":{
@@ -9896,20 +9786,20 @@
 },
 "qwen/qwen3-235b-a22b-thinking-2507":{
 "context_length":262144,
-"max_completion_tokens":32768,
+"max_completion_tokens":null,
 "name":"Qwen: Qwen3 235B A22B Thinking 2507",
 "pricing":{
-"prompt":"0.0000003",
-"completion":"0.000003"
+"prompt":"0.00000023",
+"completion":"0.0000023"
 }
 },
 "qwen3-235b-a22b-thinking-2507":{
 "context_length":262144,
-"max_completion_tokens":32768,
+"max_completion_tokens":null,
 "name":"Qwen: Qwen3 235B A22B Thinking 2507",
 "pricing":{
-"prompt":"0.0000003",
-"completion":"0.000003"
+"prompt":"0.00000023",
+"completion":"0.0000023"
 }
 },
 "qwen/qwen3-coder":{
@@ -12046,8 +11936,8 @@
 "max_completion_tokens":16000,
 "name":"DeepSeek: DeepSeek V3",
 "pricing":{
-"prompt":"0.0000002002",
-"completion":"0.0000008001"
+"prompt":"0.0000002574",
+"completion":"0.0000010287"
 }
 },
 "deepseek-chat":{
@@ -12055,8 +11945,8 @@
 "max_completion_tokens":16000,
 "name":"DeepSeek: DeepSeek V3",
 "pricing":{
-"prompt":"0.0000002002",
-"completion":"0.0000008001"
+"prompt":"0.0000002574",
+"completion":"0.0000010287"
 }
 },
 "deepseek/deepseek-chat-v3":{
@@ -12064,8 +11954,8 @@
 "max_completion_tokens":16000,
 "name":"DeepSeek: DeepSeek V3",
 "pricing":{
-"prompt":"0.0000002002",
-"completion":"0.0000008001"
+"prompt":"0.0000002574",
+"completion":"0.0000010287"
 }
 },
 "deepseek-chat-v3":{
@@ -12073,8 +11963,8 @@
 "max_completion_tokens":16000,
 "name":"DeepSeek: DeepSeek V3",
 "pricing":{
-"prompt":"0.0000002002",
-"completion":"0.0000008001"
+"prompt":"0.0000002574",
+"completion":"0.0000010287"
 }
 },
 "sao10k/l3.3-euryale-70b":{
@@ -12306,7 +12196,7 @@
 }
 },
 "thedrummer/unslopnemo-12b":{
-"context_length":32768,
+"context_length":1024000,
 "max_completion_tokens":32768,
 "name":"TheDrummer: UnslopNemo 12B",
 "pricing":{
@@ -12315,7 +12205,7 @@
 }
 },
 "unslopnemo-12b":{
-"context_length":32768,
+"context_length":1024000,
 "max_completion_tokens":32768,
 "name":"TheDrummer: UnslopNemo 12B",
 "pricing":{

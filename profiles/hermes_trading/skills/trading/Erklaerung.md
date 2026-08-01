@@ -500,3 +500,27 @@ Zwei Integrationen des Last30days-Skills in den Trading-Agenten:
 ||---|---|
 || `watchlist_manager.py` | `get_channel_calibration()` neu; Kalibrierung in allen 3 Conviction-Funktionen |
 || `nightly_eval.py` | `calc_top_band_metrics()` neu; Migration + INSERT; Tägliche Ausgabe |
+| `social_scanner.py` | `fetch_twitter_grok()`, `fetch_x_search_grok()`, `_call_x_search()`, `_resolve_xai_token()`, `_parse_grok_json()` neu; Grok primär, twitterapi.io Fallback; `get_active_x_search_queries()` für generische X-Searches |
+
+## 31.07.2026 — Grok Twitter Integration
+
+### Problem
+Twitter/X-Daten flossen ausschließlich über `twitterapi.io` (Drittanbieter, limitierte Credits). Grok (xAI) hat nativen X-Zugriff via `x_search`-Tool in der Responses API.
+
+### Lösung
+- Neue `fetch_twitter_grok()` in `social_scanner.py` — Single-Call: Grok sucht + extrahiert Unternehmen in einem xAI API-Call
+- Fallback auf twitterapi.io bei Fehler (Fail-Open) mit Telegram-Benachrichtigung im Trading-Channel
+- `_resolve_xai_token()` liest OAuth-Token aus `auth.json` (credential_pool.xai-oauth, sortiert nach `last_refresh` statt nur erstem Eintrag — 3 parallel existierende Tokens möglich)
+- `_call_x_search()` nutzt xAI Responses API (`/v1/responses`) mit `x_search`-Tool
+  - Antwort-Parsing aus `output[].content[].text` (nicht `output_text` — das ist bei Responses API `None`)
+  - Citations aus inline `url_citation`-Annotations
+- Model: `grok-4.5` (grok-2-latest existiert nicht mehr auf xAI, nur Responses API Models wie grok-4.5/grok-3 funktionieren)
+- `fetch_x_search_grok()` für generische X-Searches (Keyword/Thema, `source_type='x_search'`)
+- `_send_telegram_alert()` für Fallback-Benachrichtigungen via `TELEGRAM_CHAT_ID`
+- `beneficiary_a` in `thematic_config.json` von `grok-lite` auf `deepseek/deepseek-v4-flash` umgestellt
+
+### Geänderte Dateien
+| Datei | Änderung |
+|---|---|
+| `scripts/social_scanner.py` | +170 Zeilen: 5 neue Funktionen, `main()` priorisiert Grok, Telegram-Alert bei Fallback |
+| `thematic/config/thematic_config.json` | `beneficiary_a: grok-lite` → `deepseek/deepseek-v4-flash` |

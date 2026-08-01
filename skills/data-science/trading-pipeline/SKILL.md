@@ -22,7 +22,7 @@ Bevor du eine Änderung am Trading-System vorschlägst, prüfe ob sie zu unserem
 | **Pipeline-Takt** | Pipeline läuft 1x täglich morgens (03:30). Kein Markt-Daemon. |
 | **Hebel** | Paper-Trading mit 1x Hebel + TR-Gebühren (1€/Trade). Intraday-Edge wird killt. |
 | **Datenquellen** | yfinance (täglich), YouTube/RSS/Twitter (morgens). Kein Echtzeit-Feed. |
-| **Modell-Kosten** | Grok nur für Conviction-Boost (max 20 Calls). Rest via yfinance. |
+| **Modell-Kosten** | OpenRouter (DeepSeek, Gemini) für Pipeline-Extraktion. xAI/Grok via OAuth NUR für Twitter-Daten (x_search) — KEINE Textgenerierung (beneficiary_mapper etc. nutzen DeepSeek). Kein API-Key — OAuth-Token aus auth.json. |
 
 ### DB-First-Prinzip
 
@@ -68,7 +68,7 @@ Database is at:
 | Zeit | Script | Tage | Purpose |
 |------|--------|------|---------|
 | 01:30 | `fundamental_data.py` | Mo–Fr | Macro data, insider trades, put/call ratios, regime detection |
-| 02:00 | `social_scanner.py` | Mo–Fr | RSS feeds (Seeking Alpha, Bloomberg etc.) + Twitter/X |
+| 02:00 | `social_scanner.py` | Mo–Fr | RSS feeds (Seeking Alpha, Bloomberg etc.) + Twitter/X via Grok x_search (primär) / twitterapi.io (Fallback) |
 | 03:30 | `trading_pipeline.py` | Mo–Fr | Orchestrator: YouTube → KI Analyse → Watchlist → Technicals → Signal Manager |
 | 05:00 | `nightly_eval.py` | Mo–Fr | ✅ Sauber (<5s) |
 | 06:30 | `crabel_shadow_eval.py` | Mo–Fr | Crabel-Style Shadow Eval (21d Horizont) |
@@ -77,8 +77,7 @@ Database is at:
 | 13-20h | `signal_manager.py check_only` | täglich | Intraday SL/TP check |
 | 15:30 | `active_exit_check.py` | täglich | Afternoon exit checks |
 | 20:00 (Fr) | `signal_manager.py full` | Fr | Weekly signal review |
-| 22:15 | `export_watchlist.py` (Hermes-Cron, no_agent) | Mo–Fr | Watchlist aus DB → Obsidian Vault exportieren (Cron-ID: `446aad622784`, Wrapper: `~/.hermes/scripts/export_watchlist.sh`) |
-| 23:15 | `refresh_tech_scores.py` (Hermes-Cron) | Mo–Fr | Tech-Scores für Watchlist neu berechnen |
+| 22:15 | `export_watchlist.py` (Hermes-Cron, no_agent) | Mo–Fr | Watchlist aus DB → Obsidian Vault exportieren (Cron-ID: `446aad622784`, Wrapper: `~/.hermes/scripts/export_watchlist.sh`) |\n| 22:20 | `watchlist_marker_check.py` (Hermes-Cron, no_agent) | Mo–Fr | 🛒-Marker-Gap prüfen (silent bei OK, Alarm bei Gap). Cron-ID: `53e28fdb66d4` |\n| 23:15 | `refresh_tech_scores.py` (Hermes-Cron) | Mo–Fr | Tech-Scores für Watchlist neu berechnen |
 
 **Wochenend-Crontab:**
 | Zeit | Script | Purpose |
@@ -376,7 +375,8 @@ Die Referenz enthält 23 klassifizierte Unternehmen plus Implementierungsvorschl
 | **Theme Discovery: `database is locked`** → Kaskade von PM Scanner-Crash (offene Transaktion) + fehlender `busy_timeout` in `theme_discovery.py` nutzt raw `sqlite3.connect()` statt `config.db_connect()`. Fix: `config.db_connect()` verwenden (WAL + busy_timeout).
 | **Config-Drift (SL=1.0/TP=4.0)** → adapt_strategy() hat SL/TP ohne Regime-Prüfung angepasst. Im Sideways-Markt führte das zu 81% SL_RATE + −358€ P&L. Fix: Regime-Check eingebaut, Config reset auf SL=1.5/TP=2.5. Siehe references/adapt-strategy-regime-blindness.md. |
 | **Channel in CHANNELS_FALLBACK aber nicht in source_registry** → yt_channel_monitor.py liest Kanäle aus der source_registry-DB. Die CHANNELS_FALLBACK wird NUR genutzt wenn source_registry komplett leer ist. Fix: INSERT OR IGNORE INTO source_registry.
-| **Canonical-Merge überschreibt Sector mit 'Other'** → `export_watchlist.py` merged Aliase (ARMK→ARM) und kopiert blind den Sector des höheren Conviction-Scores. Alias-Ticker haben oft 'Other' weil nicht in `companies`. Fix: Merge-Logik prüft `if w["company_sector"] != 'Other' or existing["company_sector"] == 'Other'`. Details in `references/export-watchlist-sector-merge.md`. |
+| **Canonical-Merge überschreibt Sector mit 'Other'** → `export_watchlist.py` merged Aliase (ARMK→ARM) und kopiert blind den Sector des höheren Conviction-Scores. Alias-Ticker haben oft 'Other' weil nicht in `companies`. Fix: Merge-Logik prüft `if w['company_sector'] != 'Other' or existing['company_sector'] == 'Other'`. Details in `references/export-watchlist-sector-merge.md`. |
+| **🛒-Marker-Gap: Header vs Tabelle** → Stats-Query zählte raw DB-Rows, Tabelle rendert merged Rows (canonical_tickers). YDX.MU→NBIS merge verschluckte bought-Status. Zwei Fixes: (1) Stats aus merged watchlist, (2) Status-Bubble bei Merge. Monitoring-Cron `53e28fdb66d4` Mo–Fr 22:20. Details in `references/export-watchlist-marker-gap.md`. |
 | **yfinance "unconverted data remains"** → yfinance/pandas wirft ValueError bei Datums-Strings mit TZ-Suffix (z.B. `2026-06-28 00:00:00+00:00`). Killt alle `yf.download()`-Calls. Fix in fundamental_data.py: Monkey-Patch auf `_strptime._strptime` mit `dateutil.parser`-Fallback. Siehe `references/yfinance-date-parsing-fix.md`. |
 | **Sektor-Exposure-Cap (seit 28.06.2026)** → max 70% Portfolio-Exposure pro Sektor, nicht mehr max 2 Positionen. Prüfung in signal_manager.py **nach** Sizing mit tatsächlicher position_size. Config: `strategy_config.json: max_sector_exposure_pct: 0.70`. Grund: Quellen sind tech-lastig — ein Sektor soll dominieren können. Siehe `references/sector-exposure-cap.md`. |
 | **Dashboard Sources Tab — Channel case-mismatch** → Quellen-Tab zeigt für YouTube-Kanäle `–` als letzten Eintrag, obwohl 190+ Mentions existieren. Ursache: `watchlist_mentions.channel` speichert lowercase (`"urban jäkle"`), CHANNELS_FALLBACK in `yt_channel_monitor.py` hat `"Urban Jäkle"`. Dashboard matcht case-sensitive → kein Treffer. Fix: `stats_ci = {k.lower(): v for k, v in stats.items()}` in `build_sources_section()`. |
@@ -599,6 +599,80 @@ Siehe `references/graduated-drawdown-reduction.md`.
 - Prüft ob S&P 500 (Proxy MSCI USA) über/unter SMA200 → Entscheidung für Amumbo (A0X8ZS)
 - Output: `🟢 AMUMBO HALTEN` / `🔴 AMUMBO RAUS`
 - Doku: `wiki/concepts/Leveraged ETFs.md` (LETF-Exit-Modus)
+
+## Grok / xAI Twitter Integration (seit 31.07.2026)
+
+Twitter/X-Daten werden primär über die xAI Responses API mit `x_search`-Tool\nbezogen — kein separater Drittanbieter für die Twitter-Daten mehr nötig.\n`twitterapi.io` dient als Fallback wenn das xAI-OAuth-Token fehlt oder die API\nnicht erreichbar ist.
+
+### Auth-Architektur
+
+- **Token-Quelle:** `~/.hermes/auth.json` → `credential_pool.xai-oauth[0].access_token`
+- **Auth-Typ:** OAuth 2.0 (PKCE-Flow, eingerichtet via `hermes auth add xai-oauth`)
+- **Token-Refresh:** Automatisch via Hermes' `resolve_xai_http_credentials()` — schlägt fehl wenn der Refresh-Token abgelaufen ist (>30 Tage)
+- **Fallback:** `XAI_API_KEY`-Env-Var (für API-Key-Nutzer ohne OAuth)
+- **Base URL:** `https://api.x.ai/v1`
+
+**Bekanntes Problem:** OAuth-Tokens sind kurzlebig (~6h). Der Refresh-Token hält ~30 Tage. Wenn `hermes auth add xai-oauth` länger als 30 Tage zurückliegt, muss der Flow neu durchlaufen werden. Symptom: HTTP 403 vom xAI Responses API.
+
+### Data Flow
+
+| Schritt | Was passiert | Ort |
+|---------|-------------|-----|
+| 1. Token lesen | `_resolve_xai_token()` liest aus auth.json (3-stufig: credential_pool → providers → env var) | `social_scanner.py` |
+| 2. xSearch aufrufen | `_call_x_search()` → POST `{XAI_BASE}/responses` mit `tools=[{"type": "x_search"}]` | `social_scanner.py` |
+| 3. Modell antwortet | Grok/grok-4.5 sucht X, extrahiert Unternehmen + Sentiment, gibt JSON zurück | xAI API |
+| 4. Speichern | Ergebnis in `external_mentions`-Tabelle (source_type='twitter' oder 'x_search') | `social_scanner.py` |
+| 5. Fallback | Bei Fehler: `fetch_twitter()` mit twitterapi.io | `social_scanner.py` |
+
+### Zwei Modi
+
+1. **Account-Scan** (`source_type='twitter'` in `source_registry`):
+   - Query: `from:handle -is:retweet`
+   - Prompt: "Search X for tweets from @handle in the last 24h. Extract companies..."
+   - Ein Call: Suche + Extraktion in einem API-Request
+
+2. **Generische X-Search** (`source_type='x_search'` in `source_registry`):
+   - `source_key` = Such-Query-String (z.B. "AI regulation 2026")
+   - `display_name` = Anzeigename für die Quelle
+   - Kein Account-Filter — sucht ganz X nach dem Keyword
+   - Ergebnis in `external_mentions` mit `source_type='x_search'`
+
+### Single-Call-Pattern
+
+Der entscheidende Vorteil gegenüber der alten twitterapi.io-Lösung:
+- **Alt:** 2 Calls (twitterapi.io → Roh-Tweets → DeepSeek → Unternehmen)
+- **Neu:** 1 Call (xAI x_search → Unternehmen + Sentiment)
+
+Der Prompt fordert explizit JSON-Output:
+```
+Search X for tweets from @{handle} in the last 24h (since {today}).
+Extract ALL publicly traded companies mentioned in these tweets.
+Return ONLY valid JSON — no markdown, no explanation, no extra text:
+{"companies": [{"name": "CompanyName", "sentiment": "bullish|bearish|neutral"}], "market_outlook": "bullish|bearish|neutral"}
+```
+
+### Source Registry
+
+```sql
+-- Account-Scan
+INSERT INTO source_registry (source_type, source_key, display_name, enabled, status)
+VALUES ('twitter', 'elonmusk', 'Elon Musk', 1, 'active');
+
+-- Keyword-Search
+INSERT INTO source_registry (source_type, source_key, display_name, enabled, status)
+VALUES ('x_search', 'AI regulation 2026', 'AI Regulation News', 1, 'active');
+```
+
+### Bekannte Fehler
+
+| Fehler | Ursache | Fix |
+|--------|---------|-----|
+| HTTP 403 | OAuth-Token abgelaufen | `hermes auth add xai-oauth` neu ausführen |
+| HTTP 400 "Model not found" | Modell existiert nicht im Responses API | `grok-2-latest` funktioniert nicht mit Responses API — `grok-4.5` nutzen |
+| Leeres Ergebnis | xAI Index hat keine Posts im Filter-Zeitraum | Fallback auf twitterapi.io (automatisch) |
+| JSON Parse Error | Grok antwortet mit Text statt JSON | `_parse_grok_json()` bereinigt Markdown-Wrapper + Regex-Fallback |
+
+Siehe `references/xai-oauth-token-management.md` für OAuth-Token-Refresh-Details.
 
 ## PEAD Signal Integration (seit 11.07.2026)
 
