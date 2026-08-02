@@ -1,4 +1,84 @@
 {
+"deepseek/deepseek-v4-flash-0731":{
+"context_length":1048576,
+"max_completion_tokens":384000,
+"name":"DeepSeek: DeepSeek V4 Flash 0731",
+"pricing":{
+"prompt":"0.00000014",
+"completion":"0.00000028",
+"input_cache_read":"0.0000000028"
+}
+},
+"deepseek-v4-flash-0731":{
+"context_length":1048576,
+"max_completion_tokens":384000,
+"name":"DeepSeek: DeepSeek V4 Flash 0731",
+"pricing":{
+"prompt":"0.00000014",
+"completion":"0.00000028",
+"input_cache_read":"0.0000000028"
+}
+},
+"deepseek/deepseek-v4-flash-20260731":{
+"context_length":1048576,
+"max_completion_tokens":384000,
+"name":"DeepSeek: DeepSeek V4 Flash 0731",
+"pricing":{
+"prompt":"0.00000014",
+"completion":"0.00000028",
+"input_cache_read":"0.0000000028"
+}
+},
+"deepseek-v4-flash-20260731":{
+"context_length":1048576,
+"max_completion_tokens":384000,
+"name":"DeepSeek: DeepSeek V4 Flash 0731",
+"pricing":{
+"prompt":"0.00000014",
+"completion":"0.00000028",
+"input_cache_read":"0.0000000028"
+}
+},
+"thinkingmachines/inkling-small":{
+"context_length":524288,
+"max_completion_tokens":null,
+"name":"Thinking Machines: Inkling Small",
+"pricing":{
+"prompt":"0.0000005",
+"completion":"0.0000012",
+"input_cache_read":"0.0000001"
+}
+},
+"inkling-small":{
+"context_length":524288,
+"max_completion_tokens":null,
+"name":"Thinking Machines: Inkling Small",
+"pricing":{
+"prompt":"0.0000005",
+"completion":"0.0000012",
+"input_cache_read":"0.0000001"
+}
+},
+"thinkingmachines/inkling-small-20260730":{
+"context_length":524288,
+"max_completion_tokens":null,
+"name":"Thinking Machines: Inkling Small",
+"pricing":{
+"prompt":"0.0000005",
+"completion":"0.0000012",
+"input_cache_read":"0.0000001"
+}
+},
+"inkling-small-20260730":{
+"context_length":524288,
+"max_completion_tokens":null,
+"name":"Thinking Machines: Inkling Small",
+"pricing":{
+"prompt":"0.0000005",
+"completion":"0.0000012",
+"input_cache_read":"0.0000001"
+}
+},
 "qwen/qwen3.7-flash":{
 "context_length":1000000,
 "max_completion_tokens":65536,
@@ -339,16 +419,16 @@
 "google/gemini-3.6-flash-20260721":{
 "context_length":1048576,
 "max_completion_tokens":65536,
-"name":"Google: Gemini 3.6 Flash (batch)",
+"name":"Google: Gemini 3.6 Flash",
 "pricing":{
-"prompt":"0.00000075",
-"completion":"0.00000375",
-"image":"0.00000075",
-"audio":"0.00000075",
-"input_audio_cache":"0.000000075",
+"prompt":"0.0000015",
+"completion":"0.0000075",
+"image":"0.0000015",
+"audio":"0.0000015",
+"input_audio_cache":"0.00000015",
 "web_search":"0.014",
-"internal_reasoning":"0.00000375",
-"input_cache_read":"0.000000075",
+"internal_reasoning":"0.0000075",
+"input_cache_read":"0.00000015",
 "input_cache_write":"0.00000008333333333333334"
 }
 },
@@ -365,38 +445,6 @@
 "web_search":"0.014",
 "internal_reasoning":"0.0000075",
 "input_cache_read":"0.00000015",
-"input_cache_write":"0.00000008333333333333334"
-}
-},
-"google/gemini-3.6-flash:batch":{
-"context_length":1048576,
-"max_completion_tokens":65536,
-"name":"Google: Gemini 3.6 Flash (batch)",
-"pricing":{
-"prompt":"0.00000075",
-"completion":"0.00000375",
-"image":"0.00000075",
-"audio":"0.00000075",
-"input_audio_cache":"0.000000075",
-"web_search":"0.014",
-"internal_reasoning":"0.00000375",
-"input_cache_read":"0.000000075",
-"input_cache_write":"0.00000008333333333333334"
-}
-},
-"gemini-3.6-flash:batch":{
-"context_length":1048576,
-"max_completion_tokens":65536,
-"name":"Google: Gemini 3.6 Flash (batch)",
-"pricing":{
-"prompt":"0.00000075",
-"completion":"0.00000375",
-"image":"0.00000075",
-"audio":"0.00000075",
-"input_audio_cache":"0.000000075",
-"web_search":"0.014",
-"internal_reasoning":"0.00000375",
-"input_cache_read":"0.000000075",
 "input_cache_write":"0.00000008333333333333334"
 }
 },
@@ -435,16 +483,17 @@
 "google/gemini-3.5-flash-lite-20260721":{
 "context_length":1048576,
 "max_completion_tokens":65536,
-"name":"Google: Gemini 3.5 Flash Lite (batch)",
+"name":"Google: Gemini 3.5 Flash Lite",
 "pricing":{
-"prompt":"0.00000015",
-"completion":"0.00000125",
-"image":"0.00000015",
-"audio":"0.00000015",
-"input_audio_cache":"0.000000015",
+"prompt":"0.0000003",
+"completion":"0.0000025",
+"image":"0.0000003",
+"audio":"0.0000003",
+"input_audio_cache":"0.00000003",
 "web_search":"0.014",
-"internal_reasoning":"0.00000125",
-"input_cache_read":"0.000000015"
+"internal_reasoning":"0.0000025",
+"input_cache_read":"0.00000003",
+"input_cache_write":"0.00000008333333333333334"
 }
 },
 "gemini-3.5-flash-lite-20260721":{
@@ -461,36 +510,6 @@
 "internal_reasoning":"0.0000025",
 "input_cache_read":"0.00000003",
 "input_cache_write":"0.00000008333333333333334"
-}
-},
-"google/gemini-3.5-flash-lite:batch":{
-"context_length":1048576,
-"max_completion_tokens":65536,
-"name":"Google: Gemini 3.5 Flash Lite (batch)",
-"pricing":{
-"prompt":"0.00000015",
-"completion":"0.00000125",
-"image":"0.00000015",
-"audio":"0.00000015",
-"input_audio_cache":"0.000000015",
-"web_search":"0.014",
-"internal_reasoning":"0.00000125",
-"input_cache_read":"0.000000015"
-}
-},
-"gemini-3.5-flash-lite:batch":{
-"context_length":1048576,
-"max_completion_tokens":65536,
-"name":"Google: Gemini 3.5 Flash Lite (batch)",
-"pricing":{
-"prompt":"0.00000015",
-"completion":"0.00000125",
-"image":"0.00000015",
-"audio":"0.00000015",
-"input_audio_cache":"0.000000015",
-"web_search":"0.014",
-"internal_reasoning":"0.00000125",
-"input_cache_read":"0.000000015"
 }
 },
 "meituan/longcat-2.0":{
@@ -1579,14 +1598,14 @@
 "anthropic/claude-sonnet-5-20260630":{
 "context_length":1000000,
 "max_completion_tokens":128000,
-"name":"Anthropic: Claude Sonnet 5 (batch)",
+"name":"Anthropic: Claude Sonnet 5",
 "pricing":{
-"prompt":"0.000001",
-"completion":"0.000005",
+"prompt":"0.000002",
+"completion":"0.00001",
 "web_search":"0.01",
-"input_cache_read":"0.0000001",
-"input_cache_write":"0.00000125",
-"input_cache_write_1h":"0.000002"
+"input_cache_read":"0.0000002",
+"input_cache_write":"0.0000025",
+"input_cache_write_1h":"0.000004"
 }
 },
 "claude-sonnet-5-20260630":{
@@ -1600,32 +1619,6 @@
 "input_cache_read":"0.0000002",
 "input_cache_write":"0.0000025",
 "input_cache_write_1h":"0.000004"
-}
-},
-"anthropic/claude-sonnet-5:batch":{
-"context_length":1000000,
-"max_completion_tokens":128000,
-"name":"Anthropic: Claude Sonnet 5 (batch)",
-"pricing":{
-"prompt":"0.000001",
-"completion":"0.000005",
-"web_search":"0.01",
-"input_cache_read":"0.0000001",
-"input_cache_write":"0.00000125",
-"input_cache_write_1h":"0.000002"
-}
-},
-"claude-sonnet-5:batch":{
-"context_length":1000000,
-"max_completion_tokens":128000,
-"name":"Anthropic: Claude Sonnet 5 (batch)",
-"pricing":{
-"prompt":"0.000001",
-"completion":"0.000005",
-"web_search":"0.01",
-"input_cache_read":"0.0000001",
-"input_cache_write":"0.00000125",
-"input_cache_write_1h":"0.000002"
 }
 },
 "google/gemini-3.1-flash-lite-image":{
@@ -1921,9 +1914,9 @@
 "max_completion_tokens":128000,
 "name":"Z.ai: GLM 5.2",
 "pricing":{
-"prompt":"0.00000119",
-"completion":"0.00000374",
-"input_cache_read":"0.000000221"
+"prompt":"0.00000076006",
+"completion":"0.00000238876",
+"input_cache_read":"0.000000141154"
 }
 },
 "glm-5.2":{
@@ -1931,9 +1924,9 @@
 "max_completion_tokens":128000,
 "name":"Z.ai: GLM 5.2",
 "pricing":{
-"prompt":"0.00000119",
-"completion":"0.00000374",
-"input_cache_read":"0.000000221"
+"prompt":"0.00000076006",
+"completion":"0.00000238876",
+"input_cache_read":"0.000000141154"
 }
 },
 "z-ai/glm-5.2-20260616":{
@@ -1941,9 +1934,9 @@
 "max_completion_tokens":128000,
 "name":"Z.ai: GLM 5.2",
 "pricing":{
-"prompt":"0.00000119",
-"completion":"0.00000374",
-"input_cache_read":"0.000000221"
+"prompt":"0.00000076006",
+"completion":"0.00000238876",
+"input_cache_read":"0.000000141154"
 }
 },
 "glm-5.2-20260616":{
@@ -1951,9 +1944,9 @@
 "max_completion_tokens":128000,
 "name":"Z.ai: GLM 5.2",
 "pricing":{
-"prompt":"0.00000119",
-"completion":"0.00000374",
-"input_cache_read":"0.000000221"
+"prompt":"0.00000076006",
+"completion":"0.00000238876",
+"input_cache_read":"0.000000141154"
 }
 },
 "openrouter/fusion":{
@@ -2069,14 +2062,14 @@
 "anthropic/claude-5-fable-20260609":{
 "context_length":1000000,
 "max_completion_tokens":128000,
-"name":"Anthropic: Claude Fable 5 (batch)",
+"name":"Anthropic: Claude Fable 5",
 "pricing":{
-"prompt":"0.000005",
-"completion":"0.000025",
+"prompt":"0.00001",
+"completion":"0.00005",
 "web_search":"0.01",
-"input_cache_read":"0.0000005",
-"input_cache_write":"0.00000625",
-"input_cache_write_1h":"0.00001"
+"input_cache_read":"0.000001",
+"input_cache_write":"0.0000125",
+"input_cache_write_1h":"0.00002"
 }
 },
 "claude-5-fable-20260609":{
@@ -2090,32 +2083,6 @@
 "input_cache_read":"0.000001",
 "input_cache_write":"0.0000125",
 "input_cache_write_1h":"0.00002"
-}
-},
-"anthropic/claude-fable-5:batch":{
-"context_length":1000000,
-"max_completion_tokens":128000,
-"name":"Anthropic: Claude Fable 5 (batch)",
-"pricing":{
-"prompt":"0.000005",
-"completion":"0.000025",
-"web_search":"0.01",
-"input_cache_read":"0.0000005",
-"input_cache_write":"0.00000625",
-"input_cache_write_1h":"0.00001"
-}
-},
-"claude-fable-5:batch":{
-"context_length":1000000,
-"max_completion_tokens":128000,
-"name":"Anthropic: Claude Fable 5 (batch)",
-"pricing":{
-"prompt":"0.000005",
-"completion":"0.000025",
-"web_search":"0.01",
-"input_cache_read":"0.0000005",
-"input_cache_write":"0.00000625",
-"input_cache_write_1h":"0.00001"
 }
 },
 "nex-agi/nex-n2-pro":{
@@ -2233,7 +2200,7 @@
 },
 "qwen/qwen3.7-plus":{
 "context_length":1000000,
-"max_completion_tokens":65536,
+"max_completion_tokens":131072,
 "name":"Qwen: Qwen3.7 Plus",
 "pricing":{
 "prompt":"0.00000032",
@@ -2253,7 +2220,7 @@
 },
 "qwen3.7-plus":{
 "context_length":1000000,
-"max_completion_tokens":65536,
+"max_completion_tokens":131072,
 "name":"Qwen: Qwen3.7 Plus",
 "pricing":{
 "prompt":"0.00000032",
@@ -2273,7 +2240,7 @@
 },
 "qwen/qwen3.7-plus-20260602":{
 "context_length":1000000,
-"max_completion_tokens":65536,
+"max_completion_tokens":131072,
 "name":"Qwen: Qwen3.7 Plus",
 "pricing":{
 "prompt":"0.00000032",
@@ -2293,7 +2260,7 @@
 },
 "qwen3.7-plus-20260602":{
 "context_length":1000000,
-"max_completion_tokens":65536,
+"max_completion_tokens":131072,
 "name":"Qwen: Qwen3.7 Plus",
 "pricing":{
 "prompt":"0.00000032",
@@ -2332,13 +2299,13 @@
 }
 },
 "minimax/minimax-m3-20260531":{
-"context_length":524288,
-"max_completion_tokens":null,
-"name":"MiniMax: MiniMax M3 (batch)",
+"context_length":1048576,
+"max_completion_tokens":512000,
+"name":"MiniMax: MiniMax M3",
 "pricing":{
-"prompt":"0.00000015",
-"completion":"0.0000006",
-"input_cache_read":"0.00000003"
+"prompt":"0.0000003",
+"completion":"0.0000012",
+"input_cache_read":"0.00000006"
 }
 },
 "minimax-m3-20260531":{
@@ -2349,26 +2316,6 @@
 "prompt":"0.0000003",
 "completion":"0.0000012",
 "input_cache_read":"0.00000006"
-}
-},
-"minimax/minimax-m3:batch":{
-"context_length":524288,
-"max_completion_tokens":null,
-"name":"MiniMax: MiniMax M3 (batch)",
-"pricing":{
-"prompt":"0.00000015",
-"completion":"0.0000006",
-"input_cache_read":"0.00000003"
-}
-},
-"minimax-m3:batch":{
-"context_length":524288,
-"max_completion_tokens":null,
-"name":"MiniMax: MiniMax M3 (batch)",
-"pricing":{
-"prompt":"0.00000015",
-"completion":"0.0000006",
-"input_cache_read":"0.00000003"
 }
 },
 "stepfun/step-3.7-flash":{
@@ -2492,14 +2439,14 @@
 "anthropic/claude-4.8-opus-20260528":{
 "context_length":1000000,
 "max_completion_tokens":128000,
-"name":"Anthropic: Claude Opus 4.8 (batch)",
+"name":"Anthropic: Claude Opus 4.8",
 "pricing":{
-"prompt":"0.0000025",
-"completion":"0.0000125",
+"prompt":"0.000005",
+"completion":"0.000025",
 "web_search":"0.01",
-"input_cache_read":"0.00000025",
-"input_cache_write":"0.000003125",
-"input_cache_write_1h":"0.000005"
+"input_cache_read":"0.0000005",
+"input_cache_write":"0.00000625",
+"input_cache_write_1h":"0.00001"
 }
 },
 "claude-4.8-opus-20260528":{
@@ -2515,35 +2462,9 @@
 "input_cache_write_1h":"0.00001"
 }
 },
-"anthropic/claude-opus-4.8:batch":{
-"context_length":1000000,
-"max_completion_tokens":128000,
-"name":"Anthropic: Claude Opus 4.8 (batch)",
-"pricing":{
-"prompt":"0.0000025",
-"completion":"0.0000125",
-"web_search":"0.01",
-"input_cache_read":"0.00000025",
-"input_cache_write":"0.000003125",
-"input_cache_write_1h":"0.000005"
-}
-},
-"claude-opus-4.8:batch":{
-"context_length":1000000,
-"max_completion_tokens":128000,
-"name":"Anthropic: Claude Opus 4.8 (batch)",
-"pricing":{
-"prompt":"0.0000025",
-"completion":"0.0000125",
-"web_search":"0.01",
-"input_cache_read":"0.00000025",
-"input_cache_write":"0.000003125",
-"input_cache_write_1h":"0.000005"
-}
-},
 "qwen/qwen3.7-max":{
 "context_length":1000000,
-"max_completion_tokens":65536,
+"max_completion_tokens":131072,
 "name":"Qwen: Qwen3.7 Max",
 "pricing":{
 "prompt":"0.000001475",
@@ -2554,7 +2475,7 @@
 },
 "qwen3.7-max":{
 "context_length":1000000,
-"max_completion_tokens":65536,
+"max_completion_tokens":131072,
 "name":"Qwen: Qwen3.7 Max",
 "pricing":{
 "prompt":"0.000001475",
@@ -2565,7 +2486,7 @@
 },
 "qwen/qwen3.7-max-20260520":{
 "context_length":1000000,
-"max_completion_tokens":65536,
+"max_completion_tokens":131072,
 "name":"Qwen: Qwen3.7 Max",
 "pricing":{
 "prompt":"0.000001475",
@@ -2576,7 +2497,7 @@
 },
 "qwen3.7-max-20260520":{
 "context_length":1000000,
-"max_completion_tokens":65536,
+"max_completion_tokens":131072,
 "name":"Qwen: Qwen3.7 Max",
 "pricing":{
 "prompt":"0.000001475",
@@ -2696,16 +2617,17 @@
 "google/gemini-3.5-flash-20260519":{
 "context_length":1048576,
 "max_completion_tokens":65536,
-"name":"Google: Gemini 3.5 Flash (batch)",
+"name":"Google: Gemini 3.5 Flash",
 "pricing":{
-"prompt":"0.00000075",
-"completion":"0.0000045",
-"image":"0.00000075",
-"audio":"0.0000015",
-"input_audio_cache":"0.00000015",
+"prompt":"0.0000015",
+"completion":"0.000009",
+"image":"0.0000015",
+"audio":"0.000003",
+"input_audio_cache":"0.0000003",
 "web_search":"0.014",
-"internal_reasoning":"0.0000045",
-"input_cache_read":"0.000000075"
+"internal_reasoning":"0.000009",
+"input_cache_read":"0.00000015",
+"input_cache_write":"0.00000008333333333333334"
 }
 },
 "gemini-3.5-flash-20260519":{
@@ -2722,36 +2644,6 @@
 "internal_reasoning":"0.000009",
 "input_cache_read":"0.00000015",
 "input_cache_write":"0.00000008333333333333334"
-}
-},
-"google/gemini-3.5-flash:batch":{
-"context_length":1048576,
-"max_completion_tokens":65536,
-"name":"Google: Gemini 3.5 Flash (batch)",
-"pricing":{
-"prompt":"0.00000075",
-"completion":"0.0000045",
-"image":"0.00000075",
-"audio":"0.0000015",
-"input_audio_cache":"0.00000015",
-"web_search":"0.014",
-"internal_reasoning":"0.0000045",
-"input_cache_read":"0.000000075"
-}
-},
-"gemini-3.5-flash:batch":{
-"context_length":1048576,
-"max_completion_tokens":65536,
-"name":"Google: Gemini 3.5 Flash (batch)",
-"pricing":{
-"prompt":"0.00000075",
-"completion":"0.0000045",
-"image":"0.00000075",
-"audio":"0.0000015",
-"input_audio_cache":"0.00000015",
-"web_search":"0.014",
-"internal_reasoning":"0.0000045",
-"input_cache_read":"0.000000075"
 }
 },
 "anthropic/claude-opus-4.7-fast":{
@@ -2917,16 +2809,17 @@
 "google/gemini-3.1-flash-lite-20260507":{
 "context_length":1048576,
 "max_completion_tokens":65536,
-"name":"Google: Gemini 3.1 Flash Lite (batch)",
+"name":"Google: Gemini 3.1 Flash Lite",
 "pricing":{
-"prompt":"0.000000125",
-"completion":"0.00000075",
-"image":"0.000000125",
-"audio":"0.00000025",
-"input_audio_cache":"0.000000025",
+"prompt":"0.00000025",
+"completion":"0.0000015",
+"image":"0.00000025",
+"audio":"0.0000005",
+"input_audio_cache":"0.00000005",
 "web_search":"0.014",
-"internal_reasoning":"0.00000075",
-"input_cache_read":"0.0000000125"
+"internal_reasoning":"0.0000015",
+"input_cache_read":"0.000000025",
+"input_cache_write":"0.00000008333333333333334"
 }
 },
 "gemini-3.1-flash-lite-20260507":{
@@ -2943,36 +2836,6 @@
 "internal_reasoning":"0.0000015",
 "input_cache_read":"0.000000025",
 "input_cache_write":"0.00000008333333333333334"
-}
-},
-"google/gemini-3.1-flash-lite:batch":{
-"context_length":1048576,
-"max_completion_tokens":65536,
-"name":"Google: Gemini 3.1 Flash Lite (batch)",
-"pricing":{
-"prompt":"0.000000125",
-"completion":"0.00000075",
-"image":"0.000000125",
-"audio":"0.00000025",
-"input_audio_cache":"0.000000025",
-"web_search":"0.014",
-"internal_reasoning":"0.00000075",
-"input_cache_read":"0.0000000125"
-}
-},
-"gemini-3.1-flash-lite:batch":{
-"context_length":1048576,
-"max_completion_tokens":65536,
-"name":"Google: Gemini 3.1 Flash Lite (batch)",
-"pricing":{
-"prompt":"0.000000125",
-"completion":"0.00000075",
-"image":"0.000000125",
-"audio":"0.00000025",
-"input_audio_cache":"0.000000025",
-"web_search":"0.014",
-"internal_reasoning":"0.00000075",
-"input_cache_read":"0.0000000125"
 }
 },
 "openai/gpt-chat-latest":{
@@ -3756,18 +3619,18 @@
 "openai/gpt-5.5-20260423":{
 "context_length":1050000,
 "max_completion_tokens":128000,
-"name":"OpenAI: GPT-5.5 (batch)",
+"name":"OpenAI: GPT-5.5",
 "pricing":{
-"prompt":"0.0000025",
-"completion":"0.000015",
+"prompt":"0.000005",
+"completion":"0.00003",
 "web_search":"0.01",
-"input_cache_read":"0.00000025",
+"input_cache_read":"0.0000005",
 "overrides":[
 {
 "min_prompt_tokens":272000,
-"prompt":"0.000005",
-"completion":"0.0000225",
-"input_cache_read":"0.0000005"
+"prompt":"0.00001",
+"completion":"0.000045",
+"input_cache_read":"0.000001"
 }
 ]
 }
@@ -3787,44 +3650,6 @@
 "prompt":"0.00001",
 "completion":"0.000045",
 "input_cache_read":"0.000001"
-}
-]
-}
-},
-"openai/gpt-5.5:batch":{
-"context_length":1050000,
-"max_completion_tokens":128000,
-"name":"OpenAI: GPT-5.5 (batch)",
-"pricing":{
-"prompt":"0.0000025",
-"completion":"0.000015",
-"web_search":"0.01",
-"input_cache_read":"0.00000025",
-"overrides":[
-{
-"min_prompt_tokens":272000,
-"prompt":"0.000005",
-"completion":"0.0000225",
-"input_cache_read":"0.0000005"
-}
-]
-}
-},
-"gpt-5.5:batch":{
-"context_length":1050000,
-"max_completion_tokens":128000,
-"name":"OpenAI: GPT-5.5 (batch)",
-"pricing":{
-"prompt":"0.0000025",
-"completion":"0.000015",
-"web_search":"0.01",
-"input_cache_read":"0.00000025",
-"overrides":[
-{
-"min_prompt_tokens":272000,
-"prompt":"0.000005",
-"completion":"0.0000225",
-"input_cache_read":"0.0000005"
 }
 ]
 }
@@ -4206,9 +4031,9 @@
 "max_completion_tokens":262144,
 "name":"MoonshotAI: Kimi K2.6",
 "pricing":{
-"prompt":"0.00000095",
-"completion":"0.000004",
-"input_cache_read":"0.00000016"
+"prompt":"0.0000006",
+"completion":"0.00000341",
+"input_cache_read":"0.0000002"
 }
 },
 "kimi-k2.6":{
@@ -4216,9 +4041,9 @@
 "max_completion_tokens":262144,
 "name":"MoonshotAI: Kimi K2.6",
 "pricing":{
-"prompt":"0.00000095",
-"completion":"0.000004",
-"input_cache_read":"0.00000016"
+"prompt":"0.0000006",
+"completion":"0.00000341",
+"input_cache_read":"0.0000002"
 }
 },
 "moonshotai/kimi-k2.6-20260420":{
@@ -4226,9 +4051,9 @@
 "max_completion_tokens":262144,
 "name":"MoonshotAI: Kimi K2.6",
 "pricing":{
-"prompt":"0.00000095",
-"completion":"0.000004",
-"input_cache_read":"0.00000016"
+"prompt":"0.0000006",
+"completion":"0.00000341",
+"input_cache_read":"0.0000002"
 }
 },
 "kimi-k2.6-20260420":{
@@ -4236,9 +4061,9 @@
 "max_completion_tokens":262144,
 "name":"MoonshotAI: Kimi K2.6",
 "pricing":{
-"prompt":"0.00000095",
-"completion":"0.000004",
-"input_cache_read":"0.00000016"
+"prompt":"0.0000006",
+"completion":"0.00000341",
+"input_cache_read":"0.0000002"
 }
 },
 "anthropic/claude-opus-4.7":{
@@ -4270,14 +4095,14 @@
 "anthropic/claude-4.7-opus-20260416":{
 "context_length":1000000,
 "max_completion_tokens":128000,
-"name":"Anthropic: Claude Opus 4.7 (batch)",
+"name":"Anthropic: Claude Opus 4.7",
 "pricing":{
-"prompt":"0.0000025",
-"completion":"0.0000125",
+"prompt":"0.000005",
+"completion":"0.000025",
 "web_search":"0.01",
-"input_cache_read":"0.00000025",
-"input_cache_write":"0.000003125",
-"input_cache_write_1h":"0.000005"
+"input_cache_read":"0.0000005",
+"input_cache_write":"0.00000625",
+"input_cache_write_1h":"0.00001"
 }
 },
 "claude-4.7-opus-20260416":{
@@ -4291,32 +4116,6 @@
 "input_cache_read":"0.0000005",
 "input_cache_write":"0.00000625",
 "input_cache_write_1h":"0.00001"
-}
-},
-"anthropic/claude-opus-4.7:batch":{
-"context_length":1000000,
-"max_completion_tokens":128000,
-"name":"Anthropic: Claude Opus 4.7 (batch)",
-"pricing":{
-"prompt":"0.0000025",
-"completion":"0.0000125",
-"web_search":"0.01",
-"input_cache_read":"0.00000025",
-"input_cache_write":"0.000003125",
-"input_cache_write_1h":"0.000005"
-}
-},
-"claude-opus-4.7:batch":{
-"context_length":1000000,
-"max_completion_tokens":128000,
-"name":"Anthropic: Claude Opus 4.7 (batch)",
-"pricing":{
-"prompt":"0.0000025",
-"completion":"0.0000125",
-"web_search":"0.01",
-"input_cache_read":"0.00000025",
-"input_cache_write":"0.000003125",
-"input_cache_write_1h":"0.000005"
 }
 },
 "z-ai/glm-5.1":{
@@ -4967,12 +4766,12 @@
 "openai/gpt-5.4-nano-20260317":{
 "context_length":400000,
 "max_completion_tokens":128000,
-"name":"OpenAI: GPT-5.4 Nano (batch)",
+"name":"OpenAI: GPT-5.4 Nano",
 "pricing":{
-"prompt":"0.0000001",
-"completion":"0.000000625",
+"prompt":"0.0000002",
+"completion":"0.00000125",
 "web_search":"0.01",
-"input_cache_read":"0.00000001"
+"input_cache_read":"0.00000002"
 }
 },
 "gpt-5.4-nano-20260317":{
@@ -4984,28 +4783,6 @@
 "completion":"0.00000125",
 "web_search":"0.01",
 "input_cache_read":"0.00000002"
-}
-},
-"openai/gpt-5.4-nano:batch":{
-"context_length":400000,
-"max_completion_tokens":128000,
-"name":"OpenAI: GPT-5.4 Nano (batch)",
-"pricing":{
-"prompt":"0.0000001",
-"completion":"0.000000625",
-"web_search":"0.01",
-"input_cache_read":"0.00000001"
-}
-},
-"gpt-5.4-nano:batch":{
-"context_length":400000,
-"max_completion_tokens":128000,
-"name":"OpenAI: GPT-5.4 Nano (batch)",
-"pricing":{
-"prompt":"0.0000001",
-"completion":"0.000000625",
-"web_search":"0.01",
-"input_cache_read":"0.00000001"
 }
 },
 "openai/gpt-5.4-mini":{
@@ -5033,12 +4810,12 @@
 "openai/gpt-5.4-mini-20260317":{
 "context_length":400000,
 "max_completion_tokens":128000,
-"name":"OpenAI: GPT-5.4 Mini (batch)",
+"name":"OpenAI: GPT-5.4 Mini",
 "pricing":{
-"prompt":"0.000000375",
-"completion":"0.00000225",
+"prompt":"0.00000075",
+"completion":"0.0000045",
 "web_search":"0.01",
-"input_cache_read":"0.0000000375"
+"input_cache_read":"0.000000075"
 }
 },
 "gpt-5.4-mini-20260317":{
@@ -5050,28 +4827,6 @@
 "completion":"0.0000045",
 "web_search":"0.01",
 "input_cache_read":"0.000000075"
-}
-},
-"openai/gpt-5.4-mini:batch":{
-"context_length":400000,
-"max_completion_tokens":128000,
-"name":"OpenAI: GPT-5.4 Mini (batch)",
-"pricing":{
-"prompt":"0.000000375",
-"completion":"0.00000225",
-"web_search":"0.01",
-"input_cache_read":"0.0000000375"
-}
-},
-"gpt-5.4-mini:batch":{
-"context_length":400000,
-"max_completion_tokens":128000,
-"name":"OpenAI: GPT-5.4 Mini (batch)",
-"pricing":{
-"prompt":"0.000000375",
-"completion":"0.00000225",
-"web_search":"0.01",
-"input_cache_read":"0.0000000375"
 }
 },
 "mistralai/mistral-small-2603":{
@@ -5397,18 +5152,18 @@
 "openai/gpt-5.4-20260305":{
 "context_length":1050000,
 "max_completion_tokens":128000,
-"name":"OpenAI: GPT-5.4 (batch)",
+"name":"OpenAI: GPT-5.4",
 "pricing":{
-"prompt":"0.00000125",
-"completion":"0.0000075",
+"prompt":"0.0000025",
+"completion":"0.000015",
 "web_search":"0.01",
-"input_cache_read":"0.000000125",
+"input_cache_read":"0.00000025",
 "overrides":[
 {
 "min_prompt_tokens":272000,
-"prompt":"0.0000025",
-"completion":"0.00001125",
-"input_cache_read":"0.00000025"
+"prompt":"0.000005",
+"completion":"0.0000225",
+"input_cache_read":"0.0000005"
 }
 ]
 }
@@ -5428,44 +5183,6 @@
 "prompt":"0.000005",
 "completion":"0.0000225",
 "input_cache_read":"0.0000005"
-}
-]
-}
-},
-"openai/gpt-5.4:batch":{
-"context_length":1050000,
-"max_completion_tokens":128000,
-"name":"OpenAI: GPT-5.4 (batch)",
-"pricing":{
-"prompt":"0.00000125",
-"completion":"0.0000075",
-"web_search":"0.01",
-"input_cache_read":"0.000000125",
-"overrides":[
-{
-"min_prompt_tokens":272000,
-"prompt":"0.0000025",
-"completion":"0.00001125",
-"input_cache_read":"0.00000025"
-}
-]
-}
-},
-"gpt-5.4:batch":{
-"context_length":1050000,
-"max_completion_tokens":128000,
-"name":"OpenAI: GPT-5.4 (batch)",
-"pricing":{
-"prompt":"0.00000125",
-"completion":"0.0000075",
-"web_search":"0.01",
-"input_cache_read":"0.000000125",
-"overrides":[
-{
-"min_prompt_tokens":272000,
-"prompt":"0.0000025",
-"completion":"0.00001125",
-"input_cache_read":"0.00000025"
 }
 ]
 }
@@ -6113,20 +5830,25 @@
 "google/gemini-3.1-pro-preview-20260219":{
 "context_length":1048576,
 "max_completion_tokens":65536,
-"name":"Google: Gemini 3.1 Pro Preview (batch)",
+"name":"Google: Gemini 3.1 Pro Preview",
 "pricing":{
-"prompt":"0.000001",
-"completion":"0.000006",
-"image":"0.000001",
-"audio":"0.000001",
+"prompt":"0.000002",
+"completion":"0.000012",
+"image":"0.000002",
+"audio":"0.000002",
+"input_audio_cache":"0.0000002",
 "web_search":"0.014",
-"internal_reasoning":"0.000006",
+"internal_reasoning":"0.000012",
+"input_cache_read":"0.0000002",
+"input_cache_write":"0.000000375",
 "overrides":[
 {
 "min_prompt_tokens":200000,
-"prompt":"0.000002",
-"completion":"0.000009",
-"audio":"0.000002"
+"prompt":"0.000004",
+"completion":"0.000018",
+"audio":"0.000004",
+"input_audio_cache":"0.0000004",
+"input_cache_read":"0.0000004"
 }
 ]
 }
@@ -6153,48 +5875,6 @@
 "audio":"0.000004",
 "input_audio_cache":"0.0000004",
 "input_cache_read":"0.0000004"
-}
-]
-}
-},
-"google/gemini-3.1-pro-preview:batch":{
-"context_length":1048576,
-"max_completion_tokens":65536,
-"name":"Google: Gemini 3.1 Pro Preview (batch)",
-"pricing":{
-"prompt":"0.000001",
-"completion":"0.000006",
-"image":"0.000001",
-"audio":"0.000001",
-"web_search":"0.014",
-"internal_reasoning":"0.000006",
-"overrides":[
-{
-"min_prompt_tokens":200000,
-"prompt":"0.000002",
-"completion":"0.000009",
-"audio":"0.000002"
-}
-]
-}
-},
-"gemini-3.1-pro-preview:batch":{
-"context_length":1048576,
-"max_completion_tokens":65536,
-"name":"Google: Gemini 3.1 Pro Preview (batch)",
-"pricing":{
-"prompt":"0.000001",
-"completion":"0.000006",
-"image":"0.000001",
-"audio":"0.000001",
-"web_search":"0.014",
-"internal_reasoning":"0.000006",
-"overrides":[
-{
-"min_prompt_tokens":200000,
-"prompt":"0.000002",
-"completion":"0.000009",
-"audio":"0.000002"
 }
 ]
 }
@@ -6544,14 +6224,14 @@
 "anthropic/claude-4.6-opus-20260205":{
 "context_length":1000000,
 "max_completion_tokens":128000,
-"name":"Anthropic: Claude Opus 4.6 (batch)",
+"name":"Anthropic: Claude Opus 4.6",
 "pricing":{
-"prompt":"0.0000025",
-"completion":"0.0000125",
+"prompt":"0.000005",
+"completion":"0.000025",
 "web_search":"0.01",
-"input_cache_read":"0.00000025",
-"input_cache_write":"0.000003125",
-"input_cache_write_1h":"0.000005"
+"input_cache_read":"0.0000005",
+"input_cache_write":"0.00000625",
+"input_cache_write_1h":"0.00001"
 }
 },
 "claude-4.6-opus-20260205":{
@@ -6565,32 +6245,6 @@
 "input_cache_read":"0.0000005",
 "input_cache_write":"0.00000625",
 "input_cache_write_1h":"0.00001"
-}
-},
-"anthropic/claude-opus-4.6:batch":{
-"context_length":1000000,
-"max_completion_tokens":128000,
-"name":"Anthropic: Claude Opus 4.6 (batch)",
-"pricing":{
-"prompt":"0.0000025",
-"completion":"0.0000125",
-"web_search":"0.01",
-"input_cache_read":"0.00000025",
-"input_cache_write":"0.000003125",
-"input_cache_write_1h":"0.000005"
-}
-},
-"claude-opus-4.6:batch":{
-"context_length":1000000,
-"max_completion_tokens":128000,
-"name":"Anthropic: Claude Opus 4.6 (batch)",
-"pricing":{
-"prompt":"0.0000025",
-"completion":"0.0000125",
-"web_search":"0.01",
-"input_cache_read":"0.00000025",
-"input_cache_write":"0.000003125",
-"input_cache_write_1h":"0.000005"
 }
 },
 "qwen/qwen3-coder-next":{
@@ -7156,14 +6810,17 @@
 "google/gemini-3-flash-preview-20251217":{
 "context_length":1048576,
 "max_completion_tokens":65535,
-"name":"Google: Gemini 3 Flash Preview (batch)",
+"name":"Google: Gemini 3 Flash Preview",
 "pricing":{
-"prompt":"0.00000025",
-"completion":"0.0000015",
-"image":"0.00000025",
-"audio":"0.0000005",
+"prompt":"0.0000005",
+"completion":"0.000003",
+"image":"0.0000005",
+"audio":"0.000001",
+"input_audio_cache":"0.0000001",
 "web_search":"0.014",
-"internal_reasoning":"0.0000015"
+"internal_reasoning":"0.000003",
+"input_cache_read":"0.00000005",
+"input_cache_write":"0.00000008333333333333334"
 }
 },
 "gemini-3-flash-preview-20251217":{
@@ -7180,32 +6837,6 @@
 "internal_reasoning":"0.000003",
 "input_cache_read":"0.00000005",
 "input_cache_write":"0.00000008333333333333334"
-}
-},
-"google/gemini-3-flash-preview:batch":{
-"context_length":1048576,
-"max_completion_tokens":65535,
-"name":"Google: Gemini 3 Flash Preview (batch)",
-"pricing":{
-"prompt":"0.00000025",
-"completion":"0.0000015",
-"image":"0.00000025",
-"audio":"0.0000005",
-"web_search":"0.014",
-"internal_reasoning":"0.0000015"
-}
-},
-"gemini-3-flash-preview:batch":{
-"context_length":1048576,
-"max_completion_tokens":65535,
-"name":"Google: Gemini 3 Flash Preview (batch)",
-"pricing":{
-"prompt":"0.00000025",
-"completion":"0.0000015",
-"image":"0.00000025",
-"audio":"0.0000005",
-"web_search":"0.014",
-"internal_reasoning":"0.0000015"
 }
 },
 "nvidia/nemotron-3-nano-30b-a3b":{
@@ -7354,12 +6985,12 @@
 "openai/gpt-5.2-20251211":{
 "context_length":400000,
 "max_completion_tokens":128000,
-"name":"OpenAI: GPT-5.2 (batch)",
+"name":"OpenAI: GPT-5.2",
 "pricing":{
-"prompt":"0.000000875",
-"completion":"0.000007",
+"prompt":"0.00000175",
+"completion":"0.000014",
 "web_search":"0.01",
-"input_cache_read":"0.0000000875"
+"input_cache_read":"0.000000175"
 }
 },
 "gpt-5.2-20251211":{
@@ -7371,48 +7002,6 @@
 "completion":"0.000014",
 "web_search":"0.01",
 "input_cache_read":"0.000000175"
-}
-},
-"openai/gpt-5.2:batch":{
-"context_length":400000,
-"max_completion_tokens":128000,
-"name":"OpenAI: GPT-5.2 (batch)",
-"pricing":{
-"prompt":"0.000000875",
-"completion":"0.000007",
-"web_search":"0.01",
-"input_cache_read":"0.0000000875"
-}
-},
-"gpt-5.2:batch":{
-"context_length":400000,
-"max_completion_tokens":128000,
-"name":"OpenAI: GPT-5.2 (batch)",
-"pricing":{
-"prompt":"0.000000875",
-"completion":"0.000007",
-"web_search":"0.01",
-"input_cache_read":"0.0000000875"
-}
-},
-"mistralai/devstral-2512":{
-"context_length":262144,
-"max_completion_tokens":null,
-"name":"Mistral: Devstral 2 2512",
-"pricing":{
-"prompt":"0.0000004",
-"completion":"0.000002",
-"input_cache_read":"0.00000004"
-}
-},
-"devstral-2512":{
-"context_length":262144,
-"max_completion_tokens":null,
-"name":"Mistral: Devstral 2 2512",
-"pricing":{
-"prompt":"0.0000004",
-"completion":"0.000002",
-"input_cache_read":"0.00000004"
 }
 },
 "relace/relace-search":{
@@ -7720,14 +7309,14 @@
 "anthropic/claude-4.5-opus-20251124":{
 "context_length":200000,
 "max_completion_tokens":64000,
-"name":"Anthropic: Claude Opus 4.5 (batch)",
+"name":"Anthropic: Claude Opus 4.5",
 "pricing":{
-"prompt":"0.0000025",
-"completion":"0.0000125",
+"prompt":"0.000005",
+"completion":"0.000025",
 "web_search":"0.01",
-"input_cache_read":"0.00000025",
-"input_cache_write":"0.000003125",
-"input_cache_write_1h":"0.000005"
+"input_cache_read":"0.0000005",
+"input_cache_write":"0.00000625",
+"input_cache_write_1h":"0.00001"
 }
 },
 "claude-4.5-opus-20251124":{
@@ -7741,32 +7330,6 @@
 "input_cache_read":"0.0000005",
 "input_cache_write":"0.00000625",
 "input_cache_write_1h":"0.00001"
-}
-},
-"anthropic/claude-opus-4.5:batch":{
-"context_length":200000,
-"max_completion_tokens":64000,
-"name":"Anthropic: Claude Opus 4.5 (batch)",
-"pricing":{
-"prompt":"0.0000025",
-"completion":"0.0000125",
-"web_search":"0.01",
-"input_cache_read":"0.00000025",
-"input_cache_write":"0.000003125",
-"input_cache_write_1h":"0.000005"
-}
-},
-"claude-opus-4.5:batch":{
-"context_length":200000,
-"max_completion_tokens":64000,
-"name":"Anthropic: Claude Opus 4.5 (batch)",
-"pricing":{
-"prompt":"0.0000025",
-"completion":"0.0000125",
-"web_search":"0.01",
-"input_cache_read":"0.00000025",
-"input_cache_write":"0.000003125",
-"input_cache_write_1h":"0.000005"
 }
 },
 "allenai/olmo-3-32b-think":{
@@ -7934,12 +7497,12 @@
 "openai/gpt-5.1-20251113":{
 "context_length":400000,
 "max_completion_tokens":128000,
-"name":"OpenAI: GPT-5.1 (batch)",
+"name":"OpenAI: GPT-5.1",
 "pricing":{
-"prompt":"0.000000625",
-"completion":"0.000005",
+"prompt":"0.00000125",
+"completion":"0.00001",
 "web_search":"0.01",
-"input_cache_read":"0.0000000625"
+"input_cache_read":"0.000000125"
 }
 },
 "gpt-5.1-20251113":{
@@ -7951,72 +7514,6 @@
 "completion":"0.00001",
 "web_search":"0.01",
 "input_cache_read":"0.000000125"
-}
-},
-"openai/gpt-5.1:batch":{
-"context_length":400000,
-"max_completion_tokens":128000,
-"name":"OpenAI: GPT-5.1 (batch)",
-"pricing":{
-"prompt":"0.000000625",
-"completion":"0.000005",
-"web_search":"0.01",
-"input_cache_read":"0.0000000625"
-}
-},
-"gpt-5.1:batch":{
-"context_length":400000,
-"max_completion_tokens":128000,
-"name":"OpenAI: GPT-5.1 (batch)",
-"pricing":{
-"prompt":"0.000000625",
-"completion":"0.000005",
-"web_search":"0.01",
-"input_cache_read":"0.0000000625"
-}
-},
-"openai/gpt-5.1-chat":{
-"context_length":128000,
-"max_completion_tokens":32000,
-"name":"OpenAI: GPT-5.1 Chat",
-"pricing":{
-"prompt":"0.00000125",
-"completion":"0.00001",
-"web_search":"0.01",
-"input_cache_read":"0.00000013"
-}
-},
-"gpt-5.1-chat":{
-"context_length":128000,
-"max_completion_tokens":32000,
-"name":"OpenAI: GPT-5.1 Chat",
-"pricing":{
-"prompt":"0.00000125",
-"completion":"0.00001",
-"web_search":"0.01",
-"input_cache_read":"0.00000013"
-}
-},
-"openai/gpt-5.1-chat-20251113":{
-"context_length":128000,
-"max_completion_tokens":32000,
-"name":"OpenAI: GPT-5.1 Chat",
-"pricing":{
-"prompt":"0.00000125",
-"completion":"0.00001",
-"web_search":"0.01",
-"input_cache_read":"0.00000013"
-}
-},
-"gpt-5.1-chat-20251113":{
-"context_length":128000,
-"max_completion_tokens":32000,
-"name":"OpenAI: GPT-5.1 Chat",
-"pricing":{
-"prompt":"0.00000125",
-"completion":"0.00001",
-"web_search":"0.01",
-"input_cache_read":"0.00000013"
 }
 },
 "openai/gpt-5.1-codex":{
@@ -8372,14 +7869,14 @@
 "anthropic/claude-4.5-haiku-20251001":{
 "context_length":200000,
 "max_completion_tokens":64000,
-"name":"Anthropic: Claude Haiku 4.5 (batch)",
+"name":"Anthropic: Claude Haiku 4.5",
 "pricing":{
-"prompt":"0.0000005",
-"completion":"0.0000025",
+"prompt":"0.000001",
+"completion":"0.000005",
 "web_search":"0.01",
-"input_cache_read":"0.00000005",
-"input_cache_write":"0.000000625",
-"input_cache_write_1h":"0.000001"
+"input_cache_read":"0.0000001",
+"input_cache_write":"0.00000125",
+"input_cache_write_1h":"0.000002"
 }
 },
 "claude-4.5-haiku-20251001":{
@@ -8393,32 +7890,6 @@
 "input_cache_read":"0.0000001",
 "input_cache_write":"0.00000125",
 "input_cache_write_1h":"0.000002"
-}
-},
-"anthropic/claude-haiku-4.5:batch":{
-"context_length":200000,
-"max_completion_tokens":64000,
-"name":"Anthropic: Claude Haiku 4.5 (batch)",
-"pricing":{
-"prompt":"0.0000005",
-"completion":"0.0000025",
-"web_search":"0.01",
-"input_cache_read":"0.00000005",
-"input_cache_write":"0.000000625",
-"input_cache_write_1h":"0.000001"
-}
-},
-"claude-haiku-4.5:batch":{
-"context_length":200000,
-"max_completion_tokens":64000,
-"name":"Anthropic: Claude Haiku 4.5 (batch)",
-"pricing":{
-"prompt":"0.0000005",
-"completion":"0.0000025",
-"web_search":"0.01",
-"input_cache_read":"0.00000005",
-"input_cache_write":"0.000000625",
-"input_cache_write_1h":"0.000001"
 }
 },
 "qwen/qwen3-vl-8b-thinking":{
@@ -8535,20 +8006,20 @@
 },
 "qwen/qwen3-vl-30b-a3b-instruct":{
 "context_length":262144,
-"max_completion_tokens":16384,
+"max_completion_tokens":32768,
 "name":"Qwen: Qwen3 VL 30B A3B Instruct",
 "pricing":{
-"prompt":"0.00000015",
-"completion":"0.0000006"
+"prompt":"0.00000013",
+"completion":"0.00000052"
 }
 },
 "qwen3-vl-30b-a3b-instruct":{
 "context_length":262144,
-"max_completion_tokens":16384,
+"max_completion_tokens":32768,
 "name":"Qwen: Qwen3 VL 30B A3B Instruct",
 "pricing":{
-"prompt":"0.00000015",
-"completion":"0.0000006"
+"prompt":"0.00000013",
+"completion":"0.00000052"
 }
 },
 "openai/gpt-5-pro":{
@@ -8660,22 +8131,22 @@
 "anthropic/claude-4.5-sonnet-20250929":{
 "context_length":1000000,
 "max_completion_tokens":64000,
-"name":"Anthropic: Claude Sonnet 4.5 (batch)",
+"name":"Anthropic: Claude Sonnet 4.5",
 "pricing":{
-"prompt":"0.0000015",
-"completion":"0.0000075",
+"prompt":"0.000003",
+"completion":"0.000015",
 "web_search":"0.01",
-"input_cache_read":"0.00000015",
-"input_cache_write":"0.000001875",
-"input_cache_write_1h":"0.000003",
+"input_cache_read":"0.0000003",
+"input_cache_write":"0.00000375",
+"input_cache_write_1h":"0.000006",
 "overrides":[
 {
 "min_prompt_tokens":200000,
-"prompt":"0.000003",
-"completion":"0.00001125",
-"input_cache_read":"0.0000003",
-"input_cache_write":"0.00000375",
-"input_cache_write_1h":"0.000006"
+"prompt":"0.000006",
+"completion":"0.0000225",
+"input_cache_read":"0.0000006",
+"input_cache_write":"0.0000075",
+"input_cache_write_1h":"0.000012"
 }
 ]
 }
@@ -8699,52 +8170,6 @@
 "input_cache_read":"0.0000006",
 "input_cache_write":"0.0000075",
 "input_cache_write_1h":"0.000012"
-}
-]
-}
-},
-"anthropic/claude-sonnet-4.5:batch":{
-"context_length":1000000,
-"max_completion_tokens":64000,
-"name":"Anthropic: Claude Sonnet 4.5 (batch)",
-"pricing":{
-"prompt":"0.0000015",
-"completion":"0.0000075",
-"web_search":"0.01",
-"input_cache_read":"0.00000015",
-"input_cache_write":"0.000001875",
-"input_cache_write_1h":"0.000003",
-"overrides":[
-{
-"min_prompt_tokens":200000,
-"prompt":"0.000003",
-"completion":"0.00001125",
-"input_cache_read":"0.0000003",
-"input_cache_write":"0.00000375",
-"input_cache_write_1h":"0.000006"
-}
-]
-}
-},
-"claude-sonnet-4.5:batch":{
-"context_length":1000000,
-"max_completion_tokens":64000,
-"name":"Anthropic: Claude Sonnet 4.5 (batch)",
-"pricing":{
-"prompt":"0.0000015",
-"completion":"0.0000075",
-"web_search":"0.01",
-"input_cache_read":"0.00000015",
-"input_cache_write":"0.000001875",
-"input_cache_write_1h":"0.000003",
-"overrides":[
-{
-"min_prompt_tokens":200000,
-"prompt":"0.000003",
-"completion":"0.00001125",
-"input_cache_read":"0.0000003",
-"input_cache_write":"0.00000375",
-"input_cache_write_1h":"0.000006"
 }
 ]
 }
@@ -9382,12 +8807,12 @@
 "openai/gpt-5-2025-08-07":{
 "context_length":400000,
 "max_completion_tokens":128000,
-"name":"OpenAI: GPT-5 (batch)",
+"name":"OpenAI: GPT-5",
 "pricing":{
-"prompt":"0.000000625",
-"completion":"0.000005",
+"prompt":"0.00000125",
+"completion":"0.00001",
 "web_search":"0.01",
-"input_cache_read":"0.0000000625"
+"input_cache_read":"0.000000125"
 }
 },
 "gpt-5-2025-08-07":{
@@ -9399,28 +8824,6 @@
 "completion":"0.00001",
 "web_search":"0.01",
 "input_cache_read":"0.000000125"
-}
-},
-"openai/gpt-5:batch":{
-"context_length":400000,
-"max_completion_tokens":128000,
-"name":"OpenAI: GPT-5 (batch)",
-"pricing":{
-"prompt":"0.000000625",
-"completion":"0.000005",
-"web_search":"0.01",
-"input_cache_read":"0.0000000625"
-}
-},
-"gpt-5:batch":{
-"context_length":400000,
-"max_completion_tokens":128000,
-"name":"OpenAI: GPT-5 (batch)",
-"pricing":{
-"prompt":"0.000000625",
-"completion":"0.000005",
-"web_search":"0.01",
-"input_cache_read":"0.0000000625"
 }
 },
 "openai/gpt-5-mini":{
@@ -9448,12 +8851,12 @@
 "openai/gpt-5-mini-2025-08-07":{
 "context_length":400000,
 "max_completion_tokens":128000,
-"name":"OpenAI: GPT-5 Mini (batch)",
+"name":"OpenAI: GPT-5 Mini",
 "pricing":{
-"prompt":"0.000000125",
-"completion":"0.000001",
+"prompt":"0.00000025",
+"completion":"0.000002",
 "web_search":"0.01",
-"input_cache_read":"0.0000000125"
+"input_cache_read":"0.000000025"
 }
 },
 "gpt-5-mini-2025-08-07":{
@@ -9465,28 +8868,6 @@
 "completion":"0.000002",
 "web_search":"0.01",
 "input_cache_read":"0.000000025"
-}
-},
-"openai/gpt-5-mini:batch":{
-"context_length":400000,
-"max_completion_tokens":128000,
-"name":"OpenAI: GPT-5 Mini (batch)",
-"pricing":{
-"prompt":"0.000000125",
-"completion":"0.000001",
-"web_search":"0.01",
-"input_cache_read":"0.0000000125"
-}
-},
-"gpt-5-mini:batch":{
-"context_length":400000,
-"max_completion_tokens":128000,
-"name":"OpenAI: GPT-5 Mini (batch)",
-"pricing":{
-"prompt":"0.000000125",
-"completion":"0.000001",
-"web_search":"0.01",
-"input_cache_read":"0.0000000125"
 }
 },
 "openai/gpt-5-nano":{
@@ -9514,12 +8895,12 @@
 "openai/gpt-5-nano-2025-08-07":{
 "context_length":400000,
 "max_completion_tokens":128000,
-"name":"OpenAI: GPT-5 Nano (batch)",
+"name":"OpenAI: GPT-5 Nano",
 "pricing":{
-"prompt":"0.000000025",
-"completion":"0.0000002",
+"prompt":"0.00000005",
+"completion":"0.0000004",
 "web_search":"0.01",
-"input_cache_read":"0.0000000025"
+"input_cache_read":"0.000000005"
 }
 },
 "gpt-5-nano-2025-08-07":{
@@ -9531,28 +8912,6 @@
 "completion":"0.0000004",
 "web_search":"0.01",
 "input_cache_read":"0.000000005"
-}
-},
-"openai/gpt-5-nano:batch":{
-"context_length":400000,
-"max_completion_tokens":128000,
-"name":"OpenAI: GPT-5 Nano (batch)",
-"pricing":{
-"prompt":"0.000000025",
-"completion":"0.0000002",
-"web_search":"0.01",
-"input_cache_read":"0.0000000025"
-}
-},
-"gpt-5-nano:batch":{
-"context_length":400000,
-"max_completion_tokens":128000,
-"name":"OpenAI: GPT-5 Nano (batch)",
-"pricing":{
-"prompt":"0.000000025",
-"completion":"0.0000002",
-"web_search":"0.01",
-"input_cache_read":"0.0000000025"
 }
 },
 "openai/gpt-oss-120b":{
@@ -9588,8 +8947,7 @@
 "name":"OpenAI: gpt-oss-20b",
 "pricing":{
 "prompt":"0.00000003",
-"completion":"0.00000013",
-"input_cache_read":"0.00000003"
+"completion":"0.00000014"
 }
 },
 "openai/gpt-oss-20b:free":{
@@ -9639,14 +8997,14 @@
 "anthropic/claude-4.1-opus-20250805":{
 "context_length":200000,
 "max_completion_tokens":32000,
-"name":"Anthropic: Claude Opus 4.1 (batch)",
+"name":"Anthropic: Claude Opus 4.1",
 "pricing":{
-"prompt":"0.0000075",
-"completion":"0.0000375",
+"prompt":"0.000015",
+"completion":"0.000075",
 "web_search":"0.01",
-"input_cache_read":"0.00000075",
-"input_cache_write":"0.000009375",
-"input_cache_write_1h":"0.000015"
+"input_cache_read":"0.0000015",
+"input_cache_write":"0.00001875",
+"input_cache_write_1h":"0.00003"
 }
 },
 "claude-4.1-opus-20250805":{
@@ -9660,32 +9018,6 @@
 "input_cache_read":"0.0000015",
 "input_cache_write":"0.00001875",
 "input_cache_write_1h":"0.00003"
-}
-},
-"anthropic/claude-opus-4.1:batch":{
-"context_length":200000,
-"max_completion_tokens":32000,
-"name":"Anthropic: Claude Opus 4.1 (batch)",
-"pricing":{
-"prompt":"0.0000075",
-"completion":"0.0000375",
-"web_search":"0.01",
-"input_cache_read":"0.00000075",
-"input_cache_write":"0.000009375",
-"input_cache_write_1h":"0.000015"
-}
-},
-"claude-opus-4.1:batch":{
-"context_length":200000,
-"max_completion_tokens":32000,
-"name":"Anthropic: Claude Opus 4.1 (batch)",
-"pricing":{
-"prompt":"0.0000075",
-"completion":"0.0000375",
-"web_search":"0.01",
-"input_cache_read":"0.00000075",
-"input_cache_write":"0.000009375",
-"input_cache_write_1h":"0.000015"
 }
 },
 "mistralai/codestral-2508":{
@@ -9710,20 +9042,20 @@
 },
 "qwen/qwen3-coder-30b-a3b-instruct":{
 "context_length":262144,
-"max_completion_tokens":32768,
+"max_completion_tokens":262144,
 "name":"Qwen: Qwen3 Coder 30B A3B Instruct",
 "pricing":{
 "prompt":"0.00000007",
-"completion":"0.00000027"
+"completion":"0.00000028"
 }
 },
 "qwen3-coder-30b-a3b-instruct":{
 "context_length":262144,
-"max_completion_tokens":32768,
+"max_completion_tokens":262144,
 "name":"Qwen: Qwen3 Coder 30B A3B Instruct",
 "pricing":{
 "prompt":"0.00000007",
-"completion":"0.00000027"
+"completion":"0.00000028"
 }
 },
 "qwen/qwen3-30b-a3b-instruct-2507":{
@@ -9865,16 +9197,17 @@
 "google/gemini-2.5-flash-lite":{
 "context_length":1048576,
 "max_completion_tokens":65535,
-"name":"Google: Gemini 2.5 Flash Lite (batch)",
+"name":"Google: Gemini 2.5 Flash Lite",
 "pricing":{
-"prompt":"0.00000005",
-"completion":"0.0000002",
-"image":"0.00000005",
-"audio":"0.00000015",
+"prompt":"0.0000001",
+"completion":"0.0000004",
+"image":"0.0000001",
+"audio":"0.0000003",
 "input_audio_cache":"0.00000003",
 "web_search":"0.014",
-"internal_reasoning":"0.0000002",
-"input_cache_read":"0.00000001"
+"internal_reasoning":"0.0000004",
+"input_cache_read":"0.00000001",
+"input_cache_write":"0.00000008333333333333334"
 }
 },
 "gemini-2.5-flash-lite":{
@@ -9891,36 +9224,6 @@
 "internal_reasoning":"0.0000004",
 "input_cache_read":"0.00000001",
 "input_cache_write":"0.00000008333333333333334"
-}
-},
-"google/gemini-2.5-flash-lite:batch":{
-"context_length":1048576,
-"max_completion_tokens":65535,
-"name":"Google: Gemini 2.5 Flash Lite (batch)",
-"pricing":{
-"prompt":"0.00000005",
-"completion":"0.0000002",
-"image":"0.00000005",
-"audio":"0.00000015",
-"input_audio_cache":"0.00000003",
-"web_search":"0.014",
-"internal_reasoning":"0.0000002",
-"input_cache_read":"0.00000001"
-}
-},
-"gemini-2.5-flash-lite:batch":{
-"context_length":1048576,
-"max_completion_tokens":65535,
-"name":"Google: Gemini 2.5 Flash Lite (batch)",
-"pricing":{
-"prompt":"0.00000005",
-"completion":"0.0000002",
-"image":"0.00000005",
-"audio":"0.00000015",
-"input_audio_cache":"0.00000003",
-"web_search":"0.014",
-"internal_reasoning":"0.0000002",
-"input_cache_read":"0.00000001"
 }
 },
 "qwen/qwen3-235b-a22b-2507":{
@@ -10087,42 +9390,38 @@
 },
 "mistralai/mistral-small-3.2-24b-instruct":{
 "context_length":256000,
-"max_completion_tokens":null,
+"max_completion_tokens":16384,
 "name":"Mistral: Mistral Small 3.2 24B",
 "pricing":{
-"prompt":"0.0000001",
-"completion":"0.0000003",
-"input_cache_read":"0.00000001"
+"prompt":"0.000000075",
+"completion":"0.0000002"
 }
 },
 "mistral-small-3.2-24b-instruct":{
 "context_length":256000,
-"max_completion_tokens":null,
+"max_completion_tokens":16384,
 "name":"Mistral: Mistral Small 3.2 24B",
 "pricing":{
-"prompt":"0.0000001",
-"completion":"0.0000003",
-"input_cache_read":"0.00000001"
+"prompt":"0.000000075",
+"completion":"0.0000002"
 }
 },
 "mistralai/mistral-small-3.2-24b-instruct-2506":{
 "context_length":256000,
-"max_completion_tokens":null,
+"max_completion_tokens":16384,
 "name":"Mistral: Mistral Small 3.2 24B",
 "pricing":{
-"prompt":"0.0000001",
-"completion":"0.0000003",
-"input_cache_read":"0.00000001"
+"prompt":"0.000000075",
+"completion":"0.0000002"
 }
 },
 "mistral-small-3.2-24b-instruct-2506":{
 "context_length":256000,
-"max_completion_tokens":null,
+"max_completion_tokens":16384,
 "name":"Mistral: Mistral Small 3.2 24B",
 "pricing":{
-"prompt":"0.0000001",
-"completion":"0.0000003",
-"input_cache_read":"0.00000001"
+"prompt":"0.000000075",
+"completion":"0.0000002"
 }
 },
 "minimax/minimax-m1":{
@@ -10146,16 +9445,17 @@
 "google/gemini-2.5-flash":{
 "context_length":1048576,
 "max_completion_tokens":65535,
-"name":"Google: Gemini 2.5 Flash (batch)",
+"name":"Google: Gemini 2.5 Flash",
 "pricing":{
-"prompt":"0.00000015",
-"completion":"0.00000125",
-"image":"0.00000015",
-"audio":"0.0000005",
+"prompt":"0.0000003",
+"completion":"0.0000025",
+"image":"0.0000003",
+"audio":"0.000001",
 "input_audio_cache":"0.0000001",
 "web_search":"0.014",
-"internal_reasoning":"0.00000125",
-"input_cache_read":"0.00000003"
+"internal_reasoning":"0.0000025",
+"input_cache_read":"0.00000003",
+"input_cache_write":"0.00000008333333333333334"
 }
 },
 "gemini-2.5-flash":{
@@ -10174,55 +9474,26 @@
 "input_cache_write":"0.00000008333333333333334"
 }
 },
-"google/gemini-2.5-flash:batch":{
-"context_length":1048576,
-"max_completion_tokens":65535,
-"name":"Google: Gemini 2.5 Flash (batch)",
-"pricing":{
-"prompt":"0.00000015",
-"completion":"0.00000125",
-"image":"0.00000015",
-"audio":"0.0000005",
-"input_audio_cache":"0.0000001",
-"web_search":"0.014",
-"internal_reasoning":"0.00000125",
-"input_cache_read":"0.00000003"
-}
-},
-"gemini-2.5-flash:batch":{
-"context_length":1048576,
-"max_completion_tokens":65535,
-"name":"Google: Gemini 2.5 Flash (batch)",
-"pricing":{
-"prompt":"0.00000015",
-"completion":"0.00000125",
-"image":"0.00000015",
-"audio":"0.0000005",
-"input_audio_cache":"0.0000001",
-"web_search":"0.014",
-"internal_reasoning":"0.00000125",
-"input_cache_read":"0.00000003"
-}
-},
 "google/gemini-2.5-pro":{
 "context_length":1048576,
 "max_completion_tokens":65536,
-"name":"Google: Gemini 2.5 Pro (batch)",
+"name":"Google: Gemini 2.5 Pro",
 "pricing":{
-"prompt":"0.000000625",
-"completion":"0.000005",
-"image":"0.000000625",
-"audio":"0.000000625",
+"prompt":"0.00000125",
+"completion":"0.00001",
+"image":"0.00000125",
+"audio":"0.00000125",
 "input_audio_cache":"0.000000125",
 "web_search":"0.014",
-"internal_reasoning":"0.000005",
+"internal_reasoning":"0.00001",
 "input_cache_read":"0.000000125",
+"input_cache_write":"0.000000375",
 "overrides":[
 {
 "min_prompt_tokens":200000,
-"prompt":"0.00000125",
-"completion":"0.0000075",
-"audio":"0.00000125",
+"prompt":"0.0000025",
+"completion":"0.000015",
+"audio":"0.0000025",
 "input_audio_cache":"0.00000025",
 "input_cache_read":"0.00000025"
 }
@@ -10249,56 +9520,6 @@
 "prompt":"0.0000025",
 "completion":"0.000015",
 "audio":"0.0000025",
-"input_audio_cache":"0.00000025",
-"input_cache_read":"0.00000025"
-}
-]
-}
-},
-"google/gemini-2.5-pro:batch":{
-"context_length":1048576,
-"max_completion_tokens":65536,
-"name":"Google: Gemini 2.5 Pro (batch)",
-"pricing":{
-"prompt":"0.000000625",
-"completion":"0.000005",
-"image":"0.000000625",
-"audio":"0.000000625",
-"input_audio_cache":"0.000000125",
-"web_search":"0.014",
-"internal_reasoning":"0.000005",
-"input_cache_read":"0.000000125",
-"overrides":[
-{
-"min_prompt_tokens":200000,
-"prompt":"0.00000125",
-"completion":"0.0000075",
-"audio":"0.00000125",
-"input_audio_cache":"0.00000025",
-"input_cache_read":"0.00000025"
-}
-]
-}
-},
-"gemini-2.5-pro:batch":{
-"context_length":1048576,
-"max_completion_tokens":65536,
-"name":"Google: Gemini 2.5 Pro (batch)",
-"pricing":{
-"prompt":"0.000000625",
-"completion":"0.000005",
-"image":"0.000000625",
-"audio":"0.000000625",
-"input_audio_cache":"0.000000125",
-"web_search":"0.014",
-"internal_reasoning":"0.000005",
-"input_cache_read":"0.000000125",
-"overrides":[
-{
-"min_prompt_tokens":200000,
-"prompt":"0.00000125",
-"completion":"0.0000075",
-"audio":"0.00000125",
 "input_audio_cache":"0.00000025",
 "input_cache_read":"0.00000025"
 }
