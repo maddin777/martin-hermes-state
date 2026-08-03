@@ -1,42 +1,62 @@
 {
+"~deepseek/deepseek-v4-flash-latest":{
+"context_length":1048576,
+"max_completion_tokens":65536,
+"name":"DeepSeek V4 Flash Latest",
+"pricing":{
+"prompt":"0.00000009",
+"completion":"0.00000018",
+"input_cache_read":"0.000000018"
+}
+},
+"deepseek-v4-flash-latest":{
+"context_length":1048576,
+"max_completion_tokens":65536,
+"name":"DeepSeek V4 Flash Latest",
+"pricing":{
+"prompt":"0.00000009",
+"completion":"0.00000018",
+"input_cache_read":"0.000000018"
+}
+},
 "deepseek/deepseek-v4-flash-0731":{
 "context_length":1048576,
-"max_completion_tokens":384000,
+"max_completion_tokens":65536,
 "name":"DeepSeek: DeepSeek V4 Flash 0731",
 "pricing":{
-"prompt":"0.00000014",
-"completion":"0.00000028",
-"input_cache_read":"0.0000000028"
+"prompt":"0.00000009",
+"completion":"0.00000018",
+"input_cache_read":"0.000000018"
 }
 },
 "deepseek-v4-flash-0731":{
 "context_length":1048576,
-"max_completion_tokens":384000,
+"max_completion_tokens":65536,
 "name":"DeepSeek: DeepSeek V4 Flash 0731",
 "pricing":{
-"prompt":"0.00000014",
-"completion":"0.00000028",
-"input_cache_read":"0.0000000028"
+"prompt":"0.00000009",
+"completion":"0.00000018",
+"input_cache_read":"0.000000018"
 }
 },
 "deepseek/deepseek-v4-flash-20260731":{
 "context_length":1048576,
-"max_completion_tokens":384000,
+"max_completion_tokens":65536,
 "name":"DeepSeek: DeepSeek V4 Flash 0731",
 "pricing":{
-"prompt":"0.00000014",
-"completion":"0.00000028",
-"input_cache_read":"0.0000000028"
+"prompt":"0.00000009",
+"completion":"0.00000018",
+"input_cache_read":"0.000000018"
 }
 },
 "deepseek-v4-flash-20260731":{
 "context_length":1048576,
-"max_completion_tokens":384000,
+"max_completion_tokens":65536,
 "name":"DeepSeek: DeepSeek V4 Flash 0731",
 "pricing":{
-"prompt":"0.00000014",
-"completion":"0.00000028",
-"input_cache_read":"0.0000000028"
+"prompt":"0.00000009",
+"completion":"0.00000018",
+"input_cache_read":"0.000000018"
 }
 },
 "thinkingmachines/inkling-small":{
@@ -1911,42 +1931,42 @@
 },
 "z-ai/glm-5.2":{
 "context_length":1048576,
-"max_completion_tokens":128000,
+"max_completion_tokens":131072,
 "name":"Z.ai: GLM 5.2",
 "pricing":{
-"prompt":"0.00000076006",
-"completion":"0.00000238876",
-"input_cache_read":"0.000000141154"
+"prompt":"0.0000003934",
+"completion":"0.0000012364",
+"input_cache_read":"0.00000007306"
 }
 },
 "glm-5.2":{
 "context_length":1048576,
-"max_completion_tokens":128000,
+"max_completion_tokens":131072,
 "name":"Z.ai: GLM 5.2",
 "pricing":{
-"prompt":"0.00000076006",
-"completion":"0.00000238876",
-"input_cache_read":"0.000000141154"
+"prompt":"0.0000003934",
+"completion":"0.0000012364",
+"input_cache_read":"0.00000007306"
 }
 },
 "z-ai/glm-5.2-20260616":{
 "context_length":1048576,
-"max_completion_tokens":128000,
+"max_completion_tokens":131072,
 "name":"Z.ai: GLM 5.2",
 "pricing":{
-"prompt":"0.00000076006",
-"completion":"0.00000238876",
-"input_cache_read":"0.000000141154"
+"prompt":"0.0000003934",
+"completion":"0.0000012364",
+"input_cache_read":"0.00000007306"
 }
 },
 "glm-5.2-20260616":{
 "context_length":1048576,
-"max_completion_tokens":128000,
+"max_completion_tokens":131072,
 "name":"Z.ai: GLM 5.2",
 "pricing":{
-"prompt":"0.00000076006",
-"completion":"0.00000238876",
-"input_cache_read":"0.000000141154"
+"prompt":"0.0000003934",
+"completion":"0.0000012364",
+"input_cache_read":"0.00000007306"
 }
 },
 "openrouter/fusion":{
@@ -8947,7 +8967,8 @@
 "name":"OpenAI: gpt-oss-20b",
 "pricing":{
 "prompt":"0.00000003",
-"completion":"0.00000014"
+"completion":"0.00000013",
+"input_cache_read":"0.00000003"
 }
 },
 "openai/gpt-oss-20b:free":{
