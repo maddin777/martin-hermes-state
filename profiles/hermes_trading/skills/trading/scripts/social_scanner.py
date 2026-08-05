@@ -23,11 +23,9 @@ log = get_logger("social_scanner")
 OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY")
 MODEL = "google/gemini-2.5-flash-lite"
 
-# xAI / Grok — OAuth-Token aus auth.json
-AUTH_PATH = "/root/.hermes/auth.json"
+# xAI / Grok — via Hermes resolve_xai_http_credentials() (auto-refresh via OAuth)
 XAI_BASE = "https://api.x.ai/v1"
 XAI_MODEL = "grok-4.5"
-_XAI_TOKEN_CACHE = None  # globaler Cache fuer die Session
 
 DAYS = 2
 
@@ -39,61 +37,66 @@ def load_config():
 # ── xAI / Grok Helpers ──────────────────────────────────────────────
 
 def _resolve_xai_token() -> str:
-    """Liest xAI OAuth-Token aus auth.json (credential_pool.xai-oauth).
+    """xAI OAuth-Token — primär via resolve_xai_http_credentials() (auto-refresh),
+    Fallback auf auth.json direkt (ohne Cache, liest bei jedem Call frisch).
 
-    Nimmt den zuletzt hinzugefuegten/refreshten Eintrag (hoechster Priority = aktuellster).
-    Gecached fuer die Session. Returns Leerstring wenn kein Token verfuegbar.
+    Kein Session-Cache mehr — so wird ein via OAuth-Refresh aktualisierter
+    Token beim nächsten Call sofort erkannt.
+    Returns Leerstring wenn kein Token verfuegbar.
     """
-    global _XAI_TOKEN_CACHE
-    if _XAI_TOKEN_CACHE:
-        return _XAI_TOKEN_CACHE
-
+    # Pfad 1: Hermes resolve_xai_http_credentials() mit auto-refresh
     try:
-        with open(AUTH_PATH) as f:
-            auth = json.load(f)
-
-        # 1. credential_pool.xai-oauth — nimm den aktuellsten (letzter Eintrag)
-        pool = auth.get("credential_pool", {})
-        entries = pool.get("xai-oauth", [])
-        if entries:
-            # Sortiere nach last_refresh (desc), nimm aktuellsten
-            valid = [e for e in entries if e.get("access_token")]
-            valid.sort(key=lambda e: e.get("last_refresh", ""), reverse=True)
-            if valid:
-                _XAI_TOKEN_CACHE = valid[0]["access_token"]
-                return _XAI_TOKEN_CACHE
-
-        # 2. providers.xai-oauth.tokens (fallback)
-        providers = auth.get("providers", {})
-        xai_state = providers.get("xai-oauth", {})
-        tokens = xai_state.get("tokens", {})
-        if tokens.get("access_token"):
-            _XAI_TOKEN_CACHE = tokens["access_token"]
-            return _XAI_TOKEN_CACHE
+        from tools.xai_http import resolve_xai_http_credentials
+        creds = resolve_xai_http_credentials()
+        token = str(creds.get("api_key") or "").strip()
+        if token:
+            return token
     except Exception as e:
-        log.warning("xAI Token-Lesen fehlgeschlagen: %s", e)
+        log.debug("xAI Token via Hermes: %s", e)
 
-    # 3. XAI_API_KEY env var (letzter Fallback)
-    api_key = os.environ.get("XAI_API_KEY", "").strip()
-    if api_key:
-        _XAI_TOKEN_CACHE = api_key
-        return _XAI_TOKEN_CACHE
+    # Pfad 2: auth.json direkt (wenn Hermes-Import wegen Namespace-Kollision fehlschlägt)
+    try:
+        for candidate in [
+            "/root/.hermes/auth.json",
+            os.path.expanduser("~/.hermes/auth.json"),
+        ]:
+            if os.path.exists(candidate):
+                with open(candidate) as f:
+                    auth = json.load(f)
+                # credential_pool.xai-oauth — aktuellster Eintrag
+                pool = auth.get("credential_pool", {})
+                entries = pool.get("xai-oauth", [])
+                if entries:
+                    valid = [e for e in entries if e.get("access_token")]
+                    valid.sort(key=lambda e: e.get("last_refresh", ""), reverse=True)
+                    if valid:
+                        return valid[0]["access_token"]
+                # providers.xai-oauth.tokens (fallback)
+                providers = auth.get("providers", {})
+                xai_state = providers.get("xai-oauth", {})
+                tokens = xai_state.get("tokens", {})
+                if tokens.get("access_token"):
+                    return tokens["access_token"]
+    except Exception as e:
+        log.debug("xAI Token via auth.json: %s", e)
 
-    return ""
+    # Pfad 3: XAI_API_KEY env var (letzter Fallback)
+    return os.environ.get("XAI_API_KEY", "").strip()
 
 
 def _call_x_search(query: str, handles: list = None,
-                   from_date: str = "", to_date: str = "") -> dict:
+                   from_date: str = "", to_date: str = "") -> dict | None:
     """Ruft xAI Responses API mit x_search-Tool auf.
 
     Single-Call: Grok sucht auf X/Twitter und extrahiert Unternehmen.
+    Retry bei 429 (Rate-Limit), 5xx (Server-Fehler), Timeout.
     Returns {"answer": str, "citations": list} oder None bei Fehler.
     """
     token = _resolve_xai_token()
     if not token:
         return None
 
-    tool_def = {"type": "x_search"}
+    tool_def: dict = {"type": "x_search"}
     if handles:
         tool_def["allowed_x_handles"] = [h.lstrip("@") for h in handles]
     if from_date:
@@ -108,7 +111,8 @@ def _call_x_search(query: str, handles: list = None,
         "store": False,
     }
 
-    for attempt in range(3):
+    max_retries = 2
+    for attempt in range(max_retries + 1):
         try:
             r = requests.post(
                 f"{XAI_BASE}/responses",
@@ -117,18 +121,33 @@ def _call_x_search(query: str, handles: list = None,
                     "Content-Type": "application/json",
                 },
                 json=payload,
-                timeout=90,
+                timeout=180,
             )
+
+            # Rate-Limit: exponential backoff
             if r.status_code == 429:
-                time.sleep(2 ** attempt)
+                wait = 2 ** attempt
+                log.warning("xAI 429 Rate-Limit (attempt %s/2), warte %ss", attempt + 1, wait)
+                time.sleep(wait)
                 continue
+
+            # 5xx: retry
+            if r.status_code >= 500:
+                if attempt < max_retries:
+                    wait = min(5.0, 1.5 * (attempt + 1))
+                    log.warning("xAI %s (attempt %s/2), retry in %.1fs", r.status_code, attempt + 1, wait)
+                    time.sleep(wait)
+                    continue
+                log.warning("xAI API HTTP %s nach %s Versuchen: %s", r.status_code, max_retries + 1, r.text[:200])
+                return None
+
             if r.status_code != 200:
                 log.warning("xAI API HTTP %s: %s", r.status_code, r.text[:200])
                 return None
+
             data = r.json()
 
             # Antwort aus output[] extrahieren (Responses API Format)
-            # output_text ist None, die Antwort steckt in output[].content[].text
             parts = []
             for item in data.get("output", []) or []:
                 if item.get("type") != "message":
@@ -144,7 +163,6 @@ def _call_x_search(query: str, handles: list = None,
             # Citations aus inline annotations
             citations = list(data.get("citations") or [])
             if not citations:
-                # Fallback: aus annotations extrahieren
                 for item in data.get("output", []) or []:
                     if item.get("type") != "message":
                         continue
@@ -157,16 +175,24 @@ def _call_x_search(query: str, handles: list = None,
                 log.warning("xAI API: leere Antwort")
                 return None
             return {"answer": answer, "citations": citations}
+
         except requests.Timeout:
-            if attempt == 2:
-                log.warning("xAI API Timeout nach 90s")
-                return None
-            time.sleep(2)
+            if attempt < max_retries:
+                wait = min(5.0, 1.5 * (attempt + 1))
+                log.warning("xAI Timeout (attempt %s/2), retry in %.1fs", attempt + 1, wait)
+                time.sleep(wait)
+                continue
+            log.warning("xAI API Timeout nach 180s und %s Versuchen", max_retries + 1)
+            return None
+
         except Exception as e:
-            if attempt == 2:
-                log.warning("xAI API Fehler: %s", e)
-                return None
-            time.sleep(2)
+            if attempt < max_retries:
+                wait = min(5.0, 1.5 * (attempt + 1))
+                log.warning("xAI Fehler (attempt %s/2): %s — retry in %.1fs", attempt + 1, e, wait)
+                time.sleep(wait)
+                continue
+            log.warning("xAI API Fehler nach %s Versuchen: %s", max_retries + 1, e)
+            return None
 
     return None
 

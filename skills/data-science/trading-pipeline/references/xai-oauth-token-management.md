@@ -18,15 +18,69 @@
 Das Trading-Profil hat eine eigene Kopie in `/root/.hermes/profiles/hermes_trading/auth.json`.
 Beide müssen denselben Token haben — der `social_scanner.py` liest aus der `~/.hermes/auth.json`.
 
-## Wie der Token gelesen wird (social_scanner.py)
+## Wie der Token gelesen wird (social_scanner.py, seit 04.08.2026)
+
+Seit dem 04.08.2026 gibt es **keinen Session-Cache mehr** (`_XAI_TOKEN_CACHE` entfernt).
+Jeder Call liest den Token frisch, damit ein via OAuth-Refresh aktualisierter
+Token sofort erkannt wird.
 
 ```python
 def _resolve_xai_token():
-    # 1. credential_pool.xai-oauth (primary)
-    # 2. providers.xai-oauth.tokens (legacy)
-    # 3. XAI_API_KEY env var
-    # Gecached für die Session
+    # 1. resolve_xai_http_credentials() — Hermes' OAuth-Manager mit auto-refresh
+    # 2. auth.json direkt (credential_pool.xai-oauth) — Fallback bei Namespace-Kollision
+    # 3. XAI_API_KEY env var — letzter Fallback
 ```
+
+### ⚠️ Namespace-Kollision (Trading-Profil)
+
+`resolve_xai_http_credentials()` importiert `agent.credential_pool` → `hermes_cli.config`,
+das wiederum `from utils import atomic_replace, fast_safe_load` versucht.
+
+Im Trading-Profil shadowt das profil-eigene `utils.py` (`scripts/../utils.py`) das
+Hermes-eigene `utils.py`. Weil der PYTHONPATH des Profils das Trading-Verzeichnis
+als erstes setzt, importiert `hermes_cli.config` das **falsche** `utils` → `ImportError`.
+
+**Symptom:** `resolve_xai_http_credentials()` returniert `{"provider": "xai", ...}`
+(env-var-Fallback) statt `{"provider": "xai-oauth", ...}` (OAuth). Der Token ist
+trotzdem vorhanden (wenn XAI_API_KEY gesetzt ist) oder fehlt.
+
+**Lösung im Code:** 3-stufiger Fallback:
+```python
+def _resolve_xai_token() -> str:
+    # Pfad 1: Hermes resolve_xai_http_credentials() mit auto-refresh
+    try:
+        from tools.xai_http import resolve_xai_http_credentials
+        creds = resolve_xai_http_credentials()
+        token = str(creds.get("api_key") or "").strip()
+        if token:
+            return token
+    except Exception:
+        pass
+
+    # Pfad 2: auth.json direkt — ohne Cache, liest bei jedem Call frisch
+    try:
+        for candidate in ["/root/.hermes/auth.json", "~/.hermes/auth.json"]:
+            if os.path.exists(candidate):
+                with open(candidate) as f:
+                    auth = json.load(f)
+                # credential_pool.xai-oauth — aktuellster nach last_refresh
+                entries = auth.get("credential_pool", {}).get("xai-oauth", [])
+                valid = [e for e in entries if e.get("access_token")]
+                valid.sort(key=lambda e: e.get("last_refresh", ""), reverse=True)
+                if valid:
+                    return valid[0]["access_token"]
+                # providers.xai-oauth.tokens (legacy fallback)
+                tokens = auth.get("providers", {}).get("xai-oauth", {}).get("tokens", {})
+                if tokens.get("access_token"):
+                    return tokens["access_token"]
+    except Exception:
+        pass
+
+    return os.environ.get("XAI_API_KEY", "").strip()
+```
+
+**Prävention:** Kein Cache (`_XAI_TOKEN_CACHE`). Die Datei-Lese-Kosten sind
+vernachlässigbar (max 3 Lesevorgänge pro Pipeline-Lauf).
 
 ## Symptome eines abgelaufenen Tokens
 
@@ -108,7 +162,21 @@ auf https://auth.x.ai/activate eingibst. Danach ist der OAuth-Flow frisch.
 | Auth | `Authorization: Bearer <token>` |
 | Content-Type | `application/json` |
 | Tool | `{"type": "x_search"}` mit optionalen Filtern |
-| Response | `output_text` (Antwort), `citations` (Tweet-URLs) |
+| Response | `output`-Array (nicht `output_text`!), `citations` (Tweet-URLs) |
+
+### Retry-Logik in `_call_x_search()` (seit 04.08.2026)
+
+Angehoben auf das Niveau von `x_search_tool.py`:
+
+| Kriterium | Verhalten |
+|-----------|-----------|
+| **429 Rate-Limit** | Exponential backoff: 1s → 2s → 4s |
+| **5xx Server-Fehler** | Retry (max 2), mit `min(5.0, 1.5 * (attempt + 1))` delay |
+| **Timeout (180s)** | Retry (max 2), gleicher delay |
+| **Sonstige Exceptions** | Retry (max 2), gleicher delay |
+| Abbruch nach 3 Versuchen | Log Warning, return None → Fallback twitterapi.io |
+
+**Vorher:** 90s Timeout, undifferenzierte Retry-Logik (nur 429 + generischer `except`).
 
 ### Request-Format
 

@@ -78,6 +78,7 @@ Database is at:
 | 15:30 | `active_exit_check.py` | täglich | Afternoon exit checks |
 | 20:00 (Fr) | `signal_manager.py full` | Fr | Weekly signal review |
 | 22:15 | `export_watchlist.py` (Hermes-Cron, no_agent) | Mo–Fr | Watchlist aus DB → Obsidian Vault exportieren (Cron-ID: `446aad622784`, Wrapper: `~/.hermes/scripts/export_watchlist.sh`) |\n| 22:20 | `watchlist_marker_check.py` (Hermes-Cron, no_agent) | Mo–Fr | 🛒-Marker-Gap prüfen (silent bei OK, Alarm bei Gap). Cron-ID: `53e28fdb66d4` |\n| 23:15 | `refresh_tech_scores.py` (Hermes-Cron) | Mo–Fr | Tech-Scores für Watchlist neu berechnen |
+| 09:30 | `sector-probation-check` (Hermes-Cron) | Mo–Fr | Prüft ob Sektoren aus Cooldown + keine Probation → Telegram-Alert. Cron-ID: `dda431ae4b55` |
 
 **Wochenend-Crontab:**
 | Zeit | Script | Purpose |
@@ -560,6 +561,8 @@ genau einen Trade. Bei Gewinn → Sektor frei, bei Verlust → erneuter Cooldown
 
 **Manuelles Setzen:** Siehe `references/sector-blacklist-probation.md`.
 
+**⚠️ Probation-Cron (seit 04.08.2026):** `sector-probation-check` (dda431ae4b55, Mo–Fr 09:30) alarmiert wenn ein Sektor aus dem Cooldown ist, aber noch kein Probation-Trade gemacht wurde. Script: `scripts/sector_probation_check.py` — JOINt watchlist + companies nach Sector, filtert ≥70% Conviction, sendet Telegram-Alert mit Top-Kandidat.
+
 **⚠️ Alte `signal_manager.py`-Logik** (`update_sector_blacklist()`, `is_sector_allowed()`) 
 nutzt noch `strategy_config.json` und muss separat auf die DB umgestellt werden.
 
@@ -606,11 +609,15 @@ Twitter/X-Daten werden primär über die xAI Responses API mit `x_search`-Tool\n
 
 ### Auth-Architektur
 
-- **Token-Quelle:** `~/.hermes/auth.json` → `credential_pool.xai-oauth[0].access_token`
+- **Token-Quelle:** `~/.hermes/auth.json` → `credential_pool.xai-oauth[0].access_token` (primär)
 - **Auth-Typ:** OAuth 2.0 (PKCE-Flow, eingerichtet via `hermes auth add xai-oauth`)
-- **Token-Refresh:** Automatisch via Hermes' `resolve_xai_http_credentials()` — schlägt fehl wenn der Refresh-Token abgelaufen ist (>30 Tage)
-- **Fallback:** `XAI_API_KEY`-Env-Var (für API-Key-Nutzer ohne OAuth)
+- **Token-Refresh:** 
+  - Primär: `resolve_xai_http_credentials()` mit auto-refresh via credential_pool
+  - Fallback: auth.json direkt lesen (ohne Cache) — nötig bei Namespace-Kollision mit Trading-Profil `utils.py`
+  - Env-Fallback: `XAI_API_KEY`
+- **Kein Session-Cache** seit 04.08.2026 — jeder Call liest frisch
 - **Base URL:** `https://api.x.ai/v1`
+- **Retry in `_call_x_search()`:** 180s Timeout, max 3 Versuche (initial + 2 Retries), 429→exponential backoff, 5xx→retry
 
 **Bekanntes Problem:** OAuth-Tokens sind kurzlebig (~6h). Der Refresh-Token hält ~30 Tage. Wenn `hermes auth add xai-oauth` länger als 30 Tage zurückliegt, muss der Flow neu durchlaufen werden. Symptom: HTTP 403 vom xAI Responses API.
 
