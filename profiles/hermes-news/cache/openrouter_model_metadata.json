@@ -1345,7 +1345,7 @@
 "x-ai/grok-4.5":{
 "context_length":500000,
 "max_completion_tokens":null,
-"name":"xAI: Grok 4.5",
+"name":"SpaceXAI: Grok 4.5",
 "pricing":{
 "prompt":"0.000002",
 "completion":"0.000006",
@@ -1364,7 +1364,7 @@
 "grok-4.5":{
 "context_length":500000,
 "max_completion_tokens":null,
-"name":"xAI: Grok 4.5",
+"name":"SpaceXAI: Grok 4.5",
 "pricing":{
 "prompt":"0.000002",
 "completion":"0.000006",
@@ -1383,7 +1383,7 @@
 "x-ai/grok-4.5-20260708":{
 "context_length":500000,
 "max_completion_tokens":null,
-"name":"xAI: Grok 4.5",
+"name":"SpaceXAI: Grok 4.5",
 "pricing":{
 "prompt":"0.000002",
 "completion":"0.000006",
@@ -1402,7 +1402,7 @@
 "grok-4.5-20260708":{
 "context_length":500000,
 "max_completion_tokens":null,
-"name":"xAI: Grok 4.5",
+"name":"SpaceXAI: Grok 4.5",
 "pricing":{
 "prompt":"0.000002",
 "completion":"0.000006",
@@ -2573,7 +2573,7 @@
 "x-ai/grok-build-0.1":{
 "context_length":256000,
 "max_completion_tokens":null,
-"name":"xAI: Grok Build 0.1",
+"name":"SpaceXAI: Grok Build 0.1",
 "pricing":{
 "prompt":"0.000001",
 "completion":"0.000002",
@@ -2592,7 +2592,7 @@
 "grok-build-0.1":{
 "context_length":256000,
 "max_completion_tokens":null,
-"name":"xAI: Grok Build 0.1",
+"name":"SpaceXAI: Grok Build 0.1",
 "pricing":{
 "prompt":"0.000001",
 "completion":"0.000002",
@@ -2611,7 +2611,7 @@
 "x-ai/grok-build-0.1-20260520":{
 "context_length":256000,
 "max_completion_tokens":null,
-"name":"xAI: Grok Build 0.1",
+"name":"SpaceXAI: Grok Build 0.1",
 "pricing":{
 "prompt":"0.000001",
 "completion":"0.000002",
@@ -2630,7 +2630,7 @@
 "grok-build-0.1-20260520":{
 "context_length":256000,
 "max_completion_tokens":null,
-"name":"xAI: Grok Build 0.1",
+"name":"SpaceXAI: Grok Build 0.1",
 "pricing":{
 "prompt":"0.000001",
 "completion":"0.000002",
@@ -2949,7 +2949,7 @@
 "x-ai/grok-4.3":{
 "context_length":1000000,
 "max_completion_tokens":null,
-"name":"xAI: Grok 4.3",
+"name":"SpaceXAI: Grok 4.3",
 "pricing":{
 "prompt":"0.00000125",
 "completion":"0.0000025",
@@ -2968,7 +2968,7 @@
 "grok-4.3":{
 "context_length":1000000,
 "max_completion_tokens":null,
-"name":"xAI: Grok 4.3",
+"name":"SpaceXAI: Grok 4.3",
 "pricing":{
 "prompt":"0.00000125",
 "completion":"0.0000025",
@@ -2987,7 +2987,7 @@
 "x-ai/grok-4.3-20260430":{
 "context_length":1000000,
 "max_completion_tokens":null,
-"name":"xAI: Grok 4.3",
+"name":"SpaceXAI: Grok 4.3",
 "pricing":{
 "prompt":"0.00000125",
 "completion":"0.0000025",
@@ -3006,7 +3006,7 @@
 "grok-4.3-20260430":{
 "context_length":1000000,
 "max_completion_tokens":null,
-"name":"xAI: Grok 4.3",
+"name":"SpaceXAI: Grok 4.3",
 "pricing":{
 "prompt":"0.00000125",
 "completion":"0.0000025",
@@ -4464,7 +4464,7 @@
 "x-ai/grok-4.20-multi-agent":{
 "context_length":2000000,
 "max_completion_tokens":null,
-"name":"xAI: Grok 4.20 Multi-Agent",
+"name":"SpaceXAI: Grok 4.20 Multi-Agent",
 "pricing":{
 "prompt":"0.00000125",
 "completion":"0.0000025",
@@ -4483,7 +4483,7 @@
 "grok-4.20-multi-agent":{
 "context_length":2000000,
 "max_completion_tokens":null,
-"name":"xAI: Grok 4.20 Multi-Agent",
+"name":"SpaceXAI: Grok 4.20 Multi-Agent",
 "pricing":{
 "prompt":"0.00000125",
 "completion":"0.0000025",
@@ -4502,7 +4502,7 @@
 "x-ai/grok-4.20-multi-agent-20260309":{
 "context_length":2000000,
 "max_completion_tokens":null,
-"name":"xAI: Grok 4.20 Multi-Agent",
+"name":"SpaceXAI: Grok 4.20 Multi-Agent",
 "pricing":{
 "prompt":"0.00000125",
 "completion":"0.0000025",
@@ -4521,7 +4521,7 @@
 "grok-4.20-multi-agent-20260309":{
 "context_length":2000000,
 "max_completion_tokens":null,
-"name":"xAI: Grok 4.20 Multi-Agent",
+"name":"SpaceXAI: Grok 4.20 Multi-Agent",
 "pricing":{
 "prompt":"0.00000125",
 "completion":"0.0000025",
@@ -4540,7 +4540,7 @@
 "x-ai/grok-4.20":{
 "context_length":2000000,
 "max_completion_tokens":null,
-"name":"xAI: Grok 4.20",
+"name":"SpaceXAI: Grok 4.20",
 "pricing":{
 "prompt":"0.00000125",
 "completion":"0.0000025",
@@ -4559,7 +4559,7 @@
 "grok-4.20":{
 "context_length":2000000,
 "max_completion_tokens":null,
-"name":"xAI: Grok 4.20",
+"name":"SpaceXAI: Grok 4.20",
 "pricing":{
 "prompt":"0.00000125",
 "completion":"0.0000025",
@@ -4578,7 +4578,7 @@
 "x-ai/grok-4.20-20260309":{
 "context_length":2000000,
 "max_completion_tokens":null,
-"name":"xAI: Grok 4.20",
+"name":"SpaceXAI: Grok 4.20",
 "pricing":{
 "prompt":"0.00000125",
 "completion":"0.0000025",
@@ -4597,7 +4597,7 @@
 "grok-4.20-20260309":{
 "context_length":2000000,
 "max_completion_tokens":null,
-"name":"xAI: Grok 4.20",
+"name":"SpaceXAI: Grok 4.20",
 "pricing":{
 "prompt":"0.00000125",
 "completion":"0.0000025",
@@ -4766,9 +4766,9 @@
 "max_completion_tokens":131072,
 "name":"MiniMax: MiniMax M2.7",
 "pricing":{
-"prompt":"0.00000025",
-"completion":"0.000001",
-"input_cache_read":"0.00000005"
+"prompt":"0.00000027",
+"completion":"0.00000108",
+"input_cache_read":"0.000000054"
 }
 },
 "minimax-m2.7":{
@@ -4776,9 +4776,9 @@
 "max_completion_tokens":131072,
 "name":"MiniMax: MiniMax M2.7",
 "pricing":{
-"prompt":"0.00000025",
-"completion":"0.000001",
-"input_cache_read":"0.00000005"
+"prompt":"0.00000027",
+"completion":"0.00000108",
+"input_cache_read":"0.000000054"
 }
 },
 "minimax/minimax-m2.7-20260318":{
@@ -4786,9 +4786,9 @@
 "max_completion_tokens":131072,
 "name":"MiniMax: MiniMax M2.7",
 "pricing":{
-"prompt":"0.00000025",
-"completion":"0.000001",
-"input_cache_read":"0.00000005"
+"prompt":"0.00000027",
+"completion":"0.00000108",
+"input_cache_read":"0.000000054"
 }
 },
 "minimax-m2.7-20260318":{
@@ -4796,9 +4796,9 @@
 "max_completion_tokens":131072,
 "name":"MiniMax: MiniMax M2.7",
 "pricing":{
-"prompt":"0.00000025",
-"completion":"0.000001",
-"input_cache_read":"0.00000005"
+"prompt":"0.00000027",
+"completion":"0.00000108",
+"input_cache_read":"0.000000054"
 }
 },
 "openai/gpt-5.4-nano":{
@@ -9450,8 +9450,8 @@
 "max_completion_tokens":16384,
 "name":"Mistral: Mistral Small 3.2 24B",
 "pricing":{
-"prompt":"0.000000075",
-"completion":"0.0000002"
+"prompt":"0.00000009375",
+"completion":"0.00000025"
 }
 },
 "mistral-small-3.2-24b-instruct":{
@@ -9459,8 +9459,8 @@
 "max_completion_tokens":16384,
 "name":"Mistral: Mistral Small 3.2 24B",
 "pricing":{
-"prompt":"0.000000075",
-"completion":"0.0000002"
+"prompt":"0.00000009375",
+"completion":"0.00000025"
 }
 },
 "mistralai/mistral-small-3.2-24b-instruct-2506":{
@@ -9468,8 +9468,8 @@
 "max_completion_tokens":16384,
 "name":"Mistral: Mistral Small 3.2 24B",
 "pricing":{
-"prompt":"0.000000075",
-"completion":"0.0000002"
+"prompt":"0.00000009375",
+"completion":"0.00000025"
 }
 },
 "mistral-small-3.2-24b-instruct-2506":{
@@ -9477,8 +9477,8 @@
 "max_completion_tokens":16384,
 "name":"Mistral: Mistral Small 3.2 24B",
 "pricing":{
-"prompt":"0.000000075",
-"completion":"0.0000002"
+"prompt":"0.00000009375",
+"completion":"0.00000025"
 }
 },
 "minimax/minimax-m1":{
@@ -10957,22 +10957,20 @@
 },
 "qwen/qwen2.5-vl-72b-instruct":{
 "context_length":128000,
-"max_completion_tokens":128000,
+"max_completion_tokens":null,
 "name":"Qwen: Qwen2.5 VL 72B Instruct",
 "pricing":{
-"prompt":"0.0000008",
-"completion":"0.000001",
-"input_cache_read":"0.0000004"
+"prompt":"0.00000025",
+"completion":"0.00000075"
 }
 },
 "qwen2.5-vl-72b-instruct":{
 "context_length":128000,
-"max_completion_tokens":128000,
+"max_completion_tokens":null,
 "name":"Qwen: Qwen2.5 VL 72B Instruct",
 "pricing":{
-"prompt":"0.0000008",
-"completion":"0.000001",
-"input_cache_read":"0.0000004"
+"prompt":"0.00000025",
+"completion":"0.00000075"
 }
 },
 "qwen/qwen-plus":{
