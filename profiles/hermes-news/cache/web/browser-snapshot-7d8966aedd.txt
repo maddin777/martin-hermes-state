@@ -1,0 +1,688 @@
+- navigation "Haupt" [ref=e1]
+  - list
+    - listitem [level=1]
+      - link "Adria" [ref=e6]
+    - listitem [level=1]
+      - link "Karibik" [ref=e7]
+    - listitem [level=1]
+      - link "Golf von Mexiko" [ref=e8]
+    - listitem [level=1]
+      - link "Indischer Ozean" [ref=e9]
+    - listitem [level=1]
+      - link "Pazifik" [ref=e10]
+    - listitem [level=1]
+      - link "Schwarzes Meer" [ref=e11]
+    - listitem [level=1]
+      - link "Rotes Meer" [ref=e12]
+      - list
+        - listitem [level=2]
+          - link "Wassertemperatur Hurghada" [ref=e33]
+        - listitem [level=2]
+          - link "Wassertemperatur Marsa Alam" [ref=e34]
+        - listitem [level=2]
+          - link "Wassertemperatur Makadi Bay" [ref=e35]
+        - listitem [level=2]
+          - link "Wassertemperatur Sharm El Scheich" [ref=e36]
+        - listitem [level=2]
+          - link "Wassertemperatur El Gouna" [ref=e37]
+        - listitem [level=2]
+          - link "Wassertemperatur Soma Bay" [ref=e38]
+    - listitem [level=1]
+      - link "Seen in Europa" [ref=e13]
+      - list
+        - listitem [level=2]
+          - link "Wassertemperatur Ammersee" [ref=e39]
+        - listitem [level=2]
+          - link "Wassertemperatur Attersee" [ref=e40]
+        - listitem [level=2]
+          - link "Wassertemperatur Balaton" [ref=e41]
+        - listitem [level=2]
+          - link "Wassertemperatur Bodensee" [ref=e42]
+        - listitem [level=2]
+          - link "Wassertemperatur Brombachsee" [ref=e43]
+        - listitem [level=2]
+          - link "Wassertemperatur Chiemsee" [ref=e44]
+        - listitem [level=2]
+          - link "Wassertemperatur Gardasee" [ref=e45]
+        - listitem [level=2]
+          - link "Wassertemperatur Ijsselmeer" [ref=e46]
+        - listitem [level=2]
+          - link "Wassertemperatur Langensee" [ref=e47]
+        - listitem [level=2]
+          - link "Wassertemperatur Müritz" [ref=e48]
+        - listitem [level=2]
+          - link "Wassertemperatur Neusiedler See" [ref=e49]
+        - listitem [level=2]
+          - link "Wassertemperatur Starnberger See" [ref=e50]
+        - listitem [level=2]
+          - link "Wassertemperatur Tegernsee" [ref=e51]
+        - listitem [level=2]
+          - link "Wassertemperatur Wörthersee" [ref=e52]
+        - listitem [level=2]
+          - link "Wassertemperatur Wörthsee" [ref=e53]
+        - listitem [level=2]
+          - link "Wassertemperatur Zürichsee" [ref=e54]
+    - listitem [level=1]
+      - link "Atlantik" [ref=e14]
+    - listitem [level=1]
+      - link "Wassertemperatur Nordsee" [ref=e15]
+    - listitem [level=1]
+      - link "Wassertemperatur Ostsee" [ref=e16]
+    - listitem [level=1]
+      - link "Wassertemperaturen Mittelmeer" [ref=e17]
+      - list
+        - listitem [level=2]
+          - link "Wassertemperatur Antalya" [ref=e55]
+        - listitem [level=2]
+          - link "Wassertemperatur Ibiza" [ref=e56]
+        - listitem [level=2]
+          - link "Wassertemperatur Kos" [ref=e57]
+        - listitem [level=2]
+          - link "Wassertemperatur Kreta" [ref=e58]
+        - listitem [level=2]
+          - link "Wassertemperatur Malaga" [ref=e59]
+        - listitem [level=2]
+          - link "Wassertemperatur Malta" [ref=e60]
+        - listitem [level=2]
+          - link "Wassertemperatur Rhodos" [ref=e61]
+        - listitem [level=2]
+          - link "Wassertemperatur Sardinien" [ref=e62]
+        - listitem [level=2]
+          - link "Wassertemperatur Side" [ref=e63]
+        - listitem [level=2]
+          - link "Wassertemperatur Sizilien" [ref=e64]
+        - listitem [level=2]
+          - link "Wassertemperatur Zypern" [ref=e65]
+    - listitem [level=1]
+      - link "Wassertemperatur Mallorca" [ref=e18]
+- banner
+  - paragraph
+    - link "Wassertemperatur.org" [ref=e2]
+- generic
+  - main
+    - generic
+      - StaticText "Du bist hier: "
+      - link "Wassertemperatur" [ref=e19]
+      - StaticText " » "
+      - strong
+        - StaticText "Wassertemperatur Schweriner See"
+    - article "Wassertemperatur Schweriner See" [ref=e3]
+      - sectionheader
+        - heading "Wassertemperatur Schweriner See" [level=1, ref=e32]
+      - insertion
+        - heading "Ähnliche Themen, die Sie interessieren könnten" [level=2, ref=e66] focusable [tabindex]
+          - StaticText "Mehr entdecken"
+        - link "Atmosphärenwissenschaft" [ref=e67]
+          - StaticText "Atmosphärenwissenschaft"
+        - link "Karten" [ref=e68]
+          - StaticText "Karten"
+        - link "Wettervorhersage" [ref=e69]
+          - StaticText "Wettervorhersage"
+      - paragraph
+        - StaticText "Navigieren Sie hier direkt mit nur einem Klick zur gewünschten Information:"
+      - table "“Inhalte“"
+        - row
+          - cell "Inhalte 1 Aktuelle Wassertemperatur Schweriner See 2 Wetterinformationen & Klimadaten 2.1 Wetter am Schweriner See 2.2 Klimatabelle Schweriner See" [ref=e70]
+            - strong
+              - StaticText "Inhalte"
+            - list
+              - listitem [level=1]
+                - ListMarker "◦ "
+                - link "1 Aktuelle Wassertemperatur Schweriner See" [ref=e322]
+                  - StaticText "1 Aktuelle Wassertemperatur Schweriner See"
+              - listitem [level=1]
+                - ListMarker "◦ "
+                - link "2 Wetterinformationen & Klimadaten" [ref=e323]
+                  - StaticText "2 Wetterinformationen & Klimadaten"
+                - list
+                  - listitem [level=2]
+                    - link "2.1 Wetter am Schweriner See" [ref=e324]
+                  - listitem [level=2]
+                    - link "2.2 Klimatabelle Schweriner See" [ref=e325]
+      - paragraph
+        - StaticText "Der Schweriner See liegt in Westmecklenburg und ist mit seiner Fläche von 61,54 Quadratkilometern der zweitgrößte See in Norddeutschland und der viertgrößte See von Deutschland. Der Schweriner See wird durch den Paulsdamm in der Mitte in zwei Teile getrennt, wobei der Paulsdammkanal einen reibungslosen Schiffsverkehr gewährleistet. Der größere Außensee liegt im Norden, während der südlich gelegene Innensee direkt an die Stadt Schwerin grenzt. Auf Campingplätzen direkt am See kann man einen schönen Urlaub verbringen und vor allem im Hochsommer durch einen Sprung in den See eine Abkühlung holen. Auch kann man verschiedenen Wassersportarten auf dem Schweriner See nachgehen, wie Boot fahren oder surfen."
+      - paragraph
+      - heading "Aktuelle Wassertemperatur im Schweriner See: 22 °C" [level=2, ref=e20]
+        - StaticText "Aktuelle Wassertemperatur im Schweriner See: 22 °C"
+      - paragraph
+        - LineBreak "\n"
+        - LineBreak "\n"
+        - insertion
+          - heading "Ähnliche Themen, die Sie interessieren könnten" [level=2, ref=e309] focusable [tabindex]
+          - link "Reiseführer und -berichte" [ref=e310]
+          - link "Geschichte" [ref=e311]
+          - link "Stadtführer" [ref=e312]
+        - LineBreak "\n"
+      - paragraph
+        - strong
+      - list
+        - listitem [level=1]
+          - link "Wassertemperatur Breiter Luzin" [ref=e71]
+        - listitem [level=1]
+          - link "Wassertemperatur Fleesensee" [ref=e72]
+        - listitem [level=1]
+          - link "Wassertemperatur Gobenowsee" [ref=e73]
+        - listitem [level=1]
+          - link "Wassertemperatur Granzower See" [ref=e74]
+        - listitem [level=1]
+          - link "Wassertemperatur Kölpinsee" [ref=e75]
+        - listitem [level=1]
+          - link "Wassertemperatur Krakower See" [ref=e76]
+        - listitem [level=1]
+          - link "Wassertemperatur Kummerower See" [ref=e77]
+        - listitem [level=1]
+          - link "Wassertemperatur Mirower See" [ref=e78]
+        - listitem [level=1]
+          - link "Wassertemperatur Müritz" [ref=e79]
+        - listitem [level=1]
+          - link "Wassertemperatur Plauer See" [ref=e80]
+        - listitem [level=1]
+          - link "Wassertemperatur Schaalsee" [ref=e81]
+        - listitem [level=1]
+          - link "Wassertemperatur Sternberger See" [ref=e82]
+        - listitem [level=1]
+          - link "Wassertemperatur Tollensesee" [ref=e83]
+        - listitem [level=1]
+          - link "Wassertemperatur Woblitzsee" [ref=e84]
+      - paragraph
+      - heading "Wetterinformationen & Klimadaten Schweriner See" [level=2, ref=e21]
+      - paragraph
+        - StaticText "Nachfolgend finden Sie Infos zum aktuellen Wetter und eine Wettervorhersage sowie eine Übersicht über die wichtigsten Klimadaten für den Schweriner See."
+        - LineBreak "\n"
+      - heading "Wetter am Schweriner See aktuell + 14 Tage Wettervorhersage:" [level=3, ref=e22]
+      - StaticText "SCHWERIN"
+      - StaticText ""
+      - strong
+        - StaticText "14"
+        - superscript
+      - StaticText "Mäßig bewölkt"
+      - StaticText "95% Luftfeuchtigkeit"
+      - StaticText "Wind: 2m/s N"
+      - StaticText "MAX C 16 • MIN C 14"
+      - StaticText ""
+      - generic
+        - StaticText "26"
+        - superscript
+      - StaticText "SA"
+      - StaticText ""
+      - generic
+        - StaticText "30"
+        - superscript
+      - StaticText "SO"
+      - StaticText ""
+      - generic
+        - StaticText "26"
+        - superscript
+      - StaticText "MO"
+      - StaticText ""
+      - generic
+        - StaticText "21"
+        - superscript
+      - StaticText "DI"
+      - StaticText ""
+      - generic
+        - StaticText "24"
+        - superscript
+      - StaticText "MI"
+      - StaticText ""
+      - generic
+        - StaticText "30"
+        - superscript
+      - StaticText "DO"
+      - StaticText ""
+      - generic
+        - StaticText "36"
+        - superscript
+      - StaticText "FR"
+      - StaticText ""
+      - generic
+        - StaticText "30"
+        - superscript
+      - StaticText "SA"
+      - StaticText ""
+      - generic
+        - StaticText "32"
+        - superscript
+      - StaticText "SO"
+      - StaticText ""
+      - generic
+        - StaticText "36"
+        - superscript
+      - StaticText "MO"
+      - StaticText ""
+      - generic
+        - StaticText "19"
+        - superscript
+      - StaticText "DI"
+      - StaticText ""
+      - generic
+        - StaticText "22"
+        - superscript
+      - StaticText "MI"
+      - StaticText ""
+      - generic
+        - StaticText "21"
+        - superscript
+      - StaticText "DO"
+      - StaticText ""
+      - generic
+        - StaticText "23"
+        - superscript
+      - StaticText "FR"
+      - LineBreak "\n"
+      - LineBreak "\n"
+      - heading "Klimatabelle Schweriner See:" [level=3, ref=e23]
+      - table
+        - row
+          - cell "Jan" [ref=e85]
+          - cell "Febr" [ref=e86]
+          - cell "März" [ref=e87]
+          - cell "April" [ref=e88]
+          - cell "Mai" [ref=e89]
+          - cell "Juni" [ref=e90]
+          - cell "Juli" [ref=e91]
+          - cell "Aug" [ref=e92]
+          - cell "Sept" [ref=e93]
+          - cell "Okt" [ref=e94]
+          - cell "Nov" [ref=e95]
+          - cell "Dez" [ref=e96]
+        - row
+          - cell "Max. Temperatur Ø (°C)" [ref=e97]
+          - cell "2" [ref=e98]
+          - cell "4" [ref=e99]
+          - cell "8" [ref=e100]
+          - cell "15" [ref=e101]
+          - cell "20" [ref=e102]
+          - cell "23" [ref=e103]
+          - cell "25" [ref=e104]
+          - cell "24" [ref=e105]
+          - cell "20" [ref=e106]
+          - cell "14" [ref=e107]
+          - cell "7" [ref=e108]
+          - cell "3" [ref=e109]
+        - row
+          - cell "Min. Temperatur Ø (°C)" [ref=e110]
+          - cell "-3" [ref=e111]
+          - cell "-2" [ref=e112]
+          - cell "0" [ref=e113]
+          - cell "5" [ref=e114]
+          - cell "10" [ref=e115]
+          - cell "13" [ref=e116]
+          - cell "15" [ref=e117]
+          - cell "15" [ref=e118]
+          - cell "11" [ref=e119]
+          - cell "7" [ref=e120]
+          - cell "2" [ref=e121]
+          - cell "-2" [ref=e122]
+        - row
+          - cell "Sonnenstunden (Stunden/Monat)" [ref=e123]
+          - cell "2" [ref=e124]
+          - cell "3" [ref=e125]
+          - cell "4" [ref=e126]
+          - cell "7" [ref=e127]
+          - cell "8" [ref=e128]
+          - cell "9" [ref=e129]
+          - cell "8" [ref=e130]
+          - cell "8" [ref=e131]
+          - cell "6" [ref=e132]
+          - cell "4" [ref=e133]
+          - cell "2" [ref=e134]
+          - cell "2" [ref=e135]
+        - row
+          - cell "Regentage (Tage/Monat)" [ref=e136]
+          - cell "9" [ref=e137]
+          - cell "7" [ref=e138]
+          - cell "8" [ref=e139]
+          - cell "7" [ref=e140]
+          - cell "8" [ref=e141]
+          - cell "9" [ref=e142]
+          - cell "9" [ref=e143]
+          - cell "7" [ref=e144]
+          - cell "7" [ref=e145]
+          - cell "7" [ref=e146]
+          - cell "8" [ref=e147]
+          - cell "10" [ref=e148]
+        - row
+          - cell "Niederschlag (mm)" [ref=e149]
+          - cell "43" [ref=e150]
+          - cell "33" [ref=e151]
+          - cell "39" [ref=e152]
+          - cell "36" [ref=e153]
+          - cell "54" [ref=e154]
+          - cell "60" [ref=e155]
+          - cell "72" [ref=e156]
+          - cell "59" [ref=e157]
+          - cell "46" [ref=e158]
+          - cell "38" [ref=e159]
+          - cell "42" [ref=e160]
+          - cell "47" [ref=e161]
+      - insertion
+        - Iframe "Advertisement" [ref=e162]
+  - complementary "Haupt-Sidebar"
+    - insertion
+      - heading "Ähnliche Themen, die Sie interessieren könnten" [level=2, ref=e313] focusable [tabindex]
+      - link "Physik" [ref=e314]
+      - link "Wandern und Camping" [ref=e315]
+      - link "Westeuropäer" [ref=e316]
+      - link "Seen und Flüsse" [ref=e317]
+      - link "Geografisches Referenzmaterial" [ref=e318]
+      - link "See" [ref=e319]
+      - link "Seen" [ref=e320]
+      - link "Wetter" [ref=e321]
+    - form
+      - generic
+        - textbox [ref=e163]
+        - button "Suche" [ref=e164]
+    - heading "Wassertemperaturen für neue Reiseziele" [level=4, ref=e24]
+    - list
+      - listitem [level=1]
+        - link "Wassertemperatur Toskana" [ref=e165]
+      - listitem [level=1]
+        - link "Wassertemperatur Ligurien" [ref=e166]
+      - listitem [level=1]
+        - link "Wassertemperatur Algarve" [ref=e167]
+      - listitem [level=1]
+        - link "Wassertemperatur Dubai" [ref=e168]
+      - listitem [level=1]
+        - link "Wassertemperatur Side" [ref=e169]
+      - listitem [level=1]
+        - link "Wassertemperatur Elba" [ref=e170]
+      - listitem [level=1]
+        - link "Wassertemperatur Albufeira" [ref=e171]
+      - listitem [level=1]
+        - link "Wassertemperatur Alicante" [ref=e172]
+      - listitem [level=1]
+        - link "Wassertemperatur Cadiz" [ref=e173]
+      - listitem [level=1]
+        - link "Wassertemperatur Malaga" [ref=e174]
+      - listitem [level=1]
+        - link "Wassertemperatur Kanaren" [ref=e175]
+      - listitem [level=1]
+        - link "Wassertemperatur Alanya" [ref=e176]
+      - listitem [level=1]
+        - link "Wassertemperatur Kemer" [ref=e177]
+      - listitem [level=1]
+        - link "Wassertemperatur Faro" [ref=e178]
+      - listitem [level=1]
+        - link "Wassertemperatur Andalusien" [ref=e179]
+      - listitem [level=1]
+        - link "Wassertemperatur Rovinj" [ref=e180]
+      - listitem [level=1]
+        - link "Wassertemperatur Nizza" [ref=e181]
+      - listitem [level=1]
+        - link "Wassertemperatur Heraklion" [ref=e182]
+      - listitem [level=1]
+        - link "Wassertemperatur Olbia" [ref=e183]
+      - listitem [level=1]
+        - link "Wassertemperatur Tropea" [ref=e184]
+      - listitem [level=1]
+        - link "Wassertemperatur Kapverden" [ref=e185]
+      - listitem [level=1]
+        - link "Wassertemperatur Azoren" [ref=e186]
+      - listitem [level=1]
+        - link "Wassertemperaturen Französisch Polynesien" [ref=e187]
+      - listitem [level=1]
+        - link "Wassertemperaturen Vereinigte Arabische Emirate" [ref=e188]
+      - listitem [level=1]
+        - link "Wassertemperaturen Kaspisches Meer" [ref=e189]
+      - listitem [level=1]
+        - link "Wassertemperatur Peloponnes" [ref=e190]
+      - listitem [level=1]
+        - link "Wassertemperatur Gerakini, Sithonia" [ref=e191]
+      - listitem [level=1]
+        - link "Wassertemperatur Ericeira" [ref=e192]
+      - listitem [level=1]
+        - link "Wassertemperatur Türkische Riviera" [ref=e193]
+      - listitem [level=1]
+        - link "Wassertemperatur Italienische Riviera" [ref=e194]
+      - listitem [level=1]
+        - link "Wassertemperatur Ionisches Meer" [ref=e195]
+      - listitem [level=1]
+        - link "Wassertemperatur Izmir" [ref=e196]
+      - listitem [level=1]
+        - link "Wassertemperatur Brela" [ref=e197]
+      - listitem [level=1]
+        - link "Wassertemperatur Albena" [ref=e198]
+    - insertion
+    - heading "Wassertemperaturen Kanaren" [level=4, ref=e25]
+    - list
+      - listitem [level=1]
+        - link "Wassertemperatur Teneriffa" [ref=e199]
+      - listitem [level=1]
+        - link "Wassertemperatur Fuerteventura" [ref=e200]
+      - listitem [level=1]
+        - link "Wassertemperatur Gran Canaria" [ref=e201]
+      - listitem [level=1]
+        - link "Wassertemperatur Lanzarote" [ref=e202]
+      - listitem [level=1]
+        - link "Wassertemperatur La Palma" [ref=e203]
+      - listitem [level=1]
+        - link "Wassertemperatur La Gomera" [ref=e204]
+      - listitem [level=1]
+        - link "Wassertemperatur El Hierro" [ref=e205]
+    - insertion
+    - heading "Wassertemperaturen Balearen" [level=4, ref=e26]
+    - list
+      - listitem [level=1]
+        - link "Wassertemperatur Mallorca" [ref=e206]
+      - listitem [level=1]
+        - link "Wassertemperatur Menorca" [ref=e207]
+      - listitem [level=1]
+        - link "Wassertemperatur Ibiza" [ref=e208]
+      - listitem [level=1]
+        - link "Wassertemperatur Formentera" [ref=e209]
+      - listitem [level=1]
+        - link "Wassertemperatur Cabrera" [ref=e210]
+    - heading "Wassertemperaturen für neue Badeseen" [level=4, ref=e27]
+    - list
+      - listitem [level=1]
+        - link "Wassertemperatur Vierwaldstättersee" [ref=e211]
+      - listitem [level=1]
+        - link "Wassertemperatur Arendsee" [ref=e212]
+      - listitem [level=1]
+        - link "Wassertemperatur Bielersee" [ref=e213]
+      - listitem [level=1]
+        - link "Wassertemperatur Irrsee" [ref=e214]
+      - listitem [level=1]
+        - link "Wassertemperatur Wörthsee" [ref=e215]
+      - listitem [level=1]
+        - link "Wassertemperatur Faaker See" [ref=e216]
+      - listitem [level=1]
+        - link "Wassertemperatur Langener Waldsee" [ref=e217]
+      - listitem [level=1]
+        - link "Wassertemperatur Illmensee" [ref=e218]
+      - listitem [level=1]
+        - link "Wassertemperatur Perlsee" [ref=e219]
+      - listitem [level=1]
+        - link "Wassertemperatur Otto-Maigler-See" [ref=e220]
+      - listitem [level=1]
+        - link "Wassertemperatur Zellersee, Bayern" [ref=e221]
+      - listitem [level=1]
+        - link "Wassertemperatur Zeller See" [ref=e222]
+      - listitem [level=1]
+        - link "Wassertemperatur Zugersee" [ref=e223]
+      - listitem [level=1]
+        - link "Wassertemperatur Zürichsee" [ref=e224]
+      - listitem [level=1]
+        - link "Wassertemperatur Küchensee" [ref=e225]
+    - insertion
+    - heading "Wassertemperaturen für bekannte Flüsse" [level=4, ref=e28]
+    - list
+      - listitem [level=1]
+        - link "Wassertemperatur Alz" [ref=e226]
+      - listitem [level=1]
+        - link "Wassertemperatur Aller" [ref=e227]
+      - listitem [level=1]
+        - link "Wassertemperatur Amper" [ref=e228]
+      - listitem [level=1]
+        - link "Wassertemperatur Rhein" [ref=e229]
+      - listitem [level=1]
+        - link "Wassertemperatur Donau" [ref=e230]
+      - listitem [level=1]
+        - link "Wassertemperatur Eisbach" [ref=e231]
+      - listitem [level=1]
+        - link "Wassertemperatur Elbe" [ref=e232]
+      - listitem [level=1]
+        - link "Wassertemperatur Fulda" [ref=e233]
+      - listitem [level=1]
+        - link "Wassertemperatur Lahn" [ref=e234]
+      - listitem [level=1]
+        - link "Wassertemperatur Havel" [ref=e235]
+      - listitem [level=1]
+        - link "Wassertemperatur Main" [ref=e236]
+      - listitem [level=1]
+        - link "Wassertemperatur Mosel" [ref=e237]
+      - listitem [level=1]
+        - link "Wassertemperatur Naab" [ref=e238]
+      - listitem [level=1]
+        - link "Wassertemperatur Neckar" [ref=e239]
+      - listitem [level=1]
+        - link "Wassertemperatur Alster" [ref=e240]
+      - listitem [level=1]
+        - link "Wassertemperatur Aare" [ref=e241]
+      - listitem [level=1]
+        - link "Wassertemperatur Isar" [ref=e242]
+      - listitem [level=1]
+        - link "Wassertemperatur Oder" [ref=e243]
+      - listitem [level=1]
+        - link "Wassertemperatur Trave" [ref=e244]
+      - listitem [level=1]
+        - link "Wassertemperatur Weser" [ref=e245]
+      - listitem [level=1]
+        - link "Wassertemperatur Warnow" [ref=e246]
+      - listitem [level=1]
+        - link "Wassertemperatur Wakenitz" [ref=e247]
+      - listitem [level=1]
+        - link "Wassertemperatur Regen" [ref=e248]
+      - listitem [level=1]
+        - link "Wassertemperatur Nidda" [ref=e249]
+      - listitem [level=1]
+        - link "Wassertemperatur Lech" [ref=e250]
+      - listitem [level=1]
+        - link "Wassertemperatur Ruhr" [ref=e251]
+      - listitem [level=1]
+        - link "Wassertemperatur Lippe" [ref=e252]
+      - listitem [level=1]
+        - link "Wassertemperatur Limmat" [ref=e253]
+      - listitem [level=1]
+        - link "Wassertemperatur Reuss" [ref=e254]
+      - listitem [level=1]
+        - link "Wassertemperatur Linth" [ref=e255]
+      - listitem [level=1]
+        - link "Wassertemperatur Rhone" [ref=e256]
+      - listitem [level=1]
+        - link "Wassertemperatur Emme" [ref=e257]
+      - listitem [level=1]
+        - link "Wassertemperatur Thur" [ref=e258]
+      - listitem [level=1]
+        - link "Wassertemperatur Maggia" [ref=e259]
+      - listitem [level=1]
+        - link "Wassertemperatur Saane" [ref=e260]
+      - listitem [level=1]
+        - link "Wassertemperatur Töss" [ref=e261]
+      - listitem [level=1]
+        - link "Wassertemperatur Saale" [ref=e262]
+      - listitem [level=1]
+        - link "Wassertemperatur Iller" [ref=e263]
+      - listitem [level=1]
+        - link "Wassertemperatur Inn" [ref=e264]
+      - listitem [level=1]
+        - link "Wassertemperatur Regnitz" [ref=e265]
+      - listitem [level=1]
+        - link "Wassertemperatur Eider" [ref=e266]
+      - listitem [level=1]
+        - link "Wassertemperatur Ammer" [ref=e267]
+      - listitem [level=1]
+        - link "Wassertemperatur Dahme" [ref=e268]
+      - listitem [level=1]
+        - link "Wassertemperatur Spree" [ref=e269]
+      - listitem [level=1]
+        - link "Wassertemperatur Müggelspree" [ref=e270]
+      - listitem [level=1]
+        - link "Wassertemperatur Ticino" [ref=e271]
+    - insertion
+    - heading "Wassertemperaturen für beliebte Länder" [level=4, ref=e29]
+    - list
+      - listitem [level=1]
+        - link "Wassertemperatur Deutschland" [ref=e272]
+      - listitem [level=1]
+        - link "Wassertemperatur Seen Schweiz" [ref=e273]
+      - listitem [level=1]
+        - link "Wassertemperatur Seen Österreich" [ref=e274]
+      - listitem [level=1]
+        - link "Wassertemperatur Seen Ungarn" [ref=e275]
+      - listitem [level=1]
+        - link "Wassertemperatur Marokko" [ref=e276]
+      - listitem [level=1]
+        - link "Wassertemperatur Tunesien" [ref=e277]
+      - listitem [level=1]
+        - link "Wassertemperatur Spanien" [ref=e278]
+      - listitem [level=1]
+        - link "Wassertemperatur Frankreich" [ref=e279]
+      - listitem [level=1]
+        - link "Wassertemperatur Polen" [ref=e280]
+      - listitem [level=1]
+        - link "Wassertemperatur Dänemark" [ref=e281]
+      - listitem [level=1]
+        - link "Wassertemperatur Schweden" [ref=e282]
+      - listitem [level=1]
+        - link "Wassertemperatur Norwegen" [ref=e283]
+      - listitem [level=1]
+        - link "Wassertemperatur Holland" [ref=e284]
+      - listitem [level=1]
+        - link "Wassertemperatur Belgien" [ref=e285]
+      - listitem [level=1]
+        - link "Wassertemperatur Kroatien" [ref=e286]
+      - listitem [level=1]
+        - link "Wassertemperatur Italien" [ref=e287]
+      - listitem [level=1]
+        - link "Wassertemperatur Türkei" [ref=e288]
+      - listitem [level=1]
+        - link "Wassertemperatur Israel" [ref=e289]
+      - listitem [level=1]
+        - link "Wassertemperatur Ägypten" [ref=e290]
+      - listitem [level=1]
+        - link "Wassertemperatur Oman" [ref=e291]
+      - listitem [level=1]
+        - link "Wassertemperatur Thailand" [ref=e292]
+      - listitem [level=1]
+        - link "Wassertemperatur Südafrika" [ref=e293]
+      - listitem [level=1]
+        - link "Wassertemperatur Neuseeland" [ref=e294]
+      - listitem [level=1]
+        - link "Wassertemperatur Australien" [ref=e295]
+      - listitem [level=1]
+        - link "Wassertemperatur Costa Rica" [ref=e296]
+      - listitem [level=1]
+        - link "Wassertemperatur Gambia" [ref=e297]
+      - listitem [level=1]
+        - link "Wassertemperatur Irland" [ref=e298]
+      - listitem [level=1]
+        - link "Wassertemperatur Katar" [ref=e299]
+      - listitem [level=1]
+        - link "Wassertemperatur Puerto Rico" [ref=e300]
+      - listitem [level=1]
+        - link "Wassertemperatur Madagaskar" [ref=e301]
+      - listitem [level=1]
+        - link "Wassertemperatur Rumänien" [ref=e302]
+      - listitem [level=1]
+        - link "Wassertemperatur Bosnische Riviera" [ref=e303]
+    - insertion
+    - heading "Beliebte Beiträge" [level=4, ref=e30]
+    - list
+      - listitem [level=1]
+        - link "Richtige Badetemperatur" [ref=e304]
+      - listitem [level=1]
+        - link "Seepferdchen & Freischwimmer Aufgaben" [ref=e305]
+    - heading "Beliebte Städte" [level=4, ref=e31]
+    - list
+      - listitem [level=1]
+        - link "Toulouse" [ref=e306]
+      - listitem [level=1]
+        - link "Lyon" [ref=e307]
+      - listitem [level=1]
+        - link "Rennes" [ref=e308]
+- contentinfo
+  - paragraph
+    - link "Datenschutzerklärung" [ref=e4]
+    - link "Impressum" [ref=e5]

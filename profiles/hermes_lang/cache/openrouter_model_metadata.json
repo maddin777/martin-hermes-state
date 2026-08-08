@@ -185,40 +185,40 @@
 },
 "thinkingmachines/inkling-small":{
 "context_length":524288,
-"max_completion_tokens":null,
+"max_completion_tokens":262144,
 "name":"Thinking Machines: Inkling Small",
 "pricing":{
-"prompt":"0.0000005",
+"prompt":"0.00000045",
 "completion":"0.0000012",
 "input_cache_read":"0.0000001"
 }
 },
 "inkling-small":{
 "context_length":524288,
-"max_completion_tokens":null,
+"max_completion_tokens":262144,
 "name":"Thinking Machines: Inkling Small",
 "pricing":{
-"prompt":"0.0000005",
+"prompt":"0.00000045",
 "completion":"0.0000012",
 "input_cache_read":"0.0000001"
 }
 },
 "thinkingmachines/inkling-small-20260730":{
 "context_length":524288,
-"max_completion_tokens":null,
+"max_completion_tokens":262144,
 "name":"Thinking Machines: Inkling Small",
 "pricing":{
-"prompt":"0.0000005",
+"prompt":"0.00000045",
 "completion":"0.0000012",
 "input_cache_read":"0.0000001"
 }
 },
 "inkling-small-20260730":{
 "context_length":524288,
-"max_completion_tokens":null,
+"max_completion_tokens":262144,
 "name":"Thinking Machines: Inkling Small",
 "pricing":{
-"prompt":"0.0000005",
+"prompt":"0.00000045",
 "completion":"0.0000012",
 "input_cache_read":"0.0000001"
 }
@@ -466,9 +466,9 @@
 "max_completion_tokens":32768,
 "name":"Ling-3.0-flash",
 "pricing":{
-"prompt":"0.000000075",
-"completion":"0.00000022",
-"input_cache_read":"0.000000015"
+"prompt":"0.000000021",
+"completion":"0.000000063",
+"input_cache_read":"0.0000000042"
 }
 },
 "ling-3.0-flash":{
@@ -476,9 +476,9 @@
 "max_completion_tokens":32768,
 "name":"Ling-3.0-flash",
 "pricing":{
-"prompt":"0.000000075",
-"completion":"0.00000022",
-"input_cache_read":"0.000000015"
+"prompt":"0.000000021",
+"completion":"0.000000063",
+"input_cache_read":"0.0000000042"
 }
 },
 "inclusionai/ling-3.0-flash-20260723":{
@@ -486,9 +486,9 @@
 "max_completion_tokens":32768,
 "name":"Ling-3.0-flash",
 "pricing":{
-"prompt":"0.000000075",
-"completion":"0.00000022",
-"input_cache_read":"0.000000015"
+"prompt":"0.000000021",
+"completion":"0.000000063",
+"input_cache_read":"0.0000000042"
 }
 },
 "ling-3.0-flash-20260723":{
@@ -496,9 +496,9 @@
 "max_completion_tokens":32768,
 "name":"Ling-3.0-flash",
 "pricing":{
-"prompt":"0.000000075",
-"completion":"0.00000022",
-"input_cache_read":"0.000000015"
+"prompt":"0.000000021",
+"completion":"0.000000063",
+"input_cache_read":"0.0000000042"
 }
 },
 "poolside/laguna-s-2.1":{
@@ -2411,9 +2411,9 @@
 "max_completion_tokens":131072,
 "name":"Z.ai: GLM 5.2",
 "pricing":{
-"prompt":"0.000000546",
-"completion":"0.000001716",
-"input_cache_read":"0.0000001014"
+"prompt":"0.000000518",
+"completion":"0.000001628",
+"input_cache_read":"0.0000000962"
 }
 },
 "glm-5.2":{
@@ -2421,9 +2421,9 @@
 "max_completion_tokens":131072,
 "name":"Z.ai: GLM 5.2",
 "pricing":{
-"prompt":"0.000000546",
-"completion":"0.000001716",
-"input_cache_read":"0.0000001014"
+"prompt":"0.000000518",
+"completion":"0.000001628",
+"input_cache_read":"0.0000000962"
 }
 },
 "z-ai/glm-5.2-20260616":{
@@ -2441,9 +2441,9 @@
 "max_completion_tokens":131072,
 "name":"Z.ai: GLM 5.2",
 "pricing":{
-"prompt":"0.000000546",
-"completion":"0.000001716",
-"input_cache_read":"0.0000001014"
+"prompt":"0.000000518",
+"completion":"0.000001628",
+"input_cache_read":"0.0000000962"
 }
 },
 "z-ai/glm-5.2:batch":{
@@ -3862,7 +3862,7 @@
 "max_completion_tokens":1048576,
 "name":"MoonshotAI Kimi Latest",
 "pricing":{
-"prompt":"0.0000029",
+"prompt":"0.0000025",
 "completion":"0.000014",
 "input_cache_read":"0.00000029"
 }
@@ -3872,7 +3872,7 @@
 "max_completion_tokens":1048576,
 "name":"MoonshotAI Kimi Latest",
 "pricing":{
-"prompt":"0.0000029",
+"prompt":"0.0000025",
 "completion":"0.000014",
 "input_cache_read":"0.00000029"
 }
@@ -4459,42 +4459,42 @@
 },
 "deepseek/deepseek-v4-flash":{
 "context_length":1048576,
-"max_completion_tokens":131072,
+"max_completion_tokens":393216,
 "name":"DeepSeek: DeepSeek V4 Flash 0423",
 "pricing":{
-"prompt":"0.0000000882",
-"completion":"0.0000001764",
-"input_cache_read":"0.00000001764"
+"prompt":"0.00000014",
+"completion":"0.00000028",
+"input_cache_read":"0.000000028"
 }
 },
 "deepseek-v4-flash":{
 "context_length":1048576,
-"max_completion_tokens":131072,
+"max_completion_tokens":393216,
 "name":"DeepSeek: DeepSeek V4 Flash 0423",
 "pricing":{
-"prompt":"0.0000000882",
-"completion":"0.0000001764",
-"input_cache_read":"0.00000001764"
+"prompt":"0.00000014",
+"completion":"0.00000028",
+"input_cache_read":"0.000000028"
 }
 },
 "deepseek/deepseek-v4-flash-20260423":{
 "context_length":1048576,
-"max_completion_tokens":131072,
+"max_completion_tokens":393216,
 "name":"DeepSeek: DeepSeek V4 Flash 0423",
 "pricing":{
-"prompt":"0.0000000882",
-"completion":"0.0000001764",
-"input_cache_read":"0.00000001764"
+"prompt":"0.00000014",
+"completion":"0.00000028",
+"input_cache_read":"0.000000028"
 }
 },
 "deepseek-v4-flash-20260423":{
 "context_length":1048576,
-"max_completion_tokens":131072,
+"max_completion_tokens":393216,
 "name":"DeepSeek: DeepSeek V4 Flash 0423",
 "pricing":{
-"prompt":"0.0000000882",
-"completion":"0.0000001764",
-"input_cache_read":"0.00000001764"
+"prompt":"0.00000014",
+"completion":"0.00000028",
+"input_cache_read":"0.000000028"
 }
 },
 "inclusionai/ling-2.6-1t":{
@@ -4794,9 +4794,9 @@
 "max_completion_tokens":262144,
 "name":"MoonshotAI: Kimi K2.6",
 "pricing":{
-"prompt":"0.00000057",
-"completion":"0.0000024",
-"input_cache_read":"0.000000096"
+"prompt":"0.0000005795",
+"completion":"0.00000244",
+"input_cache_read":"0.0000000976"
 }
 },
 "kimi-k2.6":{
@@ -4804,9 +4804,9 @@
 "max_completion_tokens":262144,
 "name":"MoonshotAI: Kimi K2.6",
 "pricing":{
-"prompt":"0.00000057",
-"completion":"0.0000024",
-"input_cache_read":"0.000000096"
+"prompt":"0.0000005795",
+"completion":"0.00000244",
+"input_cache_read":"0.0000000976"
 }
 },
 "moonshotai/kimi-k2.6-20260420":{
@@ -4814,9 +4814,9 @@
 "max_completion_tokens":262144,
 "name":"MoonshotAI: Kimi K2.6",
 "pricing":{
-"prompt":"0.00000057",
-"completion":"0.0000024",
-"input_cache_read":"0.000000096"
+"prompt":"0.0000005795",
+"completion":"0.00000244",
+"input_cache_read":"0.0000000976"
 }
 },
 "kimi-k2.6-20260420":{
@@ -4824,9 +4824,9 @@
 "max_completion_tokens":262144,
 "name":"MoonshotAI: Kimi K2.6",
 "pricing":{
-"prompt":"0.00000057",
-"completion":"0.0000024",
-"input_cache_read":"0.000000096"
+"prompt":"0.0000005795",
+"completion":"0.00000244",
+"input_cache_read":"0.0000000976"
 }
 },
 "anthropic/claude-opus-4.7":{
@@ -6422,38 +6422,38 @@
 },
 "qwen/qwen3.5-122b-a10b":{
 "context_length":262144,
-"max_completion_tokens":65536,
+"max_completion_tokens":81920,
 "name":"Qwen: Qwen3.5-122B-A10B",
 "pricing":{
-"prompt":"0.00000026",
-"completion":"0.00000208"
+"prompt":"0.00000029",
+"completion":"0.0000024"
 }
 },
 "qwen3.5-122b-a10b":{
 "context_length":262144,
-"max_completion_tokens":65536,
+"max_completion_tokens":81920,
 "name":"Qwen: Qwen3.5-122B-A10B",
 "pricing":{
-"prompt":"0.00000026",
-"completion":"0.00000208"
+"prompt":"0.00000029",
+"completion":"0.0000024"
 }
 },
 "qwen/qwen3.5-122b-a10b-20260224":{
 "context_length":262144,
-"max_completion_tokens":65536,
+"max_completion_tokens":81920,
 "name":"Qwen: Qwen3.5-122B-A10B",
 "pricing":{
-"prompt":"0.00000026",
-"completion":"0.00000208"
+"prompt":"0.00000029",
+"completion":"0.0000024"
 }
 },
 "qwen3.5-122b-a10b-20260224":{
 "context_length":262144,
-"max_completion_tokens":65536,
+"max_completion_tokens":81920,
 "name":"Qwen: Qwen3.5-122B-A10B",
 "pricing":{
-"prompt":"0.00000026",
-"completion":"0.00000208"
+"prompt":"0.00000029",
+"completion":"0.0000024"
 }
 },
 "qwen/qwen3.5-flash-02-23":{
@@ -9434,8 +9434,8 @@
 "max_completion_tokens":32768,
 "name":"Qwen: Qwen3 VL 235B A22B Thinking",
 "pricing":{
-"prompt":"0.00000098",
-"completion":"0.00000395"
+"prompt":"0.0000004",
+"completion":"0.000004"
 }
 },
 "qwen3-vl-235b-a22b-thinking":{
@@ -9443,8 +9443,8 @@
 "max_completion_tokens":32768,
 "name":"Qwen: Qwen3 VL 235B A22B Thinking",
 "pricing":{
-"prompt":"0.00000098",
-"completion":"0.00000395"
+"prompt":"0.0000004",
+"completion":"0.000004"
 }
 },
 "qwen/qwen3-vl-235b-a22b-instruct":{
@@ -9695,7 +9695,7 @@
 },
 "qwen/qwen3-next-80b-a3b-thinking":{
 "context_length":262144,
-"max_completion_tokens":null,
+"max_completion_tokens":262144,
 "name":"Qwen: Qwen3 Next 80B A3B Thinking",
 "pricing":{
 "prompt":"0.00000015",
@@ -9704,7 +9704,7 @@
 },
 "qwen3-next-80b-a3b-thinking":{
 "context_length":262144,
-"max_completion_tokens":null,
+"max_completion_tokens":262144,
 "name":"Qwen: Qwen3 Next 80B A3B Thinking",
 "pricing":{
 "prompt":"0.00000015",
@@ -9713,7 +9713,7 @@
 },
 "qwen/qwen3-next-80b-a3b-thinking-2509":{
 "context_length":262144,
-"max_completion_tokens":null,
+"max_completion_tokens":262144,
 "name":"Qwen: Qwen3 Next 80B A3B Thinking",
 "pricing":{
 "prompt":"0.00000015",
@@ -9722,7 +9722,7 @@
 },
 "qwen3-next-80b-a3b-thinking-2509":{
 "context_length":262144,
-"max_completion_tokens":null,
+"max_completion_tokens":262144,
 "name":"Qwen: Qwen3 Next 80B A3B Thinking",
 "pricing":{
 "prompt":"0.00000015",
@@ -13758,7 +13758,7 @@
 },
 "mancer/weaver":{
 "context_length":8000,
-"max_completion_tokens":2000,
+"max_completion_tokens":6000,
 "name":"Mancer: Weaver (alpha)",
 "pricing":{
 "prompt":"0.0000005",
@@ -13767,7 +13767,7 @@
 },
 "weaver":{
 "context_length":8000,
-"max_completion_tokens":2000,
+"max_completion_tokens":6000,
 "name":"Mancer: Weaver (alpha)",
 "pricing":{
 "prompt":"0.0000005",
@@ -13776,7 +13776,7 @@
 },
 "undi95/remm-slerp-l2-13b":{
 "context_length":6144,
-"max_completion_tokens":2048,
+"max_completion_tokens":6144,
 "name":"ReMM SLERP 13B",
 "pricing":{
 "prompt":"0.00000045",
@@ -13785,7 +13785,7 @@
 },
 "remm-slerp-l2-13b":{
 "context_length":6144,
-"max_completion_tokens":2048,
+"max_completion_tokens":6144,
 "name":"ReMM SLERP 13B",
 "pricing":{
 "prompt":"0.00000045",

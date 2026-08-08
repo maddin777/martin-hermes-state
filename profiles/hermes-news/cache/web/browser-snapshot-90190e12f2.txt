@@ -1,0 +1,910 @@
+- generic
+  - navigation "Haupt" [ref=e2]
+    - list
+      - listitem [level=1]
+        - link "Adria" [ref=e7]
+      - listitem [level=1]
+        - link "Karibik" [ref=e8]
+      - listitem [level=1]
+        - link "Golf von Mexiko" [ref=e9]
+      - listitem [level=1]
+        - link "Indischer Ozean" [ref=e10]
+      - listitem [level=1]
+        - link "Pazifik" [ref=e11]
+      - listitem [level=1]
+        - link "Schwarzes Meer" [ref=e12]
+      - listitem [level=1]
+        - link "Rotes Meer" [ref=e13]
+        - list
+          - listitem [level=2]
+            - link "Wassertemperatur Hurghada" [ref=e46]
+          - listitem [level=2]
+            - link "Wassertemperatur Marsa Alam" [ref=e47]
+          - listitem [level=2]
+            - link "Wassertemperatur Makadi Bay" [ref=e48]
+          - listitem [level=2]
+            - link "Wassertemperatur Sharm El Scheich" [ref=e49]
+          - listitem [level=2]
+            - link "Wassertemperatur El Gouna" [ref=e50]
+          - listitem [level=2]
+            - link "Wassertemperatur Soma Bay" [ref=e51]
+      - listitem [level=1]
+        - link "Seen in Europa" [ref=e14]
+        - list
+          - listitem [level=2]
+            - link "Wassertemperatur Ammersee" [ref=e52]
+          - listitem [level=2]
+            - link "Wassertemperatur Attersee" [ref=e53]
+          - listitem [level=2]
+            - link "Wassertemperatur Balaton" [ref=e54]
+          - listitem [level=2]
+            - link "Wassertemperatur Bodensee" [ref=e55]
+          - listitem [level=2]
+            - link "Wassertemperatur Brombachsee" [ref=e56]
+          - listitem [level=2]
+            - link "Wassertemperatur Chiemsee" [ref=e57]
+          - listitem [level=2]
+            - link "Wassertemperatur Gardasee" [ref=e58]
+          - listitem [level=2]
+            - link "Wassertemperatur Ijsselmeer" [ref=e59]
+          - listitem [level=2]
+            - link "Wassertemperatur Langensee" [ref=e60]
+          - listitem [level=2]
+            - link "Wassertemperatur Müritz" [ref=e61]
+          - listitem [level=2]
+            - link "Wassertemperatur Neusiedler See" [ref=e62]
+          - listitem [level=2]
+            - link "Wassertemperatur Starnberger See" [ref=e63]
+          - listitem [level=2]
+            - link "Wassertemperatur Tegernsee" [ref=e64]
+          - listitem [level=2]
+            - link "Wassertemperatur Wörthersee" [ref=e65]
+          - listitem [level=2]
+            - link "Wassertemperatur Wörthsee" [ref=e66]
+          - listitem [level=2]
+            - link "Wassertemperatur Zürichsee" [ref=e67]
+      - listitem [level=1]
+        - link "Atlantik" [ref=e15]
+      - listitem [level=1]
+        - link "Wassertemperatur Nordsee" [ref=e16]
+      - listitem [level=1]
+        - link "Wassertemperatur Ostsee" [ref=e17]
+      - listitem [level=1]
+        - link "Wassertemperaturen Mittelmeer" [ref=e18]
+        - list
+          - listitem [level=2]
+            - link "Wassertemperatur Antalya" [ref=e68]
+          - listitem [level=2]
+            - link "Wassertemperatur Ibiza" [ref=e69]
+          - listitem [level=2]
+            - link "Wassertemperatur Kos" [ref=e70]
+          - listitem [level=2]
+            - link "Wassertemperatur Kreta" [ref=e71]
+          - listitem [level=2]
+            - link "Wassertemperatur Malaga" [ref=e72]
+          - listitem [level=2]
+            - link "Wassertemperatur Malta" [ref=e73]
+          - listitem [level=2]
+            - link "Wassertemperatur Rhodos" [ref=e74]
+          - listitem [level=2]
+            - link "Wassertemperatur Sardinien" [ref=e75]
+          - listitem [level=2]
+            - link "Wassertemperatur Side" [ref=e76]
+          - listitem [level=2]
+            - link "Wassertemperatur Sizilien" [ref=e77]
+          - listitem [level=2]
+            - link "Wassertemperatur Zypern" [ref=e78]
+      - listitem [level=1]
+        - link "Wassertemperatur Mallorca" [ref=e19]
+  - banner
+    - paragraph
+      - link "Wassertemperatur.org" [ref=e3]
+    - paragraph
+      - StaticText "Wassertemperaturen, Klimadaten und Wetter"
+  - generic
+    - main
+      - generic
+        - StaticText "Du bist hier: "
+        - link "Wassertemperatur" [ref=e20]
+        - StaticText " » "
+        - link "Wassertemperatur Ostsee" [ref=e21]
+        - StaticText " » "
+        - strong
+          - StaticText "Wassertemperatur Lübeck"
+      - article "Wassertemperatur Lübeck" [ref=e4]
+        - sectionheader
+          - heading "Wassertemperatur Lübeck" [level=1, ref=e41]
+        - insertion
+          - heading "Ähnliche Themen, die Sie interessieren könnten" [level=2, ref=e79] focusable [tabindex]
+            - StaticText "Mehr entdecken"
+          - link "Feiertage und besondere Anlässe" [ref=e80]
+            - StaticText "Feiertage und besondere Anlässe"
+          - link "Geografisches Referenzmaterial" [ref=e81]
+            - StaticText "Geografisches Referenzmaterial"
+          - link "Wetter" [ref=e82]
+            - StaticText "Wetter"
+        - paragraph
+          - StaticText "Navigieren Sie hier direkt mit nur einem Klick zur gewünschten Information:"
+        - table "“Inhalte“"
+          - row
+            - cell "Inhalte 1 Aktuelle Wassertemperatur Lübeck 2 Durchschnittliche Wassertemperaturen 3 Wassertemperatur je Jahreszeit 4 Min. & Max. Wassertemp 5 Wetterinformationen & Klimadaten 5.1 Wetter in Lübeck 5.2 Klima in Lübeck 5.3 Klimatabelle Lübeck Advertisement 6 Beste Reisezeit 7 Sehenswürdigkeiten in Lübeck" [ref=e83]
+              - strong
+                - StaticText "Inhalte"
+              - list
+                - listitem [level=1]
+                  - ListMarker "◦ "
+                  - link "1 Aktuelle Wassertemperatur Lübeck" [ref=e404]
+                    - StaticText "1 Aktuelle Wassertemperatur Lübeck"
+                - listitem [level=1]
+                  - ListMarker "◦ "
+                  - link "2 Durchschnittliche Wassertemperaturen" [ref=e405]
+                    - StaticText "2 Durchschnittliche Wassertemperaturen"
+                - listitem [level=1]
+                  - ListMarker "◦ "
+                  - link "3 Wassertemperatur je Jahreszeit" [ref=e406]
+                    - StaticText "3 Wassertemperatur je Jahreszeit"
+                - listitem [level=1]
+                  - ListMarker "◦ "
+                  - link "4 Min. & Max. Wassertemp" [ref=e407]
+                    - StaticText "4 Min. & Max. Wassertemp"
+                - listitem [level=1]
+                  - ListMarker "◦ "
+                  - link "5 Wetterinformationen & Klimadaten" [ref=e408]
+                    - StaticText "5 Wetterinformationen & Klimadaten"
+                  - list
+                    - listitem [level=2]
+                      - link "5.1 Wetter in Lübeck" [ref=e412]
+                    - listitem [level=2]
+                      - link "5.2 Klima in Lübeck" [ref=e413]
+                    - listitem [level=2]
+                      - link "5.3 Klimatabelle Lübeck" [ref=e414]
+                - insertion
+                  - Iframe "Advertisement" [ref=e411] focusable [tabindex]
+                - listitem [level=1]
+                  - link "6 Beste Reisezeit" [ref=e409]
+                - listitem [level=1]
+                  - link "7 Sehenswürdigkeiten in Lübeck" [ref=e410]
+        - paragraph
+          - StaticText "Ein "
+          - strong
+            - StaticText "Urlaub in Lübeck"
+          - StaticText " entführt in eine Stadt, die als "
+          - strong
+            - StaticText "Inbegriff norddeutscher Historie und Kultur"
+          - StaticText " gilt. Mit ihrem "
+          - strong
+            - StaticText "Status als UNESCO-Weltkulturerbe"
+          - StaticText " besticht sie durch eine "
+          - strong
+            - StaticText "Altstadt von einnehmender Schönheit"
+          - StaticText " und einem "
+          - strong
+            - StaticText "vielseitigen Kulturprogramm"
+          - StaticText ". Tatsächlich strahlen die Bürgerhäuser und das Ambiente der Stadt noch immer das Flair der hanseatischen Blütezeit aus. Auch wenn die Tage als Handelszentrum längst Geschichte sind, so hat Lübeck nichts von seiner Anziehungskraft verloren und "
+          - strong
+            - StaticText "bietet insbesondere Kulturliebhabern unzählige Entdeckungsmöglichkeiten"
+          - StaticText ". Man wandelt hier auf Pfaden, die sowohl durch die reiche Vergangenheit der Hansestadt führen als auch zu aktuellen kulturellen Ereignissen und attraktiven Freizeitangeboten leiten."
+        - paragraph
+        - heading "Aktuelle Wassertemperatur in der Trave vor Lübeck: 20 °C" [level=2, ref=e22]
+          - StaticText "Aktuelle Wassertemperatur in der Trave vor Lübeck: 20 °C"
+        - paragraph
+          - Iframe "Impressionen von der Trave in Lübeck" [ref=e42]
+            - generic
+              - generic "YouTube Video Player"
+              - generic
+                - generic
+                  - button "Play video" [ref=e416]
+                - button "Hide player controls" [ref=e415]
+                - generic
+                - link "Lübeck, Germany: Trave/Kanaltrave, Hafen, Altstadt - 12 HiRes Images - 8K Ultra HD" [ref=e417]
+                - link "Video Pictures" [ref=e418]
+                - generic
+                  - button [ref=e420]
+                - generic
+                  - button "Copy link" [ref=e421]
+                  - link "Watch on YouTube" [ref=e419]
+        - paragraph
+        - heading "Durchschnittliche Wassertemperaturen in Lübeck im Jahresverlauf:" [level=2, ref=e23]
+        - image "Durchschnittliche wassertemperatur in Lübeck im Jahresverlauf"
+        - LineBreak "\n"
+        - StaticText "Tabellarische Übersicht zur durchschnittlichen Wassertemperatur:"
+        - table
+          - row
+            - cell "Monat" [ref=e84]
+            - cell "Ø Wassertemperatur" [ref=e85]
+          - row
+            - cell "Januar" [ref=e86]
+            - cell "3 °C" [ref=e87]
+          - row
+            - cell "Februar" [ref=e88]
+            - cell "2 °C" [ref=e89]
+          - row
+            - cell "März" [ref=e90]
+            - cell "3 °C" [ref=e91]
+          - row
+            - cell "April" [ref=e92]
+            - cell "6 °C" [ref=e93]
+          - row
+            - cell "Mai" [ref=e94]
+            - cell "11 °C" [ref=e95]
+          - row
+            - cell "Juni" [ref=e96]
+            - cell "16 °C" [ref=e97]
+          - row
+            - cell "Juli" [ref=e98]
+            - cell "18 °C" [ref=e99]
+          - row
+            - cell "August" [ref=e100]
+            - cell "19 °C" [ref=e101]
+          - row
+            - cell "September" [ref=e102]
+            - cell "17 °C" [ref=e103]
+          - row
+            - cell "Oktober" [ref=e104]
+            - cell "13 °C" [ref=e105]
+          - row
+            - cell "November" [ref=e106]
+            - cell "8 °C" [ref=e107]
+          - row
+            - cell "Dezember" [ref=e108]
+            - cell "5 °C" [ref=e109]
+        - paragraph
+          - StaticText "Wassertemperatur im "
+          - strong
+          - StaticText ": "
+          - strong
+        - separator
+        - paragraph
+        - heading "Wassertemperatur je Jahreszeit:" [level=2, ref=e24]
+        - paragraph
+          - StaticText "Im Folgenden sind die durchschnittlichen Badetemperaturen in der Ostsee bei Lübeck je Jahreszeit aufgeführt."
+        - table
+          - row
+            - cell "Jahreszeit (DE)" [ref=e110]
+            - cell "Ø Wasser- temperatur" [ref=e111]
+          - row
+            - cell "Frühling" [ref=e112]
+            - cell "6 °C" [ref=e113]
+          - row
+            - cell "Sommer" [ref=e114]
+            - cell "17 °C" [ref=e115]
+          - row
+            - cell "Herbst" [ref=e116]
+            - cell "12 °C" [ref=e117]
+          - row
+            - cell "Winter" [ref=e118]
+            - cell "3 °C" [ref=e119]
+        - separator
+        - paragraph
+        - heading "Minimale & maximale Wassertemperaturen in Lübeck nach Monaten:" [level=2, ref=e25]
+        - LineBreak "\n"
+        - insertion
+          - heading "Ähnliche Themen, die Sie interessieren könnten" [level=2, ref=e120] focusable [tabindex]
+          - link "Zeit und Kalender" [ref=e121]
+          - link "Astronomie" [ref=e122]
+          - link "Hydrologie und Meereskunde" [ref=e123]
+        - LineBreak "\n"
+        - table
+          - row
+            - cell "Monat" [ref=e124]
+            - cell "Ø min. Wasser- temperatur" [ref=e125]
+            - cell "Ø max. Wasser- temperatur" [ref=e126]
+          - row
+            - cell "Januar" [ref=e127]
+            - cell "1 °C" [ref=e128]
+            - cell "6 °C" [ref=e129]
+          - row
+            - cell "Februar" [ref=e130]
+            - cell "0 °C" [ref=e131]
+            - cell "5°C" [ref=e132]
+          - row
+            - cell "März" [ref=e133]
+            - cell "1 °C" [ref=e134]
+            - cell "6°C" [ref=e135]
+          - row
+            - cell "April" [ref=e136]
+            - cell "3 °C" [ref=e137]
+            - cell "11 °C" [ref=e138]
+          - row
+            - cell "Mai" [ref=e139]
+            - cell "6 °C" [ref=e140]
+            - cell "16°C" [ref=e141]
+          - row
+            - cell "Juni" [ref=e142]
+            - cell "13 °C" [ref=e143]
+            - cell "21°C" [ref=e144]
+          - row
+            - cell "Juli" [ref=e145]
+            - cell "16 °C" [ref=e146]
+            - cell "22°C" [ref=e147]
+          - row
+            - cell "August" [ref=e148]
+            - cell "17 °C" [ref=e149]
+            - cell "23°C" [ref=e150]
+          - row
+            - cell "September" [ref=e151]
+            - cell "14 °C" [ref=e152]
+            - cell "20°C" [ref=e153]
+          - row
+            - cell "Oktober" [ref=e154]
+            - cell "10 °C" [ref=e155]
+            - cell "17°C" [ref=e156]
+          - row
+            - cell "November" [ref=e157]
+            - cell "4 °C" [ref=e158]
+            - cell "13°C" [ref=e159]
+          - row
+            - cell "Dezember" [ref=e160]
+            - cell "2 °C" [ref=e161]
+            - cell "8°C" [ref=e162]
+        - heading "Vergleich der minimalen & maximalen Wassertemperaturen:" [level=3, ref=e26]
+        - image "minimale & maximale wassertemperatur lübeck"
+        - LineBreak "\n"
+        - StaticText "Monat mit der durchschn. "
+        - strong
+          - StaticText "höchsten"
+        - StaticText " (max.) Wassertemperatur:"
+        - list
+          - listitem [level=1]
+        - paragraph
+          - StaticText "Monat mit der durchschn. "
+          - strong
+          - StaticText " (min.) Wassertemperatur:"
+        - list
+          - listitem [level=1]
+        - separator
+        - paragraph
+        - heading "Wetterinformationen & Klimadaten zu Lübeck" [level=2, ref=e27]
+        - paragraph
+          - StaticText "Nachfolgend finden Sie Infos zum aktuellen Wetter sowie eine Übersicht über die wichtigsten Klimadaten für Lübeck."
+          - LineBreak "\n"
+        - heading "Wetter in Lübeck:" [level=3, ref=e28]
+        - StaticText "LÜBECK"
+        - StaticText ""
+        - strong
+          - StaticText "15"
+          - superscript
+        - StaticText "Überwiegend bewölkt"
+        - StaticText "78% Luftfeuchtigkeit"
+        - StaticText "Wind: 5m/s W"
+        - StaticText "MAX C 15 • MIN C 15"
+        - StaticText ""
+        - generic
+          - StaticText "25"
+          - superscript
+        - StaticText "SA"
+        - StaticText ""
+        - generic
+          - StaticText "28"
+          - superscript
+        - StaticText "SO"
+        - StaticText ""
+        - generic
+          - StaticText "24"
+          - superscript
+        - StaticText "MO"
+        - StaticText ""
+        - generic
+          - StaticText "21"
+          - superscript
+        - StaticText "DI"
+        - StaticText ""
+        - generic
+          - StaticText "21"
+          - superscript
+        - StaticText "MI"
+        - StaticText ""
+        - generic
+          - StaticText "26"
+          - superscript
+        - StaticText "DO"
+        - StaticText ""
+        - generic
+          - StaticText "33"
+          - superscript
+        - StaticText "FR"
+        - StaticText ""
+        - generic
+          - StaticText "26"
+          - superscript
+        - StaticText "SA"
+        - StaticText ""
+        - generic
+          - StaticText "23"
+          - superscript
+        - StaticText "SO"
+        - StaticText ""
+        - generic
+          - StaticText "33"
+          - superscript
+        - StaticText "MO"
+        - StaticText ""
+        - generic
+          - StaticText "19"
+          - superscript
+        - StaticText "DI"
+        - StaticText ""
+        - generic
+          - StaticText "22"
+          - superscript
+        - StaticText "MI"
+        - StaticText ""
+        - generic
+          - StaticText "21"
+          - superscript
+        - StaticText "DO"
+        - StaticText ""
+        - generic
+          - StaticText "22"
+          - superscript
+        - StaticText "FR"
+        - LineBreak "\n"
+        - LineBreak "\n"
+        - heading "Klima in Lübeck:" [level=3, ref=e29]
+        - paragraph
+          - StaticText "Das "
+          - strong
+          - StaticText " ist geprägt von seiner Lage an der deutschen Ostseeküste, was zu einem "
+          - strong
+          - StaticText " führt. Die "
+          - strong
+          - StaticText " und die "
+          - strong
+          - StaticText ", ohne dabei aber eine extreme Hitze zu erreichen. Niederschläge verteilen sich relativ gleichmäßig über das gesamte Jahr, jedoch kann man in den "
+          - strong
+          - StaticText " mit "
+          - strong
+          - StaticText " rechnen. Die "
+          - strong
+          - StaticText " sorgt dafür, dass das Wetter manchmal schnell umschlagen kann, was "
+          - strong
+          - StaticText " mit sich bringen kann. Insgesamt bietet Lübeck ein eher ausgeglichenes Wetter, ideal für Urlauber, die Aktivitäten im Freien genießen möchten, ohne von extremen Wetterbedingungen überrascht zu werden."
+          - LineBreak "\n"
+        - insertion
+          - heading "Ähnliche Themen, die Sie interessieren könnten" [level=2, ref=e163] focusable [tabindex]
+          - link "Physik" [ref=e164]
+          - link "Seen" [ref=e165]
+          - link "See" [ref=e166]
+        - heading "Klimatabelle Lübeck:" [level=3, ref=e30]
+        - table
+          - row
+            - cell "Jan" [ref=e167]
+            - cell "Febr" [ref=e168]
+            - cell "März" [ref=e169]
+            - cell "April" [ref=e170]
+            - cell "Mai" [ref=e171]
+            - cell "Juni" [ref=e172]
+            - cell "Juli" [ref=e173]
+            - cell "Aug" [ref=e174]
+            - cell "Sept" [ref=e175]
+            - cell "Okt" [ref=e176]
+            - cell "Nov" [ref=e177]
+            - cell "Dez" [ref=e178]
+          - row
+            - cell "Max. Temperatur Ø (°C)" [ref=e179]
+            - cell "3" [ref=e180]
+            - cell "4" [ref=e181]
+            - cell "7" [ref=e182]
+            - cell "11" [ref=e183]
+            - cell "16" [ref=e184]
+            - cell "19" [ref=e185]
+            - cell "21" [ref=e186]
+            - cell "21" [ref=e187]
+            - cell "17" [ref=e188]
+            - cell "13" [ref=e189]
+            - cell "7" [ref=e190]
+            - cell "4" [ref=e191]
+          - row
+            - cell "Min. Temperatur Ø (°C)" [ref=e192]
+            - cell "-1" [ref=e193]
+            - cell "-1" [ref=e194]
+            - cell "1" [ref=e195]
+            - cell "3" [ref=e196]
+            - cell "8" [ref=e197]
+            - cell "11" [ref=e198]
+            - cell "13" [ref=e199]
+            - cell "13" [ref=e200]
+            - cell "10" [ref=e201]
+            - cell "7" [ref=e202]
+            - cell "3" [ref=e203]
+            - cell "0" [ref=e204]
+          - row
+            - cell "Sonnenstunden (Stunden/Tag)" [ref=e205]
+            - cell "2" [ref=e206]
+            - cell "2" [ref=e207]
+            - cell "3" [ref=e208]
+            - cell "5" [ref=e209]
+            - cell "6" [ref=e210]
+            - cell "7" [ref=e211]
+            - cell "8" [ref=e212]
+            - cell "7" [ref=e213]
+            - cell "5" [ref=e214]
+            - cell "3" [ref=e215]
+            - cell "2" [ref=e216]
+            - cell "1" [ref=e217]
+          - row
+            - cell "Regentage (Tage/Monat)" [ref=e218]
+            - cell "10" [ref=e219]
+            - cell "8" [ref=e220]
+            - cell "10" [ref=e221]
+            - cell "8" [ref=e222]
+            - cell "8" [ref=e223]
+            - cell "9" [ref=e224]
+            - cell "9" [ref=e225]
+            - cell "8" [ref=e226]
+            - cell "9" [ref=e227]
+            - cell "9" [ref=e228]
+            - cell "10" [ref=e229]
+            - cell "10" [ref=e230]
+          - row
+            - cell "Niederschlag (mm)" [ref=e231]
+            - cell "55" [ref=e232]
+            - cell "36" [ref=e233]
+            - cell "51" [ref=e234]
+            - cell "42" [ref=e235]
+            - cell "45" [ref=e236]
+            - cell "63" [ref=e237]
+            - cell "65" [ref=e238]
+            - cell "61" [ref=e239]
+            - cell "56" [ref=e240]
+            - cell "55" [ref=e241]
+            - cell "62" [ref=e242]
+            - cell "63" [ref=e243]
+        - paragraph
+        - heading "Beste Reisezeit für Lübeck an der Ostsee" [level=2, ref=e31]
+        - paragraph
+        - paragraph
+        - insertion
+        - paragraph
+        - paragraph
+        - heading "Sehenswürdigkeiten in Lübeck" [level=2, ref=e32]
+        - paragraph
+        - paragraph
+          - Iframe "Sehenswürdigkeiten Lübeck" [ref=e43]
+        - insertion
+          - heading "Ähnliche Themen, die Sie interessieren könnten" [level=2, ref=e244] focusable [tabindex]
+          - link "Reiseführer und -berichte" [ref=e245]
+          - link "Wasserversorgung und -aufbereitung" [ref=e246]
+          - link "Wasser" [ref=e247]
+        - paragraph
+        - paragraph
+        - insertion
+        - paragraph
+        - paragraph
+        - paragraph
+        - insertion
+        - paragraph
+          - link "Travemünde" [ref=e44]
+        - blockquote
+        - insertion
+          - Iframe "Advertisement" [ref=e248]
+    - complementary "Haupt-Sidebar"
+      - insertion
+        - heading "Ähnliche Themen, die Sie interessieren könnten" [level=2, ref=e395] focusable [tabindex]
+        - link "Geschichte" [ref=e396]
+        - link "Seen und Flüsse" [ref=e397]
+        - link "Stadtführer" [ref=e398]
+        - link "Wasser in Flaschen" [ref=e399]
+        - link "Atmosphärenwissenschaft" [ref=e400]
+        - link "Europa Reiseziele" [ref=e401]
+        - link "Badeseen Deutschland" [ref=e402]
+        - link "Adria Wassertemperatur" [ref=e403]
+      - form
+        - generic
+          - textbox [ref=e249]
+          - button "Suche" [ref=e250]
+      - insertion
+        - Iframe "Advertisement" [ref=e45] focusable [tabindex]
+      - heading "Wassertemperaturen für neue Reiseziele" [level=4, ref=e33]
+      - list
+        - listitem [level=1]
+          - link "Wassertemperatur Toskana" [ref=e251]
+        - listitem [level=1]
+          - link "Wassertemperatur Ligurien" [ref=e252]
+        - listitem [level=1]
+          - link "Wassertemperatur Algarve" [ref=e253]
+        - listitem [level=1]
+          - link "Wassertemperatur Dubai" [ref=e254]
+        - listitem [level=1]
+          - link "Wassertemperatur Side" [ref=e255]
+        - listitem [level=1]
+          - link "Wassertemperatur Elba" [ref=e256]
+        - listitem [level=1]
+          - link "Wassertemperatur Albufeira" [ref=e257]
+        - listitem [level=1]
+          - link "Wassertemperatur Alicante" [ref=e258]
+        - listitem [level=1]
+          - link "Wassertemperatur Cadiz" [ref=e259]
+        - listitem [level=1]
+          - link "Wassertemperatur Malaga" [ref=e260]
+        - listitem [level=1]
+          - link "Wassertemperatur Kanaren" [ref=e261]
+        - listitem [level=1]
+          - link "Wassertemperatur Alanya" [ref=e262]
+        - listitem [level=1]
+          - link "Wassertemperatur Kemer" [ref=e263]
+        - listitem [level=1]
+          - link "Wassertemperatur Faro" [ref=e264]
+        - listitem [level=1]
+          - link "Wassertemperatur Andalusien" [ref=e265]
+        - listitem [level=1]
+          - link "Wassertemperatur Rovinj" [ref=e266]
+        - listitem [level=1]
+          - link "Wassertemperatur Nizza" [ref=e267]
+        - listitem [level=1]
+          - link "Wassertemperatur Heraklion" [ref=e268]
+        - listitem [level=1]
+          - link "Wassertemperatur Olbia" [ref=e269]
+        - listitem [level=1]
+          - link "Wassertemperatur Tropea" [ref=e270]
+        - listitem [level=1]
+          - link "Wassertemperatur Kapverden" [ref=e271]
+        - listitem [level=1]
+          - link "Wassertemperatur Azoren" [ref=e272]
+        - listitem [level=1]
+          - link "Wassertemperaturen Französisch Polynesien" [ref=e273]
+        - listitem [level=1]
+          - link "Wassertemperaturen Vereinigte Arabische Emirate" [ref=e274]
+        - listitem [level=1]
+          - link "Wassertemperaturen Kaspisches Meer" [ref=e275]
+        - listitem [level=1]
+          - link "Wassertemperatur Peloponnes" [ref=e276]
+        - listitem [level=1]
+          - link "Wassertemperatur Gerakini, Sithonia" [ref=e277]
+        - listitem [level=1]
+          - link "Wassertemperatur Ericeira" [ref=e278]
+        - listitem [level=1]
+          - link "Wassertemperatur Türkische Riviera" [ref=e279]
+        - listitem [level=1]
+          - link "Wassertemperatur Italienische Riviera" [ref=e280]
+        - listitem [level=1]
+          - link "Wassertemperatur Ionisches Meer" [ref=e281]
+        - listitem [level=1]
+          - link "Wassertemperatur Izmir" [ref=e282]
+        - listitem [level=1]
+          - link "Wassertemperatur Brela" [ref=e283]
+        - listitem [level=1]
+          - link "Wassertemperatur Albena" [ref=e284]
+      - insertion
+      - heading "Wassertemperaturen Kanaren" [level=4, ref=e34]
+      - list
+        - listitem [level=1]
+          - link "Wassertemperatur Teneriffa" [ref=e285]
+        - listitem [level=1]
+          - link "Wassertemperatur Fuerteventura" [ref=e286]
+        - listitem [level=1]
+          - link "Wassertemperatur Gran Canaria" [ref=e287]
+        - listitem [level=1]
+          - link "Wassertemperatur Lanzarote" [ref=e288]
+        - listitem [level=1]
+          - link "Wassertemperatur La Palma" [ref=e289]
+        - listitem [level=1]
+          - link "Wassertemperatur La Gomera" [ref=e290]
+        - listitem [level=1]
+          - link "Wassertemperatur El Hierro" [ref=e291]
+      - insertion
+      - heading "Wassertemperaturen Balearen" [level=4, ref=e35]
+      - list
+        - listitem [level=1]
+          - link "Wassertemperatur Mallorca" [ref=e292]
+        - listitem [level=1]
+          - link "Wassertemperatur Menorca" [ref=e293]
+        - listitem [level=1]
+          - link "Wassertemperatur Ibiza" [ref=e294]
+        - listitem [level=1]
+          - link "Wassertemperatur Formentera" [ref=e295]
+        - listitem [level=1]
+          - link "Wassertemperatur Cabrera" [ref=e296]
+      - heading "Wassertemperaturen für neue Badeseen" [level=4, ref=e36]
+      - list
+        - listitem [level=1]
+          - link "Wassertemperatur Vierwaldstättersee" [ref=e297]
+        - listitem [level=1]
+          - link "Wassertemperatur Arendsee" [ref=e298]
+        - listitem [level=1]
+          - link "Wassertemperatur Bielersee" [ref=e299]
+        - listitem [level=1]
+          - link "Wassertemperatur Irrsee" [ref=e300]
+        - listitem [level=1]
+          - link "Wassertemperatur Wörthsee" [ref=e301]
+        - listitem [level=1]
+          - link "Wassertemperatur Faaker See" [ref=e302]
+        - listitem [level=1]
+          - link "Wassertemperatur Langener Waldsee" [ref=e303]
+        - listitem [level=1]
+          - link "Wassertemperatur Illmensee" [ref=e304]
+        - listitem [level=1]
+          - link "Wassertemperatur Perlsee" [ref=e305]
+        - listitem [level=1]
+          - link "Wassertemperatur Otto-Maigler-See" [ref=e306]
+        - listitem [level=1]
+          - link "Wassertemperatur Zellersee, Bayern" [ref=e307]
+        - listitem [level=1]
+          - link "Wassertemperatur Zeller See" [ref=e308]
+        - listitem [level=1]
+          - link "Wassertemperatur Zugersee" [ref=e309]
+        - listitem [level=1]
+          - link "Wassertemperatur Zürichsee" [ref=e310]
+        - listitem [level=1]
+          - link "Wassertemperatur Küchensee" [ref=e311]
+      - insertion
+      - heading "Wassertemperaturen für bekannte Flüsse" [level=4, ref=e37]
+      - list
+        - listitem [level=1]
+          - link "Wassertemperatur Alz" [ref=e312]
+        - listitem [level=1]
+          - link "Wassertemperatur Aller" [ref=e313]
+        - listitem [level=1]
+          - link "Wassertemperatur Amper" [ref=e314]
+        - listitem [level=1]
+          - link "Wassertemperatur Rhein" [ref=e315]
+        - listitem [level=1]
+          - link "Wassertemperatur Donau" [ref=e316]
+        - listitem [level=1]
+          - link "Wassertemperatur Eisbach" [ref=e317]
+        - listitem [level=1]
+          - link "Wassertemperatur Elbe" [ref=e318]
+        - listitem [level=1]
+          - link "Wassertemperatur Fulda" [ref=e319]
+        - listitem [level=1]
+          - link "Wassertemperatur Lahn" [ref=e320]
+        - listitem [level=1]
+          - link "Wassertemperatur Havel" [ref=e321]
+        - listitem [level=1]
+          - link "Wassertemperatur Main" [ref=e322]
+        - listitem [level=1]
+          - link "Wassertemperatur Mosel" [ref=e323]
+        - listitem [level=1]
+          - link "Wassertemperatur Naab" [ref=e324]
+        - listitem [level=1]
+          - link "Wassertemperatur Neckar" [ref=e325]
+        - listitem [level=1]
+          - link "Wassertemperatur Alster" [ref=e326]
+        - listitem [level=1]
+          - link "Wassertemperatur Aare" [ref=e327]
+        - listitem [level=1]
+          - link "Wassertemperatur Isar" [ref=e328]
+        - listitem [level=1]
+          - link "Wassertemperatur Oder" [ref=e329]
+        - listitem [level=1]
+          - link "Wassertemperatur Trave" [ref=e330]
+        - listitem [level=1]
+          - link "Wassertemperatur Weser" [ref=e331]
+        - listitem [level=1]
+          - link "Wassertemperatur Warnow" [ref=e332]
+        - listitem [level=1]
+          - link "Wassertemperatur Wakenitz" [ref=e333]
+        - listitem [level=1]
+          - link "Wassertemperatur Regen" [ref=e334]
+        - listitem [level=1]
+          - link "Wassertemperatur Nidda" [ref=e335]
+        - listitem [level=1]
+          - link "Wassertemperatur Lech" [ref=e336]
+        - listitem [level=1]
+          - link "Wassertemperatur Ruhr" [ref=e337]
+        - listitem [level=1]
+          - link "Wassertemperatur Lippe" [ref=e338]
+        - listitem [level=1]
+          - link "Wassertemperatur Limmat" [ref=e339]
+        - listitem [level=1]
+          - link "Wassertemperatur Reuss" [ref=e340]
+        - listitem [level=1]
+          - link "Wassertemperatur Linth" [ref=e341]
+        - listitem [level=1]
+          - link "Wassertemperatur Rhone" [ref=e342]
+        - listitem [level=1]
+          - link "Wassertemperatur Emme" [ref=e343]
+        - listitem [level=1]
+          - link "Wassertemperatur Thur" [ref=e344]
+        - listitem [level=1]
+          - link "Wassertemperatur Maggia" [ref=e345]
+        - listitem [level=1]
+          - link "Wassertemperatur Saane" [ref=e346]
+        - listitem [level=1]
+          - link "Wassertemperatur Töss" [ref=e347]
+        - listitem [level=1]
+          - link "Wassertemperatur Saale" [ref=e348]
+        - listitem [level=1]
+          - link "Wassertemperatur Iller" [ref=e349]
+        - listitem [level=1]
+          - link "Wassertemperatur Inn" [ref=e350]
+        - listitem [level=1]
+          - link "Wassertemperatur Regnitz" [ref=e351]
+        - listitem [level=1]
+          - link "Wassertemperatur Eider" [ref=e352]
+        - listitem [level=1]
+          - link "Wassertemperatur Ammer" [ref=e353]
+        - listitem [level=1]
+          - link "Wassertemperatur Dahme" [ref=e354]
+        - listitem [level=1]
+          - link "Wassertemperatur Spree" [ref=e355]
+        - listitem [level=1]
+          - link "Wassertemperatur Müggelspree" [ref=e356]
+        - listitem [level=1]
+          - link "Wassertemperatur Ticino" [ref=e357]
+      - heading "Wassertemperaturen für beliebte Länder" [level=4, ref=e38]
+      - list
+        - listitem [level=1]
+          - link "Wassertemperatur Deutschland" [ref=e358]
+        - listitem [level=1]
+          - link "Wassertemperatur Seen Schweiz" [ref=e359]
+        - listitem [level=1]
+          - link "Wassertemperatur Seen Österreich" [ref=e360]
+        - listitem [level=1]
+          - link "Wassertemperatur Seen Ungarn" [ref=e361]
+        - listitem [level=1]
+          - link "Wassertemperatur Marokko" [ref=e362]
+        - listitem [level=1]
+          - link "Wassertemperatur Tunesien" [ref=e363]
+        - listitem [level=1]
+          - link "Wassertemperatur Spanien" [ref=e364]
+        - listitem [level=1]
+          - link "Wassertemperatur Frankreich" [ref=e365]
+        - listitem [level=1]
+          - link "Wassertemperatur Polen" [ref=e366]
+        - listitem [level=1]
+          - link "Wassertemperatur Dänemark" [ref=e367]
+        - listitem [level=1]
+          - link "Wassertemperatur Schweden" [ref=e368]
+        - listitem [level=1]
+          - link "Wassertemperatur Norwegen" [ref=e369]
+        - listitem [level=1]
+          - link "Wassertemperatur Holland" [ref=e370]
+        - listitem [level=1]
+          - link "Wassertemperatur Belgien" [ref=e371]
+        - listitem [level=1]
+          - link "Wassertemperatur Kroatien" [ref=e372]
+        - listitem [level=1]
+          - link "Wassertemperatur Italien" [ref=e373]
+        - listitem [level=1]
+          - link "Wassertemperatur Türkei" [ref=e374]
+        - listitem [level=1]
+          - link "Wassertemperatur Israel" [ref=e375]
+        - listitem [level=1]
+          - link "Wassertemperatur Ägypten" [ref=e376]
+        - listitem [level=1]
+          - link "Wassertemperatur Oman" [ref=e377]
+        - listitem [level=1]
+          - link "Wassertemperatur Thailand" [ref=e378]
+        - listitem [level=1]
+          - link "Wassertemperatur Südafrika" [ref=e379]
+        - listitem [level=1]
+          - link "Wassertemperatur Neuseeland" [ref=e380]
+        - listitem [level=1]
+          - link "Wassertemperatur Australien" [ref=e381]
+        - listitem [level=1]
+          - link "Wassertemperatur Costa Rica" [ref=e382]
+        - listitem [level=1]
+          - link "Wassertemperatur Gambia" [ref=e383]
+        - listitem [level=1]
+          - link "Wassertemperatur Irland" [ref=e384]
+        - listitem [level=1]
+          - link "Wassertemperatur Katar" [ref=e385]
+        - listitem [level=1]
+          - link "Wassertemperatur Puerto Rico" [ref=e386]
+        - listitem [level=1]
+          - link "Wassertemperatur Madagaskar" [ref=e387]
+        - listitem [level=1]
+          - link "Wassertemperatur Rumänien" [ref=e388]
+        - listitem [level=1]
+          - link "Wassertemperatur Bosnische Riviera" [ref=e389]
+      - heading "Beliebte Beiträge" [level=4, ref=e39]
+      - list
+        - listitem [level=1]
+          - link "Richtige Badetemperatur" [ref=e390]
+        - listitem [level=1]
+          - link "Seepferdchen & Freischwimmer Aufgaben" [ref=e391]
+      - heading "Beliebte Städte" [level=4, ref=e40]
+      - list
+        - listitem [level=1]
+          - link "Toulouse" [ref=e392]
+        - listitem [level=1]
+          - link "Lyon" [ref=e393]
+        - listitem [level=1]
+          - link "Rennes" [ref=e394]
+  - contentinfo
+    - paragraph
+      - link "Datenschutzerklärung" [ref=e5]
+      - link "Impressum" [ref=e6]
+- button "Privacy and cookie settings" [ref=e1]
+- StaticText "Managed by Google. Complies with IAB TCF. CMP ID: 300"
