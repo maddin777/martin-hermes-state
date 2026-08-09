@@ -24,13 +24,13 @@ OPENROUTER_KEY = os.environ.get("OPENROUTER_API_KEY")
 DISCOVERY_MODEL = "meta-llama/llama-4-scout"
 
 THRESHOLDS = {
-    "min_trades_for_eval": 5,
+    "min_trades_for_eval": 3,
     "suspend_win_rate": 0.30,
     "suspend_consecutive_losses": 5,
     "suspend_avg_pnl": -2.0,
     "remove_win_rate": 0.15,
-    "remove_no_mention_days": 90,
-    "promote_min_trades": 5,
+    "remove_no_mention_days": 60,
+    "promote_min_trades": 3,
     "promote_min_win_rate": 0.45,
     "promote_min_avg_pnl": -0.5,
     "candidate_max_age_days": 30,
@@ -346,7 +346,7 @@ Antworte NUR mit einem JSON-Array von maximal 3 Vorschlägen (kein Markdown, kei
 
         # Modell-Fallback-Kette
         models_to_try = [
-            "deepseek/deepseek-v4-flash",
+            "deepseek/deepseek-v4-flash-0731",
             "openrouter/owl-alpha",
             "openai/gpt-4o-mini",
         ]

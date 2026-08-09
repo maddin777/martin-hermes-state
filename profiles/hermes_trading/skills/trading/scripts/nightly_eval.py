@@ -201,6 +201,44 @@ def calc_top_band_metrics(con):
     return result
 
 
+def calc_top_signals(con, limit=5):
+    """
+    Top-Signale für den Tages-Report: die limit besten Watchlist-Kandidaten
+    nach conviction_score_aged (alterungsbereinigt), mit tech_score und
+    tech_direction. Das ist die handelbare Shortlist — was morgen als erstes
+    geprüft werden sollte.
+    """
+    rows = con.execute("""
+        SELECT name, ticker, conviction_score, conviction_score_aged,
+               tech_score, tech_direction, mention_count
+        FROM watchlist
+        WHERE status = 'watching'
+          AND ticker IS NOT NULL
+        ORDER BY conviction_score_aged DESC, tech_score DESC, conviction_score DESC
+        LIMIT ?
+    """, (limit,)).fetchall()
+    return [dict(r) for r in rows]
+
+
+def build_top_signals_line(con, limit=5):
+    """HTML-formatierte Top-Signale-Zeile für die Telegram-Nachricht."""
+    signals = calc_top_signals(con, limit=limit)
+    if not signals:
+        return "🎯 Top-Signale: (keine Kandidaten)"
+    lines = []
+    for i, s in enumerate(signals, 1):
+        conv = (s["conviction_score_aged"] or 0)
+        tech = s["tech_score"] or 0
+        direc = (s["tech_direction"] or "NEUTRAL").upper()
+        icon = {"LONG": "📈", "SHORT": "📉", "NEUTRAL": "➖"}.get(direc, "➖")
+        mentions = s["mention_count"] or 0
+        lines.append(
+            f"{i}. <b>{s['name']}</b> ({s['ticker']}) {icon}\n"
+            f"    Conv {conv:.0%} | Tech {tech:.2f} {direc} | {mentions}x"
+        )
+    return "🎯 <b>Top-Signale:</b>\n" + "\n".join(lines)
+
+
 def calc_source_quality(con, today):
     """
     1. Trade-Qualität (für etablierte Quellen mit ≥1 Trade):
@@ -661,6 +699,7 @@ def main():
         wr_ok = "✅" if pm["win_rate_7d"] >= 0.5 else "⚠️" if pm["win_rate_7d"] >= 0.35 else "❌"
         top_src = sources[0] if sources else None
         top_line = f"Top-Quelle: <b>{top_src['channel']}</b> (WR:{top_src['win_rate_30d']:.0%}, Q:{top_src['quality_score']:.2f})" if top_src else ""
+        signals_line = build_top_signals_line(con, limit=5)
         bm_line = ""
         if bm:
             a_spy_icon = "✅" if bm["alpha_spy"] >= 0 else "❌"
@@ -688,6 +727,7 @@ def main():
                 f"{bm_line}"
                 f"{committee_line}\n"
                 f"{top_line}\n\n"
+                f"{signals_line}\n\n"
                 "🔧 Strategy Optimizer läuft um 08:00..."
             )
         else:
@@ -706,7 +746,8 @@ def main():
                 f"  Exposure: LONG {pm['exposure_long_pct']:.0f}% SHORT {pm['exposure_short_pct']:.0f}%\n"
                 f"{bm_line}"
                 f"{committee_line}\n"
-                f"{top_line}"
+                f"{top_line}\n\n"
+                f"{signals_line}"
             )
 
         send_telegram(msg)

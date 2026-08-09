@@ -53,8 +53,8 @@ DEFAULT_CONFIG = {
     "partial_tp_enabled":     True,
     "partial_tp_atr":         1.5,
     "partial_tp_pct":         0.50,
-    "profit_lock_atr":        2.0,
-    "trailing_step_atr":      0.5,
+    "profit_lock_atr":        0.5,
+    "trailing_step_atr":      0.75,
     "slippage_pct":           0.001,
     "commission_eur":         1.0,
     "min_liquidity_eur":      500000,
@@ -82,8 +82,8 @@ DEFAULT_CONFIG = {
     #              Chandelier (konservativ; bindet selten, aber nie riskanter)
     #   "primary": Donchian-Extrem ERSETZT den Chandelier als Trail (echter
     #              Turtle-Exit, gibt Trends Raum) – Initial-SL bleibt harter Floor
-    "donchian_exit_enabled":  False,
-    "donchian_exit_mode":     "off",
+    "donchian_exit_enabled":  True,
+    "donchian_exit_mode":     "primary",
     "donchian_exit_period":   10,     # Turtle S1-Exit: 10-Tage-Gegen-Extrem
     # ── Investment Committee (Rollen-Sprint R1) ────────────────────────────
     #   Pre-Entry-Gate mit drei LLM-Rollen (Bull → Bear → Risk).
@@ -361,9 +361,12 @@ def adapt_strategy(cfg, con):
     }
     if regime in regime_configs:
         rc = regime_configs[regime]
+        # Trailing-Step: profit_lock_atr = ab wann Trailing aktiv wird
+        # (genutzt von active_exit_check.py — Trailing wird erst ab +Nx ATR aktiv)
+        # FIX 09.08.: schreibt in profit_lock_atr statt trailing_step_atr
         old_sl = cfg["atr_sl_multiplier"]
         old_tp = cfg["atr_tp_multiplier"]
-        old_trailing = cfg.get("trailing_step_atr", 0.75)
+        old_trailing = cfg.get("profit_lock_atr", 0.5)
         old_conf = cfg.get("min_confidence", 0.60)
 
         if old_sl != rc["sl"]:
@@ -373,10 +376,10 @@ def adapt_strategy(cfg, con):
         if old_tp != rc["tp"]:
             cfg["atr_tp_multiplier"] = rc["tp"]
             changes.append(f"Regime {regime}: TP {old_tp}→{rc['tp']}x ATR")
-        # Trailing-Step: profit_lock_atr = ab wann Trailing aktiv wird
-        # (genutzt von active_exit_check.py — Trailing wird erst ab +Nx ATR aktiv)
+        # profit_lock_atr = ab wann Trailing aktiv wird
+        # (genutzt von active_exit_check.py + signal_manager.py)
         if old_trailing < rc["trailing_atr"]:
-            cfg["trailing_step_atr"] = rc["trailing_atr"]
+            cfg["profit_lock_atr"] = rc["trailing_atr"]
             changes.append(f"Regime {regime}: Trailing ab +{rc['trailing_atr']}x ATR")
         # Confidence-Floor pro Regime
         if old_conf < rc["confidence"]:
@@ -708,7 +711,13 @@ def check_open_positions(con, cfg):
         # --- Trailing Stop (ATR-Chandelier) ---
         # Im primary-Modus übernimmt der Donchian-Trail (unten) das Nachziehen –
         # sonst würde der engere Chandelier den weiteren Turtle-Stop dominieren.
-        if atr and not _donchian_primary:
+        # FIX 09.08.: profit_lock-Gate eingebaut — Trailing erst ab +profit_lock_atr
+        # ATR im Plus (konsistent mit active_exit_check.py). Vorher zog der
+        # stündliche Check den SL bei jedem minimalen Hoch nach → 82% SL_HIT.
+        pnl_atr = (current_price - entry) / atr if direction == "LONG" \
+                  else (entry - current_price) / atr
+        profit_lock_threshold = cfg.get("profit_lock_atr", 0.5)
+        if atr and not _donchian_primary and pnl_atr >= profit_lock_threshold:
             if direction == "LONG":
                 prev_high = pos["highest_price"] or entry
                 new_high  = max(prev_high, current_price)
@@ -771,6 +780,9 @@ def check_open_positions(con, cfg):
         # Stop für LONG nur an bzw. senkt ihn für SHORT nur ab – lockert nie.
         #   ratchet: läuft ZUSÄTZLICH zum Chandelier (nur wenn Donchian enger ist)
         #   primary: Chandelier ist oben deaktiviert, Donchian ist der Trail
+        # FIX 09.08.: Donchian-Trail bekommt das profit_lock-Gate NUR im ratchet-
+        # Modus (er darf den Chandelier-Floor nicht unterlaufen). Im primary-Modus
+        # greift der Turtle-Exit direkt — er ist per Design der weite Trail.
         if _donchian_enabled and _donchian_mode != "off":
             donch = get_donchian_breakout(
                 ticker, exit_period=cfg.get("donchian_exit_period", 10)

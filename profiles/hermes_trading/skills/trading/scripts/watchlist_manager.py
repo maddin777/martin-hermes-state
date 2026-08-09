@@ -743,6 +743,8 @@ def main():
         con.commit()
     
         # 6. Technische Scores für Top-Kandidaten aktualisieren (LONG + SHORT)
+        # FIX 09.08. (Phase 2C): Schwelle MIN_CONVICTION*0.5 (0.30) → MIN_CONVICTION
+        # (0.60) — nur noch Kandidaten mit solider Conviction bekommen Tech-Scores.
         candidates_long = con.execute("""
             SELECT * FROM watchlist
             WHERE status='watching'
@@ -751,7 +753,7 @@ def main():
             AND ticker IS NOT NULL
             ORDER BY conviction_score DESC
             LIMIT 20
-        """, (MIN_CONVICTION * 0.5, 1)).fetchall()
+        """, (MIN_CONVICTION, 1)).fetchall()
 
         candidates_short = con.execute("""
             SELECT * FROM watchlist
@@ -761,7 +763,7 @@ def main():
             AND ticker IS NOT NULL
             ORDER BY conviction_score_bear DESC
             LIMIT 20
-        """, (MIN_CONVICTION * 0.5,)).fetchall()
+        """, (MIN_CONVICTION,)).fetchall()
 
         top_candidates = candidates_long + [c for c in candidates_short if c["ticker"] not in {x["ticker"] for x in candidates_long}]
         print(f"\n  Technische Analyse für {len(top_candidates)} Kandidaten (LONG:{len(candidates_long)} SHORT:{len(candidates_short)})...", flush=True)

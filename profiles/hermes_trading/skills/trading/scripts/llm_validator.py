@@ -12,7 +12,7 @@ from datetime import datetime
 from config import DB_PATH, db_connect
 
 OPENROUTER_KEY = os.environ.get("OPENROUTER_API_KEY")
-VALIDATION_MODEL = "deepseek/deepseek-v4-flash"
+VALIDATION_MODEL = "deepseek/deepseek-v4-flash-0731"
 
 
 def validate_signal(name, ticker, sentiment, mentions, reasons):

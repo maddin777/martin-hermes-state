@@ -65,7 +65,7 @@ CONVICTION_PRIOR_NEUTRAL  = 3.0   # Bayesian Prior (höher = konservativer bei w
 
 WATCHLIST_DAYS  = 14      # Tage bis ein Signal aus der Watchlist fällt
 MIN_MENTIONS    = 2       # Mindest-Mentions für Watchlist-Aufnahme
-MIN_CONVICTION  = 0.55    # Mindest-Conviction Score (leicht gesenkt für SHORT)
+MIN_CONVICTION  = 0.60    # Mindest-Conviction Score (leicht gesenkt für SHORT)
 
 # ── Portfolio-Limits ──────────────────────────────────────────────────────────
 
@@ -94,7 +94,7 @@ ASSET_TYPE_MULTIPLIERS = {
         "atr_tp": 2.5,
         "partial_atr": 1.5,
         "partial_pct": 0.50,
-        "profit_lock_atr": 2.0,
+        "profit_lock_atr": 0.5,
         "trailing_step": 0.5,
     },
     "TECH": {
@@ -102,7 +102,7 @@ ASSET_TYPE_MULTIPLIERS = {
         "atr_tp": 3.5,
         "partial_atr": 2.0,
         "partial_pct": 0.50,
-        "profit_lock_atr": 2.5,
+        "profit_lock_atr": 0.5,
         "trailing_step": 0.75,
     },
     "DEFENSIVE": {
@@ -110,7 +110,7 @@ ASSET_TYPE_MULTIPLIERS = {
         "atr_tp": 2.0,
         "partial_atr": 1.0,
         "partial_pct": 0.50,
-        "profit_lock_atr": 1.5,
+        "profit_lock_atr": 0.5,
         "trailing_step": 0.3,
     },
 }

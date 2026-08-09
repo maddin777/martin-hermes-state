@@ -241,8 +241,8 @@ def main():
                 )
                 continue
 
-            # --- AKTION 2: Profit-Sicherung bei +2x ATR ---
-            profit_lock_threshold = cfg.get("profit_lock_atr", 2.0)
+            # --- AKTION 2: Profit-Sicherung bei +profit_lock_atr ATR ---
+            profit_lock_threshold = cfg.get("profit_lock_atr", 0.5)
             if pnl_atr >= profit_lock_threshold:
                 if direction == "LONG":
                     protected_tp = entry + (pnl_atr * 0.5 * atr)
@@ -265,12 +265,13 @@ def main():
                         f"Neuer SL: {new_sl:.2f} (50% Gewinn gesichert)"
                     )
 
-            # --- AKTION 3: Trailing Stop — erst aktiv ab +2x ATR im Plus ---
+            # --- AKTION 3: Trailing Stop — erst aktiv ab +profit_lock_atr ATR im Plus ---
             # Problem (15.07.): 75% SL_HIT, 0% TP_HIT — das Trailing triggert
             # bei jedem normalen Pullback. Abhilfe: Trailing erst aktivieren
-            # wenn der Trade mindestens +2x ATR im Plus ist (profit_lock_atr).
+            # wenn der Trade mindestens +Nx ATR im Plus ist (profit_lock_atr).
+            # FIX 09.08.: Default 2.0 → 0.5 (2.0 war im Sideways unerreichbar).
             trailing_step = pos_mult["trailing_step"]
-            profit_lock_threshold = cfg.get("profit_lock_atr", 2.0)
+            profit_lock_threshold = cfg.get("profit_lock_atr", 0.5)
             if pnl_atr >= profit_lock_threshold:
                 if direction == "LONG":
                     ideal_sl      = current_price - (pos_mult["atr_sl"] * atr)

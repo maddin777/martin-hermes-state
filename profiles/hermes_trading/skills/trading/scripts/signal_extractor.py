@@ -34,7 +34,7 @@ log = get_logger("signal_extractor")
 from config import DB_PATH, SIGNALS_PATH, db_connect
 
 OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY")
-MODEL = "deepseek/deepseek-v4-flash"
+MODEL = "deepseek/deepseek-v4-flash-0731"
 FALLBACK_MODEL = "openai/gpt-4o-mini"
 CHUNK_SIZE = 15000
 OVERLAP = 1000

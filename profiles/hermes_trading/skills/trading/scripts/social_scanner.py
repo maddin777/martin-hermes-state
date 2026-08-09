@@ -21,7 +21,7 @@ from utils import retry, get_logger
 log = get_logger("social_scanner")
 
 OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY")
-MODEL = "google/gemini-2.5-flash-lite"
+MODEL = "deepseek/deepseek-v4-flash-0731"
 
 # xAI / Grok — via Hermes resolve_xai_http_credentials() (auto-refresh via OAuth)
 XAI_BASE = "https://api.x.ai/v1"

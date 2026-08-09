@@ -1,6 +1,49 @@
 # Änderungshistorie — Trading Skill
 
-**Stand:** Paketen A–D + Sprints 1–7 + Bugfix-Sprint + Screener-Source + Watchlist-Performance-Fix + Rollen-Sprint R1–R4 + **Turtle-Konfluenz-Sprint**
+**Stand:** Paketen A–D + Sprints 1–7 + Bugfix-Sprint + Screener-Source + Watchlist-Performance-Fix + Rollen-Sprint R1–R4 + **Turtle-Konfluenz-Sprint** + **Phase 1+2 Fix (09.08.2026)**
+
+## 09.08.2026 — Phase 1+2 Fix (Exit-Strategie + Signal-Rauschen)
+
+### Auslöser
+Review des Trading-Skills ergab: 77 geschlossene Trades netto -1.230€, 82% SL_HIT, 0% Win Rate über 30 Tage, 100% SL-Exits (0% TP), -8.6% YTD vs SPY +13.1%. 464 Watchlist-Einträge mit Ø 0.27 Conviction = Rauschen. Top-Band (Top 3/5/10) 0 gekauft. 30 Tage lang kein einziger Take-Profit.
+
+### Root Cause #1 — Exit-Strategie mathematisch kaputt
+- `signal_manager.py check_open_positions()` zog den Chandelier-Trailing **ohne profit_lock-Gate** nach (Zeile `if atr and not _donchian_primary:`). Der stündliche Check hob den SL bei jedem minimalen Hoch an → Trades wurden vor dem TP gestoppt. Der 15.07.-Fix (`profit_lock_atr`) existierte NUR in `active_exit_check.py`, nicht im stündlichen `signal_manager.py`.
+- **Config-Drift:** Die Regime-Adaption (`adapt_strategy()`) schrieb in `trailing_step_atr`, aber der Exit-Check liest `profit_lock_atr` → der Trailing-Delay war komplett wirkungslos.
+- `profit_lock_atr = 2.0` > SL (1.5x ATR) → im Sideways war der Wert unerreichbar → 0% TP-Hits.
+
+### Fixes Phase 1
+1. **`signal_manager.py`**: profit_lock-Gate in `check_open_positions()` eingebaut (Chandelier-Trailing nur noch ab `pnl_atr >= profit_lock_atr`).
+2. **`active_exit_check.py`**: Default `profit_lock_atr` 2.0 → 0.5.
+3. **`config.py`**: `ASSET_TYPE_MULTIPLIERS[].profit_lock_atr` alle 2.0/2.5/1.5 → 0.5.
+4. **`signal_manager.py` `adapt_strategy()`**: schreibt jetzt in `profit_lock_atr` statt `trailing_step_atr` (Config-Drift behoben).
+5. **Donchian-Primary-Exit aktiviert**: `donchian_exit_enabled: true`, `donchian_exit_mode: "primary"` (Turtle-Exit gibt Trends Raum; Initial-SL bleibt harter Floor).
+6. `strategy_config.json`: `profit_lock_atr 2.0→0.5`, `trailing_step_atr 2.0→0.75`, `min_confidence 0.8→0.70` (Entry-Starvation behoben), `min_conviction 0.6→0.65`.
+
+### Fixes Phase 2 — Signal-Rauschen
+7. **`config.py`**: `MIN_CONVICTION` 0.55 → 0.60.
+8. **`watchlist_manager.py`**: Tech-Score-Kandidaten-Schwelle `MIN_CONVICTION*0.5` (0.30) → `MIN_CONVICTION` (0.60) — nur solide Kandidaten bekommen Tech-Scores.
+9. **`source_lifecycle.py`**: `min_trades_for_eval` 5→3, `promote_min_trades` 5→3, `remove_no_mention_days` 90→60 (aggressiveres Quellen-Management).
+10. **`backtest_gate.py`** (neu): Backtest vor Config-Änderungen — GO/GEDULD/NO-GO basierend auf Sharpe, WR, Trade-Anzahl.
+
+### Erwartung
+Exit-Quote von 0% TP auf 20-30% heben. Weniger Rauschen in der Watchlist. Wenn nach 4 Wochen keine Verbesserung → Phase 3 (radikaler Umbau, siehe Cron `phase-3-review-trading` am 06.09.).
+
+## 09.08.2026 — Top-5-Signale im Tages-Report (Telegram)
+
+### Was
+Der `nightly_eval.py` Tages-Report (Mo–Fr 05:00) und Wochen-Report (So 06:00) enthalten jetzt einen **🎯 Top-Signale-Block** mit den 5 besten Watchlist-Kandidaten.
+
+### Implementierung
+- `calc_top_signals(con, limit=5)` — Query: `status='watching'` + `ticker IS NOT NULL`, sortiert nach `conviction_score_aged DESC, tech_score DESC, conviction_score DESC`
+- `build_top_signals_line(con, limit=5)` — HTML-Formatierung für Telegram: Name, Ticker, Conviction (aged), Tech-Score, tech_direction (📈/📉/➖), Mention-Count
+- Integration in beide msg-Formate (täglich + Sonntag) via `signals_line`
+
+### Warum conviction_score_aged
+Die rohen `conviction_score`-Werte sind oft 1.0 bei 1 Mention (frisch, aber unbestätigt). `conviction_score_aged` ist alterungsbereinigt (14d-Halbwertszeit) und zeigt etablierte Kandidaten wie Allianz (13x Mentions, 81%) statt 1-Mention-Zufallstreffer.
+
+### Delivery
+Kein neuer Cron nötig — nightly_eval sendet bereits täglich. Ziel: `TELEGRAM_HOME_CHANNEL` = `-1003918757178` (Ch_hermster_trade).
 
 ## 20.07.2026 — Turtle-Konfluenz-Sprint (Donchian + Asymmetrie)
 
@@ -107,8 +150,8 @@ DAILY_TOKEN_BUDGET = {
 "committee_bull":    "deepseek/deepseek-v4-pro",
 "committee_bear":    "openai/gpt-5.4-nano",
 "committee_risk":    "google/gemini-2.5-flash-lite",
-"devils_advocate":   "deepseek/deepseek-v4-flash",
-"extractor_analyst": "deepseek/deepseek-v4-flash"
+"devils_advocate":   "deepseek/deepseek-v4-flash-0731",
+"extractor_analyst": "deepseek/deepseek-v4-flash-0731"
 ```
 Bull, Bear und Risk sind DREI verschiedene Provider (DeepSeek / OpenAI / Google) — Bull und Bear MÜSSEN verschieden sein, sonst widerlegt sich dasselbe Modell nur mit denselben Biases. `grok-lite` bewusst NICHT fürs Committee (wird vom Breaking-News-Check genutzt, Rate-Limits schonen).
 
@@ -517,10 +560,10 @@ Twitter/X-Daten flossen ausschließlich über `twitterapi.io` (Drittanbieter, li
 - Model: `grok-4.5` (grok-2-latest existiert nicht mehr auf xAI, nur Responses API Models wie grok-4.5/grok-3 funktionieren)
 - `fetch_x_search_grok()` für generische X-Searches (Keyword/Thema, `source_type='x_search'`)
 - `_send_telegram_alert()` für Fallback-Benachrichtigungen via `TELEGRAM_CHAT_ID`
-- `beneficiary_a` in `thematic_config.json` von `grok-lite` auf `deepseek/deepseek-v4-flash` umgestellt
+- `beneficiary_a` in `thematic_config.json` von `grok-lite` auf `deepseek/deepseek-v4-flash-0731` umgestellt
 
 ### Geänderte Dateien
 | Datei | Änderung |
 |---|---|
 | `scripts/social_scanner.py` | +170 Zeilen: 5 neue Funktionen, `main()` priorisiert Grok, Telegram-Alert bei Fallback |
-| `thematic/config/thematic_config.json` | `beneficiary_a: grok-lite` → `deepseek/deepseek-v4-flash` |
+| `thematic/config/thematic_config.json` | `beneficiary_a: grok-lite` → `deepseek/deepseek-v4-flash-0731` |

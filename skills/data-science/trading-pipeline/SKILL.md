@@ -23,6 +23,7 @@ Bevor du eine Änderung am Trading-System vorschlägst, prüfe ob sie zu unserem
 | **Hebel** | Paper-Trading mit 1x Hebel + TR-Gebühren (1€/Trade). Intraday-Edge wird killt. |
 | **Datenquellen** | yfinance (täglich), YouTube/RSS/Twitter (morgens). Kein Echtzeit-Feed. |
 | **Modell-Kosten** | OpenRouter (DeepSeek, Gemini) für Pipeline-Extraktion. xAI/Grok via OAuth NUR für Twitter-Daten (x_search) — KEINE Textgenerierung (beneficiary_mapper etc. nutzen DeepSeek). Kein API-Key — OAuth-Token aus auth.json. |
+| **Model-Naming** | Alle DeepSeek-Modelle nutzen `deepseek/deepseek-v4-flash-0731` (die fixe Version, kein `-latest`-Suffix). `grok-2-latest` existiert nicht mehr auf der xAI API — nur `grok-4.5`/`grok-3` auf dem Responses API Endpoint. |
 
 ### DB-First-Prinzip
 
@@ -243,6 +244,7 @@ Details siehe `references/` im Skill-Verzeichnis sowie die Erläuterung.md im Ob
 | **Stale-Analyse: Immer die volle Watchlist, nicht nur offene Positionen** → Bei Fragen zu "stale Einträgen >30 Tage" oder "was hat keine Mentions" IMMER die gesamte Watchlist (`status IN ('watching','bought')`) scannen, nicht nur offene Positionen (`positions WHERE exit_date IS NULL`). Der vault-insights-daily scannt die Watchlist. Eine Position kann frisch sein, aber die Watchlist hat hunderte stale Kandidaten. |
 | **Last30days Pre-Trade Gate** → `scripts/last30days_gate.py` prüft News-Sentiment via Google News RSS (kein API-Key). Keyword-basiert (32 neg + 18 pos). Nur für HIGH-Conviction (≥0.80). Drei Stufen: ok/warning/block. Fail-Open. Siehe `references/last30days-gate.md`. |
 | **PEAD Signal (Post-Earnings Drift)** | `references/pead-signal.md` |
+| **Model-Migration ohne Patch-Blocker** → `config.yaml` ist für patch gesperrt, NUR `hermes config set model <name>`; alle anderen Dateien per patch/sed. Siehe `references/model-migration-config-blocker.md`. |
 | **High-Conviction-Crash Diagnose** → Wenn die ≥76%-Anzahl drastisch fällt: aging-Effekt prüfen (14d-Halbwertszeit), nicht nur nach Bugs suchen. Siehe `references/high-conviction-diagnostic.md`. |
 
 ### User Preference: Änderungen in Erklaerung.md dokumentieren (15.07.2026)
@@ -494,11 +496,12 @@ cd /root/.hermes/profiles/hermes_trading/skills/trading && \
 | Take-Profit | 2.5× ATR | 3.5× ATR | 2.0× ATR |
 | Partial Exit | +1.5× ATR | +2.0× ATR | +1.0× ATR |
 | Breakeven | +2.0× ATR | +2.5× ATR | +1.5× ATR |
+| Trailing ab (profit_lock) | **+0.5× ATR** | **+0.5× ATR** | **+0.5× ATR** |
 | Trailing Step | 0.75× ATR | 0.75× ATR | 0.5× ATR |
 
-> **Trailing Step geändert am 25.06.2026:** von 0.5× auf 0.75× (STANDARD/TECH). Der alte Wert (0.5×) führte dazu, dass ein normaler Pullback von 0.6× ATR den Trailing Stop auslöste bevor der Trade das Take-Profit erreichte. 0.75× gibt mehr Raum im Sideways-Markt.
-
-> **Trailing-Delay seit 15.07.2026:** Trailing wird **erst ab +2x ATR im Plus** aktiviert (`profit_lock_atr` in `strategy_config.json`). Bis dahin läuft der Trade ungestört mit initialem SL. Grund: Post-Mortem-Analyse ergab 75% SL_HIT, 0% TP_HIT — das Trailing triggert bei jedem normalen Pullback bevor der Trade laufen kann. Implementiert in `active_exit_check.py` AKTION 3: `if pnl_atr >= profit_lock_threshold:`.
+> **profit_lock_atr geändert am 09.08.2026:** von 2.0/2.5/1.5 auf einheitlich 0.5× ATR. Der alte Wert lag über dem SL (1.5×/2.0×/1.0×) → im Sideways wurde +2.0× ATR nie erreicht → 0% TP-Hits. 0.5× ATR aktiviert das Trailing früh. Donchian-Primary-Exit ist jetzt default (gibt Trends Raum statt engem Chandelier-Trailing).
+> **Nachtrag 09.08.:** `signal_manager.py check_open_positions()` hatte KEIN profit_lock-Gate — der stündliche Check zog den SL ohne jede Gewinn-Prüfung nach. Fix: profit_lock-Gate konsistent zu `active_exit_check.py` eingebaut.
+> **Nachtrag Config-Drift (09.08.):** `adapt_strategy()` schrieb in `trailing_step_atr`, aber `active_exit_check.py` liest `profit_lock_atr` — der Trailing-Delay war komplett wirkungslos. Fix: Regime-Adaption schreibt jetzt in `profit_lock_atr`.
 
 ### Code-Struktur
 
@@ -609,7 +612,7 @@ Twitter/X-Daten werden primär über die xAI Responses API mit `x_search`-Tool\n
 
 ### Auth-Architektur
 
-- **Token-Quelle:** `~/.hermes/auth.json` → `credential_pool.xai-oauth[0].access_token` (primär)
+- **Token-Quelle:** `~/.hermes/auth.json` → `credential_pool.xai-oauth` (sortiert nach `last_refresh` desc — nicht hart index 0! Es können 3+ Einträge parallel existieren, der älteste ist oft abgelaufen)
 - **Auth-Typ:** OAuth 2.0 (PKCE-Flow, eingerichtet via `hermes auth add xai-oauth`)
 - **Token-Refresh:** 
   - Primär: `resolve_xai_http_credentials()` mit auto-refresh via credential_pool
@@ -629,7 +632,8 @@ Twitter/X-Daten werden primär über die xAI Responses API mit `x_search`-Tool\n
 | 2. xSearch aufrufen | `_call_x_search()` → POST `{XAI_BASE}/responses` mit `tools=[{"type": "x_search"}]` | `social_scanner.py` |
 | 3. Modell antwortet | Grok/grok-4.5 sucht X, extrahiert Unternehmen + Sentiment, gibt JSON zurück | xAI API |
 | 4. Speichern | Ergebnis in `external_mentions`-Tabelle (source_type='twitter' oder 'x_search') | `social_scanner.py` |
-| 5. Fallback | Bei Fehler: `fetch_twitter()` mit twitterapi.io | `social_scanner.py` |
+| 5. Fallback | Bei Fehler: `fetch_twitter()` mit twitterapi.io + Telegram-Alert im Trading-Channel | `social_scanner.py` |
+| Telegram-Alert | `_send_telegram_alert()` sendet via `TELEGRAM_CHAT_ID` (nicht `TELEGRAM_HOME_CHANNEL`!) — das Trading-Profil hat eine eigene .env mit `TELEGRAM_CHAT_ID=-1003918757178` | `social_scanner.py` |
 
 ### Zwei Modi
 
@@ -771,6 +775,66 @@ top band is all that ever ships, that's the only place quality matters."
 
 Siehe `references/top-band-validation.md`.
 
+## Tägliche Top-Signale im Telegram-Report (seit 09.08.2026)
+
+Der `nightly_eval.py` Tages-Report (Mo–Fr 05:00) und Wochen-Report (So 06:00)
+enthalten einen **🎯 Top-Signale-Block** mit den 5 besten Watchlist-Kandidaten.
+
+**Funktionen in `nightly_eval.py`:**
+- `calc_top_signals(con, limit=5)` — Query: `status='watching'` + `ticker IS NOT NULL`,
+  sortiert nach `conviction_score_aged DESC, tech_score DESC, conviction_score DESC`
+- `build_top_signals_line(con, limit=5)` — HTML-Format für Telegram: Name, Ticker,
+  Conviction (aged), Tech-Score, tech_direction (📈/📉/➖), Mention-Count
+- Integration in beide msg-Formate via `signals_line`
+
+**Warum `conviction_score_aged` statt rohem `conviction_score`:**
+Rohe Scores sind oft 1.0 bei 1 Mention (Zufallstreffer). Der Aged-Score hat die
+14d-Halbwertszeit eingebaut und zeigt etablierte Kandidaten (z.B. Allianz 13x
+Mentions, 81%) statt 1-Mention-Noise.
+
+**Delivery:** Kein neuer Cron nötig — nightly_eval sendet bereits täglich an
+Ch_hermster_trade (`TELEGRAM_HOME_CHANNEL` = `-1003918757178`). Test:
+`PYTHONPATH=. python3 -c "from scripts.nightly_eval import build_top_signals_line; from config import db_connect; print(build_top_signals_line(db_connect()))"`
+
+## 🔴 Pitfall: patch-Tool kann den FALSCHEN Code-Block treffen
+
+Am 09.08.2026 beim `nightly_eval.py`: Sonntags- und Tages-Report sind fast
+identische Message-Blöcke (`{bm_line}`, `{committee_line}`, `{top_line}`).
+Ein `patch` mit zu wenig Kontext matchte beide (`Found 2 matches`), ein
+Retry traf dann den falschen Block — Sonntags-Report hatte kein signals_line,
+Tages-Report bekam die 🔧-Zeile doppelt.
+
+**Regel:**
+1. Bei Duplikat-Blöcken IMMER eine eindeutige Kontext-Zeile in `old_string`
+   mitnehmen (z.B. `"🔧 Strategy Optimizer läuft um 08:00..."` oder
+   `"SL/TP/Tech:"`-Zeile) — nicht nur die gemeinsamen Variablen-Zeilen
+2. Nach jedem Patch den Diff lesen UND mit `read_file` verifizieren welcher
+   Block tatsächlich geändert wurde
+3. `python3 -c "import ast; ast.parse(open('file').read())"` als Syntax-Gate
+
+## 🔴 Pitfall: Config-Gates in ALLEN parallelen Exit-Pfaden verifizieren
+
+Der 09.08.-Killer (82% SL_HIT): Der 15.07.-Fix (`profit_lock_atr`-Gate im
+Trailing) wurde nur in `active_exit_check.py` eingebaut — aber
+`signal_manager.py check_open_positions()` (stündlicher Check!) zog den
+Chandelier-Trailing weiterhin OHNE Gate nach.
+
+**Muster:** Trading hat mehrere parallele Pfade die dieselben Exit-Regeln
+lesen: `signal_manager.py` (13-20h stündlich), `active_exit_check.py`
+(09:30 + 15:30), `crabel_shadow_eval.py`. Ein Fix in EINEM Pfad wirkt
+nicht, wenn andere Pfade die alte Logik behalten.
+
+**Regel:**
+1. Beim Einbau eines Config-Gates: `grep -n "<config_key>" scripts/*.py` —
+   JEDEN Pfad der den Key liest prüfen und konsistent patchen
+2. Config-Drift: `adapt_strategy()` schrieb in `trailing_step_atr`, aber
+   der Exit-Check las `profit_lock_atr` → Trailing-Delay wirkungslos.
+   Nach Änderungen an Schreib-Pfaden prüfen welchen Key die Lese-Pfade
+   tatsächlich konsumieren
+3. Drei Config-Quellen können driften: `data/strategy_config.json` (live),
+   `DEFAULT_CONFIG` in `signal_manager.py`, `ASSET_TYPE_MULTIPLIERS` in
+   `config.py` — beim Parameter-Swap ALLE patchen
+
 ## Backtesting Engine (`backtesting/`)
 
 Seit 11.07.2026 gibt es eine Backtesting-Engine im Trading-Skill-Verzeichnis.
@@ -817,6 +881,50 @@ print(f"Sharpe: {result.metrics.sharpe_ratio:.2f}")
 - Equal-Dollar-Sizing (10.000€/Trade) — bewusst einfach. Testet das
 Signal, nicht die Portfolio-Konstruktion. Detaillierte Doku in der `Erklaerung.md`
 unter Section 16.
+
+**Backtest-Gate (seit 09.08.2026):** `scripts/backtest_gate.py` — standardisiertes
+Gate VOR jeder Config-Änderung. Lädt Top-50 Watchlist-Ticker, backtestet 90 Tage
+mit SignalExtractorModel, gibt GO/GEDULD/NO-GO basierend auf Sharpe, Win Rate,
+Trade-Anzahl. Usage: `cd <trading> && PYTHONPATH=. python3 scripts/backtest_gate.py`.
+Fail-Open bei Engine-Fehler. Achtung: Metriken heißen `total_return_pct`,
+`max_drawdown_pct` (nicht `total_return`/`max_drawdown`) — Schema vorher prüfen.
+
+## System-Review-Protokoll (Fitness-Check der Pipeline)
+
+Wenn Martin fragt „ist der Skill für erfolgreiches Trading geeignet" / „review mal das System" — NICHT nur die Doku lesen. Systematisch mit Live-DB-Zahlen arbeiten:
+
+**Reihenfolge (bewährt am 09.08.2026):**
+
+1. **Pipeline-Log** — letzte Läufe grün? `tail -80 data/cron.log`
+2. **Exit-Statistik (die wichtigste Zahl):**
+   ```sql
+   SELECT exit_reason, COUNT(*) cnt, ROUND(AVG(pnl_eur),2) avg_pnl, ROUND(SUM(pnl_eur),2) total
+   FROM positions WHERE exit_date IS NOT NULL GROUP BY exit_reason ORDER BY cnt DESC;
+   ```
+   Alarm wenn SL_HIT >> TARGET_HIT. Payoff-Ratio: TARGET avg_pnl / SL avg_pnl (09.08.: 122€/+3.6 vs -33€ — gesund, aber 82% SL-Rate killt alles).
+3. **Eval-Metriken (Schema prüfen! `PRAGMA table_info(eval_metrics)`):**
+   ```sql
+   SELECT date, open_positions, win_rate_7d, win_rate_30d, profit_factor_7d,
+          exit_sl_pct, exit_tp_pct, max_drawdown_30d, avg_r_multiple
+   FROM eval_metrics ORDER BY date DESC LIMIT 14;
+   ```
+4. **Regime-Historie:** `SELECT * FROM regime_history ORDER BY date DESC LIMIT 10;` — war das System mit passenden Parametern im Regime?
+5. **Watchlist-Verteilung:** `SELECT status, COUNT(*), ROUND(AVG(conviction_score),2) FROM watchlist WHERE status IN ('watching','bought') GROUP BY status;` — viele watching mit niedrigem Ø = Rauschen.
+6. **Source-Qualität:** `SELECT source_type, COUNT(*) FROM source_registry WHERE enabled=1 GROUP BY source_type;` + nightly_eval Source-Qualität-Block.
+7. **Code-Pfad-Deep-Dive:** Bei auffälligen Exit-Zahlen IMMER die Exit-Logik selbst lesen (signal_manager.py check_open_positions + active_exit_check.py) — nicht auf Doku vertrauen. Der 09.08.-Killer war ein Fix der nur in EINEM von ZWEI parallelen Exit-Pfaden existierte.
+
+**Warnung:** Spaltennamen in eval_metrics/positions weichen von der Doku ab (z.B. `exit_sl_pct` statt `exit_reason`, `total_return_pct` in backtesting statt `total_return`). Immer `PRAGMA table_info` prüfen bevor Queries schreiben — sonst „no such column"-Fehler die wie echte Bugs aussehen.
+
+## 🔴 write_file überschreibt GANZE Dateien — patch für Block-Edits
+
+Am 09.08.2026: `write_file` mit dem Inhalt eines einzelnen Code-Blocks hat `active_exit_check.py` (332 Zeilen) auf 28 Zeilen gekürzt. `write_file` ersetzt IMMER die gesamte Datei — für gezielte Block-Ersetzungen das `patch`-Tool verwenden (replace-Modus mit old/new_string).
+
+**Recovery:** Die Profil-Skripte haben ein Git-Backup unter `/root/martin-hermes-state/profiles/hermes_trading/skills/trading/scripts/`:
+```bash
+cp /root/martin-hermes-state/profiles/hermes_trading/skills/trading/scripts/<file>.py \
+   /root/.hermes/profiles/hermes_trading/skills/trading/scripts/<file>.py
+```
+Vorher `wc -l` beider Dateien vergleichen — das Backup kann älter sein als die Live-Version. Nach dem Restore die neuen Änderungen erneut per `patch` (nicht write_file) anwenden.
 
 ## Quick Debug
 

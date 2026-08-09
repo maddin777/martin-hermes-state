@@ -78,7 +78,7 @@ def _score_news_sentiment(news_items: list, company_name: str) -> tuple:
             "https://openrouter.ai/api/v1/chat/completions",
             headers={"Authorization": f"Bearer {OPENROUTER_KEY}",
                      "Content-Type": "application/json"},
-            json={"model": "deepseek/deepseek-v4-flash", "max_tokens": 200,
+            json={"model": "deepseek/deepseek-v4-flash-0731", "max_tokens": 200,
                   "messages": [{"role": "user", "content": prompt}]},
             timeout=30,
         )
