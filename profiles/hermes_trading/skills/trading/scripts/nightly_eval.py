@@ -239,6 +239,45 @@ def build_top_signals_line(con, limit=5):
     return "🎯 <b>Top-Signale:</b>\n" + "\n".join(lines)
 
 
+def calc_signal_source_metrics(con):
+    """
+    Winrate pro Signalkomponente (glm-5.2-Review 09.08.): trennt die geschlossenen
+    Trades nach signal_source (rss / x_social / youtube / screener / unknown), um
+    zu sehen welche Komponente die Winrate treibt oder senkt. Vor 09.08.2026 blieb
+    signal_source leer (alle 77 Trades) — ab jetzt wird sie beim Entry gesetzt.
+    """
+    rows = con.execute("""
+        SELECT signal_source,
+               COUNT(*) as cnt,
+               SUM(CASE WHEN pnl_eur > 0 THEN 1 ELSE 0 END) as wins,
+               ROUND(AVG(pnl_eur), 2) as avg_pnl,
+               ROUND(SUM(pnl_eur), 2) as total_pnl
+        FROM positions
+        WHERE exit_date IS NOT NULL
+        GROUP BY signal_source
+        ORDER BY cnt DESC
+    """).fetchall()
+    return [dict(r) for r in rows]
+
+
+def build_signal_source_line(con):
+    """HTML-Formatierung der Winrate pro Komponente für den Telegram-Report."""
+    metrics = calc_signal_source_metrics(con)
+    if not metrics:
+        return ""
+    lines = []
+    for m in metrics:
+        wins = m["wins"] or 0
+        cnt = m["cnt"] or 0
+        wr = wins / cnt if cnt else 0
+        src_label = {"rss": "RSS", "x_social": "X/Social", "youtube": "YouTube",
+                     "screener": "Screener", "unknown": "Unbekannt"}.get(
+                         m["signal_source"], m["signal_source"] or "Unbekannt")
+        lines.append(f"  {src_label:12} WR {wr:.0%} ({wins}/{cnt}) | "
+                     f"Ø {m['avg_pnl']:+.1f}€ | {m['total_pnl']:+.0f}€")
+    return "\n📊 <b>Winrate nach Quelle:</b>\n" + "\n".join(lines)
+
+
 def calc_source_quality(con, today):
     """
     1. Trade-Qualität (für etablierte Quellen mit ≥1 Trade):
@@ -700,6 +739,7 @@ def main():
         top_src = sources[0] if sources else None
         top_line = f"Top-Quelle: <b>{top_src['channel']}</b> (WR:{top_src['win_rate_30d']:.0%}, Q:{top_src['quality_score']:.2f})" if top_src else ""
         signals_line = build_top_signals_line(con, limit=5)
+        src_win_line = build_signal_source_line(con)
         bm_line = ""
         if bm:
             a_spy_icon = "✅" if bm["alpha_spy"] >= 0 else "❌"
@@ -727,7 +767,7 @@ def main():
                 f"{bm_line}"
                 f"{committee_line}\n"
                 f"{top_line}\n\n"
-                f"{signals_line}\n\n"
+                f"{signals_line}{src_win_line}\n\n"
                 "🔧 Strategy Optimizer läuft um 08:00..."
             )
         else:
@@ -747,7 +787,7 @@ def main():
                 f"{bm_line}"
                 f"{committee_line}\n"
                 f"{top_line}\n\n"
-                f"{signals_line}"
+                f"{signals_line}{src_win_line}"
             )
 
         send_telegram(msg)

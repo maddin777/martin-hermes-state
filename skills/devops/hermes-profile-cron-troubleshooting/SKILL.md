@@ -125,6 +125,43 @@ hermes cron list | grep -A2 <jobname>
 # → next_run_at sollte in Zukunft liegen
 ```
 
+## Pitfall: Model-Drift blockiert unpinned Jobs (#44585)
+
+**Symptom:** Job steht in `cron list` mit `last_status=error`, `last_run_at` aktuell. In `jobs.json` steht in `last_error`:
+`RuntimeError: Skipped to prevent unintended spend: global inference config drifted since this job was created (model 'X' -> 'Y'), and this job is unpinned. No inference call was made. ...`
+
+**Root Cause:** Wenn sich das globale Standard-Inferenzmodell ändert (z.B. `deepseek/deepseek-v4-flash` → `deepseek/deepseek-v4-flash-0731`) und ein Job das Modell NICHT explizit gepinnt hat (`model: null`), blockiert der Scheduler den Lauf als Spend-Safety — bewusst kein Inference-Call. Der Job schlägt bei **jedem** geplanten Lauf fehl, bis gepinnt oder das Modell zurückgedreht ist.
+
+**Diagnose:**
+```bash
+cd /root/.hermes
+python3 - <<'EOF'
+import json
+d=json.load(open('cron/jobs.json'))
+for j in d['jobs']:
+    if j.get('last_status')=='error':
+        print(j['id'], j['name'], '| model=', j.get('model'), '|', (j.get('last_error') or '')[:120])
+EOF
+# Job hat model=None → unpinned → anfällig. Ein funktionierender Referenz-Job (z.B. dataviz)
+# ist an deepseek/deepseek-v4-flash/openrouter gepinnt und läuft trotz Drift → alias löst noch auf.
+```
+
+**Fix — Modell in jobs.json pinnen:** `hermes cron edit` exponiert KEIN `--model`/`--provider`. Deshalb direkt ins JSON schreiben (Scheduler liest `jobs.json` pro Tick neu):
+```bash
+cd /root/.hermes && cp cron/jobs.json cron/jobs.json.bak-$(date +%Y%m%d-%H%M)
+python3 - <<'EOF'
+import json
+p='cron/jobs.json'; d=json.load(open(p))
+for j in d['jobs']:
+    if j['id'] in {'<jobid1>','<jobid2>'}:
+        j['model']='deepseek/deepseek-v4-flash'   # oder das aktuelle globale Modell
+        j['provider']='openrouter'
+        j['base_url']=None
+json.dump(d,open(p,'w'),indent=1,ensure_ascii=False)
+EOF
+```
+Pin auf den **aktuellen** Alias (oder den globalen Wert). Ein bestehender gepinnter Job auf dem alten Alias der weiter läuft, beweist, dass der Alias über den Drift hinweg aufgelöst wird — denselben Wert wiederverwenden für Konsistenz. Nach Fix: nächster geplanter Lauf (nicht `action=run`) verifiziert.
+
 ## Pitfalls
 
 - **Profil-Session vs default-Session:** Wenn du `session -p <profil>` startest und dort `cronjob create` ausführst, landen Jobs in der Profil-Cron-DB (potenziell defekt). Besser: Immer im default-Session arbeiten und `profile=<name>` setzen.

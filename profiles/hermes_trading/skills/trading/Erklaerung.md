@@ -1,6 +1,32 @@
 # Änderungshistorie — Trading Skill
 
-**Stand:** Paketen A–D + Sprints 1–7 + Bugfix-Sprint + Screener-Source + Watchlist-Performance-Fix + Rollen-Sprint R1–R4 + **Turtle-Konfluenz-Sprint** + **Phase 1+2 Fix (09.08.2026)**
+**Stand:** Paketen A–D + Sprints 1–7 + Bugfix-Sprint + Screener-Source + Watchlist-Performance-Fix + Rollen-Sprint R1–R4 + **Turtle-Konfluenz-Sprint** + **Phase 1+2 Fix (09.08.2026)** + **Watchlist-Cleanup-Archivierung (09.08.2026)**
+
+## 09.08.2026 — Watchlist Cleanup: Dropped-Archivierung
+
+### Problem
+`watchlist_cleanup.py` setzte `watching`>60d auf `dropped`, aber `dropped`-Einträge wurden **nie physisch entfernt/archiviert** → die `watchlist`-Tabelle wuchs unbegrenzt (1193 `dropped` bei nur 464 `watching`). Keine FK-Constraints/Trigger verweisen auf `watchlist`, daher war eine Bereinigung sicher.
+
+### Lösung
+`watchlist_cleanup.py` (`~/.hermes/scripts/`) erweitert um eine **Archivierungs-Stufe** (Stufe 4) — konservativ, kein Datenverlust:
+- Neue Tabelle **`watchlist_archive`** (Migration per `CREATE TABLE IF NOT EXISTS`, alle `watchlist`-Spalten + `archived_at` + `archived_reason`).
+- **Artefakte sofort archivieren**: `notes LIKE 'merged into%'` (Dedup-Merges), `'nicht börsennotiert%'` (privat), `'strukturiertes Produkt%'` (Zertifikate).
+- **Altersbasiert**: alle übrigen `dropped` mit `last_seen` > 180 Tage (`ARCHIVE_AFTER_DAYS=180`).
+- Archivieren = INSERT in `watchlist_archive` + DELETE aus `watchlist` (Rows bleiben als Historie abfragbar).
+- Sauberkeit: `watching`/`bought` werden nie angefasst.
+
+### 🔴 Pitfall: DELETE über `rowid`, nicht `id`
+Die Dedup (`watchlist_dedup.py`) verwaltet Zeilen via `rowid` (`WHERE rowid=?`), wodurch die `id`-Spalte bei vielen Zeilen **NULL** ist (802 von 1637!). Ein `DELETE ... WHERE id=?` traf bei diesen Zeilen nichts → die Zeile wurde zwar ins Archiv kopiert, aber nicht aus der Watchlist entfernt (Duplikat-Bug, Archiv wuchs fälschlich). **Fix:** `SELECT rowid, *` + `DELETE ... WHERE rowid=?` — konsistent mit dem restlichen System.
+
+### Modi
+- `python3 watchlist_cleanup.py` → **Dry-Run** (zeigt nur, was archiviert würde)
+- `python3 watchlist_cleanup.py --apply` → tatsächliche Verschiebung. **Cron ruft den Wrapper `watchlist_cleanup_apply.sh` mit `--apply`** (siehe unten), damit die Archivierung automatisch greift.
+
+### Erstlauf (09.08.2026, nach rowid-Fix)
+Alle 119 Artefakt-Drops (94 mit gültiger `id` beim ersten Lauf + 25 `id=NULL`-Zeilen via `rowid`) archiviert. Verbleibend: 0 Artefakt-Drops in der Watchlist. Watchlist 1662→**1637** (464 watching, 76 bought, 1097 dropped — die 1097 sind <180d alt, werden in späteren Sonntags-Läufen automatisch archiviert). Offene Positionen (4) unberührt, keine Überlappung zwischen Archiv und offenen Positionen. Lauf ist **idempotent** (2. Lauf = 0 neue).
+
+### Cron
+Job `watchlist-cleanup-weekly` (07:30 So) zeigt jetzt auf den Wrapper **`~/.hermes/scripts/watchlist_cleanup_apply.sh`**, der `watchlist_cleanup.py --apply` aufruft → automatische Archivierung.
 
 ## 09.08.2026 — Phase 1+2 Fix (Exit-Strategie + Signal-Rauschen)
 
@@ -28,6 +54,55 @@ Review des Trading-Skills ergab: 77 geschlossene Trades netto -1.230€, 82% SL_
 
 ### Erwartung
 Exit-Quote von 0% TP auf 20-30% heben. Weniger Rauschen in der Watchlist. Wenn nach 4 Wochen keine Verbesserung → Phase 3 (radikaler Umbau, siehe Cron `phase-3-review-trading` am 06.09.).
+
+## 09.08.2026 — glm-5.2-Review: Exit-Matrix + Konsolidierung + Winrate-Messung
+
+### Auslöser
+Zweites Review mit dem unabhängigen Modell `z-ai/glm-5.2`. Deckte einen Widerspruch im Phase-1-Fix auf: Der Regime-Override in `adapt_strategy()` trimmte `profit_lock_atr` auf 1.5–2.5 nach oben und machte die 0.5-Senkung (Phase 1A) im Sideways wirkungslos. Außerdem drei überlagerte Trail-/Exit-Quellen mit unklarer Präzedenz.
+
+### Root Cause #2 — Drei überlagerte Exit-Quellen
+1. `ASSET_TYPE_MULTIPLIERS` (config.py) — asset-type-spezifisch
+2. `regime_configs` (in signal_manager.py) — Regime-Override, überschrieb profit_lock_atr nach oben
+3. `strategy_config.json` `profit_lock_atr` — manueller Wert, wurde vom Regime-Override gekillt
+Zusätzlich: `active_exit_check.py` kannte Donchian-Primary nicht → zog den ATR-Chandelier parallel zum Donchian-Trail → zwei konkurrierende Stops.
+
+### Fixes
+1. **`get_exit_config(asset_type, regime)`** in config.py — deterministische Exit-Matrix (9 Kombinationen STANDARD/TECH/DEFENSIVE × bull/sideways/bear), einzige Quelle für SL/TP/partial/profit_lock.
+2. **`adapt_strategy()`** konsolidiert: nutzt die Matrix, entfernt den profit_lock-Tripping-Block (profit_lock_atr bleibt jetzt konstant aus der Matrix = 1.0).
+3. **`profit_lock_atr` = 1.0** überall (Matrix + ASSET_TYPE_MULTIPLIERS) — Kompromiss: niedriger als 2.0 (unerreichbar im Sideways), höher als 0.5 (Intraday-Noise).
+4. **`active_exit_check.py` AKTION 3**: respektiert Donchian-Primary-Präzedenz (überspringt den Chandelier wenn Donchian fährt), profit_lock aus pos_mult.
+5. **`signal_manager.py` `check_open_positions()`**: profit_lock aus pos_mult statt globaler cfg.
+6. **`min_confidence` 0.70 → 0.80** — glm hat recht: keine Entry-Starvation (76 bought), die Senkung war fehldiagnostiziert.
+7. **`signal_source` beim Entry setzen** (`_derive_signal_source`, aus Kanal-Präfixen rss/x_social/screener/youtube) + **Winrate-nach-Quelle** im nightly_eval-Report (`build_signal_source_line`).
+
+### Wichtige Korrektur zu glm
+glm behauptete "10.4% Winrate, Break-Even 21.5%". **FALSCH** — glm verwechselte TARGET_HIT-Zahl (8) mit der Winrate. Reale Winrate: **30/77 = 39%**. Das wahre Problem ist Payoff: Gewinner Ø +62.88€, Verlierer Ø -66.31€ → Payoff 0.95 < 1. Bei 39% WR braucht man Break-Even-WR von 51%. **Die Verluste sind größer als die Gewinne** — fehlende R:R-Asymmetrie in der Durchschnitts-Realisierung (TP 2.5x konfiguriert, aber real nur ~+63€; SL-Verluste bis -364€ durch Gaps/Execution). Das verlagert den Fokus von reiner Winrate auf die Verlustseite verkleinern.
+
+### Erwartung
+Exit-Matrix eliminiert die Config-Drift. profit_lock 1.0 erreichbar im Sideways. Winrate-nach-Quelle zeigt ab 09.08. welche Komponente (RSS/X/YouTube/Screener) trägt. min_confidence 0.80 filtert schwache Signale raus (weniger, bessere Trades).
+
+## 09.08.2026 — (a) Gewinner-Exit + (b) Earnings/Makro-Schutz (glm-5.2-Gegencheck)
+
+### Auslöser
+Datenanalyse der Verlustseite + Gegencheck durch glm-5.2. Ergebnis: Das Hauptproblem ist NICHT die Winrate (sie ist 39%), sondern dass Gewinner zu früh abgeschnitten werden (Payoff 0.95 statt benötigtem 1.56). Zusätzlich Tag-0-Verluste durch Overnight-Earnings-/Makro-Gaps (05.06.2026: 4 gleichzeitige Tag-0-Stopps = NFP-Tag). WICHTIG: historische Daten liefen mit dem ALTEN Chandelier-System, Turtle-Donchian-Primary ist erst seit heute aktiv.
+
+### Fix (a) — Gewinner-Exit entkoppelt
+- **Breakeven-Zug nach Partial-TP entfernt im Donchian-Primary-Modus.** Vorher: nach 50% Partial-TP bei 1.5x ATR wurde der SL auf Breakeven gezogen → der 50%-Rest wurde am BE ausgestoppt bevor der Donchian-Trail/TP greifen konnte. Jetzt: im Donchian-Primary-Modus bleibt der initiale SL stehen, der Donchian-Turtle übernimmt das Stopp-Handling. (Chandelier-Modus behält altes BE-Verhalten.)
+- Freigabe zum Laufenlassen: die 8 echten TARGET_HIT-Winner erreichten alle ~100-130% ihres TP — das Ziel ist erreichbar, es wurde nur durch zu enges Trailing/BE abgewürgt.
+
+### Fix (b) — Earnings/Makro-Schutz
+1. **`is_macro_event_day()`**: blockt Entries am ersten Freitag (NFP/US-Arbeitsmarkt) — der verlässlichste wiederkehrende Makro-Termin. FOMC/CPI bewusst NICHT per Tageregel (variieren zu stark → falsch-positive Blöcke).
+2. **`has_overnight_gap(cur, atr, prev)`**: blockt Entry wenn letzter Close > 60% einer Tages-ATR vom Vortag entfernt ist (Overnight-Earnings-/News-Gap). Fail-open ohne Referenz.
+3. **`get_prev_close_ratio(ticker)`**: liefert (current, prev_close) aus dem gecachten df — kein Extra-API-Call.
+4. Beide Filter im Entry-Loop integriert (nach Earnings-Blackout, vor Crabel-Gate).
+
+### Wichtige Nuance (Turtle ist erst 1 Tag aktiv)
+Historische SL_HIT-„Gewinner" (AMD, NDA, LITE, NVDA) stammen vom defekten Chandelier-System — sie sagen NICHTS über das neue Donchian-Primary-Verhalten aus. Wir dürfen aus alten Daten keine Schlüsse aufs neue System ziehen. Die neuen Exit-Fixes gelten ab heute, die Wirkung zeigt sich erst in den nächsten Wochen.
+
+### Erwartung
+- Gewinner laufen weiter (kein BE-Abwürgen im Donchian-Modus) → Payoff steigt Richtung 1.5+
+- Keine Tag-0-Entries an NFP + keine Overnight-Gap-Entries → weniger -100€+ Verlusttrades
+- Nächster Check nach 4 Wochen (Cron phase-3-review-trading) mit den neuen Daten.
 
 ## 09.08.2026 — Top-5-Signale im Tages-Report (Telegram)
 

@@ -245,7 +245,12 @@ Details siehe `references/` im Skill-Verzeichnis sowie die Erläuterung.md im Ob
 | **Last30days Pre-Trade Gate** → `scripts/last30days_gate.py` prüft News-Sentiment via Google News RSS (kein API-Key). Keyword-basiert (32 neg + 18 pos). Nur für HIGH-Conviction (≥0.80). Drei Stufen: ok/warning/block. Fail-Open. Siehe `references/last30days-gate.md`. |
 | **PEAD Signal (Post-Earnings Drift)** | `references/pead-signal.md` |
 | **Model-Migration ohne Patch-Blocker** → `config.yaml` ist für patch gesperrt, NUR `hermes config set model <name>`; alle anderen Dateien per patch/sed. Siehe `references/model-migration-config-blocker.md`. |
+| **Cross-Model-Zweitmeinung (Fremdmodell-Review)** → System zusätzlich mit unabhängigem Modell (z.B. `z-ai/glm-5.2`) über OpenRouter prüfen; Reviewer-Mathematik IMMER gegen Roh-DB verifizieren (glm behauptete falsch 10.4% WR, real 39%; echter Killer = Payoff<1). Kompletter Ablauf: `references/cross-model-review.md`. |
 | **High-Conviction-Crash Diagnose** → Wenn die ≥76%-Anzahl drastisch fällt: aging-Effekt prüfen (14d-Halbwertszeit), nicht nur nach Bugs suchen. Siehe `references/high-conviction-diagnostic.md`. |
+| **Verlustanalyse & Exit-Review** → Trenne Gewinner/Verlierer, berechne PAYOFF (nicht Winrate): Payoff<1 => Gewinner-Exit-Fix, nicht Winrate-Jagd. Winrate NIE aus TARGET_HIT-Zahl ableiten (09.08.: glm behauptete 10.4%, real 39%). Turtle-Artefakt-Falle: historische Daten stammen vom ALTEN Chandelier-System. Siehe `references/loss-analysis-and-exit-review.md`. |
+| **Exit-Config-Drift (3 Quellen)** → profit_lock wurde vom Regime-Override überschrieben. Fix: `get_exit_config(asset_type, regime)` Exit-Matrix als EINE Quelle für SL/TP/partial/profit_lock; sekundäre Schreiber in adapt_strategy entfernen. |
+| **Breakeven vs. Donchian-Primary** → Nach Partial-TP den SL NICHT auf Breakeven ziehen im Donchian-Primary-Modus (würgt den Winner ab). Initial-SL stehen lassen, Donchian-Trail übernimmt. |
+| **Makro-Event-Filter** → NFP (erster Freitag) ist einziger per Tageregel zuverlässiger US-Makro-Termin. FOMC/CPI NIE per grober Tageregel (falsch-positive Blöcke). Overnight-Earnings-Gaps über `has_overnight_gap(cur,atr,prev)` (>60% Tages-ATR) im Entry fangen. |
 
 ### User Preference: Änderungen in Erklaerung.md dokumentieren (15.07.2026)
 
@@ -368,6 +373,7 @@ Die Referenz enthält 23 klassifizierte Unternehmen plus Implementierungsvorschl
 | **`refresh_tech_scores.py` ModuleNotFoundError** → `sys.path.insert(0, ...)` zeigte auf `scripts/` statt `skills/trading/`. `env_loader.py` liegt im Trading-Root, nicht in `scripts/`. **Fix:** `sys.path.insert(0, "/root/.hermes/profiles/hermes_trading/skills/trading")` — nicht auf `scripts/`. |
 | **`cron_health.py` ⚠️ trading_pipeline unknown (gelb)** → Pipeline schrieb `TRADING PIPELINE DONE` ohne ✅-Prefix. Der Health-Check-Regex `✅\s*.*DONE` matched nicht. **Fix:** `_print(f"✅ TRADING PIPELINE DONE: ...")`. Siehe `references/cron-health-slicing-bug.md`. |
 | **`cron_health.py` ⚠️ no_agent Cron gelb (generisch)** → Jeder Cron-Job (system crontab oder Hermes-Cron) muss `✅ ... DONE` im Log-Output haben. `=== ... DONE ===` ohne ✅ wird als ⚠️ unknown gewertet. **Fix:** `echo "=== $(date) === ✅ jobname DONE ==="` im Cron-Befehl. |
+| **DELETE/UPDATE auf `watchlist` via `id` greift nicht** → Die Dedup (`watchlist_dedup.py`) verwaltet Zeilen via `rowid` (`WHERE rowid=?`), wodurch die `id`-Spalte bei vielen Zeilen **NULL** ist. Ein `DELETE ... WHERE id=?` kopiert die Zeile zwar (z.B. ins Archiv), entfernt sie aber nicht → Duplikate bleiben, Ziel-Tabelle wächst fälschlich. **Fix:** `SELECT rowid, *` + `DELETE ... WHERE rowid=?` — IMMER `rowid` verwenden bei watchlist-JOINs/Schreibzugriffen. Betrifft `watchlist_cleanup.py` (09.08.2026). |
 | **Open positions: `pnl_eur = NULL`** → `signal_manager.py` berechnete PnL im `check_open_positions()`-Loop (`pnl_pct * position_size - COMMISSION_EUR`), schrieb es aber nie in die DB. Nur geschlossene Positionen bekamen ihren PnL beim Exit. **Fix:** `UPDATE positions SET pnl_eur=?, pnl_pct=? WHERE id=?` direkt nach der Berechnung, vor den Exit-Checks. Betrifft `signal_manager.py` Zeile 639ff. |
 | **Date format: `YYYYMMDD` statt `YYYY-MM-DD` in `watchlist_mentions`** → `signal_extractor.py` übergab `row['upload_date']` (YouTube-Format `YYYYMMDD`) direkt als `source['date']`. Der `watchlist_manager` konnte das nicht konsistent normieren. **Folge:** SQLite `MAX(mention_date)` vergleicht Strings — `20260619` vs `2026-07-23` → falsche Sortierung. **Fix:** `signal_extractor.py` normiert `upload_date` zu `YYYY-MM-DD`. `watchlist_manager.py` Default von `%Y%m%d` auf `%Y-%m-%d` geändert. `strptime` erkennt beide Formate. **120 alte Einträge in der DB korrigiert.** |
 | **`ModuleNotFoundError: No module named 'config'`** → Subprozess findet Trading-Verzeichnis nicht. **Fix:** PYTHONPATH in `subprocess.run(env=...)` setzen. Kein DB-Lock — WAL-Checkpoint läuft sauber. |
@@ -496,19 +502,22 @@ cd /root/.hermes/profiles/hermes_trading/skills/trading && \
 | Take-Profit | 2.5× ATR | 3.5× ATR | 2.0× ATR |
 | Partial Exit | +1.5× ATR | +2.0× ATR | +1.0× ATR |
 | Breakeven | +2.0× ATR | +2.5× ATR | +1.5× ATR |
-| Trailing ab (profit_lock) | **+0.5× ATR** | **+0.5× ATR** | **+0.5× ATR** |
+| Trailing ab (profit_lock) | **+1.0× ATR** | **+1.0× ATR** | **+1.0× ATR** |
 | Trailing Step | 0.75× ATR | 0.75× ATR | 0.5× ATR |
 
-> **profit_lock_atr geändert am 09.08.2026:** von 2.0/2.5/1.5 auf einheitlich 0.5× ATR. Der alte Wert lag über dem SL (1.5×/2.0×/1.0×) → im Sideways wurde +2.0× ATR nie erreicht → 0% TP-Hits. 0.5× ATR aktiviert das Trailing früh. Donchian-Primary-Exit ist jetzt default (gibt Trends Raum statt engem Chandelier-Trailing).
+> **VORRANG: `get_exit_config(asset_type, regime)` in config.py ist seit 09.08.2026 die EINZIGE Quelle für Exit-Parameter.** Die `Exit-Config-Matrix` (`_EXIT_CONFIG_MATRIX` in config.py) definiert für alle 9 Kombinationen (STANDARD/TECH/DEFENSIVE × bull/sideways/bear) deterministisch `{sl, tp, partial_atr, profit_lock_atr, step}`. `signal_manager.adapt_strategy()` und beide Exit-Checks lesen daraus. Die unten stehenden Multiplikatoren sind die Matrix-Werte manifestiert — nicht separat pflegen.
+> **profit_lock_atr Verlauf am 09.08.2026:** kam ursprünglich von 2.0 (unerreichbar im Sideways → 0% TP-Hits) auf 0.5, nach dem glm-5.2-Review auf **1.0** angehoben (0.5 = Intraday-Noise-Trail auf Daily-Daten, zu eng für Swing). 1.0 = eine volle Tages-ATR an Raum. WICHTIG: der `adapt_strategy()`-Regime-Override hat profit_lock_atr auf 1.5–2.5 nach oben getrimmt und damit die Senkung wirkungslos gemacht — dieser Übersteuer-Block wurde ENTFERNT. profit_lock_atr bleibt jetzt konstant.
 > **Nachtrag 09.08.:** `signal_manager.py check_open_positions()` hatte KEIN profit_lock-Gate — der stündliche Check zog den SL ohne jede Gewinn-Prüfung nach. Fix: profit_lock-Gate konsistent zu `active_exit_check.py` eingebaut.
 > **Nachtrag Config-Drift (09.08.):** `adapt_strategy()` schrieb in `trailing_step_atr`, aber `active_exit_check.py` liest `profit_lock_atr` — der Trailing-Delay war komplett wirkungslos. Fix: Regime-Adaption schreibt jetzt in `profit_lock_atr`.
 
 ### Code-Struktur
 
-- **`config.py`** — `SECTOR_TO_ASSET_TYPE`, `ASSET_TYPE_MULTIPLIERS`, `get_asset_type()`, `get_asset_multipliers()`
-- **`signal_manager.py`** — Liest asset_type bei Entry (wird in DB gespeichert), nutzt asset_type-spezifische Multiplikatoren für SL/TP und Trailing Stop
-- **`active_exit_check.py`** — Nutzt asset_type-spezifische Multiplikatoren für Thesis-BROKEN und Trailing Stop
+- **`config.py`** — `SECTOR_TO_ASSET_TYPE`, `ASSET_TYPE_MULTIPLIERS` (legacy), `get_asset_type()`, `get_asset_multipliers()`, **`get_exit_config()`** (Exit-Matrix, SEIT 09.08. Single Source of Truth für SL/TP/partial/profit_lock/step)
+- **`signal_manager.py`** — Liest asset_type bei Entry (wird in DB gespeichert), nutzt `get_exit_config()` und `get_asset_multipliers()` für SL/TP und Trailing Stop
+- **`active_exit_check.py`** — Nutzt asset_type-spezifische Multiplikatoren für Thesis-BROKEN und Trailing Stop; respektiert seit 09.08. die Donchian-Primary-Präzedenz
 - **DB:** `positions.asset_type`-Spalte (seit 18.06., per ALTER TABLE migriert)
+
+> **Konfigurations-Single-Source-of-Truth (09.08.):** Bevor mehrere Exit-Systeme entstehen, gilt: EINE Funktion (`get_exit_config`) liefert alle Exit-Parameter. `adapt_strategy()` darf NICHT nachträglich einzelne Keys übersteuern (das war der Config-Drift: Regime-Override trimmte profit_lock_atr hoch). Wenn ein Wert manuell/konsistent sein soll, lass die Matrix ihn tragen und entferne alle sekundären Schreiber.
 
 ### 🔴 Strategie-Config-Drift (Critical) + Regime-Adaptive Parameter (15.07.2026)
 

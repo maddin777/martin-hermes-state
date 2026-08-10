@@ -23,7 +23,7 @@ from datetime import datetime, timedelta
 from utils import passes_liquidity_filter, apply_slippage, COMMISSION_EUR, get_price_data_cached, prefetch_prices, realized_pnl_from_effective_entry, get_crabel_patterns, get_donchian_breakout
 from utils import get_logger, price_to_eur, position_size_in_shares, open_positions_market_value_eur, calc_pnl_with_costs
 log = get_logger("signal_manager")
-from config import DB_PATH, SIGNALS_VALIDATED_PATH, STRATEGY_CONFIG_PATH, MACRO_SIGNAL_PATH, db_connect, get_asset_type, get_asset_multipliers
+from config import DB_PATH, SIGNALS_VALIDATED_PATH, STRATEGY_CONFIG_PATH, MACRO_SIGNAL_PATH, db_connect, get_asset_type, get_asset_multipliers, get_exit_config
 CONFIG_PATH = STRATEGY_CONFIG_PATH
 
 
@@ -295,6 +295,25 @@ def get_current_price_and_atr(ticker):
     close, atr_val, _ = get_price_data_cached(ticker)
     return close, atr_val
 
+
+def get_prev_close_ratio(ticker):
+    """Liefert (current, prev_close) oder (None, None) falls nicht verfügbar.
+
+    Für den Overnight-Gap-Filter (FIX b 09.08.): current = letzter Close,
+    prev_close = Close des vorigen abgeschlossenen Tages. Nutzt den gecachten df,
+    kein Extra-API-Call.
+    """
+    try:
+        close, _atr, df = get_price_data_cached(ticker)
+        if df is None or len(df) < 2 or close is None:
+            return None, None
+        close_s = df["Close"].iloc[:, 0] if df["Close"].ndim > 1 else df["Close"]
+        prev_close = float(close_s.iloc[-2])
+        return float(close), prev_close
+    except Exception:
+        return None, None
+
+
 def send_telegram(message):
     if not TELEGRAM_TOKEN or not TELEGRAM_HOME_CHANNEL:
         print(f"\n{message}")
@@ -354,37 +373,30 @@ def adapt_strategy(cfg, con):
     # ── Regime-Basis setzen ──
     # Überschreibt die Default-Werte aus strategy_config.json mit
     # regime-spezifischen Werten. Trade-basierte Anpassungen kommen danach.
-    regime_configs = {
-        "bull":     {"sl": 1.5, "tp": 3.5, "trailing_atr": 1.5, "confidence": 0.65},
-        "sideways": {"sl": 1.5, "tp": 2.5, "trailing_atr": 2.0, "confidence": 0.70},
-        "bear":     {"sl": 2.0, "tp": 3.0, "trailing_atr": 2.5, "confidence": 0.75},
-    }
-    if regime in regime_configs:
-        rc = regime_configs[regime]
-        # Trailing-Step: profit_lock_atr = ab wann Trailing aktiv wird
-        # (genutzt von active_exit_check.py — Trailing wird erst ab +Nx ATR aktiv)
-        # FIX 09.08.: schreibt in profit_lock_atr statt trailing_step_atr
+    # FIX 09.08. (glm-5.2-Review): SL/TP/Confidence-Basis kommt aus der
+    # Exit-Matrix (config.get_exit_config) — einzige Quelle, kein eigenes Dict
+    # mehr. profit_lock_atr wird hier NICHT mehr getrimmt (der manuelle Wert
+    # aus strategy_config.json = 1.0 bleibt konstant; der Regime-Override hatte
+    # ihn vorher auf 1.5–2.5 hochgezogen und damit den 0.5/1.0-Fix wirkungslos
+    # gemacht).
+    ec = get_exit_config(regime=regime)
+    if ec:
         old_sl = cfg["atr_sl_multiplier"]
         old_tp = cfg["atr_tp_multiplier"]
-        old_trailing = cfg.get("profit_lock_atr", 0.5)
         old_conf = cfg.get("min_confidence", 0.60)
+        cond_conf = {"bull": 0.65, "sideways": 0.70, "bear": 0.75}.get(regime, 0.70)
 
-        if old_sl != rc["sl"]:
-            cfg["atr_sl_multiplier"] = rc["sl"]
-            changes.append(f"Regime {regime}: SL {old_sl}→{rc['sl']}x ATR")
+        if old_sl != ec["sl"]:
+            cfg["atr_sl_multiplier"] = ec["sl"]
+            changes.append(f"Regime {regime}: SL {old_sl}→{ec['sl']}x ATR")
         # TP nur anpassen wenn Regime wechselt (nicht durch Trade-Ergebnisse überschreiben)
-        if old_tp != rc["tp"]:
-            cfg["atr_tp_multiplier"] = rc["tp"]
-            changes.append(f"Regime {regime}: TP {old_tp}→{rc['tp']}x ATR")
-        # profit_lock_atr = ab wann Trailing aktiv wird
-        # (genutzt von active_exit_check.py + signal_manager.py)
-        if old_trailing < rc["trailing_atr"]:
-            cfg["profit_lock_atr"] = rc["trailing_atr"]
-            changes.append(f"Regime {regime}: Trailing ab +{rc['trailing_atr']}x ATR")
+        if old_tp != ec["tp"]:
+            cfg["atr_tp_multiplier"] = ec["tp"]
+            changes.append(f"Regime {regime}: TP {old_tp}→{ec['tp']}x ATR")
         # Confidence-Floor pro Regime
-        if old_conf < rc["confidence"]:
-            cfg["min_confidence"] = rc["confidence"]
-            changes.append(f"Regime {regime}: Min. Confidence {old_conf:.0%}→{rc['confidence']:.0%}")
+        if old_conf < cond_conf:
+            cfg["min_confidence"] = cond_conf
+            changes.append(f"Regime {regime}: Min. Confidence {old_conf:.0%}→{cond_conf:.0%}")
 
     if cfg["consecutive_wins"] >= 3:
         if regime == "sideways":
@@ -533,6 +545,38 @@ def update_sector_blacklist(con, cfg):
     return cfg
 
 
+def _derive_signal_source(channels):
+    """Leite die Signalkomponente aus den Kanal-Namen ab (für Winrate-pro-Komponente).
+
+    Kanal-Präfixe aus der Pipeline:
+      - "rss:..."  → RSS-Feed (faz, bloomberg, seeking alpha ...)
+      - "twitter:" / "x_search" → X/Twitter (Grok x_search, twitterapi.io)
+      - "screener" / "screener:" → Screener
+      - ohne Präfix → YouTube-Kanal (Transkript-Extraktion)
+    Gewichtet: präferiert die "stärkste" Komponente, wenn mehrere Kanäle.
+    """
+    if not channels:
+        return "unknown"
+    srcs = set()
+    for ch in channels:
+        cl = str(ch).lower()
+        if cl.startswith("rss:") or "rss" in cl[:min(8, len(cl))]:
+            srcs.add("rss")
+        elif "twitter" in cl or "x_search" in cl or cl.startswith("x:"):
+            srcs.add("x_social")
+        elif "screener" in cl:
+            srcs.add("screener")
+        elif "youtube" in cl or "/@" in cl or "@" in cl:
+            srcs.add("youtube")
+        else:
+            srcs.add("youtube")  # ohne Präfix = YouTube-Kanal
+    # Präferenz: screener > x_social > rss > youtube (häufigste nennbare Quelle)
+    for pref in ("screener", "x_social", "rss", "youtube"):
+        if pref in srcs:
+            return pref
+    return "youtube"
+
+
 def is_sector_allowed(sector, con, cfg):
     """Prüft ob ein Sektor für neue Entries freigegeben ist.
     
@@ -601,6 +645,45 @@ def has_upcoming_earnings(ticker, days_ahead=5):
         return 0 <= days_until <= days_ahead
     except Exception:
         return False  # Bei Fehler kein Blackout (fail open)
+
+# ── Makro-Event-Filter (FIX b, 09.08.2026, glm-Review) ─────────────────────
+# Der 05.06.2026 (4 gleichzeitige Tag-0-Stopps) war ein US-Arbeitsmarkt-Tag
+# (erster Freitag = NFP). Einzel-Company-Earnings fängt has_upcoming_earnings()
+# ab, aber der systemweite NFP-Release nicht. Nur der erste Freitag ist als
+# Tageregel zuverlässig — FOMC/CPI-Termine variieren zu stark und erzeugten
+# falsch-positive Blöcke (im Test blockte "10-13" den 10. eines Monats). Echte
+# Overnight-Earnings-/News-Gaps fängt zusätzlich der Gap-Filter (has_overnight_gap).
+# 2026-08-09: bewusst nur NFP hart blockt — konservative, echte Makro-Blockade.
+def _first_friday_of_month(d: "date") -> bool:
+    """Erster Freitag des Monats = US Non-Farm-Payrolls / Arbeitsmarkt (zuverlässig)."""
+    return d.weekday() == 4 and d.day <= 7
+
+
+def is_macro_event_day(d=None):
+    """Blockt Entry an US-Makro-Event-Tagen.
+
+    Nur der erste Freitag (NFP/US-Arbeitsmarkt) wird hart geblockt — er ist der
+    einzige wiederkehrende Termin, der als reine Tageregel zuverlässig bestimmt
+    werden kann. FOMC und CPI werden bewusst NICHT über Tageregeln geblockt
+    (variieren zu stark → falsch-positive Blöcke); deren Overnight-Impact fängt
+    der Gap-Filter ab.
+    """
+    from datetime import date as _date
+    d = d or _date.today()
+    return _first_friday_of_month(d)
+
+
+def has_overnight_gap(current_price, atr, prev_close=None):
+    """Gap-Filter: blockt Entry wenn der Open weit vom Vortages-Schluss entfernt ist
+    (typisch nach Overnight-Earnings oder Makro-News). Verhindert Kauf nach 1.5x ATR Gap."""
+    if not atr or atr <= 0 or not current_price:
+        return False
+    if prev_close is None:
+        return False  # ohne Referenz nicht beurteilbar → durchlassen (fail-open)
+    gap_pct = abs(current_price - prev_close) / current_price
+    # Gap > 60% einer Tages-ATR → zu riskant (Gap-Entry), blocken
+    return gap_pct > 0.6 * (atr / current_price)
+
 
 def check_open_positions(con, cfg):
     """Prüft offene Positionen auf SL/TP, Trailing Stop und Partial TP."""
@@ -673,6 +756,16 @@ def check_open_positions(con, cfg):
                 remaining_shares = shares * (1 - partial_pct)
                 remaining_size   = pos["position_size"] * (1 - partial_pct)
 
+                # FIX (a) 09.08. (glm-Review): Im Donchian-Primary-Modus den SL NICHT
+                # auf Breakeven ziehen — sonst würgt das den Turtle-Winner ab (Rest
+                # stirbt am BE statt bis zum TP/Trendende zu laufen). Der Donchian-Trail
+                # übernimmt das Stopp-Handling ab profit_lock. Im Chandelier-Modus
+                # bleibt altes Verhalten (BE + enges Trailing).
+                _dk_enabled = bool(cfg.get("donchian_exit_enabled"))
+                _dk_mode = cfg.get("donchian_exit_mode", "off") if _dk_enabled else "off"
+                _dk_primary_now = _dk_mode == "primary"
+                new_sl_after_partial = entry if not _dk_primary_now else pos["stop_loss"]
+
                 con.execute("""
                     UPDATE positions SET
                         shares = ?,
@@ -682,7 +775,8 @@ def check_open_positions(con, cfg):
                         trailing_sl = ?
                     WHERE id = ?
                 """, (round(remaining_shares, 4), round(remaining_size, 2),
-                      round(entry, 2), round(entry, 2), pos["id"]))
+                      round(new_sl_after_partial, 2),
+                      round(new_sl_after_partial, 2), pos["id"]))
 
                 # Cash zurückbuchen (verkaufter Anteil + Gewinn)
                 cash_return = pos["position_size"] * partial_pct + partial_pnl
@@ -693,14 +787,16 @@ def check_open_positions(con, cfg):
                 """, (round(cash, 2), datetime.now().isoformat()))
                 con.commit()
 
+                be_note = "" if _dk_primary_now else f"\nSL → Breakeven ({entry:.2f})"
+                dk_note = "\n🐢 Donchian übernimmt Trailing" if _dk_primary_now else ""
                 send_telegram(
                     f"✂️ <b>Partial TP: {pos['name']}</b>\n"
                     f"Ticker: {ticker} | {direction}\n"
                     f"{partial_pct:.0%} geschlossen bei {current_price:.2f}\n"
-                    f"P&L: {partial_pnl:+.2f}€\n"
-                    f"SL → Breakeven ({entry:.2f})"
+                    f"P&L: {partial_pnl:+.2f}€{be_note}{dk_note}"
                 )
-                print(f"  ✂ Partial TP {pos['name']}: {partial_pct:.0%} geschlossen", flush=True)
+                print(f"  ✂ Partial TP {pos['name']}: {partial_pct:.0%} geschlossen"
+                      f"{' (Donchian uebernimmt Trail)' if _dk_primary_now else ''}", flush=True)
 
         # Donchian-Exit-Modus für diese Position bestimmen (steuert, ob der
         # ATR-Chandelier unten läuft oder vom Donchian-Trail ersetzt wird).
@@ -714,9 +810,11 @@ def check_open_positions(con, cfg):
         # FIX 09.08.: profit_lock-Gate eingebaut — Trailing erst ab +profit_lock_atr
         # ATR im Plus (konsistent mit active_exit_check.py). Vorher zog der
         # stündliche Check den SL bei jedem minimalen Hoch nach → 82% SL_HIT.
+        # FIX 2 09.08. (glm-Review): profit_lock aus pos_mult (asset-type-spezifisch,
+        # aus der Exit-Matrix), nicht aus globaler cfg — eine Quelle für den Lock.
         pnl_atr = (current_price - entry) / atr if direction == "LONG" \
                   else (entry - current_price) / atr
-        profit_lock_threshold = cfg.get("profit_lock_atr", 0.5)
+        profit_lock_threshold = pos_mult["profit_lock_atr"]
         if atr and not _donchian_primary and pnl_atr >= profit_lock_threshold:
             if direction == "LONG":
                 prev_high = pos["highest_price"] or entry
@@ -1580,6 +1678,12 @@ def open_new_positions(con, cfg):
             print(f"  📅 {c['name']}: Earnings in <{cfg.get('earnings_blackout_days', 5)} Tagen – überspringe")
             continue
 
+        # Makro-Event-Blackout (FIX b 09.08., glm-Review): systemweite US-Events
+        # (NFP/FOMC/CPI) verursachen Tag-0-Gaps — blocke den Entry am Event-Tag.
+        if is_macro_event_day():
+            print(f"  🌎 {c['name']}: US-Makro-Event heute (NFP/FOMC/CPI) – überspringe Entry")
+            continue
+
         # Loop 3: Pre-Entry Validation Gate – Segment-Historie prüfen
         seg_ok, seg_reason = check_segment_performance(con, ticker, direction, cand_conviction)
         if not seg_ok:
@@ -1627,6 +1731,17 @@ def open_new_positions(con, cfg):
 
         if math.isnan(current_price) or math.isnan(atr):
             continue
+
+        # Overnight-Gap-Filter (FIX b 09.08., glm-Review): blockt Entry wenn der
+        # letzte Close weit vom Vortagesschluss entfernt ist (Earnings-/News-Gap).
+        # Verhindert "Kauf nach Gap" — klarer Tag-0-Verlierer-Verursacher.
+        try:
+            _cur, _prev = get_prev_close_ratio(ticker)
+            if has_overnight_gap(_cur, atr, _prev):
+                print(f"  ↔️ {c['name']}: Overnight-Gap ({_cur:.2f} vs Vortag {_prev:.2f}) – überspringe Entry")
+                continue
+        except Exception:
+            pass  # Gap-Check-Fehler stoppen den Entry nicht (fail-open)
 
         # Crabel Breakout-Bestätigung (EOD-Adaption des Opening Range Breakout)
         # Kein Entry mitten in der Kompression: Nach einem Kontraktions-Tag
@@ -1853,13 +1968,17 @@ def open_new_positions(con, cfg):
         tp_pct = abs(tp - effective_entry) / effective_entry * 100
 
         # Position eintragen
+        # FIX 09.08. (glm-Review): signal_source jetzt aus Channels abgeleitet —
+        # ermöglicht die Winrate-pro-Signalkomponente in nightly_eval. Vorher blieb
+        # die Spalte leer (alle 77 Trades), sodass keine Trennung tech/social/llm
+        # messbar war.
         con.execute("""
             INSERT INTO positions
             (ticker, name, direction, entry_price, entry_date,
              stop_loss, take_profit, trailing_sl, position_size, shares,
              atr_at_entry, confidence, source_channel, reason,
-             highest_price, lowest_price, asset_type, crabel_at_entry)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+             highest_price, lowest_price, asset_type, crabel_at_entry, signal_source)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
         """, (
             ticker, c["name"], direction,
             round(effective_entry, 2),
@@ -1873,7 +1992,8 @@ def open_new_positions(con, cfg):
             effective_entry if direction == "SHORT" else 0,
             asset_type,
             # Instrumentierung: Pattern-State beim Entry → Kohorten-Split später
-            json.dumps(crabel) if crabel else None
+            json.dumps(crabel) if crabel else None,
+            _derive_signal_source(channels) or None
         ))
 
         # Committee-Audit: Entry hat stattgefunden → Join-Basis für nightly_eval

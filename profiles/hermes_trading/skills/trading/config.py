@@ -94,7 +94,7 @@ ASSET_TYPE_MULTIPLIERS = {
         "atr_tp": 2.5,
         "partial_atr": 1.5,
         "partial_pct": 0.50,
-        "profit_lock_atr": 0.5,
+        "profit_lock_atr": 1.0,
         "trailing_step": 0.5,
     },
     "TECH": {
@@ -102,7 +102,7 @@ ASSET_TYPE_MULTIPLIERS = {
         "atr_tp": 3.5,
         "partial_atr": 2.0,
         "partial_pct": 0.50,
-        "profit_lock_atr": 0.5,
+        "profit_lock_atr": 1.0,
         "trailing_step": 0.75,
     },
     "DEFENSIVE": {
@@ -110,7 +110,7 @@ ASSET_TYPE_MULTIPLIERS = {
         "atr_tp": 2.0,
         "partial_atr": 1.0,
         "partial_pct": 0.50,
-        "profit_lock_atr": 0.5,
+        "profit_lock_atr": 1.0,
         "trailing_step": 0.3,
     },
 }
@@ -134,6 +134,47 @@ def get_asset_multipliers(asset_type: str = None, sector: str = None) -> dict:
         asset_type = get_asset_type(sector)
     at = asset_type or DEFAULT_ASSET_TYPE
     return ASSET_TYPE_MULTIPLIERS.get(at, ASSET_TYPE_MULTIPLIERS[DEFAULT_ASSET_TYPE])
+
+
+# ── Exit-Config-Matrix (Single Source of Truth, 09.08.2026) ────────────────
+# Konsolidiert die drei vorherigen überlagerten Trail-/SL-/TP-Quellen
+# (ASSET_TYPE_MULTIPLIERS + regime_configs in signal_manager + strategy_config)
+# in EINE deterministische Matrix. get_exit_config() ist die einzige Quelle für
+# Exit-Parameter — kein weiteres Regime-Trippen in signal_manager mehr nötig.
+#
+# profit_lock_atr = 1.0x Kompromiss: niedriger als der alte 2.0 (im Sideways
+# unerreichbar → 0% TP), hoch genug um Intraday-Noise-Trails (0.5) zu vermeiden.
+# Eine volle Tages-ATR an Raum gilt als Swing-verträglich (glm-5.2-Review 09.08).
+_EXIT_CONFIG_MATRIX = {
+    ("STANDARD", "bull"):     {"sl": 1.5, "tp": 3.5, "partial_atr": 1.5, "profit_lock_atr": 1.0, "step": 0.75},
+    ("STANDARD", "sideways"): {"sl": 1.5, "tp": 2.5, "partial_atr": 1.5, "profit_lock_atr": 1.0, "step": 0.75},
+    ("STANDARD", "bear"):     {"sl": 2.0, "tp": 3.0, "partial_atr": 1.5, "profit_lock_atr": 1.0, "step": 0.75},
+    ("TECH", "bull"):         {"sl": 2.0, "tp": 3.5, "partial_atr": 2.0, "profit_lock_atr": 1.0, "step": 0.75},
+    ("TECH", "sideways"):     {"sl": 2.0, "tp": 3.0, "partial_atr": 2.0, "profit_lock_atr": 1.0, "step": 0.75},
+    ("TECH", "bear"):         {"sl": 2.5, "tp": 3.0, "partial_atr": 2.0, "profit_lock_atr": 1.0, "step": 0.75},
+    ("DEFENSIVE", "bull"):    {"sl": 1.0, "tp": 2.0, "partial_atr": 1.0, "profit_lock_atr": 1.0, "step": 0.3},
+    ("DEFENSIVE", "sideways"):{"sl": 1.0, "tp": 2.0, "partial_atr": 1.0, "profit_lock_atr": 1.0, "step": 0.3},
+    ("DEFENSIVE", "bear"):    {"sl": 1.5, "tp": 2.0, "partial_atr": 1.0, "profit_lock_atr": 1.0, "step": 0.3},
+}
+DEFAULT_EXIT_CONFIG = {"sl": 1.5, "tp": 2.5, "partial_atr": 1.5, "profit_lock_atr": 1.0, "step": 0.75}
+
+
+def get_exit_config(asset_type=None, sector=None, regime="sideways"):
+    """Single Source of Truth für Exit-Parameter.
+
+    Liefert {sl, tp, partial_atr, profit_lock_atr, step} deterministisch aus der
+    Exit-Matrix für (asset_type, regime). Konsolidiert die drei vorherigen
+    Config-Quellen. Fallback auf DEFAULT_EXIT_CONFIG bei unbekannter Kombi.
+    """
+    if asset_type is None and sector is not None:
+        asset_type = get_asset_type(sector)
+    at = asset_type or DEFAULT_ASSET_TYPE
+    if at not in ("STANDARD", "TECH", "DEFENSIVE"):
+        at = DEFAULT_ASSET_TYPE
+    regime = (regime or "sideways").lower()
+    if regime not in ("bull", "sideways", "bear"):
+        regime = "sideways"
+    return dict(_EXIT_CONFIG_MATRIX.get((at, regime), DEFAULT_EXIT_CONFIG))
 
 
 # ── Slippage & Kosten ─────────────────────────────────────────────────────────

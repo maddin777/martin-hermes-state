@@ -242,7 +242,8 @@ def main():
                 continue
 
             # --- AKTION 2: Profit-Sicherung bei +profit_lock_atr ATR ---
-            profit_lock_threshold = cfg.get("profit_lock_atr", 0.5)
+            # FIX 09.08.: profit_lock aus pos_mult (asset-type-spezifisch, Exit-Matrix)
+            profit_lock_threshold = pos_mult["profit_lock_atr"]
             if pnl_atr >= profit_lock_threshold:
                 if direction == "LONG":
                     protected_tp = entry + (pnl_atr * 0.5 * atr)
@@ -269,34 +270,45 @@ def main():
             # Problem (15.07.): 75% SL_HIT, 0% TP_HIT — das Trailing triggert
             # bei jedem normalen Pullback. Abhilfe: Trailing erst aktivieren
             # wenn der Trade mindestens +Nx ATR im Plus ist (profit_lock_atr).
-            # FIX 09.08.: Default 2.0 → 0.5 (2.0 war im Sideways unerreichbar).
-            trailing_step = pos_mult["trailing_step"]
-            profit_lock_threshold = cfg.get("profit_lock_atr", 0.5)
-            if pnl_atr >= profit_lock_threshold:
-                if direction == "LONG":
-                    ideal_sl      = current_price - (pos_mult["atr_sl"] * atr)
-                    next_sl_level = sl + (trailing_step * atr)
-                    if ideal_sl > next_sl_level and ideal_sl > sl:
-                        con.execute(
-                            "UPDATE positions SET stop_loss=?, trailing_sl=?, "
-                            "highest_price=? WHERE id=?",
-                            (round(ideal_sl, 2), round(ideal_sl, 2),
-                             round(current_price, 2), pos["id"])
-                        )
-                        print(f"    📈 Trailing SL → {ideal_sl:.2f} "
-                              f"(Preis: {current_price:.2f})", flush=True)
-                else:  # SHORT
-                    ideal_sl      = current_price + (pos_mult["atr_sl"] * atr)
-                    next_sl_level = sl - (trailing_step * atr)
-                    if ideal_sl < next_sl_level and ideal_sl < sl:
-                        con.execute(
-                            "UPDATE positions SET stop_loss=?, trailing_sl=?, "
-                            "lowest_price=? WHERE id=?",
-                            (round(ideal_sl, 2), round(ideal_sl, 2),
-                             round(current_price, 2), pos["id"])
-                        )
-                        print(f"    📉 Trailing SL → {ideal_sl:.2f} "
-                              f"(Preis: {current_price:.2f})", flush=True)
+            # FIX 09.08.: profit_lock aus pos_mult (Exit-Matrix), nicht config.
+            # FIX 09.08. (glm-Review): Donchian-Primary-Präzedenz respektieren —
+            # wenn Donchian-Primary den Trail führt, darf der engere ATR-Chandelier
+            # hier NICHT parallel nachziehen (sonst zwei konkurrierende Trails).
+            _donchian_primary = False
+            try:
+                _donchian_primary = (cfg.get("donchian_exit_enabled")
+                                     and cfg.get("donchian_exit_mode") == "primary")
+            except Exception:
+                _donchian_primary = False
+
+            if not _donchian_primary:
+                trailing_step = pos_mult["trailing_step"]
+                profit_lock_threshold = pos_mult["profit_lock_atr"]
+                if pnl_atr >= profit_lock_threshold:
+                    if direction == "LONG":
+                        ideal_sl      = current_price - (pos_mult["atr_sl"] * atr)
+                        next_sl_level = sl + (trailing_step * atr)
+                        if ideal_sl > next_sl_level and ideal_sl > sl:
+                            con.execute(
+                                "UPDATE positions SET stop_loss=?, trailing_sl=?, "
+                                "highest_price=? WHERE id=?",
+                                (round(ideal_sl, 2), round(ideal_sl, 2),
+                                 round(current_price, 2), pos["id"])
+                            )
+                            print(f"    📈 Trailing SL → {ideal_sl:.2f} "
+                                  f"(Preis: {current_price:.2f})", flush=True)
+                    else:  # SHORT
+                        ideal_sl      = current_price + (pos_mult["atr_sl"] * atr)
+                        next_sl_level = sl - (trailing_step * atr)
+                        if ideal_sl < next_sl_level and ideal_sl < sl:
+                            con.execute(
+                                "UPDATE positions SET stop_loss=?, trailing_sl=?, "
+                                "lowest_price=? WHERE id=?",
+                                (round(ideal_sl, 2), round(ideal_sl, 2),
+                                 round(current_price, 2), pos["id"])
+                            )
+                            print(f"    📉 Trailing SL → {ideal_sl:.2f} "
+                                  f"(Preis: {current_price:.2f})", flush=True)
 
             # --- SL/TP Hit Check ---
             if direction == "LONG":

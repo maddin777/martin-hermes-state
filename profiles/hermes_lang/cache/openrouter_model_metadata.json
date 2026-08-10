@@ -125,22 +125,22 @@
 },
 "~deepseek/deepseek-v4-flash-latest":{
 "context_length":1048576,
-"max_completion_tokens":131072,
+"max_completion_tokens":null,
 "name":"DeepSeek V4 Flash Latest",
 "pricing":{
-"prompt":"0.0000000896",
-"completion":"0.0000001792",
-"input_cache_read":"0.00000001792"
+"prompt":"0.000000079996",
+"completion":"0.000000252",
+"input_cache_read":"0.0000000252"
 }
 },
 "deepseek-v4-flash-latest":{
 "context_length":1048576,
-"max_completion_tokens":131072,
+"max_completion_tokens":null,
 "name":"DeepSeek V4 Flash Latest",
 "pricing":{
-"prompt":"0.0000000896",
-"completion":"0.0000001792",
-"input_cache_read":"0.00000001792"
+"prompt":"0.000000079996",
+"completion":"0.000000252",
+"input_cache_read":"0.0000000252"
 }
 },
 "deepseek/deepseek-v4-flash-0731":{
@@ -2411,9 +2411,9 @@
 "max_completion_tokens":128000,
 "name":"Z.ai: GLM 5.2",
 "pricing":{
-"prompt":"0.000000182",
-"completion":"0.000000572",
-"input_cache_read":"0.0000000338"
+"prompt":"0.00000007",
+"completion":"0.00000022",
+"input_cache_read":"0.000000013"
 }
 },
 "glm-5.2":{
@@ -2421,9 +2421,9 @@
 "max_completion_tokens":128000,
 "name":"Z.ai: GLM 5.2",
 "pricing":{
-"prompt":"0.000000182",
-"completion":"0.000000572",
-"input_cache_read":"0.0000000338"
+"prompt":"0.00000007",
+"completion":"0.00000022",
+"input_cache_read":"0.000000013"
 }
 },
 "z-ai/glm-5.2-20260616":{
@@ -2441,9 +2441,9 @@
 "max_completion_tokens":128000,
 "name":"Z.ai: GLM 5.2",
 "pricing":{
-"prompt":"0.000000182",
-"completion":"0.000000572",
-"input_cache_read":"0.0000000338"
+"prompt":"0.00000007",
+"completion":"0.00000022",
+"input_cache_read":"0.000000013"
 }
 },
 "z-ai/glm-5.2:batch":{
@@ -5724,20 +5724,20 @@
 },
 "nvidia/nemotron-3-super-120b-a12b":{
 "context_length":1000000,
-"max_completion_tokens":16384,
+"max_completion_tokens":null,
 "name":"NVIDIA: Nemotron 3 Super",
 "pricing":{
-"prompt":"0.000000085",
-"completion":"0.0000004"
+"prompt":"0.0000003",
+"completion":"0.0000009"
 }
 },
 "nemotron-3-super-120b-a12b":{
 "context_length":1000000,
-"max_completion_tokens":16384,
+"max_completion_tokens":null,
 "name":"NVIDIA: Nemotron 3 Super",
 "pricing":{
-"prompt":"0.000000085",
-"completion":"0.0000004"
+"prompt":"0.0000003",
+"completion":"0.0000009"
 }
 },
 "nvidia/nemotron-3-super-120b-a12b-20230311":{
@@ -5751,11 +5751,11 @@
 },
 "nemotron-3-super-120b-a12b-20230311":{
 "context_length":1000000,
-"max_completion_tokens":16384,
+"max_completion_tokens":null,
 "name":"NVIDIA: Nemotron 3 Super",
 "pricing":{
-"prompt":"0.000000085",
-"completion":"0.0000004"
+"prompt":"0.0000003",
+"completion":"0.0000009"
 }
 },
 "nvidia/nemotron-3-super-120b-a12b:free":{
@@ -6965,38 +6965,42 @@
 },
 "qwen/qwen3.5-397b-a17b":{
 "context_length":262144,
-"max_completion_tokens":65536,
+"max_completion_tokens":262144,
 "name":"Qwen: Qwen3.5 397B A17B",
 "pricing":{
-"prompt":"0.00000039",
-"completion":"0.00000234"
+"prompt":"0.0000005",
+"completion":"0.0000036",
+"input_cache_read":"0.0000003"
 }
 },
 "qwen3.5-397b-a17b":{
 "context_length":262144,
-"max_completion_tokens":65536,
+"max_completion_tokens":262144,
 "name":"Qwen: Qwen3.5 397B A17B",
 "pricing":{
-"prompt":"0.00000039",
-"completion":"0.00000234"
+"prompt":"0.0000005",
+"completion":"0.0000036",
+"input_cache_read":"0.0000003"
 }
 },
 "qwen/qwen3.5-397b-a17b-20260216":{
 "context_length":262144,
-"max_completion_tokens":65536,
+"max_completion_tokens":262144,
 "name":"Qwen: Qwen3.5 397B A17B",
 "pricing":{
-"prompt":"0.00000039",
-"completion":"0.00000234"
+"prompt":"0.0000005",
+"completion":"0.0000036",
+"input_cache_read":"0.0000003"
 }
 },
 "qwen3.5-397b-a17b-20260216":{
 "context_length":262144,
-"max_completion_tokens":65536,
+"max_completion_tokens":262144,
 "name":"Qwen: Qwen3.5 397B A17B",
 "pricing":{
-"prompt":"0.00000039",
-"completion":"0.00000234"
+"prompt":"0.0000005",
+"completion":"0.0000036",
+"input_cache_read":"0.0000003"
 }
 },
 "minimax/minimax-m2.5":{
@@ -13797,8 +13801,8 @@
 "max_completion_tokens":4096,
 "name":"MythoMax 13B",
 "pricing":{
-"prompt":"0.00000008",
-"completion":"0.00000011"
+"prompt":"0.00000006",
+"completion":"0.00000006"
 }
 },
 "mythomax-l2-13b":{
@@ -13806,8 +13810,8 @@
 "max_completion_tokens":4096,
 "name":"MythoMax 13B",
 "pricing":{
-"prompt":"0.00000008",
-"completion":"0.00000011"
+"prompt":"0.00000006",
+"completion":"0.00000006"
 }
 },
 "openai/gpt-3.5-turbo":{
