@@ -2408,22 +2408,22 @@
 },
 "z-ai/glm-5.2":{
 "context_length":1048576,
-"max_completion_tokens":128000,
+"max_completion_tokens":262144,
 "name":"Z.ai: GLM 5.2",
 "pricing":{
-"prompt":"0.000000098",
-"completion":"0.000000308",
-"input_cache_read":"0.0000000182"
+"prompt":"0.00000076",
+"completion":"0.00000242",
+"input_cache_read":"0.00000014"
 }
 },
 "glm-5.2":{
 "context_length":1048576,
-"max_completion_tokens":128000,
+"max_completion_tokens":262144,
 "name":"Z.ai: GLM 5.2",
 "pricing":{
-"prompt":"0.000000098",
-"completion":"0.000000308",
-"input_cache_read":"0.0000000182"
+"prompt":"0.00000076",
+"completion":"0.00000242",
+"input_cache_read":"0.00000014"
 }
 },
 "z-ai/glm-5.2-20260616":{
@@ -2438,12 +2438,12 @@
 },
 "glm-5.2-20260616":{
 "context_length":1048576,
-"max_completion_tokens":128000,
+"max_completion_tokens":262144,
 "name":"Z.ai: GLM 5.2",
 "pricing":{
-"prompt":"0.000000098",
-"completion":"0.000000308",
-"input_cache_read":"0.0000000182"
+"prompt":"0.00000076",
+"completion":"0.00000242",
+"input_cache_read":"0.00000014"
 }
 },
 "z-ai/glm-5.2:batch":{
@@ -4794,9 +4794,9 @@
 "max_completion_tokens":262144,
 "name":"MoonshotAI: Kimi K2.6",
 "pricing":{
-"prompt":"0.0000005795",
-"completion":"0.00000244",
-"input_cache_read":"0.0000000976"
+"prompt":"0.00000095",
+"completion":"0.000004",
+"input_cache_read":"0.00000016"
 }
 },
 "kimi-k2.6":{
@@ -4804,9 +4804,9 @@
 "max_completion_tokens":262144,
 "name":"MoonshotAI: Kimi K2.6",
 "pricing":{
-"prompt":"0.0000005795",
-"completion":"0.00000244",
-"input_cache_read":"0.0000000976"
+"prompt":"0.00000095",
+"completion":"0.000004",
+"input_cache_read":"0.00000016"
 }
 },
 "moonshotai/kimi-k2.6-20260420":{
@@ -4814,9 +4814,9 @@
 "max_completion_tokens":262144,
 "name":"MoonshotAI: Kimi K2.6",
 "pricing":{
-"prompt":"0.0000005795",
-"completion":"0.00000244",
-"input_cache_read":"0.0000000976"
+"prompt":"0.00000095",
+"completion":"0.000004",
+"input_cache_read":"0.00000016"
 }
 },
 "kimi-k2.6-20260420":{
@@ -4824,9 +4824,9 @@
 "max_completion_tokens":262144,
 "name":"MoonshotAI: Kimi K2.6",
 "pricing":{
-"prompt":"0.0000005795",
-"completion":"0.00000244",
-"input_cache_read":"0.0000000976"
+"prompt":"0.00000095",
+"completion":"0.000004",
+"input_cache_read":"0.00000016"
 }
 },
 "anthropic/claude-opus-4.7":{
@@ -4912,9 +4912,9 @@
 "max_completion_tokens":131072,
 "name":"Z.ai: GLM 5.1",
 "pricing":{
-"prompt":"0.000000952",
-"completion":"0.000002992",
-"input_cache_read":"0.0000001768"
+"prompt":"0.0000014",
+"completion":"0.0000044",
+"input_cache_read":"0.00000026"
 }
 },
 "glm-5.1":{
@@ -4922,9 +4922,9 @@
 "max_completion_tokens":131072,
 "name":"Z.ai: GLM 5.1",
 "pricing":{
-"prompt":"0.000000952",
-"completion":"0.000002992",
-"input_cache_read":"0.0000001768"
+"prompt":"0.0000014",
+"completion":"0.0000044",
+"input_cache_read":"0.00000026"
 }
 },
 "z-ai/glm-5.1-20260406":{
@@ -4932,9 +4932,9 @@
 "max_completion_tokens":131072,
 "name":"Z.ai: GLM 5.1",
 "pricing":{
-"prompt":"0.000000952",
-"completion":"0.000002992",
-"input_cache_read":"0.0000001768"
+"prompt":"0.0000014",
+"completion":"0.0000044",
+"input_cache_read":"0.00000026"
 }
 },
 "glm-5.1-20260406":{
@@ -4942,27 +4942,29 @@
 "max_completion_tokens":131072,
 "name":"Z.ai: GLM 5.1",
 "pricing":{
-"prompt":"0.000000952",
-"completion":"0.000002992",
-"input_cache_read":"0.0000001768"
+"prompt":"0.0000014",
+"completion":"0.0000044",
+"input_cache_read":"0.00000026"
 }
 },
 "google/gemma-4-26b-a4b-it":{
 "context_length":262144,
-"max_completion_tokens":16384,
+"max_completion_tokens":262144,
 "name":"Google: Gemma 4 26B A4B ",
 "pricing":{
-"prompt":"0.00000007",
-"completion":"0.00000034"
+"prompt":"0.00000012",
+"completion":"0.0000004",
+"input_cache_read":"0.00000005"
 }
 },
 "gemma-4-26b-a4b-it":{
 "context_length":262144,
-"max_completion_tokens":16384,
+"max_completion_tokens":262144,
 "name":"Google: Gemma 4 26B A4B ",
 "pricing":{
-"prompt":"0.00000007",
-"completion":"0.00000034"
+"prompt":"0.00000012",
+"completion":"0.0000004",
+"input_cache_read":"0.00000005"
 }
 },
 "google/gemma-4-26b-a4b-it-20260403":{
@@ -4976,11 +4978,12 @@
 },
 "gemma-4-26b-a4b-it-20260403":{
 "context_length":262144,
-"max_completion_tokens":16384,
+"max_completion_tokens":262144,
 "name":"Google: Gemma 4 26B A4B ",
 "pricing":{
-"prompt":"0.00000007",
-"completion":"0.00000034"
+"prompt":"0.00000012",
+"completion":"0.0000004",
+"input_cache_read":"0.00000005"
 }
 },
 "google/gemma-4-26b-a4b-it:free":{
@@ -5724,20 +5727,20 @@
 },
 "nvidia/nemotron-3-super-120b-a12b":{
 "context_length":1000000,
-"max_completion_tokens":null,
+"max_completion_tokens":16384,
 "name":"NVIDIA: Nemotron 3 Super",
 "pricing":{
-"prompt":"0.0000003",
-"completion":"0.0000009"
+"prompt":"0.000000085",
+"completion":"0.0000004"
 }
 },
 "nemotron-3-super-120b-a12b":{
 "context_length":1000000,
-"max_completion_tokens":null,
+"max_completion_tokens":16384,
 "name":"NVIDIA: Nemotron 3 Super",
 "pricing":{
-"prompt":"0.0000003",
-"completion":"0.0000009"
+"prompt":"0.000000085",
+"completion":"0.0000004"
 }
 },
 "nvidia/nemotron-3-super-120b-a12b-20230311":{
@@ -5751,11 +5754,11 @@
 },
 "nemotron-3-super-120b-a12b-20230311":{
 "context_length":1000000,
-"max_completion_tokens":null,
+"max_completion_tokens":16384,
 "name":"NVIDIA: Nemotron 3 Super",
 "pricing":{
-"prompt":"0.0000003",
-"completion":"0.0000009"
+"prompt":"0.000000085",
+"completion":"0.0000004"
 }
 },
 "nvidia/nemotron-3-super-120b-a12b:free":{
@@ -7867,12 +7870,12 @@
 },
 "nemotron-3-nano-30b-a3b":{
 "context_length":262144,
-"max_completion_tokens":262144,
+"max_completion_tokens":228000,
 "name":"NVIDIA: Nemotron 3 Nano 30B A3B",
 "pricing":{
 "prompt":"0.00000005",
 "completion":"0.0000002",
-"input_cache_read":"0.00000003"
+"input_cache_read":"0.000000025"
 }
 },
 "nvidia/nemotron-3-nano-30b-a3b:free":{
@@ -8301,42 +8304,42 @@
 },
 "deepseek/deepseek-v3.2":{
 "context_length":163840,
-"max_completion_tokens":163840,
+"max_completion_tokens":65536,
 "name":"DeepSeek: DeepSeek V3.2",
 "pricing":{
-"prompt":"0.00000026",
-"completion":"0.00000038",
-"input_cache_read":"0.00000013"
+"prompt":"0.000000269",
+"completion":"0.0000004",
+"input_cache_read":"0.0000001345"
 }
 },
 "deepseek-v3.2":{
 "context_length":163840,
-"max_completion_tokens":163840,
+"max_completion_tokens":65536,
 "name":"DeepSeek: DeepSeek V3.2",
 "pricing":{
-"prompt":"0.00000026",
-"completion":"0.00000038",
-"input_cache_read":"0.00000013"
+"prompt":"0.000000269",
+"completion":"0.0000004",
+"input_cache_read":"0.0000001345"
 }
 },
 "deepseek/deepseek-v3.2-20251201":{
 "context_length":163840,
-"max_completion_tokens":163840,
+"max_completion_tokens":65536,
 "name":"DeepSeek: DeepSeek V3.2",
 "pricing":{
-"prompt":"0.00000026",
-"completion":"0.00000038",
-"input_cache_read":"0.00000013"
+"prompt":"0.000000269",
+"completion":"0.0000004",
+"input_cache_read":"0.0000001345"
 }
 },
 "deepseek-v3.2-20251201":{
 "context_length":163840,
-"max_completion_tokens":163840,
+"max_completion_tokens":65536,
 "name":"DeepSeek: DeepSeek V3.2",
 "pricing":{
-"prompt":"0.00000026",
-"completion":"0.00000038",
-"input_cache_read":"0.00000013"
+"prompt":"0.000000269",
+"completion":"0.0000004",
+"input_cache_read":"0.0000001345"
 }
 },
 "anthropic/claude-opus-4.5":{
@@ -9695,7 +9698,7 @@
 },
 "qwen/qwen3-next-80b-a3b-thinking":{
 "context_length":262144,
-"max_completion_tokens":262144,
+"max_completion_tokens":32768,
 "name":"Qwen: Qwen3 Next 80B A3B Thinking",
 "pricing":{
 "prompt":"0.00000015",
@@ -9704,7 +9707,7 @@
 },
 "qwen3-next-80b-a3b-thinking":{
 "context_length":262144,
-"max_completion_tokens":262144,
+"max_completion_tokens":32768,
 "name":"Qwen: Qwen3 Next 80B A3B Thinking",
 "pricing":{
 "prompt":"0.00000015",
@@ -9713,7 +9716,7 @@
 },
 "qwen/qwen3-next-80b-a3b-thinking-2509":{
 "context_length":262144,
-"max_completion_tokens":262144,
+"max_completion_tokens":32768,
 "name":"Qwen: Qwen3 Next 80B A3B Thinking",
 "pricing":{
 "prompt":"0.00000015",
@@ -9722,7 +9725,7 @@
 },
 "qwen3-next-80b-a3b-thinking-2509":{
 "context_length":262144,
-"max_completion_tokens":262144,
+"max_completion_tokens":32768,
 "name":"Qwen: Qwen3 Next 80B A3B Thinking",
 "pricing":{
 "prompt":"0.00000015",
@@ -11545,38 +11548,38 @@
 },
 "qwen/qwen3-14b":{
 "context_length":131072,
-"max_completion_tokens":8192,
+"max_completion_tokens":16384,
 "name":"Qwen: Qwen3 14B",
 "pricing":{
-"prompt":"0.0000002275",
-"completion":"0.00000091"
+"prompt":"0.00000012",
+"completion":"0.00000024"
 }
 },
 "qwen3-14b":{
 "context_length":131072,
-"max_completion_tokens":8192,
+"max_completion_tokens":16384,
 "name":"Qwen: Qwen3 14B",
 "pricing":{
-"prompt":"0.0000002275",
-"completion":"0.00000091"
+"prompt":"0.00000012",
+"completion":"0.00000024"
 }
 },
 "qwen/qwen3-14b-04-28":{
 "context_length":131072,
-"max_completion_tokens":8192,
+"max_completion_tokens":16384,
 "name":"Qwen: Qwen3 14B",
 "pricing":{
-"prompt":"0.0000002275",
-"completion":"0.00000091"
+"prompt":"0.00000012",
+"completion":"0.00000024"
 }
 },
 "qwen3-14b-04-28":{
 "context_length":131072,
-"max_completion_tokens":8192,
+"max_completion_tokens":16384,
 "name":"Qwen: Qwen3 14B",
 "pricing":{
-"prompt":"0.0000002275",
-"completion":"0.00000091"
+"prompt":"0.00000012",
+"completion":"0.00000024"
 }
 },
 "qwen/qwen3-32b":{
@@ -12049,38 +12052,38 @@
 },
 "meta-llama/llama-4-maverick":{
 "context_length":1048576,
-"max_completion_tokens":16384,
+"max_completion_tokens":null,
 "name":"Meta: Llama 4 Maverick",
 "pricing":{
 "prompt":"0.0000002",
-"completion":"0.0000008"
+"completion":"0.000000696"
 }
 },
 "llama-4-maverick":{
 "context_length":1048576,
-"max_completion_tokens":16384,
+"max_completion_tokens":null,
 "name":"Meta: Llama 4 Maverick",
 "pricing":{
 "prompt":"0.0000002",
-"completion":"0.0000008"
+"completion":"0.000000696"
 }
 },
 "meta-llama/llama-4-maverick-17b-128e-instruct":{
 "context_length":1048576,
-"max_completion_tokens":16384,
+"max_completion_tokens":null,
 "name":"Meta: Llama 4 Maverick",
 "pricing":{
 "prompt":"0.0000002",
-"completion":"0.0000008"
+"completion":"0.000000696"
 }
 },
 "llama-4-maverick-17b-128e-instruct":{
 "context_length":1048576,
-"max_completion_tokens":16384,
+"max_completion_tokens":null,
 "name":"Meta: Llama 4 Maverick",
 "pricing":{
 "prompt":"0.0000002",
-"completion":"0.0000008"
+"completion":"0.000000696"
 }
 },
 "meta-llama/llama-4-scout":{
@@ -13797,8 +13800,8 @@
 "max_completion_tokens":4096,
 "name":"MythoMax 13B",
 "pricing":{
-"prompt":"0.00000008",
-"completion":"0.00000011"
+"prompt":"0.00000006",
+"completion":"0.00000006"
 }
 },
 "mythomax-l2-13b":{
@@ -13806,8 +13809,8 @@
 "max_completion_tokens":4096,
 "name":"MythoMax 13B",
 "pricing":{
-"prompt":"0.00000008",
-"completion":"0.00000011"
+"prompt":"0.00000006",
+"completion":"0.00000006"
 }
 },
 "openai/gpt-3.5-turbo":{
