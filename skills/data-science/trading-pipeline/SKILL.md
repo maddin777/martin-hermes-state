@@ -263,6 +263,12 @@ Das ist KEIN Wiki-Eintrag — es ist die Live-Doku im Trading-Verzeichnis.
 2. `Erklaerung.md` mit Datum, Problem, Fix, Erwartung aktualisieren
 3. Bei Wiki-Seiten (z.B. `wiki/concepts/Exit Management.md`): wenn die Wiki-Seite
    neuer ist als die Quelle, dann die Quelle (Erklaerung.md) updaten — nicht andersrum.
+4. **Timestamp-Refresh-Pflicht nach Erklaerung.md-Änderung:** Der vault-insights-daily
+   Cron (02:45) vergleicht `Trading/Erklaerung.md` vs `wiki/concepts/Exit Management.md`
+   und triggert einen Exit-Refresh wenn die Quelle neuer ist. Wurde NUR die Dedup-/andere
+   Doku geändert (keine Exit-Regeln), trotzdem einen Changelog-Eintrag in der Wiki-Seite
+   ergänzen (z.B. `- **2026-08-11 (refresh-check):** Quelle geändert — nur Step 4, Exit-Parameter unverändert.`),
+   damit der Cron nicht fälschlich einen Exit-Refresh meldet.
 
 ### Session-Start-Protokoll: Proaktiver Pipeline-Check
 
@@ -374,6 +380,8 @@ Die Referenz enthält 23 klassifizierte Unternehmen plus Implementierungsvorschl
 | **`cron_health.py` ⚠️ trading_pipeline unknown (gelb)** → Pipeline schrieb `TRADING PIPELINE DONE` ohne ✅-Prefix. Der Health-Check-Regex `✅\s*.*DONE` matched nicht. **Fix:** `_print(f"✅ TRADING PIPELINE DONE: ...")`. Siehe `references/cron-health-slicing-bug.md`. |
 | **`cron_health.py` ⚠️ no_agent Cron gelb (generisch)** → Jeder Cron-Job (system crontab oder Hermes-Cron) muss `✅ ... DONE` im Log-Output haben. `=== ... DONE ===` ohne ✅ wird als ⚠️ unknown gewertet. **Fix:** `echo "=== $(date) === ✅ jobname DONE ==="` im Cron-Befehl. |
 | **DELETE/UPDATE auf `watchlist` via `id` greift nicht** → Die Dedup (`watchlist_dedup.py`) verwaltet Zeilen via `rowid` (`WHERE rowid=?`), wodurch die `id`-Spalte bei vielen Zeilen **NULL** ist. Ein `DELETE ... WHERE id=?` kopiert die Zeile zwar (z.B. ins Archiv), entfernt sie aber nicht → Duplikate bleiben, Ziel-Tabelle wächst fälschlich. **Fix:** `SELECT rowid, *` + `DELETE ... WHERE rowid=?` — IMMER `rowid` verwenden bei watchlist-JOINs/Schreibzugriffen. Betrifft `watchlist_cleanup.py` (09.08.2026). |
+| **Duplikate trotz Dedup "nie gemerged" (11.08.2026)** → Es gibt ZWEI `watchlist_dedup.py` Kopien: `/root/.hermes/scripts/` (Weekly-Cron 472ace6fe18a) UND die Skill-Kopie, die die **Nacht-Pipeline** (03:30) aufruft. Beide patchen! Bekannte Multi-Bugs: (1) `dedup_name` nur bei `ticker IS NULL`, (2) UPDATE via `id` (NULL) griff ins Leere → `rowid` nutzen, (3) `merge_group` setzte hardcoded `status='watching'` → bought-Positionen wären zerstört worden, (4) Name-Vergleich case/&-sensitiv → `name_compare_key()` (lowercase + and/& + Stopword), (5) Conviction wurde summiert statt MAX. Vollständige Doku: `references/watchlist-table-dedup.md`. |
+| **DJ-Fall: Ticker mit zu wenig Historie (<200 Bars)** → `get_technical_score()` braucht EMA200 (200 Bars). HALO.L hatte 92 Bars → None. DQ-Fall NICHT mit Fake-Werten füllen; `status='removed'` + DQ-Note (aus Filter-View aussortieren). Siehe `references/watchlist-table-dedup.md`. |
 | **Open positions: `pnl_eur = NULL`** → `signal_manager.py` berechnete PnL im `check_open_positions()`-Loop (`pnl_pct * position_size - COMMISSION_EUR`), schrieb es aber nie in die DB. Nur geschlossene Positionen bekamen ihren PnL beim Exit. **Fix:** `UPDATE positions SET pnl_eur=?, pnl_pct=? WHERE id=?` direkt nach der Berechnung, vor den Exit-Checks. Betrifft `signal_manager.py` Zeile 639ff. |
 | **Date format: `YYYYMMDD` statt `YYYY-MM-DD` in `watchlist_mentions`** → `signal_extractor.py` übergab `row['upload_date']` (YouTube-Format `YYYYMMDD`) direkt als `source['date']`. Der `watchlist_manager` konnte das nicht konsistent normieren. **Folge:** SQLite `MAX(mention_date)` vergleicht Strings — `20260619` vs `2026-07-23` → falsche Sortierung. **Fix:** `signal_extractor.py` normiert `upload_date` zu `YYYY-MM-DD`. `watchlist_manager.py` Default von `%Y%m%d` auf `%Y-%m-%d` geändert. `strptime` erkennt beide Formate. **120 alte Einträge in der DB korrigiert.** |
 | **`ModuleNotFoundError: No module named 'config'`** → Subprozess findet Trading-Verzeichnis nicht. **Fix:** PYTHONPATH in `subprocess.run(env=...)` setzen. Kein DB-Lock — WAL-Checkpoint läuft sauber. |

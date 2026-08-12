@@ -36,14 +36,18 @@ def merge_group(con, rows, key, key_label):
 
     # 1. Kanonischen Namen bestimmen
     names = [r["name"] for r in rows]
-    canon = min(names, key=lambda n: (
-        len(n) if not any(n.lower().endswith(s) for s in
-                          ["inc", "inc.", "corp", "corp.", "ltd", "ltd.", "ag",
-                           "se", "plc", "llc", "gmbh", "nv", "sa", "ab", "oy",
-                           "holdings", "group", "plc", "co.", "company"])
-        else len(n) + 1000,
-        names.index(n)
-    ))
+    def _upper_ratio(n2):
+        letters = [c for c in n2 if c.isalpha()]
+        if not letters:
+            return 0
+        return sum(1 for c in letters if c.isupper()) / len(letters)
+    def _name_score(n2):
+        suffix_pen = 1000 if any(n2.lower().endswith(s) for s in
+                                 ["inc", "inc.", "corp", "corp.", "ltd", "ltd.", "ag",
+                                  "se", "plc", "llc", "gmbh", "nv", "sa", "ab", "oy",
+                                  "holdings", "group", "plc", "co.", "company"]) else 0
+        return len(n2) + suffix_pen + _upper_ratio(n2) * 50
+    canon = min(names, key=_name_score)
     norm = normalize_company_name(canon)
     for n in names:
         if n.lower() == norm.lower():
@@ -76,8 +80,14 @@ def merge_group(con, rows, key, key_label):
         "conviction_score", "conviction_score_bear", "conviction_score_aged",
         "channels", "first_seen", "last_seen", "ticker",
     ]
+    # Status: bought erhält Vorrang — wenn eine gemergte Zeile gekauft war,
+    # bleibt der kanonische Eintrag bought (sonst gingen Paper-Positionen verloren)
+    if any(r["status"] == "bought" for r in rows):
+        merged_status = "bought"
+    else:
+        merged_status = "watching"
     set_parts = [f"{col}=?" for col in update_cols] + ["name=?", "status=?"]
-    params    = [merged[col] for col in update_cols] + [canon, "watching", canon_rowid]
+    params    = [merged[col] for col in update_cols] + [canon, merged_status, canon_rowid]
 
     if canon_rowid:
         con.execute(f"UPDATE watchlist SET {', '.join(set_parts)} WHERE rowid=?", params)
@@ -109,7 +119,7 @@ def dedup_ticker(con):
     """Phase 1: Gleicher Ticker → merge."""
     rows = con.execute("""
         SELECT rowid, * FROM watchlist
-        WHERE status='watching' AND ticker IS NOT NULL
+        WHERE status IN ('watching','bought') AND ticker IS NOT NULL
         ORDER BY ticker, mention_count DESC
     """).fetchall()
     groups = {}
@@ -126,7 +136,7 @@ def dedup_name(con):
     """Phase 2: Normalisierter Name → merge (für Einträge OHNE Ticker)."""
     rows = con.execute("""
         SELECT rowid, * FROM watchlist
-        WHERE status='watching' AND ticker IS NULL
+        WHERE status IN ('watching','bought') AND ticker IS NULL
         ORDER BY mention_count DESC
     """).fetchall()
     groups = {}
@@ -140,6 +150,19 @@ def dedup_name(con):
         total += merge_group(con, group, norm[:40], "name")
     con.commit()
     return total
+
+def _name_compare_key(name):
+    """Aggressiver Vergleichs-Key: lowercase, &→and, Stopword-Wegfall, Suffix-Strip.
+    Macht 'ELI LILLY & COMPANY' == 'Eli Lilly and Company'."""
+    import re
+    n = normalize_company_name(name)
+    n = n.lower()
+    n = n.replace("&", " and ")
+    n = re.sub(r"\b(and|the|of|for|in|on|co|de|sa|plc)\b", " ", n)
+    n = re.sub(r"[^a-z0-9]+", " ", n)
+    n = re.sub(r"\s+", " ", n).strip()
+    return n
+
 
 def _ticker_priority(ticker):
     """
@@ -193,21 +216,25 @@ def _ticker_priority(ticker):
 def dedup_by_name(con):
     """
     Phase 3 (ersetzt statische TICKER_GROUPS):
-    Findet Watchlist-Einträge mit gleichem Namen aber unterschiedlichen Tickern.
+    Findet Watchlist-Einträge mit gleicher Firma aber unterschiedlichen Tickern.
+    Gruppiert über den Fuzzy-Name-Key (_name_compare_key), damit auch
+    Case-/Wort-Unterschiede matchen (z.B. 'ELI LILLY & COMPANY' vs 'Eli Lilly and Company').
     Merged sie und behält den Ticker mit der höchsten Priorität (US > EU > LSE > Strukturiert).
     """
     rows = con.execute("""
         SELECT rowid, * FROM watchlist
-        WHERE status='watching' AND ticker IS NOT NULL
+        WHERE status IN ('watching','bought') AND ticker IS NOT NULL
         ORDER BY name, mention_count DESC
     """).fetchall()
 
     groups = {}
     for r in rows:
-        groups.setdefault(r["name"], []).append(r)
+        key = _name_compare_key(r["name"])
+        if len(key) >= 5:
+            groups.setdefault(key, []).append(r)
 
     total_dropped = 0
-    for name, group in groups.items():
+    for key, group in groups.items():
         if len(group) <= 1:
             continue
         # Ticker-Priorität bestimmen
@@ -215,9 +242,9 @@ def dedup_by_name(con):
         if all(r["ticker"] == best["ticker"] for r in group):
             continue  # Alle haben den gleichen besten Ticker → kein Merge nötig
 
-        print(f"  🔗 {name}: {[r['ticker'] for r in group]} → {best['ticker']} "
+        print(f"  🔗 {key}: {[r['ticker'] for r in group]} → {best['ticker']} "
               f"(Prio:{_ticker_priority(best['ticker'])})", flush=True)
-        dropped = merge_group(con, group, name, "name")
+        dropped = merge_group(con, group, key[:40], "name")
         total_dropped += dropped
     con.commit()
     return total_dropped
@@ -227,39 +254,39 @@ def main():
     con = db_connect()
     # Bestand vorher
     before = con.execute(
-        "SELECT COUNT(*) FROM watchlist WHERE status='watching'"
+        "SELECT COUNT(*) FROM watchlist WHERE status IN ('watching','bought')"
     ).fetchone()[0]
 
-    print(f"  Vorher: {before} watching entries", flush=True)
+    print(f"  Vorher: {before} watching+bought entries", flush=True)
 
     total = 0
     total += dedup_ticker(con)             # Phase 1: Ticker-basiert mergen (zuerst)
-    total += dedup_by_name(con)            # Phase 3: Name-basiert (US > EU > LSE)
+    total += dedup_by_name(con)            # Phase 3: Name-Fuzzy-basiert (US > EU > LSE)
     total += dedup_name(con)               # Phase 2: Name-basiert (ohne ticker)
 
     # Nachher
     after = con.execute(
-        "SELECT COUNT(*) FROM watchlist WHERE status='watching'"
+        "SELECT COUNT(*) FROM watchlist WHERE status IN ('watching','bought')"
     ).fetchone()[0]
     still_watching = after
 
-    print(f"\n  Ergebnis: {before} → {after} watching  (-{before - after})", flush=True)
+    print(f"\n  Ergebnis: {before} → {after} watching+bought  (-{before - after})", flush=True)
     print(f"  🗑 {total} Duplikate gedroppt", flush=True)
 
     # Unresolved ticker report
     unresolved = con.execute("""
         SELECT name, mention_count, conviction_score
         FROM watchlist
-        WHERE status='watching' AND ticker IS NULL
+        WHERE status IN ('watching','bought') AND ticker IS NULL
         ORDER BY mention_count DESC LIMIT 15
     """).fetchall()
     if unresolved:
-        print(f"\n❓ Noch {len(unresolved)} watching ohne Ticker:", flush=True)
+        print(f"\n❓ Noch {len(unresolved)} watching+bought ohne Ticker:", flush=True)
         for u in unresolved:
             print(f"   {u['name']:30} {u['mention_count']:4}x  Conv:{u['conviction_score']:.2f}", flush=True)
 
     # Top 3 merge groups report
-    print(f"\n  Noch {still_watching} watching entries in Watchlist", flush=True)
+    print(f"\n  Noch {still_watching} watching+bought entries in Watchlist", flush=True)
     print("✅ Watchlist Dedup abgeschlossen", flush=True)
 
     con.close()
