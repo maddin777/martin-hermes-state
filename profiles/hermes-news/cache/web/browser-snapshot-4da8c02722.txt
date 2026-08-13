@@ -1,0 +1,745 @@
+- navigation "Haupt" [ref=e1]
+  - list
+    - listitem [level=1]
+      - link "Adria" [ref=e9]
+    - listitem [level=1]
+      - link "Karibik" [ref=e10]
+    - listitem [level=1]
+      - link "Golf von Mexiko" [ref=e11]
+    - listitem [level=1]
+      - link "Indischer Ozean" [ref=e12]
+    - listitem [level=1]
+      - link "Pazifik" [ref=e13]
+    - listitem [level=1]
+      - link "Schwarzes Meer" [ref=e14]
+    - listitem [level=1]
+      - link "Rotes Meer" [ref=e15]
+      - list
+        - listitem [level=2]
+          - link "Wassertemperatur Hurghada" [ref=e47]
+        - listitem [level=2]
+          - link "Wassertemperatur Marsa Alam" [ref=e48]
+        - listitem [level=2]
+          - link "Wassertemperatur Makadi Bay" [ref=e49]
+        - listitem [level=2]
+          - link "Wassertemperatur Sharm El Scheich" [ref=e50]
+        - listitem [level=2]
+          - link "Wassertemperatur El Gouna" [ref=e51]
+        - listitem [level=2]
+          - link "Wassertemperatur Soma Bay" [ref=e52]
+    - listitem [level=1]
+      - link "Seen in Europa" [ref=e16]
+      - list
+        - listitem [level=2]
+          - link "Wassertemperatur Ammersee" [ref=e53]
+        - listitem [level=2]
+          - link "Wassertemperatur Attersee" [ref=e54]
+        - listitem [level=2]
+          - link "Wassertemperatur Balaton" [ref=e55]
+        - listitem [level=2]
+          - link "Wassertemperatur Bodensee" [ref=e56]
+        - listitem [level=2]
+          - link "Wassertemperatur Brombachsee" [ref=e57]
+        - listitem [level=2]
+          - link "Wassertemperatur Chiemsee" [ref=e58]
+        - listitem [level=2]
+          - link "Wassertemperatur Gardasee" [ref=e59]
+        - listitem [level=2]
+          - link "Wassertemperatur Ijsselmeer" [ref=e60]
+        - listitem [level=2]
+          - link "Wassertemperatur Langensee" [ref=e61]
+        - listitem [level=2]
+          - link "Wassertemperatur Müritz" [ref=e62]
+        - listitem [level=2]
+          - link "Wassertemperatur Neusiedler See" [ref=e63]
+        - listitem [level=2]
+          - link "Wassertemperatur Starnberger See" [ref=e64]
+        - listitem [level=2]
+          - link "Wassertemperatur Tegernsee" [ref=e65]
+        - listitem [level=2]
+          - link "Wassertemperatur Wörthersee" [ref=e66]
+        - listitem [level=2]
+          - link "Wassertemperatur Wörthsee" [ref=e67]
+        - listitem [level=2]
+          - link "Wassertemperatur Zürichsee" [ref=e68]
+    - listitem [level=1]
+      - link "Atlantik" [ref=e17]
+    - listitem [level=1]
+      - link "Wassertemperatur Nordsee" [ref=e18]
+    - listitem [level=1]
+      - link "Wassertemperatur Ostsee" [ref=e19]
+    - listitem [level=1]
+      - link "Wassertemperaturen Mittelmeer" [ref=e20]
+      - list
+        - listitem [level=2]
+          - link "Wassertemperatur Antalya" [ref=e69]
+        - listitem [level=2]
+          - link "Wassertemperatur Ibiza" [ref=e70]
+        - listitem [level=2]
+          - link "Wassertemperatur Kos" [ref=e71]
+        - listitem [level=2]
+          - link "Wassertemperatur Kreta" [ref=e72]
+        - listitem [level=2]
+          - link "Wassertemperatur Malaga" [ref=e73]
+        - listitem [level=2]
+          - link "Wassertemperatur Malta" [ref=e74]
+        - listitem [level=2]
+          - link "Wassertemperatur Rhodos" [ref=e75]
+        - listitem [level=2]
+          - link "Wassertemperatur Sardinien" [ref=e76]
+        - listitem [level=2]
+          - link "Wassertemperatur Side" [ref=e77]
+        - listitem [level=2]
+          - link "Wassertemperatur Sizilien" [ref=e78]
+        - listitem [level=2]
+          - link "Wassertemperatur Zypern" [ref=e79]
+    - listitem [level=1]
+      - link "Wassertemperatur Mallorca" [ref=e21]
+- banner
+  - paragraph
+    - link "Wassertemperatur.org" [ref=e3]
+- generic
+  - main
+    - generic
+      - StaticText "Du bist hier: "
+      - link "Wassertemperatur" [ref=e22]
+      - StaticText " » "
+      - link "Wassertemperatur Ostsee" [ref=e23]
+      - StaticText " » "
+      - strong
+        - StaticText "Wassertemperatur Wismar"
+    - article "Wassertemperatur Wismar" [ref=e4]
+      - sectionheader
+        - heading "Wassertemperatur Wismar" [level=1, ref=e43]
+      - insertion
+      - paragraph
+        - StaticText "Navigieren Sie hier direkt mit nur einem Klick zur gewünschten Information:"
+      - StaticText "h"
+      - table "“Inhalte“"
+        - row
+          - cell "Inhalte 1 Aktuelle Wassertemperatur Wismar 2 Durchschnittliche Wassertemperaturen 3 Wassertemperatur je Jahreszeit 4 Min. & Max. Wassertemp 5 Wetterinformationen & Klimadaten 5.1 Wetter in Wismar 5.2 Klimatabelle Wismar 6 Wissenswertes & Urlaubstipps" [ref=e80]
+            - strong
+              - StaticText "Inhalte"
+            - list
+              - listitem [level=1]
+                - ListMarker "◦ "
+                - link "1 Aktuelle Wassertemperatur Wismar" [ref=e379]
+                  - StaticText "1 Aktuelle Wassertemperatur Wismar"
+              - listitem [level=1]
+                - ListMarker "◦ "
+                - link "2 Durchschnittliche Wassertemperaturen" [ref=e380]
+                  - StaticText "2 Durchschnittliche Wassertemperaturen"
+              - listitem [level=1]
+                - ListMarker "◦ "
+                - link "3 Wassertemperatur je Jahreszeit" [ref=e381]
+                  - StaticText "3 Wassertemperatur je Jahreszeit"
+              - listitem [level=1]
+                - ListMarker "◦ "
+                - link "4 Min. & Max. Wassertemp" [ref=e382]
+                  - StaticText "4 Min. & Max. Wassertemp"
+              - listitem [level=1]
+                - ListMarker "◦ "
+                - link "5 Wetterinformationen & Klimadaten" [ref=e383]
+                  - StaticText "5 Wetterinformationen & Klimadaten"
+                - list
+                  - listitem [level=2]
+                    - link "5.1 Wetter in Wismar" [ref=e385]
+                  - listitem [level=2]
+                    - link "5.2 Klimatabelle Wismar" [ref=e386]
+              - listitem [level=1]
+                - link "6 Wissenswertes & Urlaubstipps" [ref=e384]
+      - paragraph
+        - StaticText "Wismar liegt in "
+        - link "Mecklenburg-Vorpommern" [ref=e44]
+        - StaticText " an der gleichnamigen Bucht. Diese ist durch die vorgelagerte Insel Poel geschützt. Das Stadtbild von Wismar ist durch viele gotische Baudenkmäler geprägt, die aus dem Spätmittelalter stammen. Die Stadt war schon früh ein Mitglied im Handelsbund der Hanse und gehörte lange zu "
+        - link "Schweden" [ref=e45]
+        - StaticText ". Im Jahr 2002 wurde die Altstadt von Wismar in die UNESCO-Welterbeliste aufgenommen. Durch ihre Lage an der Ostsee und durch ihr ausgezeichnetes historisches Stadtbild ist die Stadt ein sehr beliebtes Touristenziel."
+      - paragraph
+      - heading "Aktuelle Wassertemperatur in Wismar: 20 °C" [level=2, ref=e24]
+        - StaticText "Aktuelle Wassertemperatur in Wismar: 20 °C"
+      - paragraph
+        - LineBreak "\n"
+        - LineBreak "\n"
+        - insertion
+        - LineBreak "\n"
+      - paragraph
+      - heading "Durchschnittliche Wassertemperaturen in Wismar im Jahresverlauf:" [level=2, ref=e25]
+      - paragraph
+        - image "Durchschnittliche Wassertemperatur in Wismar im Jahresverlauf"
+      - paragraph
+        - StaticText "Tabellarische Übersicht zur durchschnittlichen Wassertemperatur:"
+      - table
+        - row
+          - cell "Monat" [ref=e81]
+          - cell "Ø Wassertemperatur" [ref=e82]
+        - row
+          - cell "Januar" [ref=e83]
+          - cell "3 °C" [ref=e84]
+        - row
+          - cell "Februar" [ref=e85]
+          - cell "2 °C" [ref=e86]
+        - row
+          - cell "März" [ref=e87]
+          - cell "3 °C" [ref=e88]
+        - row
+          - cell "April" [ref=e89]
+          - cell "6 °C" [ref=e90]
+        - row
+          - cell "Mai" [ref=e91]
+          - cell "11 °C" [ref=e92]
+        - row
+          - cell "Juni" [ref=e93]
+          - cell "16 °C" [ref=e94]
+        - row
+          - cell "Juli" [ref=e95]
+          - cell "18 °C" [ref=e96]
+        - row
+          - cell "August" [ref=e97]
+          - cell "19 °C" [ref=e98]
+        - row
+          - cell "September" [ref=e99]
+          - cell "16 °C" [ref=e100]
+        - row
+          - cell "Oktober" [ref=e101]
+          - cell "13 °C" [ref=e102]
+        - row
+          - cell "November" [ref=e103]
+          - cell "8 °C" [ref=e104]
+        - row
+          - cell "Dezember" [ref=e105]
+          - cell "5 °C" [ref=e106]
+      - paragraph
+        - StaticText "Wassertemperatur im "
+        - strong
+        - StaticText ": "
+        - strong
+      - separator
+      - paragraph
+      - heading "Wassertemperatur je Jahreszeit:" [level=2, ref=e26]
+      - paragraph
+        - StaticText "Im Folgenden sind die durchschnittlichen Badetemperaturen in der Ostsee bei Wismar je Jahreszeit aufgeführt."
+      - table
+        - row
+          - cell "Jahreszeit (DE)" [ref=e107]
+          - cell "Ø Wasser- temperatur" [ref=e108]
+        - row
+          - cell "Frühling" [ref=e109]
+          - cell "6 °C" [ref=e110]
+        - row
+          - cell "Sommer" [ref=e111]
+          - cell "17 °C" [ref=e112]
+        - row
+          - cell "Herbst" [ref=e113]
+          - cell "12 °C" [ref=e114]
+        - row
+          - cell "Winter" [ref=e115]
+          - cell "3 °C" [ref=e116]
+      - separator
+      - paragraph
+      - heading "Minimale & maximale Wassertemperaturen in Wismar nach Monaten:" [level=2, ref=e27]
+      - LineBreak "\n"
+      - insertion
+      - LineBreak "\n"
+      - table
+        - row
+          - cell "Monat" [ref=e117]
+          - cell "Ø min. Wasser- temperatur" [ref=e118]
+          - cell "Ø max. Wasser- temperatur" [ref=e119]
+        - row
+          - cell "Januar" [ref=e120]
+          - cell "0 °C" [ref=e121]
+          - cell "6 °C" [ref=e122]
+        - row
+          - cell "Februar" [ref=e123]
+          - cell "0 °C" [ref=e124]
+          - cell "4°C" [ref=e125]
+        - row
+          - cell "März" [ref=e126]
+          - cell "0 °C" [ref=e127]
+          - cell "8°C" [ref=e128]
+        - row
+          - cell "April" [ref=e129]
+          - cell "1 °C" [ref=e130]
+          - cell "13 °C" [ref=e131]
+        - row
+          - cell "Mai" [ref=e132]
+          - cell "4 °C" [ref=e133]
+          - cell "16°C" [ref=e134]
+        - row
+          - cell "Juni" [ref=e135]
+          - cell "13 °C" [ref=e136]
+          - cell "22°C" [ref=e137]
+        - row
+          - cell "Juli" [ref=e138]
+          - cell "16 °C" [ref=e139]
+          - cell "23°C" [ref=e140]
+        - row
+          - cell "August" [ref=e141]
+          - cell "16 °C" [ref=e142]
+          - cell "23°C" [ref=e143]
+        - row
+          - cell "September" [ref=e144]
+          - cell "14 °C" [ref=e145]
+          - cell "21°C" [ref=e146]
+        - row
+          - cell "Oktober" [ref=e147]
+          - cell "9 °C" [ref=e148]
+          - cell "16°C" [ref=e149]
+        - row
+          - cell "November" [ref=e150]
+          - cell "3 °C" [ref=e151]
+          - cell "12°C" [ref=e152]
+        - row
+          - cell "Dezember" [ref=e153]
+          - cell "1 °C" [ref=e154]
+          - cell "8°C" [ref=e155]
+      - heading "Vergleich der minimalen & maximalen Wassertemperaturen:" [level=3, ref=e28]
+      - paragraph
+        - image "minimale & maximale wassertemperatur wismar"
+      - paragraph
+        - StaticText "Monate mit den durchschn. "
+        - strong
+        - StaticText " (max.) Wassertemperaturen:"
+      - list
+        - listitem [level=1]
+      - paragraph
+        - StaticText "Monate mit dendurchschn. "
+        - strong
+        - StaticText " (min.) Wassertemperaturen:"
+      - insertion
+      - list
+        - listitem [level=1]
+      - separator
+      - heading "Wetterinformationen & Klimadaten zu Wismar" [level=2, ref=e29]
+      - paragraph
+        - StaticText "Nachfolgend finden Sie Infos zum aktuellen Wetter sowie eine Übersicht über die wichtigsten Klimadaten für Wismar an der Ostsee."
+        - LineBreak "\n"
+      - heading "Wetter in Wismar:" [level=3, ref=e30]
+      - StaticText "WISMAR"
+      - StaticText ""
+      - strong
+        - StaticText "11"
+        - superscript
+      - StaticText "Klarer Himmel"
+      - StaticText "88% Luftfeuchtigkeit"
+      - StaticText "Wind: 3m/s WSW"
+      - StaticText "MAX C 12 • MIN C 11"
+      - LineBreak "\n"
+      - LineBreak "\n"
+      - heading "Klimatabelle Wismar:" [level=3, ref=e31]
+      - table
+        - row
+          - cell "Jan" [ref=e156]
+          - cell "Febr" [ref=e157]
+          - cell "März" [ref=e158]
+          - cell "April" [ref=e159]
+          - cell "Mai" [ref=e160]
+          - cell "Juni" [ref=e161]
+          - cell "Juli" [ref=e162]
+          - cell "Aug" [ref=e163]
+          - cell "Sept" [ref=e164]
+          - cell "Okt" [ref=e165]
+          - cell "Nov" [ref=e166]
+          - cell "Dez" [ref=e167]
+        - row
+          - cell "Max. Temperatur Ø (°C)" [ref=e168]
+          - cell "3" [ref=e169]
+          - cell "4" [ref=e170]
+          - cell "8" [ref=e171]
+          - cell "14" [ref=e172]
+          - cell "19" [ref=e173]
+          - cell "21" [ref=e174]
+          - cell "24" [ref=e175]
+          - cell "23" [ref=e176]
+          - cell "19" [ref=e177]
+          - cell "13" [ref=e178]
+          - cell "8" [ref=e179]
+          - cell "4" [ref=e180]
+        - row
+          - cell "Min. Temperatur Ø (°C)" [ref=e181]
+          - cell "-2" [ref=e182]
+          - cell "-1" [ref=e183]
+          - cell "1" [ref=e184]
+          - cell "5" [ref=e185]
+          - cell "9" [ref=e186]
+          - cell "12" [ref=e187]
+          - cell "15" [ref=e188]
+          - cell "15" [ref=e189]
+          - cell "12" [ref=e190]
+          - cell "7" [ref=e191]
+          - cell "3" [ref=e192]
+          - cell "0" [ref=e193]
+        - row
+          - cell "Sonnenstunden (Stunden/Tag)" [ref=e194]
+          - cell "1" [ref=e195]
+          - cell "2" [ref=e196]
+          - cell "4" [ref=e197]
+          - cell "6" [ref=e198]
+          - cell "8" [ref=e199]
+          - cell "8" [ref=e200]
+          - cell "8" [ref=e201]
+          - cell "7" [ref=e202]
+          - cell "5" [ref=e203]
+          - cell "3" [ref=e204]
+          - cell "2" [ref=e205]
+          - cell "1" [ref=e206]
+        - row
+          - cell "Regentage (Tage/Monat)" [ref=e207]
+          - cell "9" [ref=e208]
+          - cell "7" [ref=e209]
+          - cell "8" [ref=e210]
+          - cell "7" [ref=e211]
+          - cell "8" [ref=e212]
+          - cell "9" [ref=e213]
+          - cell "9" [ref=e214]
+          - cell "8" [ref=e215]
+          - cell "8" [ref=e216]
+          - cell "8" [ref=e217]
+          - cell "9" [ref=e218]
+          - cell "10" [ref=e219]
+        - row
+          - cell "Niederschlag (mm)" [ref=e220]
+          - cell "47" [ref=e221]
+          - cell "37" [ref=e222]
+          - cell "40" [ref=e223]
+          - cell "33" [ref=e224]
+          - cell "50" [ref=e225]
+          - cell "69" [ref=e226]
+          - cell "87" [ref=e227]
+          - cell "84" [ref=e228]
+          - cell "54" [ref=e229]
+          - cell "47" [ref=e230]
+          - cell "42" [ref=e231]
+          - cell "50" [ref=e232]
+      - paragraph
+      - heading "Wissenswertes & Urlaubstipps rund um Wismar" [level=2, ref=e32]
+      - paragraph
+      - insertion
+      - paragraph
+      - paragraph
+      - paragraph
+      - insertion
+  - complementary "Haupt-Sidebar"
+    - insertion
+    - form
+      - generic
+        - textbox [ref=e233]
+        - button "Suche" [ref=e234]
+    - heading "Wassertemperaturen für neue Reiseziele" [level=4, ref=e33]
+    - list
+      - listitem [level=1]
+        - link "Wassertemperatur Toskana" [ref=e235]
+      - listitem [level=1]
+        - link "Wassertemperatur Ligurien" [ref=e236]
+      - listitem [level=1]
+        - link "Wassertemperatur Algarve" [ref=e237]
+      - listitem [level=1]
+        - link "Wassertemperatur Dubai" [ref=e238]
+      - listitem [level=1]
+        - link "Wassertemperatur Side" [ref=e239]
+      - listitem [level=1]
+        - link "Wassertemperatur Elba" [ref=e240]
+      - listitem [level=1]
+        - link "Wassertemperatur Albufeira" [ref=e241]
+      - listitem [level=1]
+        - link "Wassertemperatur Alicante" [ref=e242]
+      - listitem [level=1]
+        - link "Wassertemperatur Cadiz" [ref=e243]
+      - listitem [level=1]
+        - link "Wassertemperatur Malaga" [ref=e244]
+      - listitem [level=1]
+        - link "Wassertemperatur Kanaren" [ref=e245]
+      - listitem [level=1]
+        - link "Wassertemperatur Alanya" [ref=e246]
+      - listitem [level=1]
+        - link "Wassertemperatur Kemer" [ref=e247]
+      - listitem [level=1]
+        - link "Wassertemperatur Faro" [ref=e248]
+      - listitem [level=1]
+        - link "Wassertemperatur Andalusien" [ref=e249]
+      - listitem [level=1]
+        - link "Wassertemperatur Rovinj" [ref=e250]
+      - listitem [level=1]
+        - link "Wassertemperatur Nizza" [ref=e251]
+      - listitem [level=1]
+        - link "Wassertemperatur Heraklion" [ref=e252]
+      - listitem [level=1]
+        - link "Wassertemperatur Olbia" [ref=e253]
+      - listitem [level=1]
+        - link "Wassertemperatur Tropea" [ref=e254]
+      - listitem [level=1]
+        - link "Wassertemperatur Kapverden" [ref=e255]
+      - listitem [level=1]
+        - link "Wassertemperatur Azoren" [ref=e256]
+      - listitem [level=1]
+        - link "Wassertemperaturen Französisch Polynesien" [ref=e257]
+      - listitem [level=1]
+        - link "Wassertemperaturen Vereinigte Arabische Emirate" [ref=e258]
+      - listitem [level=1]
+        - link "Wassertemperaturen Kaspisches Meer" [ref=e259]
+      - listitem [level=1]
+        - link "Wassertemperatur Peloponnes" [ref=e260]
+      - listitem [level=1]
+        - link "Wassertemperatur Gerakini, Sithonia" [ref=e261]
+      - listitem [level=1]
+        - link "Wassertemperatur Ericeira" [ref=e262]
+      - listitem [level=1]
+        - link "Wassertemperatur Türkische Riviera" [ref=e263]
+      - listitem [level=1]
+        - link "Wassertemperatur Italienische Riviera" [ref=e264]
+      - listitem [level=1]
+        - link "Wassertemperatur Ionisches Meer" [ref=e265]
+      - listitem [level=1]
+        - link "Wassertemperatur Izmir" [ref=e266]
+      - listitem [level=1]
+        - link "Wassertemperatur Brela" [ref=e267]
+      - listitem [level=1]
+        - link "Wassertemperatur Albena" [ref=e268]
+    - heading "Wassertemperaturen Kanaren" [level=4, ref=e34]
+    - list
+      - listitem [level=1]
+        - link "Wassertemperatur Teneriffa" [ref=e269]
+      - listitem [level=1]
+        - link "Wassertemperatur Fuerteventura" [ref=e270]
+      - listitem [level=1]
+        - link "Wassertemperatur Gran Canaria" [ref=e271]
+      - listitem [level=1]
+        - link "Wassertemperatur Lanzarote" [ref=e272]
+      - listitem [level=1]
+        - link "Wassertemperatur La Palma" [ref=e273]
+      - listitem [level=1]
+        - link "Wassertemperatur La Gomera" [ref=e274]
+      - listitem [level=1]
+        - link "Wassertemperatur El Hierro" [ref=e275]
+    - heading "Wassertemperaturen Balearen" [level=4, ref=e35]
+    - list
+      - listitem [level=1]
+        - link "Wassertemperatur Mallorca" [ref=e276]
+      - listitem [level=1]
+        - link "Wassertemperatur Menorca" [ref=e277]
+      - listitem [level=1]
+        - link "Wassertemperatur Ibiza" [ref=e278]
+      - listitem [level=1]
+        - link "Wassertemperatur Formentera" [ref=e279]
+      - listitem [level=1]
+        - link "Wassertemperatur Cabrera" [ref=e280]
+    - heading "Wassertemperaturen für neue Badeseen" [level=4, ref=e36]
+    - list
+      - listitem [level=1]
+        - link "Wassertemperatur Vierwaldstättersee" [ref=e281]
+      - listitem [level=1]
+        - link "Wassertemperatur Arendsee" [ref=e282]
+      - listitem [level=1]
+        - link "Wassertemperatur Bielersee" [ref=e283]
+      - listitem [level=1]
+        - link "Wassertemperatur Irrsee" [ref=e284]
+      - listitem [level=1]
+        - link "Wassertemperatur Wörthsee" [ref=e285]
+      - listitem [level=1]
+        - link "Wassertemperatur Faaker See" [ref=e286]
+      - listitem [level=1]
+        - link "Wassertemperatur Langener Waldsee" [ref=e287]
+      - listitem [level=1]
+        - link "Wassertemperatur Illmensee" [ref=e288]
+      - listitem [level=1]
+        - link "Wassertemperatur Perlsee" [ref=e289]
+      - listitem [level=1]
+        - link "Wassertemperatur Otto-Maigler-See" [ref=e290]
+      - listitem [level=1]
+        - link "Wassertemperatur Zellersee, Bayern" [ref=e291]
+      - listitem [level=1]
+        - link "Wassertemperatur Zeller See" [ref=e292]
+      - listitem [level=1]
+        - link "Wassertemperatur Zugersee" [ref=e293]
+      - listitem [level=1]
+        - link "Wassertemperatur Zürichsee" [ref=e294]
+      - listitem [level=1]
+        - link "Wassertemperatur Küchensee" [ref=e295]
+    - heading "Wassertemperaturen für bekannte Flüsse" [level=4, ref=e37]
+    - list
+      - listitem [level=1]
+        - link "Wassertemperatur Alz" [ref=e296]
+      - listitem [level=1]
+        - link "Wassertemperatur Aller" [ref=e297]
+      - listitem [level=1]
+        - link "Wassertemperatur Amper" [ref=e298]
+      - listitem [level=1]
+        - link "Wassertemperatur Rhein" [ref=e299]
+      - listitem [level=1]
+        - link "Wassertemperatur Donau" [ref=e300]
+      - listitem [level=1]
+        - link "Wassertemperatur Eisbach" [ref=e301]
+      - listitem [level=1]
+        - link "Wassertemperatur Elbe" [ref=e302]
+      - listitem [level=1]
+        - link "Wassertemperatur Fulda" [ref=e303]
+      - listitem [level=1]
+        - link "Wassertemperatur Lahn" [ref=e304]
+      - listitem [level=1]
+        - link "Wassertemperatur Havel" [ref=e305]
+      - listitem [level=1]
+        - link "Wassertemperatur Main" [ref=e306]
+      - listitem [level=1]
+        - link "Wassertemperatur Mosel" [ref=e307]
+      - listitem [level=1]
+        - link "Wassertemperatur Naab" [ref=e308]
+      - listitem [level=1]
+        - link "Wassertemperatur Neckar" [ref=e309]
+      - listitem [level=1]
+        - link "Wassertemperatur Alster" [ref=e310]
+      - listitem [level=1]
+        - link "Wassertemperatur Aare" [ref=e311]
+      - listitem [level=1]
+        - link "Wassertemperatur Isar" [ref=e312]
+      - listitem [level=1]
+        - link "Wassertemperatur Oder" [ref=e313]
+      - listitem [level=1]
+        - link "Wassertemperatur Trave" [ref=e314]
+      - listitem [level=1]
+        - link "Wassertemperatur Weser" [ref=e315]
+      - listitem [level=1]
+        - link "Wassertemperatur Warnow" [ref=e316]
+      - listitem [level=1]
+        - link "Wassertemperatur Wakenitz" [ref=e317]
+      - listitem [level=1]
+        - link "Wassertemperatur Regen" [ref=e318]
+      - listitem [level=1]
+        - link "Wassertemperatur Nidda" [ref=e319]
+      - listitem [level=1]
+        - link "Wassertemperatur Lech" [ref=e320]
+      - listitem [level=1]
+        - link "Wassertemperatur Ruhr" [ref=e321]
+      - listitem [level=1]
+        - link "Wassertemperatur Lippe" [ref=e322]
+      - listitem [level=1]
+        - link "Wassertemperatur Limmat" [ref=e323]
+      - listitem [level=1]
+        - link "Wassertemperatur Reuss" [ref=e324]
+      - listitem [level=1]
+        - link "Wassertemperatur Linth" [ref=e325]
+      - listitem [level=1]
+        - link "Wassertemperatur Rhone" [ref=e326]
+      - listitem [level=1]
+        - link "Wassertemperatur Emme" [ref=e327]
+      - listitem [level=1]
+        - link "Wassertemperatur Thur" [ref=e328]
+      - listitem [level=1]
+        - link "Wassertemperatur Maggia" [ref=e329]
+      - listitem [level=1]
+        - link "Wassertemperatur Saane" [ref=e330]
+      - listitem [level=1]
+        - link "Wassertemperatur Töss" [ref=e331]
+      - listitem [level=1]
+        - link "Wassertemperatur Saale" [ref=e332]
+      - listitem [level=1]
+        - link "Wassertemperatur Iller" [ref=e333]
+      - listitem [level=1]
+        - link "Wassertemperatur Inn" [ref=e334]
+      - listitem [level=1]
+        - link "Wassertemperatur Regnitz" [ref=e335]
+      - listitem [level=1]
+        - link "Wassertemperatur Eider" [ref=e336]
+      - listitem [level=1]
+        - link "Wassertemperatur Ammer" [ref=e337]
+      - listitem [level=1]
+        - link "Wassertemperatur Dahme" [ref=e338]
+      - listitem [level=1]
+        - link "Wassertemperatur Spree" [ref=e339]
+      - listitem [level=1]
+        - link "Wassertemperatur Müggelspree" [ref=e340]
+      - listitem [level=1]
+        - link "Wassertemperatur Ticino" [ref=e341]
+    - heading "Wassertemperaturen für beliebte Länder" [level=4, ref=e38]
+    - list
+      - listitem [level=1]
+        - link "Wassertemperatur Deutschland" [ref=e342]
+      - listitem [level=1]
+        - link "Wassertemperatur Seen Schweiz" [ref=e343]
+      - listitem [level=1]
+        - link "Wassertemperatur Seen Österreich" [ref=e344]
+      - listitem [level=1]
+        - link "Wassertemperatur Seen Ungarn" [ref=e345]
+      - listitem [level=1]
+        - link "Wassertemperatur Marokko" [ref=e346]
+      - listitem [level=1]
+        - link "Wassertemperatur Tunesien" [ref=e347]
+      - listitem [level=1]
+        - link "Wassertemperatur Spanien" [ref=e348]
+      - listitem [level=1]
+        - link "Wassertemperatur Frankreich" [ref=e349]
+      - listitem [level=1]
+        - link "Wassertemperatur Polen" [ref=e350]
+      - listitem [level=1]
+        - link "Wassertemperatur Dänemark" [ref=e351]
+      - listitem [level=1]
+        - link "Wassertemperatur Schweden" [ref=e352]
+      - listitem [level=1]
+        - link "Wassertemperatur Norwegen" [ref=e353]
+      - listitem [level=1]
+        - link "Wassertemperatur Holland" [ref=e354]
+      - listitem [level=1]
+        - link "Wassertemperatur Belgien" [ref=e355]
+      - listitem [level=1]
+        - link "Wassertemperatur Kroatien" [ref=e356]
+      - listitem [level=1]
+        - link "Wassertemperatur Italien" [ref=e357]
+      - listitem [level=1]
+        - link "Wassertemperatur Türkei" [ref=e358]
+      - listitem [level=1]
+        - link "Wassertemperatur Israel" [ref=e359]
+      - listitem [level=1]
+        - link "Wassertemperatur Ägypten" [ref=e360]
+      - listitem [level=1]
+        - link "Wassertemperatur Oman" [ref=e361]
+      - listitem [level=1]
+        - link "Wassertemperatur Thailand" [ref=e362]
+      - listitem [level=1]
+        - link "Wassertemperatur Südafrika" [ref=e363]
+      - listitem [level=1]
+        - link "Wassertemperatur Neuseeland" [ref=e364]
+      - listitem [level=1]
+        - link "Wassertemperatur Australien" [ref=e365]
+      - listitem [level=1]
+        - link "Wassertemperatur Costa Rica" [ref=e366]
+      - listitem [level=1]
+        - link "Wassertemperatur Gambia" [ref=e367]
+      - listitem [level=1]
+        - link "Wassertemperatur Irland" [ref=e368]
+      - listitem [level=1]
+        - link "Wassertemperatur Katar" [ref=e369]
+      - listitem [level=1]
+        - link "Wassertemperatur Puerto Rico" [ref=e370]
+      - listitem [level=1]
+        - link "Wassertemperatur Madagaskar" [ref=e371]
+      - listitem [level=1]
+        - link "Wassertemperatur Rumänien" [ref=e372]
+      - listitem [level=1]
+        - link "Wassertemperatur Bosnische Riviera" [ref=e373]
+    - heading "Beliebte Beiträge" [level=4, ref=e39]
+    - list
+      - listitem [level=1]
+        - link "Richtige Badetemperatur" [ref=e374]
+      - listitem [level=1]
+        - link "Seepferdchen & Freischwimmer Aufgaben" [ref=e375]
+    - heading "Beliebte Städte" [level=4, ref=e40]
+    - list
+      - listitem [level=1]
+        - link "Toulouse" [ref=e376]
+      - listitem [level=1]
+        - link "Lyon" [ref=e377]
+      - listitem [level=1]
+        - link "Rennes" [ref=e378]
+- contentinfo
+  - paragraph
+    - link "Datenschutzerklärung" [ref=e5]
+    - link "Impressum" [ref=e6]
+- generic
+  - dialog "Wassertemperatur.org asks for your consent to use your personal data to:" [ref=e2] focusable [tabindex]
+    - image "Welcome to Wassertemperatur.org"
+    - heading "Wassertemperatur.org asks for your consent to use your personal data to:" [level=1, ref=e41]
+    - list
+    - button "Learn more" [ref=e42]
+    - paragraph
+      - button "List of partners." [ref=e46]
+    - button "Consent" [ref=e7]
+    - button "Manage options" [ref=e8]
