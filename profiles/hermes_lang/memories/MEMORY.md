@@ -1,0 +1,1 @@
+Tool quirk: `read_file` output includes `LINE_NUM|` prefixes. If rewriting/patching a file with this content, the prefixes must be stripped first to avoid corrupting the file.

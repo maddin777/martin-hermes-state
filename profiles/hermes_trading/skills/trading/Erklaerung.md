@@ -1,6 +1,30 @@
 # Änderungshistorie — Trading Skill
 
-**Stand:** Paketen A–D + Sprints 1–7 + Bugfix-Sprint + Screener-Source + Watchlist-Performance-Fix + Rollen-Sprint R1–R4 + **Turtle-Konfluenz-Sprint** + **Phase 1+2 Fix (09.08.2026)** + **Watchlist-Cleanup-Archivierung (09.08.2026)**
+**Stand:** Paketen A–D + Sprints 1–7 + Bugfix-Sprint + Screener-Source + Watchlist-Performance-Fix + Rollen-Sprint R1–R4 + **Turtle-Konfluenz-Sprint** + **Phase 1+2 Fix (09.08.2026)** + **Watchlist-Cleanup-Archivierung (09.08.2026)** + **UK-Microcap-Gate (14.08.2026)**
+
+## 14.08.2026 — UK-Microcap-Gate (Datenqualität `.L`-Ticker)
+
+### Problem
+RSS-Quelle `share talk` spült UK-AIM/Nano-Caps (AET.L, BSFA.L, HREE.L, KZG.L, SHOE.L, MAC.L …) in die Watchlist. Diese hatten trotz fehlender/geringer Kurshistorie und minimalem Tagesumsatz potenziell einen Tech-Score → sie tauchten als LONG/SHORT-Entry-Kandidaten auf und verpesteten die Conviction-Verteilung (DQ-Fälle in der Watchlist-Pflege).
+
+### Lösung
+Eindeutiges **Historie- + Liquiditäts-Gate** direkt in der einzigen Quelle `get_technical_score()` in `utils.py`:
+```python
+UK_MIN_BARS         = 200      # ~1 Jahr Handelstage
+UK_MIN_TURNOVER_EUR = 500_000  # konsistent mit signal_manager min_liquidity_eur
+```
+Für `.L`-Ticker gilt: **kein Tech-Score**, wenn `len(df) < 200` **oder** 20-Tage-Ø-Tagesumsatz (aus dem bereits geladenen df, kein Extra-Call) `< 500k€`. Kein Score → kein `tech_score`/`tech_direction` → kein LONG/SHORT-Entry-Kandidat.
+
+### Warum das Gate nicht überflüssig ist
+`get_technical_score` verlangte zwar schon `len(df)≥50` und EMA200 (≈200 Bars), aber ein UK-Nano-Cap mit 200+ Bars bekam trotzdem einen Score, obwohl es als AIM-Microcap praktisch unhandelbar ist. Das Turnover-Kriterium ist der eigentliche Differenzierer.
+
+### Verifikation (14.08.2026, Live-Daten)
+- **Geblockt (20 `.L` bestätigt):** AET.L, BSFA.L, HREE.L, KZG.L, SHOE.L, MAC.L, 0UKI.L, ECR.L, FCM.L, POLB.L, FMET.L, BOOM.L, KEN.L, ORCP.L, TYM.L, HDD.L, ORR.L, HVO.L, SOU.L, TEK.L → veraltete `tech_score`/`tech_direction` aus der Watchlist gelöscht (refresh_tech_scores leert nicht, wenn `tech` None).
+- **Durchgelassen (liquid, korrekt):** GLEN.L, ULVR.L, WISE.L, TATE.L, LGEN.L, RSW.L, AV.L, TSCO.L, ANTO.L, ATYM.L, KGF.L, HSX.L, VOD.L, BARC.L, BP.L u.a.
+- **Position-Check:** `signal_manager` hat **0** Paper-Entries gegen sämtliche `.L`-Ticker je eröffnet — Entry-Gates (tech + Liquidität) hatten das bereits verhindert.
+
+### Cron-/Ops-Hinweis
+Das Gate wirkt automatisch beim nächsten `technical_validator.py`/`watchlist_manager.py`/`refresh_tech_scores.py`-Lauf. Kein Cron-Neustart nötig.
 
 ## 09.08.2026 — Watchlist Cleanup: Dropped-Archivierung
 
