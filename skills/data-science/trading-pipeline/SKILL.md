@@ -78,7 +78,10 @@ Database is at:
 | 13-20h | `signal_manager.py check_only` | täglich | Intraday SL/TP check |
 | 15:30 | `active_exit_check.py` | täglich | Afternoon exit checks |
 | 20:00 (Fr) | `signal_manager.py full` | Fr | Weekly signal review |
-| 22:15 | `export_watchlist.py` (Hermes-Cron, no_agent) | Mo–Fr | Watchlist aus DB → Obsidian Vault exportieren (Cron-ID: `446aad622784`, Wrapper: `~/.hermes/scripts/export_watchlist.sh`) |\n| 22:20 | `watchlist_marker_check.py` (Hermes-Cron, no_agent) | Mo–Fr | 🛒-Marker-Gap prüfen (silent bei OK, Alarm bei Gap). Cron-ID: `53e28fdb66d4` |\n| 23:15 | `refresh_tech_scores.py` (Hermes-Cron) | Mo–Fr | Tech-Scores für Watchlist neu berechnen |
+| 22:15 | `export_watchlist.py` (Hermes-Cron, no_agent) | Mo–Fr | Watchlist aus DB → Obsidian Vault exportieren (Cron-ID: `446aad622784`, Wrapper: `~/.hermes/scripts/export_watchlist.sh`) |
+| 22:20 | `watchlist_marker_check.py` (Hermes-Cron, no_agent) | Mo–Fr | 🛒-Marker-Gap prüfen (silent bei OK, Alarm bei Gap). Cron-ID: `53e28fdb66d4` |
+| 22:40 | `dq_alarm.py` (Hermes-Cron, no_agent) | Mo–Fr | DQ-Regressions-Watchdog: `.L`-Microcaps ohne Tech-Score (≥76%) zählen, Alarm bei Regression (Schwelle 10). Cron-ID: `37d505cbc47b`, Wrapper: `~/.hermes/scripts/dq_alarm.sh` |
+| 23:15 | `refresh_tech_scores.py` (Hermes-Cron) | Mo–Fr | Tech-Scores für Watchlist neu berechnen |
 | 09:30 | `sector-probation-check` (Hermes-Cron) | Mo–Fr | Prüft ob Sektoren aus Cooldown + keine Probation → Telegram-Alert. Cron-ID: `dda431ae4b55` |
 
 **Wochenend-Crontab:**
@@ -86,6 +89,7 @@ Database is at:
 |------|--------|---------|
 | 05:30 | `watchlist_dedup.py` (Hermes-Cron) | Wöchentliche Deduplizierung |
 | 06:00 | `nightly_eval.py` | Wöchentliches Eval |
+| 07:00 | `weekly_exit_review.py` (Hermes-Cron, no_agent) | So | Offene Positionen vs Exit-Matrix + Config-Drift-Check (trailing_step/par. Pfade). Cron-ID: `310dfa0df1a6`, Wrapper: `~/.hermes/scripts/weekly_exit_review.sh` |
 | 07:00 | `source_lifecycle.py` | Quellen-Management: adjust_weights(P&L), promote/demote, discover |
 | 07:30 | `watchlist_cleanup.py` (Hermes-Cron) | Watchlist-Bereinigung: >60d → dropped, 30-60d → notes='stale' |
 | 08:00 | `ki-blase-alert-daily` (Hermes-Cron, no_agent) | Mo–Fr | KI-Hyperscaler-Klumpenrisiko Check (Cron-ID: `9f4e3cc91675`, Wrapper: `~/.hermes/scripts/ki_blase_alert.sh`) |
@@ -96,6 +100,8 @@ Database is at:
 **Wochenend-Änderung (07.07.2026):** Safety-Jobs (exit_check, signal_manager, breaking_news) laufen täglich. Pipeline-Jobs (fundamental, social, trading_pipeline) bleiben Mo–Fr.
 
 **Hinweis:** `source_lifecycle.py` (So 07:00) führt `adjust_weights()` aus — seit 15.07.2026 basierend auf `avg_pnl_per_trade` statt `win_rate_90d`. Quellen mit P&L ≥ +10€ → +15% Weight, P&L ≤ -10€ → -20% Weight.
+
+**🔴 no_agent-Cron-Scripts liegen IMMER in `~/.hermes/scripts/`, nie im Trading-Profil.** Hermes-löst relative `script`-Pfade unter `~/.hermes/scripts/` auf — ein no_agent-Cron der auf `scripts/dq_alarm.py` (Profil-Pfad) zeigt, findet das Script nicht. Zusätzlich braucht der Job das Trading-`.env` (TELEGRAM_TOKEN, PYTHONPATH) und die Trading-`venv`. **Muster (gut, aus 16.08.):** ein Wrapper-`.sh` in `~/.hermes/scripts/` das `PYTHONPATH`, `cd` ins Profil und `export $(grep -v '^#' .env | xargs)` setzt, dann `exec .../venv/bin/python3 scripts/<name>.py`. Beispiele: `dq_alarm.sh`, `weekly_exit_review.sh`, `export_watchlist.sh`. Beim Anlegen eines neuen no_agent-Trading-Crons IMMER Wrapper erstellen und den Cron auf den Wrapper (nicht aufs Profil-Script) zeigen lassen.
 
 **Nicht-Selbstständige Scripts:** technical_validator, signal_extractor, watchlist_manager laufen innerhalb von trading_pipeline.py.
 
@@ -248,7 +254,7 @@ Details siehe `references/` im Skill-Verzeichnis sowie die Erläuterung.md im Ob
 | **Cross-Model-Zweitmeinung (Fremdmodell-Review)** → System zusätzlich mit unabhängigem Modell (z.B. `z-ai/glm-5.2`) über OpenRouter prüfen; Reviewer-Mathematik IMMER gegen Roh-DB verifizieren (glm behauptete falsch 10.4% WR, real 39%; echter Killer = Payoff<1). Kompletter Ablauf: `references/cross-model-review.md`. |
 | **High-Conviction-Crash Diagnose** → Wenn die ≥76%-Anzahl drastisch fällt: aging-Effekt prüfen (14d-Halbwertszeit), nicht nur nach Bugs suchen. Siehe `references/high-conviction-diagnostic.md`. |
 | **Verlustanalyse & Exit-Review** → Trenne Gewinner/Verlierer, berechne PAYOFF (nicht Winrate): Payoff<1 => Gewinner-Exit-Fix, nicht Winrate-Jagd. Winrate NIE aus TARGET_HIT-Zahl ableiten (09.08.: glm behauptete 10.4%, real 39%). Turtle-Artefakt-Falle: historische Daten stammen vom ALTEN Chandelier-System. Siehe `references/loss-analysis-and-exit-review.md`. |
-| **Exit-Config-Drift (3 Quellen)** → profit_lock wurde vom Regime-Override überschrieben. Fix: `get_exit_config(asset_type, regime)` Exit-Matrix als EINE Quelle für SL/TP/partial/profit_lock; sekundäre Schreiber in adapt_strategy entfernen. |
+| **Exit-Config-Drift (3 Quellen)** → profit_lock wurde vom Regime-Override überschrieben. Fix: `get_exit_config(asset_type, regime)` Exit-Matrix als EINE Quelle für SL/TP/partial/profit_lock; sekundäre Schreiber in adapt_strategy entfernen. |\n| **Exit-Config-Konsolidierung: paralleler-Pfad-Drift (16.08.)** → `get_exit_config` als EINZIGE Quelle über ALLE drei Pfade: signal_manager (Entry-SL/TP + Sizing + Partial-TP), active_exit_check (Trailing-Step), crabel_shadow_eval (Shadow-Sim). Der verborgene dritte Pfad (crabel, eigene Legacy-Kopie + cfg-Fallback profit_lock 2.0→1.0) war die größte Falle. Entry-SL/TP sind jetzt regime-abhängig. Drift-Check-Grep-Falle: echte Aufrufe `get_asset_multipliers(` vs Docstring-Erwähnungen (Leerzeichen vor Klammer). Kompletter Ablauf + Verifikations-Rezept: `references/exit-config-consolidation.md`. |
 | **Breakeven vs. Donchian-Primary** → Nach Partial-TP den SL NICHT auf Breakeven ziehen im Donchian-Primary-Modus (würgt den Winner ab). Initial-SL stehen lassen, Donchian-Trail übernimmt. |
 | **Makro-Event-Filter** → NFP (erster Freitag) ist einziger per Tageregel zuverlässiger US-Makro-Termin. FOMC/CPI NIE per grober Tageregel (falsch-positive Blöcke). Overnight-Earnings-Gaps über `has_overnight_gap(cur,atr,prev)` (>60% Tages-ATR) im Entry fangen. |
 
@@ -381,7 +387,7 @@ Die Referenz enthält 23 klassifizierte Unternehmen plus Implementierungsvorschl
 | **`cron_health.py` ⚠️ no_agent Cron gelb (generisch)** → Jeder Cron-Job (system crontab oder Hermes-Cron) muss `✅ ... DONE` im Log-Output haben. `=== ... DONE ===` ohne ✅ wird als ⚠️ unknown gewertet. **Fix:** `echo "=== $(date) === ✅ jobname DONE ==="` im Cron-Befehl. |
 | **DELETE/UPDATE auf `watchlist` via `id` greift nicht** → Die Dedup (`watchlist_dedup.py`) verwaltet Zeilen via `rowid` (`WHERE rowid=?`), wodurch die `id`-Spalte bei vielen Zeilen **NULL** ist. Ein `DELETE ... WHERE id=?` kopiert die Zeile zwar (z.B. ins Archiv), entfernt sie aber nicht → Duplikate bleiben, Ziel-Tabelle wächst fälschlich. **Fix:** `SELECT rowid, *` + `DELETE ... WHERE rowid=?` — IMMER `rowid` verwenden bei watchlist-JOINs/Schreibzugriffen. Betrifft `watchlist_cleanup.py` (09.08.2026). |
 | **Duplikate trotz Dedup "nie gemerged" (11.08.2026)** → Es gibt ZWEI `watchlist_dedup.py` Kopien: `/root/.hermes/scripts/` (Weekly-Cron 472ace6fe18a) UND die Skill-Kopie, die die **Nacht-Pipeline** (03:30) aufruft. Beide patchen! Bekannte Multi-Bugs: (1) `dedup_name` nur bei `ticker IS NULL`, (2) UPDATE via `id` (NULL) griff ins Leere → `rowid` nutzen, (3) `merge_group` setzte hardcoded `status='watching'` → bought-Positionen wären zerstört worden, (4) Name-Vergleich case/&-sensitiv → `name_compare_key()` (lowercase + and/& + Stopword), (5) Conviction wurde summiert statt MAX. Vollständige Doku: `references/watchlist-table-dedup.md`. |
-| **UK-Microcap/DQ: `.L`-Ticker verpesten Watchlist (14.08.2026)** → `get_technical_score()` braucht EMA200 (≈200 Bars); HALO.L (92 Bars) → `None` = klassischer DQ-Fall (Status `removed` + DQ-Note, nicht mit Fake-Werten füllen). **ABER: reine Bar-Historie reicht NICHT als Gate** — jeder gescorote Ticker hat eh ≥200 Bars, ein AIM-Nano-Cap mit 200+ Bars bekam trotzdem einen Score. Der eigentliche Differenzierer ist **Liquidität**. Seit 14.08.2026 gilt in `utils.get_technical_score()` ein `.L`-Gate: ≥200 Bars **UND** ≥500k€ 20-Tage-Ø-Turnover, sonst `None` → kein `tech_score`/`tech_direction` → nie ein LONG/SHORT-Entry-Kandidat (Entries brauchen `tech_score>=threshold` + `tech_direction`). **Gotcha:** `refresh_tech_scores.py` leert veraltete Scores NICHT wenn `get_technical_score` `None` liefert (`if tech:`-Guard) → betroffene Rows manuell `SET tech_score=NULL, tech_direction=NULL, weekly_trend=NULL`. Verifiziert 14.08.: 20 `.L`-Microcaps (AET/BSFA/HREE/KZG/SHOE/MAC …) geblockt, Large-Caps (GLEN/ULVR/TATE/ANTO/TSCO/VOD/BP …) passieren; `signal_manager` hat NIE eine `.L`-Paper-Position eröffnet (Entry-Gates tech+liquidity schützen). Siehe `references/uk-microcap-liquidity-gate.md`. |
+| **UK-Microcap/DQ: `.L`-Ticker verpesten Watchlist (14.08.2026)** → `get_technical_score()` braucht EMA200 (≈200 Bars); HALO.L (92 Bars) → `None` = klassischer DQ-Fall (Status `removed` + DQ-Note, nicht mit Fake-Werten füllen). **ABER: reine Bar-Historie reicht NICHT als Gate** — jeder gescorote Ticker hat eh ≥200 Bars, ein AIM-Nano-Cap mit 200+ Bars bekam trotzdem einen Score. Der eigentliche Differenzierer ist **Liquidität**. Seit 14.08.2026 gilt in `utils.get_technical_score()` ein `.L`-Gate: ≥200 Bars **UND** ≥500k€ 20-Tage-Ø-Turnover, sonst `None` → kein `tech_score`/`tech_direction` → nie ein LONG/SHORT-Entry-Kandidat (Entries brauchen `tech_score>=threshold` + `tech_direction`). **Gotcha (FIXED 16.08.):** `refresh_tech_scores.py` hat früher veraltete Scores NICHT geleert wenn `get_technical_score` `None` liefert (`if tech:`-Guard) → der Eintrag sah entry-fähig aus. **Seit 16.08. cleart der `else`-Zweig** `tech_score/tech_direction/weekly_trend=NULL` (rowcount-gesteuert, meldet "Score gecleart"). Der Guard verhindert zwar neue Scores, aber Bestands-`.L`-Einträge mit NULL tech_score blieben in der Conviction-Watchlist → **DQ-Isolation im Export** (16.08.): `export_watchlist.py` lagert `.L`-Microcaps ohne tech_score in einen separaten `## ⚠️ DQ`-Block aus — sie zählen NICHT in Gesamt/≥76%/Sektor/SHORT-Statistik. Verifiziert 14.08.: 20 `.L`-Microcaps (AET/BSFA/HREE/KZG/SHOE/MAC …) geblockt, Large-Caps (GLEN/ULVR/TATE/ANTO/TSCO/VOD/BP …) passieren; `signal_manager` hat NIE eine `.L`-Paper-Position eröffnet (Entry-Gates tech+liquidity schützen). Siehe `references/uk-microcap-liquidity-gate.md`. |
 | **Open positions: `pnl_eur = NULL`** → `signal_manager.py` berechnete PnL im `check_open_positions()`-Loop (`pnl_pct * position_size - COMMISSION_EUR`), schrieb es aber nie in die DB. Nur geschlossene Positionen bekamen ihren PnL beim Exit. **Fix:** `UPDATE positions SET pnl_eur=?, pnl_pct=? WHERE id=?` direkt nach der Berechnung, vor den Exit-Checks. Betrifft `signal_manager.py` Zeile 639ff. |
 | **Date format: `YYYYMMDD` statt `YYYY-MM-DD` in `watchlist_mentions`** → `signal_extractor.py` übergab `row['upload_date']` (YouTube-Format `YYYYMMDD`) direkt als `source['date']`. Der `watchlist_manager` konnte das nicht konsistent normieren. **Folge:** SQLite `MAX(mention_date)` vergleicht Strings — `20260619` vs `2026-07-23` → falsche Sortierung. **Fix:** `signal_extractor.py` normiert `upload_date` zu `YYYY-MM-DD`. `watchlist_manager.py` Default von `%Y%m%d` auf `%Y-%m-%d` geändert. `strptime` erkennt beide Formate. **120 alte Einträge in der DB korrigiert.** |
 | **`ModuleNotFoundError: No module named 'config'`** → Subprozess findet Trading-Verzeichnis nicht. **Fix:** PYTHONPATH in `subprocess.run(env=...)` setzen. Kein DB-Lock — WAL-Checkpoint läuft sauber. |
@@ -520,10 +526,13 @@ cd /root/.hermes/profiles/hermes_trading/skills/trading && \
 
 ### Code-Struktur
 
-- **`config.py`** — `SECTOR_TO_ASSET_TYPE`, `ASSET_TYPE_MULTIPLIERS` (legacy), `get_asset_type()`, `get_asset_multipliers()`, **`get_exit_config()`** (Exit-Matrix, SEIT 09.08. Single Source of Truth für SL/TP/partial/profit_lock/step)
-- **`signal_manager.py`** — Liest asset_type bei Entry (wird in DB gespeichert), nutzt `get_exit_config()` und `get_asset_multipliers()` für SL/TP und Trailing Stop
-- **`active_exit_check.py`** — Nutzt asset_type-spezifische Multiplikatoren für Thesis-BROKEN und Trailing Stop; respektiert seit 09.08. die Donchian-Primary-Präzedenz
+- **`config.py`** — `SECTOR_TO_ASSET_TYPE`, `ASSET_TYPE_MULTIPLIERS` (legacy, nur noch Referenz — KEIN Pfad ruft es als Exit-Quelle auf), `get_asset_type()`, `get_asset_multipliers()`, **`get_exit_config()`** (Exit-Matrix, SEIT 09.08. Single Source of Truth für SL/TP/partial/profit_lock/step; seit 16.08. nutzen ALLE drei Pfade sie)
+- **`signal_manager.py`** — Liest asset_type bei Entry (wird in DB gespeichert), nutzt `get_exit_config()` für Exit-Parameter UND seit 16.08. auch für Entry-SL/TP (`compute_sl_tp`, Sizing, Partial-TP). Kein `get_asset_multipliers`-Aufruf mehr.
+- **`active_exit_check.py`** — Nutzt `get_exit_config()` (seit 16.08.); asset_type-spezifische Multiplikatoren für Thesis-BROKEN und Trailing Stop; respektiert seit 09.08. die Donchian-Primary-Präzedenz
+- **`crabel_shadow_eval.py`** — `simulate_forward()` nutzt `get_exit_config()` (seit 16.08.) — vorher eigene Legacy-Kopie + cfg-Fallback (profit_lock 2.0 → Matrix 1.0)
 - **DB:** `positions.asset_type`-Spalte (seit 18.06., per ALTER TABLE migriert)
+
+**Vollständige Exit-Config-Konsolidierung: `references/exit-config-consolidation.md`** (16.08.) — alle 3 Pfade (signal_manager/active_exit_check/crabel_shadow_eval) auf `get_exit_config`, der verborgene dritte Pfad, Regime-Abhängigkeit von Entry-SL/TP, Regime-Quelle (`get_current_regime` DB, nicht JSON-Makrodatei), Vertifizierungs-Rezept.
 
 > **Konfigurations-Single-Source-of-Truth (09.08.):** Bevor mehrere Exit-Systeme entstehen, gilt: EINE Funktion (`get_exit_config`) liefert alle Exit-Parameter. `adapt_strategy()` darf NICHT nachträglich einzelne Keys übersteuern (das war der Config-Drift: Regime-Override trimmte profit_lock_atr hoch). Wenn ein Wert manuell/konsistent sein soll, lass die Matrix ihn tragen und entferne alle sekundären Schreiber.
 
@@ -851,6 +860,33 @@ nicht, wenn andere Pfade die alte Logik behalten.
 3. Drei Config-Quellen können driften: `data/strategy_config.json` (live),
    `DEFAULT_CONFIG` in `signal_manager.py`, `ASSET_TYPE_MULTIPLIERS` in
    `config.py` — beim Parameter-Swap ALLE patchen
+
+**⚠️ Drift-Fix 16.08.: `active_exit_check.py` auf `get_exit_config()` umgestellt.** 
+Vorher las es `trailing_step` aus `get_asset_multipliers` (Legacy), wo `STANDARD.trailing_step=0.5` steht — die Exit-Matrix `get_exit_config` hat `step=0.75`. Das war exakt das 09.08.-Parallele-Pfad-Muster (signal_manager nutzte bereits get_exit_config, active_exit_check nicht). **Fix:** `active_exit_check.py` nutzt jetzt `get_exit_config(asset_type, regime)` — Regime wird einmal via inline `get_current_regime()` geladen (nicht aus signal_manager importieren, um die große Modul-Kopplung zu vermeiden), Key-Mapping `trailing_step`→`step`, `atr_sl`→`sl`. STANDARD step jetzt 0.75×.
+
+**⚠️ FIXED 16.08.: alle drei Pfade auf `get_exit_config()` konsolidiert.** Der 16.08.-Drift-Fix ersetzte nicht nur `active_exit_check.py`, sondern deckte auf, dass auch `signal_manager.py` (Entry-SL/TP, Sizing, Partial-TP) und — **verborgen** — `crabel_shadow_eval.py` (eigene Legacy-Kopie + cfg-Fallback profit_lock 2.0) noch Legacy nutzten. Alle drei wurden umgestellt:
+- `signal_manager.compute_sl_tp(effective_entry, atr, asset_type, direction, regime)` — Entry-SL/TP JETZT **regime-abhängig** (STANDARD bull tp=3.5× vs sideways 2.5×), konsistent zum Exit. Aufrufer reichen Regime durch.
+- `crabel_shadow_eval.simulate_forward(..., regime)` — `step`/`sl`/`profit_lock_atr` aus Matrix (profit_lock 2.0 → 1.0).
+- Kein `get_asset_multipliers(`-Aufruf mehr in den drei Pfaden (Import entfernt).
+- **Verhaltensänderung für künftige Entries** (regime-abhängige TP) — nicht übersehen.
+
+**Detektor seit 16.08.: `weekly_exit_review.py`** (Cron `310dfa0df1a6`, So 07:00,
+no_agent, Wrapper `~/.hermes/scripts/weekly_exit_review.sh`) — prüft alle
+offenen Positionen gegen `get_exit_config`-Matrix UND den parallelen-Pfad-Drift.
+**Drift-Check-Design (wichtig, aus 16.08. gelernt):** Der echte Drift ist NICHT
+der Unterschied zwischen den beiden Funktions-Definitionen (`get_exit_config` vs
+`get_asset_multipliers` haben unterschiedliche Keys und werden beide in config.py
+gepflegt — roh verglichen alarmiert der Check fälschlich für immer). Der echte
+Drift ist die **Fortbestehende Nutzung der Legacy-Funktion durch einen
+Exit-Pfad** — also per statischer Suche prüfen, ob eines der 3 Scripts noch
+`get_asset_multipliers(` aufruft. **Grep-Falle:** nur echte Aufrufe mit direkter
+Klammer `get_asset_multipliers(` zählen; Docstring-/Kommentar-Erwähnungen wie
+`...get_asset_multipliers (Legacy)` haben ein Leerzeichen vor der Klammer und
+werden ignoriert (ein `#`-Kommentar ist per `startswith("#")` filterbar,
+Docstring-Text beginnt nicht mit `#` und braucht den Klammer-Test). Beim
+Position-vs-Matrix-Vergleich: ein **ENGERER SL als die Matrix ist erwartet**
+(Trailing zieht den Stop nach), nur ein WEITERER SL ist ein echtes
+Risiko-Problem. Nicht jeden Tight-Stop als Alarm werten.
 
 ## Backtesting Engine (`backtesting/`)
 

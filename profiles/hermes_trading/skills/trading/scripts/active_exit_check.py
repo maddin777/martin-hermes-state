@@ -23,13 +23,28 @@ from utils import (
     get_price_data_cached, prefetch_prices,
     realized_pnl_from_effective_entry, portfolio_lock,
 )
-from config import DB_PATH, STRATEGY_CONFIG_PATH, db_connect, get_asset_type, get_asset_multipliers
+from config import DB_PATH, STRATEGY_CONFIG_PATH, db_connect, get_exit_config
 
 log = get_logger("active_exit_check")
 
 TELEGRAM_TOKEN        = os.environ.get("TELEGRAM_BOT_TOKEN")
 TELEGRAM_HOME_CHANNEL = os.environ.get("TELEGRAM_HOME_CHANNEL") \
                         or os.environ.get("TELEGRAM_CHAT_ID")
+
+
+def get_current_regime(con):
+    """Liest das aktuelle Marktregime aus regime_history (identisch zu
+    signal_manager.get_current_regime — hier inline um Import-Kopplung
+    an das große signal_manager-Modul zu vermeiden)."""
+    try:
+        row = con.execute(
+            "SELECT regime, vix FROM regime_history ORDER BY date DESC LIMIT 1"
+        ).fetchone()
+        if row:
+            return row["regime"], row["vix"] or 0
+        return "unknown", 0
+    except Exception:
+        return "unknown", 0
 
 
 def load_config():
@@ -129,6 +144,9 @@ def main():
     with portfolio_lock(blocking=True):
         con = db_connect()
         cfg = load_config()
+        # FIX 16.08.: Exit-Matrix (get_exit_config) ist die EINZIGE Quelle.
+        # Regime einmal laden und für alle Positionen nutzen.
+        regime, _vix = get_current_regime(con)
 
         positions = con.execute(
             "SELECT * FROM positions WHERE status='open'"
@@ -136,7 +154,7 @@ def main():
         if positions:
             prefetch_prices([p["ticker"] for p in positions if p["ticker"]])
 
-        print(f"  Offene Positionen: {len(positions)}", flush=True)
+        print(f"  Offene Positionen: {len(positions)} | Regime: {regime}", flush=True)
         actions = []
 
         for pos in positions:
@@ -147,7 +165,10 @@ def main():
             atr_entry = pos["atr_at_entry"] or 0
             # Asset-Typ für dynamische Exit-Regeln
             pos_asset_type = pos["asset_type"] if "asset_type" in pos.keys() else "STANDARD"
-            pos_mult = get_asset_multipliers(pos_asset_type)
+            # FIX 16.08.: Exit-Matrix als EINZIGE Quelle (SL/TP/partial/profit_lock/step).
+            # get_asset_multipliers (Legacy) hatte trailing_step=0.5 für STANDARD,
+            # die Matrix step=0.75 → Drift. Jetzt konsistent zu signal_manager.
+            pos_mult = get_exit_config(asset_type=pos_asset_type, regime=regime)
             direction = pos["direction"]
 
             current_price, atr_now, tech_status = get_tech_status(ticker)
@@ -186,7 +207,7 @@ def main():
                 """, (ticker,)).fetchone()
 
                 if direction == "LONG":
-                    tight_sl = current_price - (pos_mult["trailing_step"] * atr)
+                    tight_sl = current_price - (pos_mult["step"] * atr)
                     if tight_sl > sl:
                         con.execute(
                             "UPDATE positions SET stop_loss=?, trailing_sl=? WHERE id=?",
@@ -202,7 +223,7 @@ def main():
                             f"Grund: {rationale}"
                         )
                 else:  # SHORT
-                    tight_sl = current_price + (pos_mult["trailing_step"] * atr)
+                    tight_sl = current_price + (pos_mult["step"] * atr)
                     if tight_sl < sl:
                         con.execute(
                             "UPDATE positions SET stop_loss=?, trailing_sl=? WHERE id=?",
@@ -282,11 +303,11 @@ def main():
                 _donchian_primary = False
 
             if not _donchian_primary:
-                trailing_step = pos_mult["trailing_step"]
+                trailing_step = pos_mult["step"]
                 profit_lock_threshold = pos_mult["profit_lock_atr"]
                 if pnl_atr >= profit_lock_threshold:
                     if direction == "LONG":
-                        ideal_sl      = current_price - (pos_mult["atr_sl"] * atr)
+                        ideal_sl      = current_price - (pos_mult["sl"] * atr)
                         next_sl_level = sl + (trailing_step * atr)
                         if ideal_sl > next_sl_level and ideal_sl > sl:
                             con.execute(
@@ -298,7 +319,7 @@ def main():
                             print(f"    📈 Trailing SL → {ideal_sl:.2f} "
                                   f"(Preis: {current_price:.2f})", flush=True)
                     else:  # SHORT
-                        ideal_sl      = current_price + (pos_mult["atr_sl"] * atr)
+                        ideal_sl      = current_price + (pos_mult["sl"] * atr)
                         next_sl_level = sl - (trailing_step * atr)
                         if ideal_sl < next_sl_level and ideal_sl < sl:
                             con.execute(

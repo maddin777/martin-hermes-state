@@ -43,6 +43,7 @@ def main():
           f"(conviction ≥ {args.min_conviction})\n")
 
     ok = skipped = errors = 0
+    cleared = 0
     for c in candidates:
         print(f"  {c['name']:30} {c['ticker']:10} Conv:{c['conviction_score']:.2f}",
               end="  ", flush=True)
@@ -56,11 +57,26 @@ def main():
             print(f"→ {tech['confidence']:.2f} {tech['direction']}", flush=True)
             ok += 1
         else:
-            print("→ keine Daten", flush=True)
+            # FIX 16.08.: veraltete Scores NICHT stehen lassen. Wenn der
+            # UK-Liquidity-Gate / Bar-Gate jetzt None liefert (z.B. AIM/Nano-Cap
+            # .L nach neuem UK_MIN_TURNOVER_EUR-Gate), muss der alte Score
+            # gecleart werden — sonst sieht der Eintrag entry-fähig aus und
+            # verzerrt die Conviction-/DQ-Verteilung. (Doku-Gotcha 14.08.)
+            cur = con.execute("""
+                UPDATE watchlist
+                SET tech_score=NULL, tech_direction=NULL, weekly_trend=NULL
+                WHERE ticker=? AND tech_score IS NOT NULL
+            """, (c["ticker"],))
+            was_cleared = cur.rowcount > 0
+            if was_cleared:
+                cleared += 1
+            con.commit()
+            print("→ keine Daten (Score gecleart)" if was_cleared
+                  else "→ keine Daten", flush=True)
             skipped += 1
 
     con.close()
-    print(f"\n✅ Fertig: {ok} aktualisiert, {skipped} übersprungen, {errors} Fehler")
+    print(f"\n✅ Fertig: {ok} aktualisiert, {skipped} übersprungen (davon {cleared} veraltete Scores gecleart), {errors} Fehler")
 
 
 if __name__ == "__main__":

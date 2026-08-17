@@ -59,3 +59,19 @@ for r in con.execute("SELECT ticker FROM watchlist WHERE ticker LIKE '%.L' AND t
 - Nicht-`.L`-Ticker sind unberührt (keine Kollateral-Effekte auf US/EU-Namen).
 - `signal_manager` hatte historisch **0** Paper-Entries gegen jegliche `.L`-Ticker — die Entry-Gates (tech + `passes_liquidity_filter` ≥500k€) schützten bereits; das Gate schließt das DQ / Conviction-Pollution-Loch davor.
 - Schwelle justierbar über `UK_MIN_TURNOVER_EUR` in `utils.py`; 500k€ = konsistent mit `signal_manager` `min_liquidity_eur`.
+
+## Folge-Fix 16.08.: DQ-Isolation im Export + Alarm-Crons
+Das Gate blockt neue Scores, aber Bestands-`.L`-Einträge (mit NULL tech_score) blieben in der Conviction-Watchlist und zählten im Export-Filter-View als echte Signale → verzerrten Sektor/SHORT/`–`-Statistik. Vault-insights meldete DQ-Wachstum 1→8→14.
+
+**Fixes (16.08.):**
+1. **`export_watchlist.py`** — DQ-Isolation: `.L`-Ticker ohne tech_score werden vor der Statistik in einen separaten `## ⚠️ DQ (Data Quality)`-Block ausgelagert. Zählen nicht in Gesamt/≥76%/Sektor/SHORT.
+2. **`refresh_tech_scores.py`** — cleart veraltete Scores jetzt (der frühere `if tech:`-Guard ließ sie stehen). Doku-Gotcha behoben.
+3. **`dq_alarm.py`** (Cron `37d505cbc47b`, Mo–Fr 22:40, Wrapper `~/.hermes/scripts/dq_alarm.sh`) — Regressions-Watchdog: zählt `.L`-Microcaps ohne tech_score (≥76%), Alarm bei Überschreiten von Schwelle 10 ODER Anstieg über Schwelle; State-File `data/dq_alarm_state.txt`. Silent bei stabil.
+4. **`weekly_exit_review.py`** (Cron `310dfa0df1a6`, So 07:00, Wrapper `~/.hermes/scripts/weekly_exit_review.sh`) — offene Positionen vs `get_exit_config`-Matrix + Config-Drift-Check.
+5. **`active_exit_check.py`** — auf `get_exit_config()` umgestellt (Regression-Drift-Fix): vorher nutzte es Legacy `get_asset_multipliers`, STANDARD trailing_step=0.5× vs Matrix step=0.75×. Jetzt konsistent zu signal_manager. `get_current_regime` inline (kein signal_manager-Import).
+6. **`signal_manager.py`** — `compute_sl_tp` (Entry-SL/TP) + Partial-TP (`partial_atr`) + Sizing (`sl`) auf `get_exit_config` umgestellt, `regime`-Parameter durchgereicht. Entry-SL/TP sind damit **regime-abhängig** (STANDARD bull tp=3.5× vs sideways 2.5×) — konsistent zum Exit. Toter `mult`-Rest entfernt, Legacy-Import entfernt.
+7. **`crabel_shadow_eval.py`** — `simulate_forward` auf Matrix umgestellt (`step`/`sl`/`profit_lock_atr` statt Legacy + cfg-Fallback Default 2.0 → Matrix 1.0). `_get_regime` inline, Regime in main einmal geholt. Shadow- und Live-Pfad teilen dieselbe Formel (DRY-Docstring).
+
+**Weekly-Review-Drift-Check (16.08.)** prüft alle drei Pfade (signal_manager, active_exit_check, crabel_shadow_eval) auf echte Legacy-Aufrufe `get_asset_multipliers(` — schlägt Alarm falls jemand still zurückfällt.
+
+**Verifiziert 16.08.:** 11 `.L`-Microcaps aussortiert, liquide Large-Caps (ANTO/GLEN/AV/TSCO) bleiben Signale; DQ-Alarm feuert nur bei Regression; alle 3 Exit-/Entry-/Shadow-Pfade nutzen get_exit_config (kein Legacy-Drift); compute_sl_tp liefert matrix-konsistente SL/TP (Regime bull STANDARD tp=3.5×).

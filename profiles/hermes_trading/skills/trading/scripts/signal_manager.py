@@ -23,7 +23,7 @@ from datetime import datetime, timedelta
 from utils import passes_liquidity_filter, apply_slippage, COMMISSION_EUR, get_price_data_cached, prefetch_prices, realized_pnl_from_effective_entry, get_crabel_patterns, get_donchian_breakout
 from utils import get_logger, price_to_eur, position_size_in_shares, open_positions_market_value_eur, calc_pnl_with_costs
 log = get_logger("signal_manager")
-from config import DB_PATH, SIGNALS_VALIDATED_PATH, STRATEGY_CONFIG_PATH, MACRO_SIGNAL_PATH, db_connect, get_asset_type, get_asset_multipliers, get_exit_config
+from config import DB_PATH, SIGNALS_VALIDATED_PATH, STRATEGY_CONFIG_PATH, MACRO_SIGNAL_PATH, db_connect, get_asset_type, get_exit_config
 CONFIG_PATH = STRATEGY_CONFIG_PATH
 
 
@@ -687,6 +687,8 @@ def has_overnight_gap(current_price, atr, prev_close=None):
 
 def check_open_positions(con, cfg):
     """Prüft offene Positionen auf SL/TP, Trailing Stop und Partial TP."""
+    # Regime einmal laden — für Exit-Matrix (get_exit_config) in allen Positionen
+    _regime, _vix = get_current_regime(con)
     # Batch-Preisabfrage vorab (befüllt Cache für alle open positions)
     positions = con.execute(
         "SELECT * FROM positions WHERE status='open'"
@@ -736,9 +738,11 @@ def check_open_positions(con, cfg):
         con.commit()
 
         # --- Partial Take-Profit ---
-        # asset_type-spezifische Multiplikatoren für Exit-Regeln
+        # asset_type- + regime-spezifische Multiplikatoren für Exit-Regeln
+        # FIX 16.08.: Exit-Matrix (get_exit_config) als EINZIGE Quelle
+        # (Legacy get_asset_multipliers hatte trailing_step=0.5 für STANDARD).
         pos_asset_type = pos["asset_type"] if "asset_type" in pos.keys() else "STANDARD"
-        pos_mult = get_asset_multipliers(pos_asset_type)
+        pos_mult = get_exit_config(asset_type=pos_asset_type, regime=_regime)
 
         # #5: Gap-Schutz. Wenn der Kurs im selben Tick schon SL oder TP erreicht,
         # NICHT zusätzlich den Partial-TP buchen – sonst würden Partial (50%+PnL)
@@ -819,7 +823,7 @@ def check_open_positions(con, cfg):
             if direction == "LONG":
                 prev_high = pos["highest_price"] or entry
                 new_high  = max(prev_high, current_price)
-                new_trailing_sl = new_high - (pos_mult["atr_sl"] * atr)
+                new_trailing_sl = new_high - (pos_mult["sl"] * atr)
 
                 if new_trailing_sl > sl:
                     was_breakeven = not pos["breakeven_set"] and new_trailing_sl >= entry
@@ -851,7 +855,7 @@ def check_open_positions(con, cfg):
             elif direction == "SHORT":
                 prev_low = pos["lowest_price"] or entry
                 new_low  = min(prev_low, current_price)
-                new_trailing_sl = new_low + (pos_mult["atr_sl"] * atr)
+                new_trailing_sl = new_low + (pos_mult["sl"] * atr)
 
                 if new_trailing_sl < sl:
                     con.execute(
@@ -1211,24 +1215,28 @@ def check_short_thesis(con, ticker: str, conviction_bear: float, cfg: dict) -> t
 _CORR_CACHE: dict = {}  # frozenset(t1,t2) → correlation
 _CORR_TTL = 1800        # 30 Minuten
 
-def compute_sl_tp(effective_entry: float, atr: float, asset_type: str, direction: str):
+def compute_sl_tp(effective_entry: float, atr: float, asset_type: str, direction: str, regime="sideways"):
     """
     Zentrale SL/TP-Berechnung (asset_type-abhängig, Heimwährung des Tickers).
 
+    FIX 16.08.: nutzt die Exit-Matrix (config.get_exit_config) als EINZIGE
+    Quelle statt get_asset_multipliers (Legacy). Entry-SL/TP werden damit
+    regime-abhängig (z.B. STANDARD bull tp=3.5× vs sideways 2.5×) — konsistent
+    zum Exit-Check (active_exit_check) und zur adapt_strategy-Integration.
+
     Bewusst DRY: wird sowohl beim echten Entry als auch beim Loggen eines
-    geblockten Entries (blocked_entries.would_sl/would_tp) und in
-    crabel_shadow_eval.py benutzt. Läge die Formel doppelt vor, würden Live-
-    und Shadow-Pfad bei der nächsten Änderung auseinanderdriften und die
+    geblockten Entries (blocked_entries.would_sl/would_tp) benutzt. Läge die
+    Formel doppelt vor, würden Live- und Shadow-Pfad auseinanderdriften und die
     Kohorten-Auswertung wäre still falsch.
     """
-    mult = get_asset_multipliers(asset_type)
+    ec = get_exit_config(asset_type=asset_type, regime=regime)
     if direction == "LONG":
-        sl = effective_entry - (mult["atr_sl"] * atr)
-        tp = effective_entry + (mult["atr_tp"] * atr)
+        sl = effective_entry - (ec["sl"] * atr)
+        tp = effective_entry + (ec["tp"] * atr)
         sl = min(sl, effective_entry * 0.995)   # SL darf nicht über Entry liegen
     else:  # SHORT
-        sl = effective_entry + (mult["atr_sl"] * atr)
-        tp = effective_entry - (mult["atr_tp"] * atr)
+        sl = effective_entry + (ec["sl"] * atr)
+        tp = effective_entry - (ec["tp"] * atr)
         sl = max(sl, effective_entry * 1.005)   # SL darf nicht unter Entry liegen
     return sl, tp
 
@@ -1249,7 +1257,8 @@ def log_blocked_entry(con, c, ticker, direction, gate, current_price, atr,
     try:
         asset_type      = get_asset_type(ticker_sector)
         effective_entry = apply_slippage(current_price, direction, is_entry=True)
-        would_sl, would_tp = compute_sl_tp(effective_entry, atr, asset_type, direction)
+        _regime, _vix   = get_current_regime(con)
+        would_sl, would_tp = compute_sl_tp(effective_entry, atr, asset_type, direction, regime=_regime)
         now = datetime.now()
         con.execute("""
             INSERT OR IGNORE INTO blocked_entries
@@ -1913,12 +1922,14 @@ def open_new_positions(con, cfg):
         # Risiko pro Trade capped auf risk_pct_per_trade % des Gesamtportfolios
         risk_pct       = cfg.get("risk_pct_per_trade", 0.015)
         risk_amount    = portfolio_value * risk_pct
-        # #9: Der reale SL kommt aus den asset_type-Multiplikatoren (TECH 2.0×,
-        # DEFENSIVE 1.0× …), nicht aus cfg["atr_sl_multiplier"]. Sizing muss
-        # denselben Multiplikator verwenden, sonst weicht das Ist-Risiko pro
-        # Trade um bis zu ±33% vom Zielrisiko ab.
+        # #9: Der reale SL kommt aus der Exit-Matrix (get_exit_config),
+        # nicht aus cfg["atr_sl_multiplier"]. Sizing muss denselben
+        # Multiplikator verwenden wie compute_sl_tp, sonst weicht das Ist-Risiko
+        # pro Trade um bis zu ±33% vom Zielrisiko ab. FIX 16.08.: Matrix statt
+        # Legacy get_asset_multipliers.
         _asset_type_for_sizing = get_asset_type(ticker_sector)
-        sl_multiplier  = get_asset_multipliers(_asset_type_for_sizing)["atr_sl"]
+        _sreg, _svix = get_current_regime(con)
+        sl_multiplier  = get_exit_config(asset_type=_asset_type_for_sizing, regime=_sreg)["sl"]
         # ATR in EUR umrechnen (FX-aware) für korrektes Sizing
         atr_eur        = price_to_eur(atr, ticker)
         sl_distance_eur = sl_multiplier * atr_eur
@@ -1957,12 +1968,15 @@ def open_new_positions(con, cfg):
 
         # Asset-Typ bestimmen (für dynamische Exit-Regeln)
         asset_type = get_asset_type(ticker_sector)
-        mult = get_asset_multipliers(asset_type)
 
-        # SL/TP berechnen (asset_type-abhängig) – zentraler Helper, damit
-        # blocked_entries.would_sl/would_tp und die Shadow-Simulation garantiert
-        # dieselbe Formel benutzen.
-        sl, tp = compute_sl_tp(effective_entry, atr, asset_type, direction)
+        # SL/TP berechnen (asset_type- + regime-abhängig) – zentraler Helper,
+        # damit blocked_entries.would_sl/would_tp und die Shadow-Simulation
+        # garantiert dieselbe Formel benutzen. FIX 16.08.: get_exit_config
+        # (Exit-Matrix) statt get_asset_multipliers (Legacy) — konsistent zu
+        # active_exit_check. Regime aus DB (get_current_regime), Entry- und
+        # Exit-Pfad teilen dieselbe Regimequelle.
+        _regime, _vix = get_current_regime(con)
+        sl, tp = compute_sl_tp(effective_entry, atr, asset_type, direction, regime=_regime)
 
         sl_pct = abs(effective_entry - sl) / effective_entry * 100
         tp_pct = abs(tp - effective_entry) / effective_entry * 100

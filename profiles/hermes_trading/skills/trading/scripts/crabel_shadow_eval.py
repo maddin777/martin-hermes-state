@@ -36,7 +36,7 @@ for _p in (_TRADING_ROOT, os.path.join(_TRADING_ROOT, "scripts")):
 
 import env_loader  # noqa: F401  (side-effect: laedt .env)
 import yfinance as yf
-from config import db_connect, STRATEGY_CONFIG_PATH, get_asset_multipliers
+from config import db_connect, STRATEGY_CONFIG_PATH, get_exit_config
 from utils import get_logger, realized_pnl_from_effective_entry
 
 log = get_logger("crabel_shadow_eval")
@@ -61,7 +61,19 @@ def _col(df, name):
     return s.iloc[:, 0] if s.ndim > 1 else s
 
 
-def simulate_forward(df, entry, sl, tp, atr, direction, asset_type, cfg):
+def _get_regime(con):
+    """Liest Regime aus regime_history (identisch zu signal_manager) —
+    inline, um die schwere Import-Kopplung an signal_manager zu vermeiden."""
+    try:
+        row = con.execute(
+            "SELECT regime FROM regime_history ORDER BY date DESC LIMIT 1"
+        ).fetchone()
+        return (row["regime"], 0) if row else ("sideways", 0)
+    except Exception:
+        return "sideways", 0
+
+
+def simulate_forward(df, entry, sl, tp, atr, direction, asset_type, cfg, regime="sideways"):
     """
     Simuliert den geblockten Trade auf Tagesbars ab dem Tag NACH dem Block.
 
@@ -70,11 +82,15 @@ def simulate_forward(df, entry, sl, tp, atr, direction, asset_type, cfg):
     Intrabar-Ambiguität (SL und TP im selben Bar getroffen): SL gewinnt.
     Tagesbars sagen nicht, was zuerst kam – die konservative Annahme verhindert,
     dass die Shadow-Trades zu gut aussehen.
+
+    FIX 16.08.: Exit-Matrix (get_exit_config) statt Legacy get_asset_multipliers
+    — konsistent zu signal_manager.compute_sl_tp (Live-Entry) und den
+    blocked_entries.would_sl/would_tp (die bereits mit der Matrix berechnet wurden).
     """
-    mult        = get_asset_multipliers(asset_type)
-    trail_step  = mult["trailing_step"]
-    sl_mult     = mult["atr_sl"]
-    profit_lock = cfg.get("profit_lock_atr", 2.0)
+    ec          = get_exit_config(asset_type=asset_type, regime=regime)
+    trail_step  = ec["step"]
+    sl_mult     = ec["sl"]
+    profit_lock = ec["profit_lock_atr"]
 
     highs  = _col(df, "High")
     lows   = _col(df, "Low")
@@ -149,6 +165,8 @@ def main():
     cfg     = load_cfg()
     horizon = int(cfg.get("crabel_shadow_horizon_days", DEFAULT_HORIZON_DAYS))
     con     = db_connect()
+    # FIX 16.08.: Regime für Exit-Matrix (konsistent zu signal_manager/active_exit_check)
+    _regime, _vix = _get_regime(con)
     print(f"🔍 Crabel Shadow Eval (Horizont: {horizon} Kalendertage)", flush=True)
 
     cutoff = (datetime.now() - timedelta(days=horizon)).strftime("%Y-%m-%d")
@@ -190,7 +208,7 @@ def main():
             outcome, exit_price, days = simulate_forward(
                 df, row["would_entry"], row["would_sl"], row["would_tp"],
                 row["atr_at_block"], row["direction"],
-                row["asset_type"] or "STANDARD", cfg
+                row["asset_type"] or "STANDARD", cfg, regime=_regime
             )
             # pnl_pct ohne Commission – konsistent zu positions.pnl_pct.
             # Nominalgröße egal, pnl_pct ist size-invariant.

@@ -610,13 +610,13 @@
     "created_at": "2026-05-26T03:52:18.196606+00:00",
     "created_by": null,
     "last_patched_at": "2026-07-25T01:06:14.964569+00:00",
-    "last_used_at": "2026-08-15T01:00:12.795874+00:00",
-    "last_viewed_at": "2026-08-15T01:00:12.789795+00:00",
+    "last_used_at": "2026-08-16T07:23:50.411677+00:00",
+    "last_viewed_at": "2026-08-16T07:23:50.405415+00:00",
     "patch_count": 30,
     "pinned": false,
     "state": "active",
-    "use_count": 49,
-    "view_count": 49
+    "use_count": 51,
+    "view_count": 51
   },
   "hermes-voice": {
     "archived_at": null,
@@ -739,12 +739,12 @@
     "created_at": "2026-07-24T06:52:24.038883+00:00",
     "created_by": null,
     "last_patched_at": null,
-    "last_used_at": "2026-08-12T12:00:45.497398+00:00",
+    "last_used_at": "2026-08-16T13:00:51.182189+00:00",
     "last_viewed_at": "2026-07-24T06:57:20.922055+00:00",
     "patch_count": 0,
     "pinned": false,
     "state": "active",
-    "use_count": 11,
+    "use_count": 13,
     "view_count": 1
   },
   "llama-cpp": {
@@ -882,12 +882,12 @@
     "created_at": "2026-06-22T01:24:12.348954+00:00",
     "created_by": null,
     "last_patched_at": "2026-07-11T01:10:31.710850+00:00",
-    "last_used_at": "2026-08-15T14:00:19.617043+00:00",
+    "last_used_at": "2026-08-16T14:00:52.071409+00:00",
     "last_viewed_at": "2026-08-08T01:09:38.329718+00:00",
     "patch_count": 11,
     "pinned": false,
     "state": "active",
-    "use_count": 61,
+    "use_count": 62,
     "view_count": 27
   },
   "ocr-and-documents": {
@@ -1231,14 +1231,14 @@
     "archived_at": null,
     "created_at": "2026-05-27T06:29:36.528930+00:00",
     "created_by": "agent",
-    "last_patched_at": "2026-08-14T06:09:47.666594+00:00",
-    "last_used_at": "2026-08-14T07:30:51.937938+00:00",
-    "last_viewed_at": "2026-08-14T06:08:29.692698+00:00",
-    "patch_count": 250,
+    "last_patched_at": "2026-08-16T09:12:24.762191+00:00",
+    "last_used_at": "2026-08-16T09:11:42.938707+00:00",
+    "last_viewed_at": "2026-08-16T09:11:42.933167+00:00",
+    "patch_count": 260,
     "pinned": false,
     "state": "active",
-    "use_count": 286,
-    "view_count": 247
+    "use_count": 293,
+    "view_count": 252
   },
   "trading-scan": {
     "archived_at": null,

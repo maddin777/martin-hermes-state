@@ -147,6 +147,19 @@ for w in raw:
 watchlist = list(merged.values())
 watchlist.sort(key=lambda x: x["conviction_score"] or 0, reverse=True)
 
+# ── DQ-Separation (FIX 16.08.): .L-Microcaps ohne Tech-Score aussortieren ──
+# Der UK-Liquidity-Gate (utils.get_technical_score, seit 14.08.) liefert None
+# für AIM/Nano-Caps → kein tech_score. Solche Einträge sind NICHT tradable
+# und dürfen die Signal-Statistiken (Sektor, SHORT, `–`-Signatur,
+# max-3-pro-Sektor) nicht verzerren. Sie werden in einen eigenen
+# DQ-Block ausgelagert statt als echte Signale zu zählen.
+def _is_dq(w):
+    t = (w.get("canonical_ticker") or w.get("raw_ticker") or "").upper()
+    return t.endswith(".L") and not w.get("tech_score")
+
+dq_entries = [w for w in watchlist if _is_dq(w)]
+watchlist  = [w for w in watchlist if not _is_dq(w)]
+
 # ── Statistiken aus merged watchlist (nicht aus raw DB) ──────────────
 # Bugfix: Stats vorher zählten raw DB-Rows → Gap bei canonical merges
 merged_bought = sum(1 for w in watchlist if w["status"] == "bought")
@@ -174,7 +187,9 @@ lines.append(f"**Gesamt:** {stats['total']} | "
              f"**Gekauft:** {stats['bought']} | "
              f"**≥76% Conviction:** {stats['high_conviction']}\n")
 lines.append(f"*Filter: conviction ≥ 76% oder bereits gekauft*"
-             f" | *Canonical-Merge aktiv ({len(ct_map)} Regeln)*\n")
+             f" | *Canonical-Merge aktiv ({len(ct_map)} Regeln)*"
+             + (f" | *DQ-Aussortiert: {len(dq_entries)} .L-Microcaps*" if dq_entries else "")
+             + "\n")
 
 # Sector Blacklist Info
 if sector_blacklist:
@@ -220,9 +235,34 @@ for i, w in enumerate(watchlist, 1):
         f"{channels_str} | {_normalize_date(w['last_seen']) or '–'} |"
     )
 
+# ── DQ-Block (FIX 16.08.) ────────────────────────────────────────────
+# .L-Microcaps ohne Tech-Score werden separat ausgewiesen statt als echte
+# Signale zu zählen. Sie verzerren sonst Sektor-/SHORT-/`–`-Statistik und
+# das max-3-pro-Sektor-Constraint. (Inhalt der Watchlist unverändert — die
+# Einträge bleiben in der DB als watching, werden hier nur transparent
+# deklassiert. cleanup/Dedup ist die Zuständigkeit der Watchlist-Cleaning.)
+if dq_entries:
+    lines.append("\n---\n")
+    lines.append(f"## ⚠️ DQ (Data Quality) — {len(dq_entries)} × .L-Microcap ohne Tech-Score (aus Signal-Statistik ausgelagert)\n")
+    lines.append("> Diese Einträge haben keinen gültigen Tech-Score (UK-Liquidity-Gate blockt AIM/Nano-Caps). Sie zählen **nicht** in Gesamt/≥76%/Sektor/SHORT-Statistik und sind **keine Entry-Kandidaten**.\n")
+    lines.append("| # | Unternehmen | Ticker | Sektor | Conviction | Kanäle | Zuletzt |")
+    lines.append("|---|-------------|--------|--------|------------|--------|---------|")
+    for j, w in enumerate(dq_entries, 1):
+        channels_raw = json.loads(w.get("channels_raw") or "[]")
+        channels_str = ", ".join(list(set(channels_raw))[:3])
+        conviction = w["conviction_score"] or 0
+        lines.append(
+            f"| {j} | {w['name']} | {w['canonical_ticker']} | "
+            f"{w['company_sector']} | {conviction:.0%} | "
+            f"{channels_str} | {_normalize_date(w['last_seen']) or '–'} |"
+        )
+    lines.append("")
+    lines.append(f"*DQ-Aussortiert: {len(dq_entries)} (→ werden im Filter-View nicht als Signale gezählt)*")
+
 with open(OBSIDIAN_WATCHLIST_PATH, "w", encoding="utf-8") as f:
     f.write("\n".join(lines))
 
 merged_count = sum(1 for w in watchlist if w["merge_note"])
 print(f"✅ Watchlist exportiert: {len(watchlist)} Einträge → {OBSIDIAN_WATCHLIST_PATH}"
-      f" ({merged_count} gemerged, {len(ct_map)} canonical rules)")
+      f" ({merged_count} gemerged, {len(ct_map)} canonical rules, "
+      f"{len(dq_entries)} DQ .L-Microcaps aussortiert)")
