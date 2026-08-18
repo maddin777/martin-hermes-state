@@ -607,7 +607,7 @@ Siehe `references/sector-blacklist-probation.md`.
 |----------|-------------|-----------------|----------------|--------|
 | **< 12%** | 100% | 70% | 8 | Normalbetrieb |
 | **12–15%** | 75% | 75% | 6 | Warnzone: reduzierte Size |
-| **15–25%** | 50% | 80% | 4 | Bremszone: halbe Size, höhere Qualität |
+| **15–25%** | 50% | 80% | 6 | Bremszone: halbe Size, höhere Qualität (17.08: 4→6, Slots für 2 zusätzliche Trades) |
 | **≥ 25%** | close_all + 7d Cooldown | — | 0 | Notbremse (wie gehabt) |
 
 **Heilungsmechanismus:** Bei 50% Size + 80% Confidence reichen 1-2 solide Trades mit +3-4% Gewinn, um den Drawdown von 15% auf unter 12% zu drücken → volle Size wieder frei.
@@ -621,6 +621,16 @@ Siehe `references/sector-blacklist-probation.md`.
 - **Config:** `strategy_config.json` → `drawdown_cooldown_days: 7` (nur für ≥25%-Fall)
 
 **Alter `no_entry`-Stopp wurde entfernt.** Der `_is_drawdown_cooldown_active()`-Check existiert noch als Funktion, wird aber nur noch vom `close_all`-Fall genutzt.
+
+**🔴 Diagnose: hohe Cashquote ≠ Allocation-Problem (17.08.2026).** Wenn Martin fragt "Warum ist die Cashquote so hoch?", NIE auf `max_portfolio_allocation` (=0.70) verweisen — die ist eine Obergrenze, kein Ziel. Die häufigste Ursache ist die **Drawdown-Zone**: `check_drawdown()` setzt bei 15-25% Drawdown `max_positions` (z.B. 4), sodass "Max. Positionen (N) erreicht" jeden neuen Entry blockt, obwohl Watchlist-Kandidaten existieren. Diagnose-Reihenfolge:
+```bash
+# 1. Drawdown-Parameter im letzten Pipeline-Log (der eigentliche Grund):
+grep -E "Drawdown .*Size|Max. Positionen" data/cron.log | tail -5
+# 2. Portfolio-Stand + offene vs erlaubte Positionen:
+sqlite3 data/trading.db "SELECT cash, ROUND(100.0*cash/total_value,1) FROM portfolio WHERE id=1;"
+sqlite3 data/trading.db "SELECT COUNT(*) FROM positions WHERE status='open';"
+```
+Wenn Drawdown-Zone aktiv → entweder Max-Positionen anheben (17.08.: 15-25%-Zone 4→6) oder durch 1-2 solide Trades den Drawdown unter 12% drücken (dann wieder 8). Cashquote ist die gewollte Bremswirkung, kein Fehler.
 
 Siehe `references/graduated-drawdown-reduction.md`.
 

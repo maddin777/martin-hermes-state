@@ -200,6 +200,26 @@ ls -lt ~/hermes/reports/scan_*.md | head -10
 less ~/hermes/reports/cluster_index.json  # falls existiert
 ```
 
+### PITFALL: Store friert ein (kein MOVER trotz laufender Scans)
+Der Digest liest NUR cluster_store.json. Wenn Scans Reports schreiben, aber der Store
+unverändert bleibt, ist die Ursache fast immer: **die Goal-Dateien weisen den Agenten
+nicht (mehr) an, in den Store zu schreiben.** Die Scan-Jobs folgen der Goal-Datei, nicht
+dem Skill — ein fehlender STORE-UPDATE-Schritt im Goal = eingefrorener Store, obwohl die
+Scans fleißig laufen.
+
+Symptom im Digest: "Veränderung seit letzter Woche: KEINE" + "kein MOVER", obwohl
+Datei-Timestamps zeigen, dass Scans liefen.
+
+Fix (landete 17.08. in scan_A/B/C_deep.txt):
+- Jede Scan-Goal-Datei hat jetzt einen PFLICHT-Schritt "STORE-UPDATE" am Ende:
+  Nach dem Report liest der Agent cluster_store.json, merged per Dedup (>70% Ähnlichkeit:
+  bestehenden Cluster votes+1 + last_seen=heute + Zitate ergänzen; sonst neues C### anlegen),
+  schreibt gültiges JSON zurück. WICHTIG: auch bei Wiederfinden desselben Pains last_seen
+  aktualisieren — sonst meldet der Digest fälschlich "kein MOVER / Cluster abklingend".
+
+Merksatz: **Wenn der Store mal wieder einfriert, zuerst die Goal-Dateien prüfen, ob der
+STORE-UPDATE-Schritt noch drin ist** — nicht den Digest verdächtigen.
+
 ### Referenzen
 Die vier Goal-Dateien unter `~/hermes/goals/` sind die laufenden Prompts.
 Dieser Skill beschreibt die METHODIK dahinter. Änderungen an Quellen oder

@@ -1067,7 +1067,10 @@ def check_drawdown(con):
     if drawdown >= 0.25:
         return drawdown, "close_all", {"size_factor": 0.0, "min_confidence": 1.0, "max_positions": 0}
     elif drawdown >= 0.15:
-        return drawdown, "ok", {"size_factor": 0.50, "min_confidence": 0.80, "max_positions": 4}
+        # FIX 17.08.2026 (Martin): 15-25%-Zone max_positions 4 → 6 — die 4er-Grenze
+        # blockierte bei -18.5% Drawdown alle neuen Entries (4/8 offen, aber Cap war 4).
+        # Size 0.50 + Conf 0.80 bleiben (graduierte Bremse intakt), nur mehr Slots.
+        return drawdown, "ok", {"size_factor": 0.50, "min_confidence": 0.80, "max_positions": 6}
     elif drawdown >= 0.12:
         return drawdown, "ok", {"size_factor": 0.75, "min_confidence": 0.75, "max_positions": 6}
     else:

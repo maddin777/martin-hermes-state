@@ -1,6 +1,25 @@
 # Änderungshistorie — Trading Skill
 
-**Stand:** Paketen A–D + Sprints 1–7 + Bugfix-Sprint + Screener-Source + Watchlist-Performance-Fix + Rollen-Sprint R1–R4 + **Turtle-Konfluenz-Sprint** + **Phase 1+2 Fix (09.08.2026)** + **Watchlist-Cleanup-Archivierung (09.08.2026)** + **UK-Microcap-Gate (14.08.2026)** + **DQ-Isolation + Alarm-Crons (16.08.2026)**
+**Stand:** Paketen A–D + Sprints 1–7 + Bugfix-Sprint + Screener-Source + Watchlist-Performance-Fix + Rollen-Sprint R1–R4 + **Turtle-Konfluenz-Sprint** + **Phase 1+2 Fix (09.08.2026)** + **Watchlist-Cleanup-Archivierung (09.08.2026)** + **UK-Microcap-Gate (14.08.2026)** + **DQ-Isolation + Alarm-Crons (16.08.2026)** + **Drawdown-15-25-Zone auf 6 Pos (17.08.2026)**
+
+## 17.08.2026 — Drawdown 15-25%-Zone: max_positions 4 → 6
+
+### Problem
+Hohe Cashquote (74.7%) trotz Bull-Regime + kein Cooldown. Grund: Portfolio lag bei **-18.5% Drawdown** vom ATH → die 15-25%-Bremszone setzte `max_positions: 4` (aus `check_drawdown()`). Da bereits 4 Positionen offen waren, wurden ALLE neuen Entries mit "Max. Positionen (4) erreicht" geblockt — obwohl 53 Watchlist-Kandidaten investierbar waren und `max_positions` global bei 8 liegt.
+
+### Fix
+In `check_drawdown()` (signal_manager.py): 15-25%-Zone `max_positions` von **4 → 6**. Size-Faktor 0.50 + min_confidence 0.80 bleiben unverändert (graduierte Bremse intakt) — es werden nur mehr Slots freigegeben, damit bei -18.5% wieder 2 zusätzliche Trades möglich sind.
+
+### Drawdown-Matrix (aktuell)
+| Drawdown | Size | Conf | Max Pos | Wirkung |
+|----------|------|------|---------|---------|
+| < 12% | 100% | 70% | 8 | Normalbetrieb |
+| 12-15% | 75% | 75% | 6 | Warnzone |
+| 15-25% | 50% | 80% | **6** (war 4) | Bremszone, aber handlungsfähig |
+| ≥ 25% | close_all | 100% | 0 | Notbremse + 7d Cooldown |
+
+### Verifiziert
+`check_drawdown()` live bei -18.5% → Size 50%, Conf 80%, MaxPos 6. Syntax OK.
 
 ## 16.08.2026 — DQ-Isolation (Export) + DQ-Regressions-Alarm + Weekly-Exit-Review
 

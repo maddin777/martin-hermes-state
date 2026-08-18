@@ -33,7 +33,8 @@ def check_drawdown(con):
     if drawdown >= 0.25:
         return drawdown, "close_all", {"size_factor": 0.0, "min_confidence": 1.0, "max_positions": 0}
     elif drawdown >= 0.15:
-        return drawdown, "ok", {"size_factor": 0.50, "min_confidence": 0.80, "max_positions": 4}
+        # 17.08.2026: 4 → 6 (Martin) — 4er-Grenze blockierte alle Entries bei -18.5%
+        return drawdown, "ok", {"size_factor": 0.50, "min_confidence": 0.80, "max_positions": 6}
     elif drawdown >= 0.12:
         return drawdown, "ok", {"size_factor": 0.75, "min_confidence": 0.75, "max_positions": 6}
     else:
@@ -77,7 +78,7 @@ pct = basis_pct (HIGH/NORMAL/LOW)
 Der Drawdown wird bei jedem Pipeline-Lauf (per `check_drawdown()`) neu berechnet. Sobald der MtM-Wert steigt (durch Gewinne in laufenden oder neuen Trades), sinkt der Drawdown und die Schwellen werden automatisch angepasst:
 
 ```
--15.5% Drawdown → 50% Size, 80% Conf, 4 Pos
+-15.5% Drawdown → 50% Size, 80% Conf, 6 Pos
   → 1 Trade mit +3% auf 50% Size → +1.5% Portfolio
   → Drawdown sinkt auf ~14%
   → 75% Size, 75% Conf, 6 Pos
@@ -96,5 +97,5 @@ Der Drawdown wird bei jedem Pipeline-Lauf (per `check_drawdown()`) neu berechnet
 ## Fallstricke
 
 - **Nicht vergessen:** Der `close_all`-Fall (≥25%) setzt `drawdown_close_all_date` in der Config → `_is_drawdown_cooldown_active()` blockiert dann 7 Tage. Der Cooldown-Check wurde aus `open_new_positions()` entfernt, weil er vor dem Drawdown-Check lief und den `no_entry`-Stopp unnötig machte. Aber der Cooldown gilt nur für `close_all` — und in dem Fall wird `_is_drawdown_cooldown_active()` von `_emergency_close_all()` gesetzt.
-- **Logging:** Die Drawdown-Parameter werden im Pipeline-Log ausgegeben (z.B. `Drawdown -15.5% → Size 50%, Confidence ≥80%, Max 4 Positionen`). Bei Fehlersuche im Dashboard-Cron-Tab auf diese Zeilen achten.
+- **Logging:** Die Drawdown-Parameter werden im Pipeline-Log ausgegeben (z.B. `Drawdown -15.5% → Size 50%, Confidence ≥80%, Max 6 Positionen`). Bei Fehlersuche im Dashboard-Cron-Tab auf diese Zeilen achten.
 - **Kein Reset nötig:** Anders als `adapt_strategy()` (das Config-Drift erzeugte) sind die Drawdown-Parameter **nicht persistent** — sie werden jeden Pipeline-Lauf neu aus dem aktuellen MtM-Wert berechnet. Es gibt keine Config-Drift-Gefahr.
