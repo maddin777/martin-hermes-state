@@ -50,6 +50,11 @@ Seit 12.06.2026 gibt es `config.db_connect()` — eine zentrale Funktion die WAL
 
 ## System Architecture
 
+> **🔀 Forex gehört NICHT hierher.** Es gibt einen separaten Forex-Paper-Bot unter
+> `~/.hermes/skills/forex-paper-bot/` (15m-Intraday, eigenes venv + DB, komplett
+> getrennt). FX-Anfragen (Währungspaare, Forex, 15m-Intraday) dort bearbeiten —
+> NICHT in diesem Equity-Skill erweitern (NG-2 der forex-bot-paper Spec).
+
 The pipeline runs under **profile `hermes_trading`** with its own
 **system crontab** (not Hermes cron daemon). All scripts live at:
 
@@ -242,6 +247,7 @@ Details siehe `references/` im Skill-Verzeichnis sowie die Erläuterung.md im Ob
 | Private Company OTHER-Klassifikation | `references/other-sector-private-companies.md` |
 | Canonical-Merge überschreibt Sector | `references/export-watchlist-sector-merge.md` |
 | yfinance Date-Parsing (unconverted data) | `references/yfinance-date-parsing-fix.md` |
+| **yfinance Forex-Intraday (FX-Paare, 15m)** | `references/yfinance-forex-intraday.md` — Majors (EURUSD=X etc.) kostenlos 15m via yfinance; Gold XAUUSD=X NICHT verfügbar; nur Close (kein Bid/Ask) → Spread als feste pips pro Paar modellieren. Basis für den Forex-Paper-Bot. |
 | Sektor-Exposure-Cap (70%) | `references/sector-exposure-cap.md` |
 | **LLM API `content: null` — NoneType Crash** | `references/llm-api-content-none-pattern.md` |
 | **DB Lock: Transaction-in-Loop mit API-Calls** | `references/db-lock-short-transactions.md` |
@@ -387,7 +393,8 @@ Die Referenz enthält 23 klassifizierte Unternehmen plus Implementierungsvorschl
 | **`cron_health.py` ⚠️ no_agent Cron gelb (generisch)** → Jeder Cron-Job (system crontab oder Hermes-Cron) muss `✅ ... DONE` im Log-Output haben. `=== ... DONE ===` ohne ✅ wird als ⚠️ unknown gewertet. **Fix:** `echo "=== $(date) === ✅ jobname DONE ==="` im Cron-Befehl. |
 | **DELETE/UPDATE auf `watchlist` via `id` greift nicht** → Die Dedup (`watchlist_dedup.py`) verwaltet Zeilen via `rowid` (`WHERE rowid=?`), wodurch die `id`-Spalte bei vielen Zeilen **NULL** ist. Ein `DELETE ... WHERE id=?` kopiert die Zeile zwar (z.B. ins Archiv), entfernt sie aber nicht → Duplikate bleiben, Ziel-Tabelle wächst fälschlich. **Fix:** `SELECT rowid, *` + `DELETE ... WHERE rowid=?` — IMMER `rowid` verwenden bei watchlist-JOINs/Schreibzugriffen. Betrifft `watchlist_cleanup.py` (09.08.2026). |
 | **Duplikate trotz Dedup "nie gemerged" (11.08.2026)** → Es gibt ZWEI `watchlist_dedup.py` Kopien: `/root/.hermes/scripts/` (Weekly-Cron 472ace6fe18a) UND die Skill-Kopie, die die **Nacht-Pipeline** (03:30) aufruft. Beide patchen! Bekannte Multi-Bugs: (1) `dedup_name` nur bei `ticker IS NULL`, (2) UPDATE via `id` (NULL) griff ins Leere → `rowid` nutzen, (3) `merge_group` setzte hardcoded `status='watching'` → bought-Positionen wären zerstört worden, (4) Name-Vergleich case/&-sensitiv → `name_compare_key()` (lowercase + and/& + Stopword), (5) Conviction wurde summiert statt MAX. Vollständige Doku: `references/watchlist-table-dedup.md`. |
-| **UK-Microcap/DQ: `.L`-Ticker verpesten Watchlist (14.08.2026)** → `get_technical_score()` braucht EMA200 (≈200 Bars); HALO.L (92 Bars) → `None` = klassischer DQ-Fall (Status `removed` + DQ-Note, nicht mit Fake-Werten füllen). **ABER: reine Bar-Historie reicht NICHT als Gate** — jeder gescorote Ticker hat eh ≥200 Bars, ein AIM-Nano-Cap mit 200+ Bars bekam trotzdem einen Score. Der eigentliche Differenzierer ist **Liquidität**. Seit 14.08.2026 gilt in `utils.get_technical_score()` ein `.L`-Gate: ≥200 Bars **UND** ≥500k€ 20-Tage-Ø-Turnover, sonst `None` → kein `tech_score`/`tech_direction` → nie ein LONG/SHORT-Entry-Kandidat (Entries brauchen `tech_score>=threshold` + `tech_direction`). **Gotcha (FIXED 16.08.):** `refresh_tech_scores.py` hat früher veraltete Scores NICHT geleert wenn `get_technical_score` `None` liefert (`if tech:`-Guard) → der Eintrag sah entry-fähig aus. **Seit 16.08. cleart der `else`-Zweig** `tech_score/tech_direction/weekly_trend=NULL` (rowcount-gesteuert, meldet "Score gecleart"). Der Guard verhindert zwar neue Scores, aber Bestands-`.L`-Einträge mit NULL tech_score blieben in der Conviction-Watchlist → **DQ-Isolation im Export** (16.08.): `export_watchlist.py` lagert `.L`-Microcaps ohne tech_score in einen separaten `## ⚠️ DQ`-Block aus — sie zählen NICHT in Gesamt/≥76%/Sektor/SHORT-Statistik. Verifiziert 14.08.: 20 `.L`-Microcaps (AET/BSFA/HREE/KZG/SHOE/MAC …) geblockt, Large-Caps (GLEN/ULVR/TATE/ANTO/TSCO/VOD/BP …) passieren; `signal_manager` hat NIE eine `.L`-Paper-Position eröffnet (Entry-Gates tech+liquidity schützen). Siehe `references/uk-microcap-liquidity-gate.md`. |
+| **UK-Microcap/DQ: `.L`-Ticker verpesten Watchlist (14.08.2026)** → `get_technical_score()` braucht EMA200 (≈200 Bars); HALO.L (92 Bars) → `None` = klassischer DQ-Fall (Status `removed` + DQ-Note, nicht mit Fake-Werten füllen). **ABER: reine Bar-Historie reicht NICHT als Gate** — jeder gescorote Ticker hat eh ≥200 Bars, ein AIM-Nano-Cap mit 200+ Bars bekam trotzdem einen Score. Der eigentliche Differenzierer ist **Liquidität**. Seit 14.08.2026 gilt in `utils.get_technical_score()` ein `.L`-Gate: ≥200 Bars **UND** ≥500k€ 20-Tage-Ø-Turnover, sonst `None` → kein `tech_score`/`tech_direction` → nie ein LONG/SHORT-Entry-Kandidat (Entries brauchen `tech_score>=threshold` + `tech_direction`). **Gotcha (FIXED 16.08.):** `refresh_tech_scores.py` hat früher veraltete Scores NICHT geleert wenn `get_technical_score` `None` liefert (`if tech:`-Guard) → der Eintrag sah entry-fähig aus. **Seit 16.08. cleart der `else`-Zweig** `tech_score/tech_direction/weekly_trend=NULL` (rowcount-gesteuert, meldet "Score gecleart"). Der Guard verhindert zwar neue Scores, aber Bestands-`.L`-Einträge mit NULL tech_score blieben in der Conviction-Watchlist → **DQ-Isolation im Export** (16.08.): `export_watchlist.py` lagert `.L`-Microcaps ohne tech_score in einen separaten `## ⚠️ DQ`-Block aus — sie zählen NICHT in Gesamt/≥76%/Sektor/SHORT-Statistik. **ROOT-CAUSE-FIX (19.08.):** Die DQ-Isolation war ein Symptom-Band-Aid — das Gate blockt zwar Scores, aber die Bestands-`.L`-Einträge AKKUMULIEREN als `watching` (last_seen bleibt frisch → 60d-Stale greift nie). Fix: `watchlist_cleanup.py` Stufe 1b droppt `.L` ohne tech_score (`no-liquidity-gate`), und Cron `7e364ce47b69` läuft jetzt **Mo–Fr 22:30** statt wöchentlich (nach Export, vor DQ-Alarm). Verifiziert: DQ 17→0. Siehe `references/uk-microcap-liquidity-gate.md`. |
+| **SHORT-Zählung: `tech_direction` ≠ Sentiment-Short (19.08.)** → Bei Fragen zu "SHORT-Anteil/Welle" IMMER zwei Metriken trennen: (a) `tech_direction='SHORT'` = technischer Indikator sagt Short (viele davon sind **bought** LONG-Positionen, deren Tech-Richtung bearish warnt — kein Bärenregime!), (b) `conviction_score_bear > conviction_score` = sentiment-basiert (echte Bären-Signale, deutlich kleiner). Ein vault-insights-Report der "SHORT 12→19" meldet, zählt oft tech_direction breit → stellt bought LONG-Positionen als Short-Signale dar. Prüf-Query: `COUNT WHERE tech_direction='SHORT'` vs `WHERE conviction_score_bear > conviction_score`. Capture-Bug (POSITIVE→SHORT) bei der Validierung NICHT vorschnell vermuten — die bearish Mentions sind meist echt, das Problem ist die Zählmetrik, nicht der Capture. |
 | **Open positions: `pnl_eur = NULL`** → `signal_manager.py` berechnete PnL im `check_open_positions()`-Loop (`pnl_pct * position_size - COMMISSION_EUR`), schrieb es aber nie in die DB. Nur geschlossene Positionen bekamen ihren PnL beim Exit. **Fix:** `UPDATE positions SET pnl_eur=?, pnl_pct=? WHERE id=?` direkt nach der Berechnung, vor den Exit-Checks. Betrifft `signal_manager.py` Zeile 639ff. |
 | **Date format: `YYYYMMDD` statt `YYYY-MM-DD` in `watchlist_mentions`** → `signal_extractor.py` übergab `row['upload_date']` (YouTube-Format `YYYYMMDD`) direkt als `source['date']`. Der `watchlist_manager` konnte das nicht konsistent normieren. **Folge:** SQLite `MAX(mention_date)` vergleicht Strings — `20260619` vs `2026-07-23` → falsche Sortierung. **Fix:** `signal_extractor.py` normiert `upload_date` zu `YYYY-MM-DD`. `watchlist_manager.py` Default von `%Y%m%d` auf `%Y-%m-%d` geändert. `strptime` erkennt beide Formate. **120 alte Einträge in der DB korrigiert.** |
 | **`ModuleNotFoundError: No module named 'config'`** → Subprozess findet Trading-Verzeichnis nicht. **Fix:** PYTHONPATH in `subprocess.run(env=...)` setzen. Kein DB-Lock — WAL-Checkpoint läuft sauber. |
@@ -840,13 +847,23 @@ Ein `patch` mit zu wenig Kontext matchte beide (`Found 2 matches`), ein
 Retry traf dann den falschen Block — Sonntags-Report hatte kein signals_line,
 Tages-Report bekam die 🔧-Zeile doppelt.
 
+**Am 19.08.2026 ZUM ZWEITEN MAL beim `watchlist_cleanup.py`:** Das Script hat
+mehrere fast identische `UPDATE watchlist SET status='dropped', notes='stale>60d'`
+Blöcke (watching vs bought mit leicht anderem WHERE). Ein Patch der einen neuen
+`.L`-DROP-Block einfügen sollte, CLUBBERTE den bought-UPDATE-Block und erzeugte
+doppelte dropped-Statements plus ein überzähliges `"""` → `IndentationError`.
+Recovery: `read_file` des kaputten Bereichs, dann den ganzen Block sauber
+neu patchen (nicht Punkt-Ersetzung wiederholen).
+
 **Regel:**
 1. Bei Duplikat-Blöcken IMMER eine eindeutige Kontext-Zeile in `old_string`
-   mitnehmen (z.B. `"🔧 Strategy Optimizer läuft um 08:00..."` oder
-   `"SL/TP/Tech:"`-Zeile) — nicht nur die gemeinsamen Variablen-Zeilen
+   mitnehmen — beim `watchlist_cleanup.py` z.B. die `WHERE status='bought'`-Zeile
+   (unterscheidet den bought-UPDATE vom watching-UPDATE). Nur die gemeinsamen
+   `SET`/`WHERE`-Zeilen reichen NICHT.
 2. Nach jedem Patch den Diff lesen UND mit `read_file` verifizieren welcher
-   Block tatsächlich geändert wurde
-3. `python3 -c "import ast; ast.parse(open('file').read())"` als Syntax-Gate
+   Block tatsächlich geändert wurde (insb. ob der umliegende Block noch intakt ist).
+3. `python3 -c "import ast; ast.parse(open('file').read())"` als Syntax-Gate.
+4. Ein `lint: error`-Output ist ein harter Stopp — sofort fixen, nicht weiterbauen.
 
 ## 🔴 Pitfall: Config-Gates in ALLEN parallelen Exit-Pfaden verifizieren
 

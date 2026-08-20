@@ -1,0 +1,36 @@
+{
+  "capital": 10000.0,
+  "risk_per_trade_pct": 0.02,
+  "max_drawdown_pct": 0.50,
+  "session_start_hour": 9,
+  "session_end_hour": 22,
+  "session_timezone": "Europe/Berlin",
+  "timeframe": "15m",
+  "trend_timeframe": "1h",
+  "pairs": {
+    "EURUSD=X": {"display": "EUR/USD", "spread_pips": 0.8, "pip_size": 0.0001, "pip_value_usd": 10.0},
+    "GBPUSD=X": {"display": "GBP/USD", "spread_pips": 1.2, "pip_size": 0.0001, "pip_value_usd": 10.0},
+    "USDJPY=X": {"display": "USD/JPY", "spread_pips": 1.0, "pip_size": 0.01, "pip_value_usd": 10.0},
+    "USDCHF=X": {"display": "USD/CHF", "spread_pips": 1.5, "pip_size": 0.0001, "pip_value_usd": 10.0},
+    "AUDUSD=X": {"display": "AUD/USD", "spread_pips": 1.0, "pip_size": 0.0001, "pip_value_usd": 10.0}
+  },
+  "walk_forward": {
+    "optimize_day": 6,
+    "lookback_weeks": 8,
+    "holding_days_cap": 5
+  },
+  "sl_tp": {
+    "sl_atr_mult": 1.5,
+    "tp_atr_mult": 2.5,
+    "trailing_atr_mult": 1.0
+  },
+  "signal": {
+    "ema_fast": 20,
+    "ema_slow": 50,
+    "momentum_lookback": 8,
+    "h1_ema": 20,
+    "min_trend_strength": 0.0002
+  },
+  "db_path": "data/forex.db",
+  "reports_dir": "reports"
+}

@@ -1,6 +1,38 @@
 # Änderungshistorie — Trading Skill
 
-**Stand:** Paketen A–D + Sprints 1–7 + Bugfix-Sprint + Screener-Source + Watchlist-Performance-Fix + Rollen-Sprint R1–R4 + **Turtle-Konfluenz-Sprint** + **Phase 1+2 Fix (09.08.2026)** + **Watchlist-Cleanup-Archivierung (09.08.2026)** + **UK-Microcap-Gate (14.08.2026)** + **DQ-Isolation + Alarm-Crons (16.08.2026)** + **Drawdown-15-25-Zone auf 6 Pos (17.08.2026)**
+**Stand:** Paketen A–D + Sprints 1–7 + Bugfix-Sprint + Screener-Source + Watchlist-Performance-Fix + Rollen-Sprint R1–R4 + **Turtle-Konfluenz-Sprint** + **Phase 1+2 Fix (09.08.2026)** + **Watchlist-Cleanup-Archivierung (09.08.2026)** + **UK-Microcap-Gate (14.08.2026)** + **DQ-Isolation + Alarm-Crons (16.08.2026)** + **Drawdown-15-25-Zone auf 6 Pos (17.08.2026)** + **DQ-.L-Aufräumung im Cleanup + täglicher Cleanup (19.08.2026)**
+
+## 19.08.2026 — DQ-.L-Aufräumung in watchlist_cleanup + Cleanup täglich
+
+### Problem
+Der UK-Liquidity-Gate (14.08.) blockierte korrekt neue tech_scores für `.L`-AIM/Nano-Caps, aber die Bestands-Einträge blieben als `watching` mit hoher Conviction dauerhaft in der DB (last_seen bleibt durch tägliche RSS-Zuflüsse frisch → 60d-Stale-Regel greift nie). DQ akkumulierte 1→8→14→17. Allein die Quelle **`rss:share talk`** lieferte **100% der DQ-Fälle** (67 von 81 Share-Talk-Einträgen sind `.L`), obwohl `signal_manager` **nie** eine `.L`-Position eröffnet hat (0 Trades) — die Quelle ist für das System faktisch wertlos.
+
+### Fix
+1. **`~/.hermes/scripts/watchlist_cleanup.py`** — neue Stufe 1b: `.L`-Ticker ohne tech_score (status `watching`) werden sofort auf `status='dropped', notes='no-liquidity-gate'` gesetzt. Bought-Positionen werden NICHT angefasst. Gedroppte wandern konservativ erst nach 180d ins Archiv (kein Datenverlust).
+2. **Cron `7e364ce47b69`** (Name jetzt `watchlist-cleanup-daily`) — von wöchentlich (So 07:30) auf **Mo–Fr 22:30** umgestellt: nach dem Export (22:15), vor dem DQ-Alarm (22:40). Verhindert Akkumulation statt sie wöchentlich einmal zu räumen.
+
+### Verifikation (19.08., Live-DB)
+- DQ-Count vorher **17** (über Schwelle 10) → nachher **0**
+- 34 `.L`-Einträge auf `dropped/no-liquidity-gate` gesetzt, davon 33 als Restbestand, keiner als bought
+- `--apply`-Pfad sauber: 7 Artefakte archiviert, keine Fehler
+
+### Hinweis
+Die Quelle `rss:share talk` (weight 0.5, probation) bleibt aktiv und speist weiter neue `.L`-Caps ein — der Cleanup räumt sie jetzt täglich weg. Falls die Quelle langfristig nur Rauschen liefert, sollte sie auf `enabled=0`/`removed` geprüft werden (Source-Lifecycle 07.07.-Prinzip: lieber penalisieren als komplett rausschmeissen — aktuell nicht angefasst).
+
+## 19.08.2026 — Quelle `rss:share talk` DEAKTIVIERT (0% Erfolgsquote)
+
+### Hintergrund
+Ergänzung zum DQ-Cleanup-Fix. Verifiziert am 19.08.: Die Quelle Share Talk (source_registry id=55, `https://www.share-talk.com/feed/`) hat über ihren gesamten Lebenszyklus (seit 07.06.) **keinen einzigen Trade generiert** — `total_mentions=0`, `total_bought=0`, `win_rate=0.0`, `avg_pnl_per_trade=0.0`. Sie lieferte 83% non-tradable `.L`-Microcaps und war damit die Wurzel der DQ-Akkumulation (1→8→14→17).
+
+### Fix
+`UPDATE source_registry SET enabled=0, status='removed', rejection_reason='0% Erfolgsquote ...' WHERE id=55;` — reversibel in der DB.
+
+### Wirkung
+- Stoppt den neuen `.L`-Zufluss an der Wurzel (Scan nur für enabled=1)
+- Der watchlist-cleanup-Fix (19.08.) bleibt als Sicherheitsnetz für andere Quellen, die `.L`-Caps liefern (motley fool uk, seeking alpha)
+- Cron `53f222b00811` (vault-insights-daily) Prompt nachgeschärft: SHORT sentiment-basiert zählen (bear>long), tech_direction=SHORT bei bought-LONG-Positionen NICHT als neue Bärenwelle darstellen; DQ-Zufluss aus anderen Quellen überwachen
+
+
 
 ## 17.08.2026 — Drawdown 15-25%-Zone: max_positions 4 → 6
 

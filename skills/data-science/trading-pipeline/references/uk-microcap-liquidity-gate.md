@@ -75,3 +75,42 @@ Das Gate blockt neue Scores, aber Bestands-`.L`-Einträge (mit NULL tech_score) 
 **Weekly-Review-Drift-Check (16.08.)** prüft alle drei Pfade (signal_manager, active_exit_check, crabel_shadow_eval) auf echte Legacy-Aufrufe `get_asset_multipliers(` — schlägt Alarm falls jemand still zurückfällt.
 
 **Verifiziert 16.08.:** 11 `.L`-Microcaps aussortiert, liquide Large-Caps (ANTO/GLEN/AV/TSCO) bleiben Signale; DQ-Alarm feuert nur bei Regression; alle 3 Exit-/Entry-/Shadow-Pfade nutzen get_exit_config (kein Legacy-Drift); compute_sl_tp liefert matrix-konsistente SL/TP (Regime bull STANDARD tp=3.5×).
+
+## WICHTIG — Gate blockt, aber Einträge AKKUMULIEREN (Root-Cause-Fix 19.08.)
+**Der 16.08.-Fix (DQ-Isolation im Export) war ein Symptom-Band-Aid.** Das Gate blockt zwar korrekt neue tech_scores, aber die Bestands-`.L`-Einträge bleiben als `watching` mit hoher Conviction dauerhaft in der DB: `last_seen` bleibt durch tägliche RSS-Zuflüsse frisch → die 60d-Stale-Regel des Cleanup greift NIE → DQ akkumuliert (1→8→14→17).
+
+**Echte Root-Cause:** In der Praxis kam **100% der DQ-Akkumulation aus EINER Quelle** (`rss:share talk`, weight 0.5, probation): 67 von 81 Share-Talk-Einträgen sind `.L`-Nano-Caps, und `signal_manager` hat **nie** eine `.L`-Position eröffnet (0 Trades) — die Quelle ist fürs System faktisch wertlos, wird aber weiter gescannt.
+
+**Fix (19.08.):**
+1. `~/.hermes/scripts/watchlist_cleanup.py` — neue Stufe 1b: `.L`-Ticker ohne tech_score (status `watching`) → `status='dropped', notes='no-liquidity-gate'`. Bought-Positionen werden NICHT angefasst. Gedroppte wandern konservativ erst nach 180d ins Archiv (kein Datenverlust, rowid-Regel beachten).
+2. Cron `7e364ce47b69` (`watchlist-cleanup-daily`) — von wöchentlich (So 07:30) auf **Mo–Fr 22:30** umgestellt: nach dem Export (22:15), vor dem DQ-Alarm (22:40). **Wöchentlich reicht NICHT** — die Quelle speist täglich nach, sonst kehrt die Akkumulation zurück.
+3. DQ-Alarm `dq_alarm.py` (Schwelle 10) bleibt als Regressions-Watchdog.
+
+**Verifiziert 19.08. live:** DQ-Count vorher 17 (über Schwelle) → nachher 0. 34 `.L` gedroppt, `--apply`-Pfad sauber (7 Artefakte archiviert, keine Fehler). Changelog-Eintrag in `Erklaerung.md` ergänzt.
+
+**Lehre:** Bei DQ-Wachstum nicht nur das Gate prüfen — prüfen ob die Einträge AKTUALISIERT/aufgeräumt werden. Ein Filter der "nicht als Signal zählt" verhindert keine DB-Akkumulation. Gegenfrage: welche einzelne Quelle spült das Rauschen rein → ggf. penalisieren/deaktivieren.
+
+## Quelle-Deaktivierung bei 0% Erfolgsquote (19.08.) — das Entscheidungsmuster
+
+Nach dem Cleanup-Fix bleibt die Frage: **soll die rausch-erzeugende Quelle bleiben?** Antwort bei einer Quelle die NUR non-tradable Output liefert: **nein — an der Wurzel deaktivieren, nicht nur downstream filtern.**
+
+**Erfolgsquote in `source_registry` prüfen (nicht raten):**
+```sql
+SELECT display_name, status, weight, enabled, total_bought,
+       win_rate_alltime, win_rate_90d, avg_pnl_per_trade, total_wins, total_losses
+FROM source_registry WHERE id=<id>;
+```
+**Trennung von Trade-Beitrag vs. bloßer Erwähnung:** Eine Position deren Ticker irgendwo von der Quelle erwähnt wurde (JOIN auf `channels LIKE '%<quelle>%'`) ist KEIN Quellen-Trade — Large-Caps (AAPL, VOD) kommen aus Dutzenden Quellen. Der echte Beitrag ist `total_bought`/`total_wins` aus der `source_registry`-Zeile der Quelle selbst. (Schema vorher mit `PRAGMA table_info(source_registry)` prüfen — nicht alle Spalten existieren immer.)
+
+**Befund Share Talk (19.08., live):** `total_mentions=0, total_bought=0, win_rate=0.0, avg_pnl=0.0` über den ganzen Lebenszyklus (seit 07.06.) → **0% Erfolgsquote**, liefert zu 83% non-tradable `.L`-Microcaps. Kein einziger Trade je generiert.
+
+**Fix (reversibel):**
+```sql
+UPDATE source_registry
+SET enabled=0, status='removed',
+    rejection_reason='0% Erfolgsquote: 0 Trades seit <datum>, 83% non-tradable .L-Microcaps, Quelle der DQ-Akkumulation'
+WHERE id=<id>;
+```
+Scan läuft nur für `enabled=1` → stoppt den neuen Zufluss an der Wurzel. Reversibel in der DB (kein Löschen). Der Cleanup-Fix bleibt als Sicherheitsnetz für ANDERE Quellen, die ebenfalls `.L`-Caps liefern können (z.B. `rss:the motley fool uk`, `rss:seeking alpha`).
+
+**Abwägung vs. Source-Lifecycle-Prinzip (07.07.):** Das 07.07.-Prinzip sagt "lieber penalisieren (weight=0.3) als komplett rausschmeissen" für schlechte Performance. ABER: eine Quelle mit **0 Trades über den ganzen Lebenszyklus** UND die Wurzel einer bekannten Datenqualitäts-Akkumulation ist kein "schlechter Performer" — sie ist ein reiner Rauschen-Produzent ohne je einen verwertbaren Beitrag. Martin bestätigt explizit: bei 0%-Quote entfernen. Deaktivieren (enabled=0) statt Löschen respektiert beides — reversibel, aber gestoppt.
