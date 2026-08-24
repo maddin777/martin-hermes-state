@@ -1,0 +1,1 @@
+{"id": "57173329aa5a", "ts": "2026-08-23T19:17:39.316056+00:00", "actor": "curator", "action": "create", "skill": "hermes-bot-mode-roster", "evidence": {"session_id": "20260823_210517_0fc795"}, "before": [], "after": [{"path": "/root/.hermes/skills/devops/hermes-bot-mode-roster/SKILL.md", "sha256": "0e145a9616ed2b373f3e84acf40d5798e0f749abfba1fe724faaa9a332dc7a59"}]}
