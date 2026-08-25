@@ -11,6 +11,16 @@ Wandelt eine rohe Idee in eine Task-Spezifikation um, die ein Build-Agent nur au
 
 Lies den relevanten Code zuerst. Finde welche Dateien betroffen sind, welche Patterns existieren, welche Constraints gelten. Frage nie etwas, das die Codebase beantworten kann.
 
+**Optional — RESEARCHER-Bot für die Vorrecherche (Option 2):**
+Für gründliche Codebase-/Kontext-Recherche kannst du den RESEARCHER-Bot als
+eigenständigen Prozess losziehen lassen, statt selbst zu graben:
+```bash
+hermes -p researcher -z "Recherchiere die Codebase gründlich für diese Idee. Ziel: welche Dateien betroffen, welche Patterns/Constraints existieren, was ist Stand der Dinge. Idee: <kurzbeschreibung>. Liefer: verifizierte, zitierte Befunde." --cli
+```
+Der researcher-Bot nutzt seine eigenen Skills/Memories. Das ist v. a. bei
+fremden/unbekannten Codebases sinnvoll; für vertraute Domänen reicht deine
+eigene Lektüre. Der Spec-Dialog mit Martin bleibt immer bei dir (interaktiv).
+
 ## 2. Interview in Runden
 
 1-4 Fragen pro Runde, immer mit konkreten Optionen und deiner Empfehlung zuerst. Nur echte Product-Entscheidungen fragen:
@@ -62,3 +72,11 @@ Zeige den Draft, lass Martin bestätigen. Dann:
 ## Hard Rule
 
 Setze `agent-ready` NIEMALS auf `true`. Das macht Martin nach finalem Lesen — das ist das Approval-Gate zwischen "Idee" und "Agent baut es".
+
+## Option-2-Hinweis (Build/Review)
+
+Nach Martins OK wird der Build vom **CODER-Bot** (`finn_build.sh`) und der Review
+vom **REVIEWER-Bot** (`finn_review.sh`) ausgeführt — siehe finn-build/finn-review
+Skills. Deine Spec ist der Vertrag für diese Bots: schreibe sie so, dass der
+coder sie nur aus der Spec heraus umsetzen und der reviewer sie nur gegen die
+Spec prüfen kann.

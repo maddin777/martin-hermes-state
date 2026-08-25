@@ -1,6 +1,21 @@
 # Änderungshistorie — Trading Skill
 
-**Stand:** Paketen A–D + Sprints 1–7 + Bugfix-Sprint + Screener-Source + Watchlist-Performance-Fix + Rollen-Sprint R1–R4 + **Turtle-Konfluenz-Sprint** + **Phase 1+2 Fix (09.08.2026)** + **Watchlist-Cleanup-Archivierung (09.08.2026)** + **UK-Microcap-Gate (14.08.2026)** + **DQ-Isolation + Alarm-Crons (16.08.2026)** + **Drawdown-15-25-Zone auf 6 Pos (17.08.2026)** + **DQ-.L-Aufräumung im Cleanup + täglicher Cleanup (19.08.2026)**
+**Stand:** Paketen A–D + Sprints 1–7 + Bugfix-Sprint + Screener-Source + Watchlist-Performance-Fix + Rollen-Sprint R1–R4 + **Turtle-Konfluenz-Sprint** + **Phase 1+2 Fix (09.08.2026)** + **Watchlist-Cleanup-Archivierung (09.08.2026)** + **UK-Microcap-Gate (14.08.2026)** + **DQ-Isolation + Alarm-Crons (16.08.2026)** + **Drawdown-15-25-Zone auf 6 Pos (17.08.2026)** + **DQ-.L-Aufräumung im Cleanup + täglicher Cleanup (19.08.2026)** + **DQ-Deaktivierungs-Verifikation + Cleanup 1c (24.08.2026)**
+
+## 24.08.2026 — DQ-Deaktivierungs-Verifikation + Cleanup Stufe 1c
+
+### Problem
+Der vault-insights-daily mahnte wiederholt an, die **share-talk-Deaktivierung** (19.08.) zu verifizieren. Der Check ergab: Der bestehende `dq_alarm.py` zählte nur `.L` **ohne** tech_score — aber **8 `.L`-Einträge MIT tech_score** (AET, AMRQ, ANTO, ATYM, FRAS, GEX, MPAL, 80M) blieben aus `rss:share talk` (enabled=0) im Watchlist-Hauptteil, weil Cleanup Stufe 1b nur `tech_score IS NULL` droppte. Dazu zählte `dq_alarm` als "exklusiv deaktiviert" auch Large-Caps (STLA/patrick boyle, AEM/urban jäkle, KKR/meet kevin) — False-Positives, weil der Check nicht auf `.L` begrenzt war.
+
+### Fix
+1. **`dq_alarm.py`** (Cron `37d505cbc47b`, Mo–Fr 22:40): neue Kennzahl `count_deactivated_only()` — zählt `.L`-Ticker in watching/bought, deren EINZIGE Quelle deaktiviert ist (enabled=0, aus `source_registry`). Bewusst nur `.L` (die DQ-Flut-Quelle), damit Large-Caps mit einzelnem toten Kanal nicht falsch alarmen. Kombiniert mit dem DQ-Count; Regression ab Schwelle 10 → Telegram-Alarm.
+2. **`~/.hermes/scripts/watchlist_cleanup.py`** (Cron `7e364ce47b69`, Mo–Fr 22:30): neue **Stufe 1c** — `.L`-Einträge MIT tech_score, die zu 100% aus deaktivierten Quellen stammen, werden auf `dropped/notes='source-deactivated'` gesetzt. Bought-Positionen unangetastet. Lädt deaktivierte Quellen dynamisch aus `source_registry`, parst `channels` (JSON).
+
+### Verifikation (24.08., Live-DB)
+- `dq_alarm.py`: DQ 16→0, Deaktivierungs-Check 0 → silent (kein Alarm)
+- Cleanup: 27 `.L` ohne tech_score (Stufe 1b) + 8 mit Score aus share talk (Stufe 1c) → dropped
+- Nach dem Lauf: **0** `.L` aus share talk in watching/bought; übrig bleiben nur legitime `.L` (the motley fool uk, pensioncraft)
+- dq_alarm.py in State-Backup `martin-hermes-state` synchronisiert
 
 ## 19.08.2026 — DQ-.L-Aufräumung in watchlist_cleanup + Cleanup täglich
 

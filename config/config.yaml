@@ -50,6 +50,7 @@ terminal:
   docker_run_as_host_user: false
   persistent_shell: true
   lifetime_seconds: 300
+  font_family: Hack Nerd Font
 web:
   backend: ''
   search_backend: ddgs
