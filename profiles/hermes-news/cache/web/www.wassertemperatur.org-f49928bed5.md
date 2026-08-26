@@ -101,33 +101,25 @@ Nachfolgend finden Sie Infos zum aktuellen Wetter sowie eine Übersicht über di
 
 Lübeck
 
-**12°**
+**8°**
 
-Bedeckt
+Klarer Himmel
 
-86% Luftfeuchtigkeit
+94% Luftfeuchtigkeit
 
-Wind: 7m/s W
+Wind: 2m/s OSO
 
-MAX C 12 • MIN C 12
+MAX C 8 • MIN C 8
 
-22°
-
-MO
-
-21°
-
-DI
-
-24°
+23°
 
 MI
 
-28°
+25°
 
 DO
 
-22°
+25°
 
 FR
 
@@ -135,11 +127,11 @@ FR
 
 SA
 
-17°
+19°
 
 SO
 
-20°
+18°
 
 MO
 
@@ -147,25 +139,33 @@ MO
 
 DI
 
-17°
+20°
 
 MI
 
-18°
+19°
 
 DO
 
-20°
+18°
 
 FR
 
-22°
+14°
 
 SA
 
-17°
+16°
 
 SO
+
+20°
+
+MO
+
+20°
+
+DI
 
 ### Klima in Lübeck:
 

@@ -91,15 +91,15 @@ Nachfolgend finden Sie Infos zum aktuellen Wetter sowie eine Übersicht über di
 
 Rostock
 
-**14°**
+**15°**
 
-Leichter Regen
+Klarer Himmel
 
-83% Luftfeuchtigkeit
+100% Luftfeuchtigkeit
 
-Wind: 8m/s W
+Wind: 2m/s OSO
 
-MAX C 14 • MIN C 13
+MAX C 15 • MIN C 9
 
 ### Klimatabelle Rostock:
 

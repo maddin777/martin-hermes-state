@@ -1092,13 +1092,13 @@
     "created_by": null,
     "last_patched_at": "2026-07-11T01:10:31.710850+00:00",
     "last_reused_patch_generation": 0,
-    "last_used_at": "2026-08-24T14:00:36.619972+00:00",
+    "last_used_at": "2026-08-25T14:00:30.782782+00:00",
     "last_viewed_at": "2026-08-22T01:01:05.615899+00:00",
     "patch_count": 11,
     "patch_generation": 0,
     "pinned": false,
     "state": "active",
-    "use_count": 71,
+    "use_count": 72,
     "view_count": 28
   },
   "ocr-and-documents": {
@@ -1489,13 +1489,13 @@
     "created_by": "agent",
     "last_patched_at": "2026-08-24T08:28:37.456608+00:00",
     "last_reused_patch_generation": 2,
-    "last_used_at": "2026-08-24T08:28:48.089472+00:00",
+    "last_used_at": "2026-08-25T07:30:26.072813+00:00",
     "last_viewed_at": "2026-08-24T08:28:48.083109+00:00",
     "patch_count": 270,
     "patch_generation": 2,
     "pinned": false,
     "state": "active",
-    "use_count": 320,
+    "use_count": 321,
     "view_count": 271
   },
   "trading-scan": {
