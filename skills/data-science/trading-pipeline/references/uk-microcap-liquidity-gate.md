@@ -90,6 +90,22 @@ Das Gate blockt neue Scores, aber Bestands-`.L`-Einträge (mit NULL tech_score) 
 
 **Lehre:** Bei DQ-Wachstum nicht nur das Gate prüfen — prüfen ob die Einträge AKTUALISIERT/aufgeräumt werden. Ein Filter der "nicht als Signal zählt" verhindert keine DB-Akkumulation. Gegenfrage: welche einzelne Quelle spült das Rauschen rein → ggf. penalisieren/deaktivieren.
 
+## ROOT-CLAUSE-FIX 26.08.: watchlist_manager reaktiviert gedroppte .L NICHT mehr
+Trotz Cleanup (Stufe 1b/1c, täglich 22:30) wuchs der DQ-Count weiter (14 + 28 deakt = 42 ≥ Schwelle): **`watchlist_manager.py` (Pipeline 03:30) reaktivierte jede `dropped`-Zeile zurück auf `watching`** via
+```sql
+UPDATE watchlist SET ... status='watching' WHERE ticker=? AND status IN ('watching','dropped')
+```
+Die historischen Share-Talk-Mentions liegen weiter in den Mention-Tabellen → jede Nacht holte der Manager die gedroppten `.L` daraus zurück. Cleanup droppt 22:30, Pipeline reaktiviert 03:30 → Endlosschleife.
+
+**Fix:** Reaktivierungs-WHERE schließt die DQ-Drop-Gründe aus:
+```sql
+WHERE ticker=? AND status IN ('watching','dropped')
+  AND (notes IS NULL OR notes NOT IN ('no-liquidity-gate','source-deactivated'))
+```
+Benigne Drops (stale>60d, merge, dedup, notes NULL) bleiben reaktivierbar. **Merken:** Bei DQ-Regression mit "Cleanup greift nicht"-Symptom IMMER prüfen, ob ein anderer Pfad gedroppte Zeilen wieder aufwacht — nicht nur den Cleanup selbst. Die Dedup (`watchlist_dedup.py`) arbeitet nur auf `watching/bought` und kann NICHT auferwecken; der `watchlist_manager`-Mention-UPDATE ist der Übeltäter.
+
+**Nebenbefund (Dry-Run-Fußangel, im selben Fix korrigiert):** `watchlist_cleanup.py` führte die Stufen-1-`UPDATE`s (Stufe 1/1b/1c + Stale) und den `commit()` **immer** aus — nur die Archivierung war an `--apply` gebunden. Ein "Dry-Run" hat also die Live-DB verändert. Jetzt: Zählung per `SELECT COUNT(*)`, Schreiben NUR mit `--apply`, Dry-Run read-only (verifiziert: DB-Hash vor/nach identisch). **Regel:** Ein Script das `--apply` kennt, darf ohne `--apply` NIEMALS schreiben.
+
 ## Quelle-Deaktivierung bei 0% Erfolgsquote (19.08.) — das Entscheidungsmuster
 
 Nach dem Cleanup-Fix bleibt die Frage: **soll die rausch-erzeugende Quelle bleiben?** Antwort bei einer Quelle die NUR non-tradable Output liefert: **nein — an der Wurzel deaktivieren, nicht nur downstream filtern.**

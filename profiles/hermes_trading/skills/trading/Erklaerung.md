@@ -1,6 +1,44 @@
 # Änderungshistorie — Trading Skill
 
-**Stand:** Paketen A–D + Sprints 1–7 + Bugfix-Sprint + Screener-Source + Watchlist-Performance-Fix + Rollen-Sprint R1–R4 + **Turtle-Konfluenz-Sprint** + **Phase 1+2 Fix (09.08.2026)** + **Watchlist-Cleanup-Archivierung (09.08.2026)** + **UK-Microcap-Gate (14.08.2026)** + **DQ-Isolation + Alarm-Crons (16.08.2026)** + **Drawdown-15-25-Zone auf 6 Pos (17.08.2026)** + **DQ-.L-Aufräumung im Cleanup + täglicher Cleanup (19.08.2026)** + **DQ-Deaktivierungs-Verifikation + Cleanup 1c (24.08.2026)**
+**Stand:** Paketen A–D + Sprints 1–7 + Bugfix-Sprint + Screener-Source + Watchlist-Performance-Fix + Rollen-Sprint R1–R4 + **Turtle-Konfluenz-Sprint** + **Phase 1+2 Fix (09.08.2026)** + **Watchlist-Cleanup-Archivierung (09.08.2026)** + **UK-Microcap-Gate (14.08.2026)** + **DQ-Isolation + Alarm-Crons (16.08.2026)** + **Drawdown-15-25-Zone auf 6 Pos (17.08.2026)** + **DQ-.L-Aufräumung im Cleanup + täglicher Cleanup (19.08.2026)** + **DQ-Deaktivierungs-Verifikation + Cleanup 1c (24.08.2026)** + **DQ-Root-Clause-Fix: keine Reaktivierung gedroppter .L + Dry-Run read-only (26.08.2026)**
+
+## 26.08.2026 — DQ-Root-Clause-Fix: keine Reaktivierung + Cleanup-Dry-Run read-only
+
+### Problem (Root-Cause der wiederkehrenden DQ-Akkumulation)
+Seit dem 19.08.-Cleanup (Stufe 1b/1c) wurde jeder `.L`-Microcap (ohne tech_score) bzw. jeder `.L` aus deaktivierten Quellen nachts vom Cleanup (22:30) auf `dropped` gesetzt — aber **am nächsten Morgen waren dieselben `.L` wieder `watching`** (last_seen blieb alt, 08.12.–08.18, also keine frischen Zuflüsse). `dq_alarm` (22:40) feuerte dann täglich (DQ 14 + deakt 28 = 42 ≥ 10). Live-Befund 26.08.: alle 14 DQ-Einträge waren zu 100% aus `rss:share talk` (enabled=0) und hingen seit der Deaktivierung fest.
+
+**Root-Cause:** `watchlist_manager.py` (Pipeline 03:30) reaktivierte in der Mention-Verarbeitung **jede `dropped`-Zeile** zurück auf `watching`:
+```sql
+UPDATE watchlist SET ... status='watching'
+WHERE ticker=? AND status IN ('watching', 'dropped')
+```
+Die historischen Share-Talk-Mentions liegen weiter in den Mention-Tabellen. Jede Nacht holte der Manager die gedroppten `.L` daraus zurück → Cleanup droppt 22:30, Pipeline reaktiviert 03:30 → DQ akkumulierte trotz Cleanup.
+
+### Fix
+1. **`scripts/watchlist_manager.py`** — DQ-Reaktivierung blockiert: die Aufweck-`WHERE`-Clause schließt `no-liquidity-gate` und `source-deactivated` aus. Solche Drops sind per Definition untradable (Liquidity-Gate / tote Quelle) und dürfen nie wieder zum Signal werden. Benigne Drops (stale>60d, merge, dedup, notes NULL) bleiben reaktivierbar.
+   ```sql
+   WHERE ticker=? AND status IN ('watching', 'dropped')
+     AND (notes IS NULL OR notes NOT IN ('no-liquidity-gate','source-deactivated'))
+   ```
+2. **`~/.hermes/scripts/watchlist_cleanup.py`** — Dry-Run-Fußangel gefixt: Vorher führte das Script die UPDATE-Stufen (Stufe 1/1b/1c + Stale) und den `commit()` **immer** aus, nur die Archivierung war an `--apply` gebunden → ein "Dry-Run" hat die Live-DB verändert (hat bei der Diagnose ungewollt die 14 `.L` live gedroppt). Jetzt: Zählung per `SELECT COUNT(*)`, Schreiben NUR mit `--apply`. Dry-Run ist echt read-only (verifiziert: DB-Hash vor/nach identisch).
+
+### Verifikation (26.08., Live-DB)
+- `dq_alarm.py`: DQ 14→**0**, Deaktivierungs-Check 28→**0** → **silent** (keine Regression)
+- `watchlist_cleanup.py` dry-run bei 0 `.L` ohne Score + read-only (DB-Hash `040381c0…` unverändert)
+- watchlist_manager.py parst sauber; ASI+AST-Check ok; in State-Backup synchronisiert
+
+### Geänderte Dateien
+| Datei | Änderung |
+|---|---|
+| `scripts/watchlist_manager.py` | Reaktivierungs-WHERE: `notes NOT IN ('no-liquidity-gate','source-deactivated')` |
+| `~/.hermes/scripts/watchlist_cleanup.py` | Alle Stufen-1-UPDATEs + commit gated auf `--apply`; Zählung per SELECT; Dry-Run read-only |
+
+**Nachfolge-Purge (26.08.):** Nach dem Root-Clause-Fix wurden die historischen Share-Talk-Mentions an der Quelle entfernt, damit der Manager sie nie wieder verarbeitet — nicht nur downstream blockiert:
+- `watchlist_mentions` `channel='rss:share talk'`: **225 Zeilen** gelöscht
+- `external_mentions` `source_name='Share Talk'`: **528 Zeilen** gelöscht
+- Verifiziert: DQ 0/0 silent; 0 `.L` ohne tech_score; 0 `.L`-channels enthalten `share talk`.
+- **Backup:** `data/share_talk_backup_20260826.db` (Tabelle `watchlist_mentions_backup` + `external_mentions_backup`).
+- **Warum beide:** social_scanner `inject_into_watchlist` liest `external_mentions` nur `published_at >= jetzt-2d` (Share-Talk endet 18.08. → würde nicht re-injizieren), aber `watchlist_manager`-Aggregation liest ALLE `watchlist_mentions` (kein Channel-Filter) → die 225 `watchlist_mentions`-Zeilen waren die eigentliche Wiedergeburtsquelle. Quelle ist `enabled=0/removed` → kein neuer Zufluss.
 
 ## 24.08.2026 — DQ-Deaktivierungs-Verifikation + Cleanup Stufe 1c
 

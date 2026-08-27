@@ -726,6 +726,12 @@ def main():
     
             # UPDATE: existierenden Eintrag aktualisieren (auch dropped -> watching reaktivieren)
             # conviction_score_raw wird auf den rohen Kanalwert zurueckgesetzt (LLM-Validator kommt danach)
+            # ROOT-CAUSE-FIX (26.08.): DQ-/DQ-Cleanup-Drops NICHT mehr reaktivieren. watchlist_cleanup.py
+            # markiert powered-off .L-Microcaps als status='dropped', notes='no-liquidity-gate' (Stufe 1b)
+            # bzw. 'source-deactivated' (Stufe 1c). Diese sind per Definition untradable und duerfen NICHT
+            # aus zurückbleibenden historischen Share-Talk-Mentions wieder auf 'watching' gesetzt werden —
+            # sonst akkumuliert der DQ-Count taeglich (Cleanup droppt 22:30, Pipeline reactivates 03:30).
+            # Rein historische/benigne Drops (stale>60d, merge, dedup) bleiben reaktivierbar (notes NULL/stale).
             con.execute("""
                 UPDATE watchlist SET
                     name=?, last_seen=?, mention_count=?,
@@ -734,6 +740,7 @@ def main():
                     conviction_score_bear=?,
                     conviction_score_aged=?, channels=?, status='watching'
                 WHERE ticker=? AND status IN ('watching', 'dropped')
+                  AND (notes IS NULL OR notes NOT IN ('no-liquidity-gate','source-deactivated'))
             """, (canonical_name, m["last_seen"], m["mention_count"],
                   m["bullish"], m["bearish"], m["neutral"],
                   conviction, conviction,  # raw = aktueller Kanalwert
