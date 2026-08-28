@@ -410,10 +410,11 @@ def calc_pnl_with_costs(entry_price, exit_price, position_size, direction):
 # ── Technische Analyse ────────────────────────────────────────────────────────
 # Zentrale Implementierung von get_technical_score().
 
-# UK-Microcap-Gate (FIX 14.08.): Mindest-Historie + Mindest-Tagesumsatz für
-# .L-Ticker, damit AIM/Nano-Caps nicht als tradable durchrutschen.
-UK_MIN_BARS         = 200      # ~1 Jahr Handelstage
-UK_MIN_TURNOVER_EUR = 500_000  # konsistent mit signal_manager min_liquidity_eur
+# Entry-faehige technische Scores brauchen fuer alle Listings ausreichend
+# Historie und Liquiditaet. Ein fehlender Score ist damit zugleich ein hartes
+# DQ-/Delisting-Signal fuer den Entry-Pfad.
+TECH_MIN_BARS         = 200      # ~1 Jahr Handelstage
+TECH_MIN_TURNOVER_EUR = 500_000  # 20-Tage-Durchschnitt, in EUR
 
 
 def get_technical_score(ticker):
@@ -431,24 +432,16 @@ def get_technical_score(ticker):
     """
     try:
         _, _, df = get_price_data_cached(ticker)
-        if df is None or df.empty or len(df) < 50:
+        if df is None or df.empty or len(df) < TECH_MIN_BARS:
             return None
 
-        # UK-Microcap-Gate (FIX 14.08.): AIM/Nano-Caps aus 'share talk'
-        # (AET.L, BSFA.L, HREE.L, KZG.L, SHOE.L, AMRQ.L, …) bekommen nur
-        # einen Tech-Score, wenn sie nachweislich genug Historie UND
-        # Liquidität haben. Sonst kein Score → kein LONG/SHORT-Entry-
-        # Kandidat → kein DQ-Poll der Watchlist/Conviction-Verteilung.
-        if str(ticker).endswith(".L"):
-            if len(df) < UK_MIN_BARS:
-                return None
-            _c = df["Close"].iloc[:, 0] if df["Close"].ndim > 1 else df["Close"]
-            _v = df["Volume"].iloc[:, 0] if df["Volume"].ndim > 1 else df["Volume"]
-            _turnover = turnover_to_eur(
-                float(_c.tail(20).mean()), float(_v.tail(20).mean()), ticker
-            )
-            if _turnover < UK_MIN_TURNOVER_EUR:
-                return None
+        _c = df["Close"].iloc[:, 0] if df["Close"].ndim > 1 else df["Close"]
+        _v = df["Volume"].iloc[:, 0] if df["Volume"].ndim > 1 else df["Volume"]
+        _turnover = turnover_to_eur(
+            float(_c.tail(20).mean()), float(_v.tail(20).mean()), ticker
+        )
+        if _turnover < TECH_MIN_TURNOVER_EUR:
+            return None
 
 
         close = df["Close"].iloc[:, 0] if df["Close"].ndim > 1 else df["Close"]

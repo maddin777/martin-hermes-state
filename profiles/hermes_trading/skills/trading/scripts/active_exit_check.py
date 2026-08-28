@@ -24,6 +24,7 @@ from utils import (
     realized_pnl_from_effective_entry, portfolio_lock,
 )
 from config import DB_PATH, STRATEGY_CONFIG_PATH, db_connect, get_exit_config
+from exit_rules import initial_stop, peak_chandelier_stop, protected_time_stop_price, time_stop_due
 
 log = get_logger("active_exit_check")
 
@@ -193,6 +194,21 @@ def main():
             )
             pnl_pct_net = pnl_pct_frac * 100
 
+            reached_target = (max(pos["highest_price"] or entry, current_price) >= tp
+                              if direction == "LONG" else
+                              min(pos["lowest_price"] or entry, current_price) <= tp)
+            if (time_stop_due(pos["entry_date"], cfg.get("time_stop_trading_days", 7))
+                    and not reached_target):
+                initial_sl = initial_stop(entry, atr_entry or atr, direction, pos_mult["sl"])
+                exit_price = protected_time_stop_price(current_price, initial_sl, direction)
+                pnl_eur, pnl_pct_frac = realized_pnl_from_effective_entry(
+                    entry, exit_price, pos["position_size"], direction
+                )
+                _close_position(con, pos, exit_price, pnl_eur,
+                                pnl_pct_frac * 100, "TIME_STOP")
+                con.commit()
+                continue
+
             print(f"\n  [{pos['name']}] {ticker} | P&L: {pnl_pct_net:+.1f}% | "
                   f"Tech: {tech_status} | ATR-P&L: {pnl_atr:+.1f}x", flush=True)
 
@@ -262,32 +278,7 @@ def main():
                 )
                 continue
 
-            # --- AKTION 2: Profit-Sicherung bei +profit_lock_atr ATR ---
-            # FIX 09.08.: profit_lock aus pos_mult (asset-type-spezifisch, Exit-Matrix)
-            profit_lock_threshold = pos_mult["profit_lock_atr"]
-            if pnl_atr >= profit_lock_threshold:
-                if direction == "LONG":
-                    protected_tp = entry + (pnl_atr * 0.5 * atr)
-                    new_sl = max(sl, protected_tp)
-                else:
-                    protected_tp = entry - (pnl_atr * 0.5 * atr)
-                    new_sl = min(sl, protected_tp)
-
-                if (direction == "LONG" and new_sl > sl) or \
-                   (direction == "SHORT" and new_sl < sl):
-                    con.execute(
-                        "UPDATE positions SET stop_loss=?, trailing_sl=? WHERE id=?",
-                        (round(new_sl, 2), round(new_sl, 2), pos["id"])
-                    )
-                    print(f"    🔒 Profit gesichert: SL → {new_sl:.2f} "
-                          f"(+{pnl_atr:.1f}x ATR im Plus)", flush=True)
-                    actions.append(
-                        f"🔒 <b>Profit gesichert: {pos['name']}</b>\n"
-                        f"Ticker: {ticker} | +{pnl_pct_net:.1f}% (+{pnl_atr:.1f}x ATR)\n"
-                        f"Neuer SL: {new_sl:.2f} (50% Gewinn gesichert)"
-                    )
-
-            # --- AKTION 3: Trailing Stop — erst aktiv ab +profit_lock_atr ATR im Plus ---
+            # --- Peak-Chandelier: erst aktiv ab +profit_lock_atr ATR im Plus ---
             # Problem (15.07.): 75% SL_HIT, 0% TP_HIT — das Trailing triggert
             # bei jedem normalen Pullback. Abhilfe: Trailing erst aktivieren
             # wenn der Trade mindestens +Nx ATR im Plus ist (profit_lock_atr).
@@ -307,26 +298,32 @@ def main():
                 profit_lock_threshold = pos_mult["profit_lock_atr"]
                 if pnl_atr >= profit_lock_threshold:
                     if direction == "LONG":
-                        ideal_sl      = current_price - (pos_mult["sl"] * atr)
+                        ideal_sl, peak, _armed = peak_chandelier_stop(
+                            sl, current_price, pos["highest_price"], entry, atr,
+                            direction, profit_lock_threshold, pos_mult["chandelier_mult"]
+                        )
                         next_sl_level = sl + (trailing_step * atr)
-                        if ideal_sl > next_sl_level and ideal_sl > sl:
+                        if ideal_sl > next_sl_level:
                             con.execute(
                                 "UPDATE positions SET stop_loss=?, trailing_sl=?, "
                                 "highest_price=? WHERE id=?",
                                 (round(ideal_sl, 2), round(ideal_sl, 2),
-                                 round(current_price, 2), pos["id"])
+                                 round(peak, 2), pos["id"])
                             )
                             print(f"    📈 Trailing SL → {ideal_sl:.2f} "
                                   f"(Preis: {current_price:.2f})", flush=True)
                     else:  # SHORT
-                        ideal_sl      = current_price + (pos_mult["sl"] * atr)
+                        ideal_sl, trough, _armed = peak_chandelier_stop(
+                            sl, current_price, pos["lowest_price"], entry, atr,
+                            direction, profit_lock_threshold, pos_mult["chandelier_mult"]
+                        )
                         next_sl_level = sl - (trailing_step * atr)
-                        if ideal_sl < next_sl_level and ideal_sl < sl:
+                        if ideal_sl < next_sl_level:
                             con.execute(
                                 "UPDATE positions SET stop_loss=?, trailing_sl=?, "
                                 "lowest_price=? WHERE id=?",
                                 (round(ideal_sl, 2), round(ideal_sl, 2),
-                                 round(current_price, 2), pos["id"])
+                                 round(trough, 2), pos["id"])
                             )
                             print(f"    📉 Trailing SL → {ideal_sl:.2f} "
                                   f"(Preis: {current_price:.2f})", flush=True)
@@ -334,10 +331,10 @@ def main():
             # --- SL/TP Hit Check ---
             if direction == "LONG":
                 hit_sl = current_price <= sl
-                hit_tp = current_price >= tp
+                hit_tp = False  # TP ist Backup/Ergebnisziel, Chandelier primär
             else:
                 hit_sl = current_price >= sl
-                hit_tp = current_price <= tp
+                hit_tp = False  # TP ist Backup/Ergebnisziel, Chandelier primär
 
             if hit_sl or hit_tp:
                 reason = "TARGET_HIT" if hit_tp else "SL_HIT"

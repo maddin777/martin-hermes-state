@@ -11,7 +11,7 @@ h
 
 Wismar liegt in [Mecklenburg-Vorpommern](https://www.wassertemperatur.org/deutschland/mecklenburg-vorpommern/) an der gleichnamigen Bucht. Diese ist durch die vorgelagerte Insel Poel geschützt. Das Stadtbild von Wismar ist durch viele gotische Baudenkmäler geprägt, die aus dem Spätmittelalter stammen. Die Stadt war schon früh ein Mitglied im Handelsbund der Hanse und gehörte lange zu [Schweden](https://www.wassertemperatur.org/schweden/). Im Jahr 2002 wurde die Altstadt von Wismar in die UNESCO-Welterbeliste aufgenommen. Durch ihre Lage an der Ostsee und durch ihr ausgezeichnetes historisches Stadtbild ist die Stadt ein sehr beliebtes Touristenziel.
 
-## Aktuelle Wassertemperatur in Wismar: 19 °C
+## Aktuelle Wassertemperatur in Wismar: 18 °C
 
 ## Durchschnittliche Wassertemperaturen in Wismar im Jahresverlauf:
 
@@ -90,18 +90,6 @@ Monate mit den durchschn. **niedrigsten** (min.) Wassertemperaturen:
 Nachfolgend finden Sie Infos zum aktuellen Wetter sowie eine Übersicht über die wichtigsten Klimadaten für Wismar an der Ostsee.
 
 ### Wetter in Wismar:
-
-Wismar
-
-**11°**
-
-Klarer Himmel
-
-95% Luftfeuchtigkeit
-
-Wind: 0m/s OSO
-
-MAX C 11 • MIN C 11
 
 ### Klimatabelle Wismar:
 

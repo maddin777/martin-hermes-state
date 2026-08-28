@@ -38,6 +38,7 @@ import env_loader  # noqa: F401  (side-effect: laedt .env)
 import yfinance as yf
 from config import db_connect, STRATEGY_CONFIG_PATH, get_exit_config
 from utils import get_logger, realized_pnl_from_effective_entry
+from exit_rules import peak_chandelier_stop
 
 log = get_logger("crabel_shadow_eval")
 
@@ -91,12 +92,14 @@ def simulate_forward(df, entry, sl, tp, atr, direction, asset_type, cfg, regime=
     trail_step  = ec["step"]
     sl_mult     = ec["sl"]
     profit_lock = ec["profit_lock_atr"]
+    chandelier_mult = ec["chandelier_mult"]
 
     highs  = _col(df, "High")
     lows   = _col(df, "Low")
     closes = _col(df, "Close")
 
     cur_sl = sl
+    peak = entry
     for i in range(len(df)):
         hi, lo, cl = float(highs.iloc[i]), float(lows.iloc[i]), float(closes.iloc[i])
         day = i + 1
@@ -105,29 +108,20 @@ def simulate_forward(df, entry, sl, tp, atr, direction, asset_type, cfg, regime=
         if direction == "LONG":
             if lo <= cur_sl:
                 return "SL_HIT", cur_sl, day
-            if hi >= tp:
-                return "TP_HIT", tp, day
+
         else:
             if hi >= cur_sl:
                 return "SL_HIT", cur_sl, day
-            if lo <= tp:
-                return "TP_HIT", tp, day
+
 
         # 2. SL-Nachführung auf Close-Basis (wie active_exit_check, das EOD läuft)
-        pnl_atr = (cl - entry) / atr if direction == "LONG" else (entry - cl) / atr
-        if pnl_atr >= profit_lock:
-            if direction == "LONG":
-                # AKTION 2: Profit-Lock
-                cur_sl = max(cur_sl, entry + (pnl_atr * 0.5 * atr))
-                # AKTION 3: Trailing
-                ideal = cl - (sl_mult * atr)
-                if ideal > cur_sl + (trail_step * atr):
-                    cur_sl = ideal
-            else:
-                cur_sl = min(cur_sl, entry - (pnl_atr * 0.5 * atr))
-                ideal = cl + (sl_mult * atr)
-                if ideal < cur_sl - (trail_step * atr):
-                    cur_sl = ideal
+        favorable = hi if direction == "LONG" else lo
+        cur_sl, peak, _armed = peak_chandelier_stop(
+            cur_sl, favorable, peak, entry, atr, direction,
+            profit_lock, chandelier_mult
+        )
+        if day >= 7:
+            return "TIME_STOP", cl, day
 
     return "TIMEOUT", float(closes.iloc[-1]), len(df)
 

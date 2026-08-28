@@ -146,23 +146,24 @@ def get_asset_multipliers(asset_type: str = None, sector: str = None) -> dict:
 # unerreichbar → 0% TP), hoch genug um Intraday-Noise-Trails (0.5) zu vermeiden.
 # Eine volle Tages-ATR an Raum gilt als Swing-verträglich (glm-5.2-Review 09.08).
 _EXIT_CONFIG_MATRIX = {
-    ("STANDARD", "bull"):     {"sl": 1.5, "tp": 3.5, "partial_atr": 1.5, "profit_lock_atr": 1.0, "step": 0.75},
-    ("STANDARD", "sideways"): {"sl": 1.5, "tp": 2.5, "partial_atr": 1.5, "profit_lock_atr": 1.0, "step": 0.75},
-    ("STANDARD", "bear"):     {"sl": 2.0, "tp": 3.0, "partial_atr": 1.5, "profit_lock_atr": 1.0, "step": 0.75},
-    ("TECH", "bull"):         {"sl": 2.0, "tp": 3.5, "partial_atr": 2.0, "profit_lock_atr": 1.0, "step": 0.75},
-    ("TECH", "sideways"):     {"sl": 2.0, "tp": 3.0, "partial_atr": 2.0, "profit_lock_atr": 1.0, "step": 0.75},
-    ("TECH", "bear"):         {"sl": 2.5, "tp": 3.0, "partial_atr": 2.0, "profit_lock_atr": 1.0, "step": 0.75},
-    ("DEFENSIVE", "bull"):    {"sl": 1.0, "tp": 2.0, "partial_atr": 1.0, "profit_lock_atr": 1.0, "step": 0.3},
-    ("DEFENSIVE", "sideways"):{"sl": 1.0, "tp": 2.0, "partial_atr": 1.0, "profit_lock_atr": 1.0, "step": 0.3},
-    ("DEFENSIVE", "bear"):    {"sl": 1.5, "tp": 2.0, "partial_atr": 1.0, "profit_lock_atr": 1.0, "step": 0.3},
+    ("STANDARD", "bull"):     {"sl": 1.5, "tp": 4.5, "partial_atr": 1.5, "profit_lock_atr": 1.0, "chandelier_mult": 2.0, "step": 0.75},
+    ("STANDARD", "sideways"): {"sl": 1.5, "tp": 4.5, "partial_atr": 1.5, "profit_lock_atr": 1.0, "chandelier_mult": 2.0, "step": 0.75},
+    ("STANDARD", "bear"):     {"sl": 2.0, "tp": 6.0, "partial_atr": 1.5, "profit_lock_atr": 1.0, "chandelier_mult": 2.0, "step": 0.75},
+    ("TECH", "bull"):         {"sl": 2.0, "tp": 6.0, "partial_atr": 2.0, "profit_lock_atr": 1.0, "chandelier_mult": 2.0, "step": 0.75},
+    ("TECH", "sideways"):     {"sl": 2.0, "tp": 6.0, "partial_atr": 2.0, "profit_lock_atr": 1.0, "chandelier_mult": 2.0, "step": 0.75},
+    ("TECH", "bear"):         {"sl": 2.5, "tp": 7.5, "partial_atr": 2.0, "profit_lock_atr": 1.0, "chandelier_mult": 2.0, "step": 0.75},
+    ("DEFENSIVE", "bull"):    {"sl": 1.0, "tp": 3.0, "partial_atr": 1.0, "profit_lock_atr": 1.0, "chandelier_mult": 2.0, "step": 0.3},
+    ("DEFENSIVE", "sideways"):{"sl": 1.0, "tp": 3.0, "partial_atr": 1.0, "profit_lock_atr": 1.0, "chandelier_mult": 2.0, "step": 0.3},
+    ("DEFENSIVE", "bear"):    {"sl": 1.5, "tp": 4.5, "partial_atr": 1.0, "profit_lock_atr": 1.0, "chandelier_mult": 2.0, "step": 0.3},
 }
-DEFAULT_EXIT_CONFIG = {"sl": 1.5, "tp": 2.5, "partial_atr": 1.5, "profit_lock_atr": 1.0, "step": 0.75}
+DEFAULT_EXIT_CONFIG = {"sl": 1.5, "tp": 4.5, "partial_atr": 1.5, "profit_lock_atr": 1.0, "chandelier_mult": 2.0, "step": 0.75}
 
 
 def get_exit_config(asset_type=None, sector=None, regime="sideways"):
     """Single Source of Truth für Exit-Parameter.
 
-    Liefert {sl, tp, partial_atr, profit_lock_atr, step} deterministisch aus der
+    Liefert {sl, tp, partial_atr, profit_lock_atr, chandelier_mult, step}
+    deterministisch aus der
     Exit-Matrix für (asset_type, regime). Konsolidiert die drei vorherigen
     Config-Quellen. Fallback auf DEFAULT_EXIT_CONFIG bei unbekannter Kombi.
     """

@@ -20,10 +20,11 @@ import requests
 import yfinance as yf
 import pandas_ta as ta
 from datetime import datetime, timedelta
-from utils import passes_liquidity_filter, apply_slippage, COMMISSION_EUR, get_price_data_cached, prefetch_prices, realized_pnl_from_effective_entry, get_crabel_patterns, get_donchian_breakout
+from utils import passes_liquidity_filter, apply_slippage, COMMISSION_EUR, get_price_data_cached, prefetch_prices, realized_pnl_from_effective_entry, get_crabel_patterns, get_donchian_breakout, get_technical_score
 from utils import get_logger, price_to_eur, position_size_in_shares, open_positions_market_value_eur, calc_pnl_with_costs
 log = get_logger("signal_manager")
 from config import DB_PATH, SIGNALS_VALIDATED_PATH, STRATEGY_CONFIG_PATH, MACRO_SIGNAL_PATH, db_connect, get_asset_type, get_exit_config
+from exit_rules import initial_stop, peak_chandelier_stop, protected_time_stop_price, time_stop_due
 CONFIG_PATH = STRATEGY_CONFIG_PATH
 
 
@@ -44,7 +45,7 @@ DEFAULT_CONFIG = {
     "conviction_high":        0.80,
     "conviction_low":         0.60,
     "atr_sl_multiplier":      1.5,
-    "atr_tp_multiplier":      2.5,
+    "atr_tp_multiplier":      4.5,
     "min_confidence":         0.60,
     "min_confidence_short":   0.65,   # BUGFIX: war 0.5 im Query, Default jetzt konsistent
     "min_conviction":         0.60,
@@ -53,7 +54,8 @@ DEFAULT_CONFIG = {
     "partial_tp_enabled":     True,
     "partial_tp_atr":         1.5,
     "partial_tp_pct":         0.50,
-    "profit_lock_atr":        0.5,
+    "profit_lock_atr":        1.0,
+    "time_stop_trading_days": 7,
     "trailing_step_atr":      0.75,
     "slippage_pct":           0.001,
     "commission_eur":         1.0,
@@ -551,7 +553,8 @@ def _derive_signal_source(channels):
     Kanal-Präfixe aus der Pipeline:
       - "rss:..."  → RSS-Feed (faz, bloomberg, seeking alpha ...)
       - "twitter:" / "x_search" → X/Twitter (Grok x_search, twitterapi.io)
-      - "screener" / "screener:" → Screener
+      - "screener_nasdaq" → Nasdaq-/US-Growth-Screener
+      - "screener" / "screener:" → bestehender Screener
       - ohne Präfix → YouTube-Kanal (Transkript-Extraktion)
     Gewichtet: präferiert die "stärkste" Komponente, wenn mehrere Kanäle.
     """
@@ -564,6 +567,8 @@ def _derive_signal_source(channels):
             srcs.add("rss")
         elif "twitter" in cl or "x_search" in cl or cl.startswith("x:"):
             srcs.add("x_social")
+        elif "screener_nasdaq" in cl:
+            srcs.add("screener_nasdaq")
         elif "screener" in cl:
             srcs.add("screener")
         elif "youtube" in cl or "/@" in cl or "@" in cl:
@@ -571,7 +576,7 @@ def _derive_signal_source(channels):
         else:
             srcs.add("youtube")  # ohne Präfix = YouTube-Kanal
     # Präferenz: screener > x_social > rss > youtube (häufigste nennbare Quelle)
-    for pref in ("screener", "x_social", "rss", "youtube"):
+    for pref in ("screener_nasdaq", "screener", "x_social", "rss", "youtube"):
         if pref in srcs:
             return pref
     return "youtube"
@@ -722,11 +727,13 @@ def check_open_positions(con, cfg):
         if direction == "LONG":
             pnl_pct = (current_price - entry) / entry
             hit_sl  = current_price <= sl
-            hit_tp  = current_price >= tp
+            reached_target = max(pos["highest_price"] or entry, current_price) >= tp
+            hit_tp  = False  # Ergebnisziel/Backup; Gewinn-Exit läuft über Trail
         else:  # SHORT
             pnl_pct = (entry - current_price) / entry
             hit_sl  = current_price >= sl
-            hit_tp  = current_price <= tp
+            reached_target = min(pos["lowest_price"] or entry, current_price) <= tp
+            hit_tp  = False  # Ergebnisziel/Backup; Gewinn-Exit läuft über Trail
 
         pnl_eur = pnl_pct * original_position_size - COMMISSION_EUR
 
@@ -743,6 +750,31 @@ def check_open_positions(con, cfg):
         # (Legacy get_asset_multipliers hatte trailing_step=0.5 für STANDARD).
         pos_asset_type = pos["asset_type"] if "asset_type" in pos.keys() else "STANDARD"
         pos_mult = get_exit_config(asset_type=pos_asset_type, regime=_regime)
+
+        if time_stop_due(pos["entry_date"], cfg.get("time_stop_trading_days", 7)) \
+                and not reached_target:
+            initial_sl = initial_stop(entry, pos["atr_at_entry"] or atr,
+                                      direction, pos_mult["sl"])
+            exit_price = protected_time_stop_price(current_price, initial_sl, direction)
+            pnl_eur, pnl_pct = realized_pnl_from_effective_entry(
+                entry, exit_price, original_position_size, direction
+            )
+            cash += original_position_size + pnl_eur
+            con.execute("""
+                UPDATE positions SET status='closed', exit_price=?, exit_date=?,
+                    exit_reason='TIME_STOP', pnl_eur=?, pnl_pct=? WHERE id=?
+            """, (exit_price, datetime.now().isoformat(), round(pnl_eur, 2),
+                  round(pnl_pct * 100, 2), pos["id"]))
+            con.execute(
+                "UPDATE portfolio SET cash=?, total_value=?, updated_at=? WHERE id=1",
+                (round(cash, 2), round(cash + sum(
+                    r["position_size"] for r in con.execute(
+                        "SELECT position_size FROM positions WHERE status='open'"
+                    ).fetchall()
+                ), 2), datetime.now().isoformat())
+            )
+            con.commit()
+            continue
 
         # #5: Gap-Schutz. Wenn der Kurs im selben Tick schon SL oder TP erreicht,
         # NICHT zusätzlich den Partial-TP buchen – sonst würden Partial (50%+PnL)
@@ -821,9 +853,10 @@ def check_open_positions(con, cfg):
         profit_lock_threshold = pos_mult["profit_lock_atr"]
         if atr and not _donchian_primary and pnl_atr >= profit_lock_threshold:
             if direction == "LONG":
-                prev_high = pos["highest_price"] or entry
-                new_high  = max(prev_high, current_price)
-                new_trailing_sl = new_high - (pos_mult["sl"] * atr)
+                new_trailing_sl, new_high, _armed = peak_chandelier_stop(
+                    sl, current_price, pos["highest_price"], entry, atr, direction,
+                    profit_lock_threshold, pos_mult["chandelier_mult"]
+                )
 
                 if new_trailing_sl > sl:
                     was_breakeven = not pos["breakeven_set"] and new_trailing_sl >= entry
@@ -845,7 +878,7 @@ def check_open_positions(con, cfg):
                             f"{pos['name']} ({ticker})\n"
                             f"Trailing SL: {new_trailing_sl:.2f}"
                         )
-                elif new_high > prev_high:
+                elif new_high > (pos["highest_price"] or entry):
                     con.execute(
                         "UPDATE positions SET highest_price=? WHERE id=?",
                         (round(new_high, 2), pos["id"])
@@ -853,9 +886,10 @@ def check_open_positions(con, cfg):
                     con.commit()
 
             elif direction == "SHORT":
-                prev_low = pos["lowest_price"] or entry
-                new_low  = min(prev_low, current_price)
-                new_trailing_sl = new_low + (pos_mult["sl"] * atr)
+                new_trailing_sl, new_low, _armed = peak_chandelier_stop(
+                    sl, current_price, pos["lowest_price"], entry, atr, direction,
+                    profit_lock_threshold, pos_mult["chandelier_mult"]
+                )
 
                 if new_trailing_sl < sl:
                     con.execute(
@@ -870,7 +904,7 @@ def check_open_positions(con, cfg):
                     sl = new_trailing_sl
                     print(f"  📉 {pos['name']}: Trailing SL → {new_trailing_sl:.2f} "
                           f"(Tief: {new_low:.2f})", flush=True)
-                elif new_low < prev_low:
+                elif new_low < (pos["lowest_price"] or entry):
                     con.execute(
                         "UPDATE positions SET lowest_price=? WHERE id=?",
                         (round(new_low, 2), pos["id"])
@@ -882,10 +916,10 @@ def check_open_positions(con, cfg):
         # Stop für LONG nur an bzw. senkt ihn für SHORT nur ab – lockert nie.
         #   ratchet: läuft ZUSÄTZLICH zum Chandelier (nur wenn Donchian enger ist)
         #   primary: Chandelier ist oben deaktiviert, Donchian ist der Trail
-        # FIX 09.08.: Donchian-Trail bekommt das profit_lock-Gate NUR im ratchet-
-        # Modus (er darf den Chandelier-Floor nicht unterlaufen). Im primary-Modus
-        # greift der Turtle-Exit direkt — er ist per Design der weite Trail.
-        if _donchian_enabled and _donchian_mode != "off":
+        # Auch Donchian-Primary darf erst ab +1R ratcheten; damit gilt der
+        # profit_lock konsistent in jedem Trail-Pfad.
+        if (_donchian_enabled and _donchian_mode != "off"
+                and pnl_atr >= profit_lock_threshold):
             donch = get_donchian_breakout(
                 ticker, exit_period=cfg.get("donchian_exit_period", 10)
             )
@@ -1233,6 +1267,8 @@ def compute_sl_tp(effective_entry: float, atr: float, asset_type: str, direction
     Kohorten-Auswertung wäre still falsch.
     """
     ec = get_exit_config(asset_type=asset_type, regime=regime)
+    if ec["tp"] / ec["sl"] < 3.0:
+        raise ValueError(f"Exit-Konfiguration {asset_type}/{regime} hat Payoff < 3:1")
     if direction == "LONG":
         sl = effective_entry - (ec["sl"] * atr)
         tp = effective_entry + (ec["tp"] * atr)
@@ -1360,6 +1396,31 @@ def get_canonical_ticker(con, ticker: str) -> str:
     if row:
         return row["target_ticker"]
     return ticker
+
+
+EXOTIC_ENTRY_SUFFIXES = (".F", ".MU", ".SG")
+
+
+def entry_gate_reason(candidate, direction, ticker, technical,
+                      liquidity_passed, canonical_ticker):
+    """Return the deterministic hard-gate reason, or ``None`` when tradable.
+
+    Momentum is the entry gate. Sentiment/conviction is deliberately absent:
+    it ranks candidates only after their direction is price-confirmed.
+    """
+    if (not technical or not liquidity_passed or
+            (ticker.endswith(EXOTIC_ENTRY_SUFFIXES) and canonical_ticker == ticker)):
+        return "liquidity-gate"
+
+    weekly_trend = technical.get("weekly_trend", "neutral")
+    tech_direction = technical.get("direction", "NEUTRAL")
+    if direction == "LONG" and not (
+            weekly_trend == "bullish" and tech_direction == "LONG"):
+        return "momentum-gate"
+    if direction == "SHORT" and not (
+            weekly_trend == "bearish" and tech_direction == "SHORT"):
+        return "momentum-gate"
+    return None
 
 
 def open_new_positions(con, cfg):
@@ -1630,6 +1691,35 @@ def open_new_positions(con, cfg):
             print(f"  ⛔ {c['name']}: SHORT nicht erlaubt bei BULLISH + BULL-Regime")
             continue
 
+        # Preis/ATR und Sektor werden vor den harten Entry-Gates benoetigt, damit
+        # auch geblockte Kandidaten vollstaendig in blocked_entries landen.
+        current_price, atr = get_current_price_and_atr(ticker)
+        if not current_price or not atr or math.isnan(current_price) or math.isnan(atr):
+            continue
+
+        ticker_sector = "Other"
+        sector_row = con.execute(
+            "SELECT sector FROM companies WHERE ticker=?", (ticker,)
+        ).fetchone()
+        if sector_row and sector_row["sector"]:
+            ticker_sector = sector_row["sector"]
+
+        canonical_ticker = get_canonical_ticker(con, ticker)
+        technical = get_technical_score(canonical_ticker)
+        liquidity_passed = passes_liquidity_filter(
+            canonical_ticker, cfg.get("min_liquidity_eur", 500000)
+        )
+        gate_reason = entry_gate_reason(
+            c, direction, ticker, technical, liquidity_passed, canonical_ticker
+        )
+        if gate_reason:
+            print(f"  {'📈' if gate_reason == 'momentum-gate' else '💧'} "
+                  f"{c['name']}: {gate_reason} → Entry geblockt", flush=True)
+            log_blocked_entry(con, c, ticker, direction, gate_reason,
+                              current_price, atr, ticker_sector,
+                              cand_conviction, None, None)
+            continue
+
         # Short-Thesis Score: min. 2 von 4 Kriterien nötig
         if direction == "SHORT":
             short_score, short_reasons = check_short_thesis(
@@ -1641,14 +1731,6 @@ def open_new_positions(con, cfg):
                 continue
             print(f"  ✅ SHORT-Thesis {short_score}/4: {', '.join(short_reasons)}", flush=True)
 
-        # Weekly Trend Filter: Don't fight the tape
-        wt = c["weekly_trend"] if "weekly_trend" in c.keys() else "neutral"
-        if wt == "bearish" and direction == "LONG":
-            print(f"  📉 {c['name']}: Weekly Trend BEARISH → LONG geblockt")
-            continue
-        if wt == "bullish" and direction == "SHORT":
-            print(f"  📈 {c['name']}: Weekly Trend BULLISH → SHORT geblockt")
-            continue
 
         # Allokations-Limit pro Richtung
         if direction == "LONG" and long_invested >= max_long:
@@ -1659,13 +1741,7 @@ def open_new_positions(con, cfg):
             continue
 
         # Sektor-Check: Blacklist + Probation
-        ticker_sector = "Other"
-        sector_row = con.execute(
-            "SELECT sector FROM companies WHERE ticker=?", (ticker,)
-        ).fetchone()
-        if sector_row and sector_row["sector"]:
-            ticker_sector = sector_row["sector"]
-        
+
         sector_ok, is_probation, sector_reason = is_sector_allowed(ticker_sector, con, cfg)
         if not sector_ok:
             print(f"  🚫 {c['name']}: {sector_reason}")
@@ -1680,10 +1756,6 @@ def open_new_positions(con, cfg):
             print(f"  🔗 {c['name']}: {corr_reason}")
             continue
 
-        # Liquiditätsfilter
-        if not passes_liquidity_filter(ticker, cfg.get("min_liquidity_eur", 500000)):
-            print(f"  💧 {c['name']}: Liquidität zu gering – überspringe")
-            continue
 
         # Earnings-Blackout
         if has_upcoming_earnings(ticker, cfg.get("earnings_blackout_days", 5)):
@@ -1736,13 +1808,6 @@ def open_new_positions(con, cfg):
             except Exception:
                 pass  # Gate-Fehler stoppen den Entry nicht
 
-        # Preis und ATR holen
-        current_price, atr = get_current_price_and_atr(ticker)
-        if not current_price or not atr:
-            continue
-
-        if math.isnan(current_price) or math.isnan(atr):
-            continue
 
         # Overnight-Gap-Filter (FIX b 09.08., glm-Review): blockt Entry wenn der
         # letzte Close weit vom Vortagesschluss entfernt ist (Earnings-/News-Gap).

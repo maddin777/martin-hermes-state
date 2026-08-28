@@ -1,6 +1,12 @@
 # Änderungshistorie — Trading Skill
 
-**Stand:** Paketen A–D + Sprints 1–7 + Bugfix-Sprint + Screener-Source + Watchlist-Performance-Fix + Rollen-Sprint R1–R4 + **Turtle-Konfluenz-Sprint** + **Phase 1+2 Fix (09.08.2026)** + **Watchlist-Cleanup-Archivierung (09.08.2026)** + **UK-Microcap-Gate (14.08.2026)** + **DQ-Isolation + Alarm-Crons (16.08.2026)** + **Drawdown-15-25-Zone auf 6 Pos (17.08.2026)** + **DQ-.L-Aufräumung im Cleanup + täglicher Cleanup (19.08.2026)** + **DQ-Deaktivierungs-Verifikation + Cleanup 1c (24.08.2026)** + **DQ-Root-Clause-Fix: keine Reaktivierung gedroppter .L + Dry-Run read-only (26.08.2026)**
+**Stand:** Paketen A–D + Sprints 1–7 + Bugfix-Sprint + Screener-Source + Watchlist-Performance-Fix + Rollen-Sprint R1–R4 + **Turtle-Konfluenz-Sprint** + **Phase 1+2 Fix (09.08.2026)** + **Watchlist-Cleanup-Archivierung (09.08.2026)** + **UK-Microcap-Gate (14.08.2026)** + **DQ-Isolation + Alarm-Crons (16.08.2026)** + **Drawdown-15-25-Zone auf 6 Pos (17.08.2026)** + **DQ-.L-Aufräumung im Cleanup + täglicher Cleanup (19.08.2026)** + **DQ-Deaktivierungs-Verifikation + Cleanup 1c (24.08.2026)** + **DQ-Root-Clause-Fix: keine Reaktivierung gedroppter .L + Dry-Run read-only (26.08.2026)** + **Selection Momentum-/Liquiditäts-Gate (27.08.2026)**
+
+## 27.08.2026 — Selection-Rebuild: Momentum ist Gate, Sentiment ist Stärke
+
+Long-Entries benötigen jetzt zwingend `weekly_trend='bullish'` UND `tech_direction='LONG'`; Shorts analog `bearish` UND `SHORT`. News-Sentiment (`conviction_score` bzw. `conviction_score_bear`) bleibt erhalten und sortiert bzw. gewichtet ausschließlich Kandidaten, die dieses Preis-Momentum-Gate passiert haben. Es kann keinen Entry allein auslösen.
+
+`get_technical_score()` verlangt für alle Listings mindestens 200 Bars und mindestens 500.000 EUR durchschnittlichen 20-Tage-Turnover. Nicht kanonisch gemappte Nebenbörsen-Ticker mit `.F`, `.MU` oder `.SG` werden zusätzlich hart abgewiesen; bestehende `canonical_tickers`-Mappings bilden die Whitelist. Momentum- und Liquiditätsblockaden werden als `momentum-gate` bzw. `liquidity-gate` in `blocked_entries` protokolliert. Die Top-Watchlist enthält nur technisch bestätigte LONG-Kandidaten und sortiert diese danach per News-Conviction.
 
 ## 26.08.2026 — DQ-Root-Clause-Fix: keine Reaktivierung + Cleanup-Dry-Run read-only
 
@@ -220,6 +226,10 @@ Review des Trading-Skills ergab: 77 geschlossene Trades netto -1.230€, 82% SL_
 
 ### Erwartung
 Exit-Quote von 0% TP auf 20-30% heben. Weniger Rauschen in der Watchlist. Wenn nach 4 Wochen keine Verbesserung → Phase 3 (radikaler Umbau, siehe Cron `phase-3-review-trading` am 06.09.).
+
+## 27.08.2026 — Exit-Asymmetrie: 1R/3R, Zeit-Stopp, Peak-Chandelier
+
+Die Exit-Matrix erzwingt nun in allen neun Asset-/Regime-Kombinationen mindestens 3:1 Ziel/Risiko. `compute_sl_tp()` validiert dies zusätzlich fail-closed. Ein gemeinsames, reines Modul `exit_rules.py` stellt den 7-Handelstage-Zeit-Stopp, den initialen Risikofloor und das monotone Peak-/Trough-Chandelier bereit. `signal_manager.py`, `active_exit_check.py` und `crabel_shadow_eval.py` verwenden diese Regeln zusammen mit `get_exit_config()`; der Trail startet erst ab +1 ATR (`profit_lock_atr=1.0`). Der harte TP-Deckel wurde aus den laufenden Exit-Pfaden entfernt: TP bleibt Ergebnisziel/Backup, der Gewinn-Exit läuft primär über Chandelier beziehungsweise Donchian-Primary. Der Weekly-Drift-Check prüft jetzt zusätzlich `profit_lock_atr=1.0` in JSON, DEFAULT_CONFIG, DEFAULT_EXIT_CONFIG und der vollständigen Matrix.
 
 ## 09.08.2026 — glm-5.2-Review: Exit-Matrix + Konsolidierung + Winrate-Messung
 
@@ -808,3 +818,121 @@ Twitter/X-Daten flossen ausschließlich über `twitterapi.io` (Drittanbieter, li
 |---|---|
 | `scripts/social_scanner.py` | +170 Zeilen: 5 neue Funktionen, `main()` priorisiert Grok, Telegram-Alert bei Fallback |
 | `thematic/config/thematic_config.json` | `beneficiary_a: grok-lite` → `deepseek/deepseek-v4-flash-0731` |
+
+---
+
+## 2026-08-27 — 6-Monats-Review: profit_lock-Drift, Guardrail, Backtest-Befund
+
+### Problem (Kontext: Bot 6 Monate ohne Profit)
+Gesamt-P&L −1.165 € auf 81 geschlossene Trades (Start 10k). Win-Rate 40,7 %,
+Payoff 0,91 (<1 = Killer), EV −14,4 €/Trade. 66× SL_HIT vs 9× TARGET_HIT.
+Regime-Label durchgehend "bull" obwohl Juni/Juli real Chop waren. Benachteiligung durch
+Drawdown-Brake seit 08.07. (≈79 % Cash, August nur 3 Trades). Alpha vs SPY YTD: −20 pp.
+
+### Fix 1 — profit_lock-Drift (Config/Anzeige, kein Execution-Pfad mehr)
+Die **Exit-Execution** war bereits konsolidiert (alle 3 Pfade lesen `get_exit_config`,
+Matrix = 1.0 — verifiziert per grep: KEINE echten `get_asset_multipliers(`-Aufrufe mehr).
+Aber `profit_lock_atr` lebte **verwaist** als `0.5` in `strategy_config.json` UND in
+`DEFAULT_CONFIG` (signal_manager Zeile 56) → `backtest_gate.py` und Dashboard zeigten "0.5x".
+**Fix:** beide auf `1.0` angeglichen (SSOT = Matrix).
+
+### Fix 2 — operating_mode Guardrail (Punkt 1 des Reviews)
+Bot hat **keinen Echtgeld-Pfad** (kein Broker-Modul, schreibt nur in `positions` = Paper).
+Guardrail explizit gemacht: `strategy_config.json` → `"operating_mode": "paper_experiment"`.
+Regelbasierte Trend-Edge-Systeme (Amumbo-SMA200, FX-Paper-Bot) laufen bereits parallel.
+
+### Backtest-Befund (Variante B & C, `scripts/backtest_variants.py`)
+Neues Script: simuliert alternative Exit-/Signal-Logik auf den **realen 81 gehandelten
+Positionen** (kein Lookahead — ATR/R am Entry-Tag, OHLC danach).
+- **Variante C** (1R/3R + 7d-Zeitstopp + Chandelier 2×ATR vom Peak ab +1R):
+  Auf den 46 sauberen Trades (Preisdaten vorhanden) **Verbesserung −2.802 € → −2.088 €**
+  (+700 €), Payoff 3.07 (avg_win 3.0R vs avg_loss −1.0R). ABER WR kollabiert auf 7 %:
+  **nur 3/46 erreichen +3R, 43× SL** → der Exit ist NICHT das Kernproblem.
+- **Variante B** (Crowd-Veto via `mention_count ≥ 5`): hilft nicht — crowded −482 € vs
+  quiet −699 €, beide negativ. Crowd-Mention ist nicht der Differenzierer.
+- **Caveat:** 36/82 Trades `NO_DATA` (delisted/Exoten-Suffixe), die fehlenden waren
+  überproportional Gewinner (+1.620 € real) → C-Ergebnis ist **konservativ**.
+  `mention_count` ist AKTUELL, nicht Point-in-Time.
+- **Kernaussage:** Weder Exit-Fix noch Crowd-Filter retten dieses Signal. Die Selection
+  (LLM-extrahierter Influencer-Sentiment) ist negativ-EV unabhängig vom Exit.
+  → Selection-Neuaufbau + ggf. C-Exit-Übernahme laufen als Finn-loop-Task.
+
+### Geänderte Dateien
+| Datei | Änderung |
+|---|---|
+| `data/strategy_config.json` | `profit_lock_atr` 0.5→1.0; `+operating_mode: paper_experiment` |
+| `scripts/signal_manager.py` | `DEFAULT_CONFIG.profit_lock_atr` 0.5→1.0 |
+| `scripts/backtest_variants.py` | NEU — Varianten-Backtest auf realen Trades |
+
+---
+
+## 2026-08-27 — Wöchentlicher Strategie-Review-Cron
+
+**Neu:** `scripts/weekly_strategy_review.py` — wöchentlicher Report der
+Post-Umbau-Kennzahlen (SL_HIT-Quote, Payoff, Win-Rate, EV/Trade,
+Momentum-Gate-Blockaden), Vergleich "vor/nach dem 27.08.-Umbau". Sendet
+Telegram-Report in `Ch_hermster_trade` (HTTP 200 verifiziert).
+
+- **Hermes-Cron:** `weekly-strategy-review` (b907fdfdba5c), So 09:00, no_agent
+- **Wrapper:** `~/.hermes/scripts/weekly_strategy_review.sh` (chdir + PYTHONPATH + .env)
+- **Zielmarken:** SL_Quote < 60 % | Payoff > 1.5 | EV > 0
+- **Datenquelle:** `positions`-Tabelle live (eval_metrics.avg_r_multiple ist 0.0/unbrauchbar → nicht nutzen)
+
+**Pitfall erneut:** Telegram `parse_mode=HTML` scheitert an nackten `<`/`>`
+(z.B. "SL_Quote < 60%") — "Unsupported start tag". Fix: HTML-escape der rohen
+Daten + Formulierung "unter/über" statt `<`/`>`. Dasselbe Muster wie die
+HTML-Telegram-Nachrichten in nightly_eval.
+
+---
+
+## 2026-08-27 — Nasdaq-Momentum-Screener (Task 3, Finn-loop)
+
+**Neu:** `screener_source.py` scannt jetzt zusätzlich zum Alt-Universum (DAX/MDAX/SP100)
+ein breites **US-/Nasdaq-Universum** (Martins Scope: Nasdaq-100 + ~500 liquide
+US-Growth/Mid-Caps). `data/us_universe.csv` (600 Zeilen).
+
+**Architektur (2-stufig, review-approved):**
+- `_build_universe()` liefert `(ticker, channel)`-Tupel; Alt → `channel='screener'`,
+  Nasdaq → `channel='screener_nasdaq'` (eigene Quelle für getrenntes P&L).
+- `stage1_prefilter()` — billiger Preis/Volumen-Prefilter OHNE `yf.info`:
+  Preis ≥ 2 $, 20-Tage-Ø-Turnover ≥ 500k EUR, Budget `MAX_STAGE2_CANDIDATES=400`
+  (passt exakt zu `_PRICE_CACHE_MAX=400`).
+- `select_candidates()` teilt das Regime-Limit über beide Quellen.
+- Konstanten: `MIN_STAGE1_PRICE_USD=2.0`, `MIN_STAGE1_TURNOVER_EUR=500_000`,
+  `LEGACY_STAGE2_MAX=250`.
+
+**Verifikation (Orchestrator):** dry-run Universum 601 (Alt=250, Nasdaq=351),
+Stage 1→2: 351→150, 146 long/1 short → 11 emittiert. Echter Lauf → `screener_nasdaq`
+in `source_registry` (active) + 4 Nasdaq-Mentions. FX-Check: `price_to_eur()` wandelt
+US-Ticker korrekt USD→EUR (kein Bug). Keine Regression der Alt-Quelle.
+
+**Cron:** läuft automatisch in der Nacht-Pipeline (`trading_pipeline.py` Schritt
+"screener_source"). Weekly-Review-Cron gewichtet `screener_nasdaq` separat.
+
+**Finn-loop:** Task `screener-nasdaq.md`, review-approved.
+
+---
+
+## 2026-08-27 — KI-Analyse Härtung (Task 4, Finn-loop)
+
+**Problem:** Pipeline 3,5-4,5h (Kollision mit nightly_eval 05:00 / crabel 06:30). Root-Cause:
+`signal_extractor.py` → 20 JSON-Fehler-Kaskaden (3-stufige Fallback-Kaskade je Call) + hartes
+`timeout=60` + serielle Chunk-Verarbeitung. ~16 min/Video.
+
+**Fix (review-approved):**
+- `_try_parse()` gehärtet — Fenced-Code-Block-Erkennung (```json), trailing-comma-Reparatur,
+  Steuerzeichen-Säuberung, JSON-Decoder-Locator (raw_decode über `{`/`[`-Starts). Keine
+  Apostrophen-Reparatur (Macy's/L'Oréal intakt). 5/5 Problem-Muster geparst.
+- `REQUEST_TIMEOUT` 60→120s (env `REQUEST_TIMEOUT`, Default 120, Range 30-300).
+- `_run_scout_chunks()`: Scout-Chunks parallel via `ThreadPoolExecutor(max_workers=min(3,total))`,
+  `pool.map` = deterministische Reihenfolge; Analyst bleibt seriell nach Merge.
+- `_call()` retryt 429/5xx mit Retry-After-Respekt + exp. Backoff, max 3 (REQUEST_MAX_ATTEMPTS≤5).
+- WAL-Checkpoint in trading_pipeline.py (DB-Konsistenz bei parallelen Writes).
+
+**Verifikation:** 9/9 Tests, 2.56s. Benchmark: 97k-Zeichen/7-Chunk-Video = 504s; typischer Tag
+(~28 Chunks) von 3,5h auf <1h. Output-Struktur unverändert (companies/market_outlook/key_themes).
+
+**Caveat:** AC-7 (DONE vor 05:00) wird beim nächsten echten Pipeline-Lauf (Mo-Fr 03:30) verifiziert —
+code-seitig erfüllt, wartet auf Live-Beweis. Erklaerung.md jetzt ergänzt (Reviewer-Should-Fix #1).
+
+**Finn-loop:** Task `pipeline-ki-analyse-haertung.md`, review-approved.

@@ -1,29 +1,6 @@
 {
-  "updated_at": "2026-08-27T03:00:02.940449",
+  "updated_at": "2026-08-28T02:59:32.002415",
   "platforms": {
-    "telegram": [],
-    "discord": [],
-    "whatsapp": [],
-    "slack": [],
-    "signal": [],
-    "mattermost": [],
-    "matrix": [],
-    "homeassistant": [],
-    "email": [],
-    "sms": [],
-    "dingtalk": [],
-    "msgraph_webhook": [],
-    "feishu": [],
-    "wecom": [],
-    "wecom_callback": [],
-    "weixin": [],
-    "bluebubbles": [],
-    "qqbot": [],
-    "yuanbao": [],
-    "google_chat": [],
-    "irc": [],
-    "line": [],
-    "simplex": [],
-    "teams": []
+    "telegram": []
   }
 }

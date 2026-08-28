@@ -179,8 +179,31 @@ Jeder Slot speichert seinen Report getrennt:
 
 Alle Reports header-taggen mit `[SLOT A/B/C]` bzw. `[DIGEST]`.
 
-Top 5 jedes Scans gehen als Telegram-Nachricht. Wenn nichts über der Schwelle
-ist: ehrlich sagen.
+### Multi-Agent-Bot-Roster (Architektur seit 24.08.2026)
+
+Die MicroSaaS-Instanz läuft auf Martins Bot-Roster, NICHT mehr als
+Einzel-Delivery-Chaos:
+
+| Job | Modell (Bot) | deliver | Zweck |
+|-----|--------------|---------|-------|
+| scan A/B/C/D | `openai/gpt-5.6-luna` (researcher) | `local` | Nur Report + Cluster-Store füllen |
+| last30days-weekly | `openai/gpt-5.6-luna` (researcher) | `local` | Trend-Kontext, speist Digest |
+| **microsaas-scan-digest** | `openai/gpt-5.6-luna` (researcher) | `origin` | **EINZIGER Lieferpunkt (So 18:00)** |
+
+- **Scans liefern NIE direkt.** `deliver=local` — nur Reports + Store-UPDATE.
+- **Der Digest ist der einzige wöchentliche Lieferpunkt** — gefiltert auf
+  NUR implementierbare SaaS-Ideen (Implementierbarkeits-Filter in
+  `scan_digest.txt`).
+- **last30days-trading-weekly bleibt separat** (Trading-Kontext, kein SAAS).
+
+Implementierbarkeits-Filter (scan_digest.txt, hart): Schmerz>=3 UND
+Machbarkeit>=4 UND Wettbewerbs-Gate bestanden (benannter Keil, kein fehlender
+WETTBEWERB-Block) UND solo <3 Monate baubar UND freie Datenquelle UND
+plausible Zahlungsbereitschaft. Nur wer ALLES besteht wird geliefert; sonst
+ehrlich "diese Woche nichts".
+
+Die Goal-Dateien-AUSGABE-Anweisungen setzen "KEINE Telegram-Nachricht" für
+Scans — die Scans enden im Report, der Digest liefert.
 
 ---
 

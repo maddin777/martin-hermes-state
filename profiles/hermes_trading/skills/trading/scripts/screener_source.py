@@ -29,6 +29,7 @@ Aufruf:
 import sys
 import os
 import json
+import csv
 from datetime import datetime
 
 # ── Pfad-Setup wie in den anderen Pipeline-Schritten ───────────────────────────
@@ -52,7 +53,7 @@ _logging.getLogger("yfinance").setLevel(_logging.CRITICAL)
 
 from config import db_connect, MACRO_SIGNAL_PATH
 from utils import (get_logger, prefetch_prices, get_price_data_cached,
-                   get_technical_score)
+                   get_technical_score, turnover_to_eur)
 
 log = get_logger("screener_source")
 
@@ -60,6 +61,7 @@ log = get_logger("screener_source")
 # CONFIG  (kann bei Bedarf nach config.py ausgelagert werden)
 # ════════════════════════════════════════════════════════════════════════════
 SCREENER_CHANNEL       = "screener"   # muss = source_registry.display_name sein
+NASDAQ_CHANNEL         = "screener_nasdaq"
 BENCHMARK              = "SPY"
 REL_STRENGTH_LOOKBACK  = 63           # ~3 Handelsmonate
 MAX_PCT_FROM_EXTREME   = 15.0         # Long: ≤15% unter 52W-Hoch / Short: ≤15% über 52W-Tief
@@ -67,7 +69,11 @@ MAX_PCT_FROM_EXTREME   = 15.0         # Long: ≤15% unter 52W-Hoch / Short: ≤
 # Short-Seite QmJ-konform: bevorzugt schwache Fundamentals, meidet Qualitätsnamen
 SHORT_MIN_PCT_ABOVE_LOW = 5.0   # kein Short direkt am 52W-Tief (Squeeze/Boden-Fishing vermeiden)
 SHORT_MAX_QUALITY_BONUS = 1.0   # Quality-Goodness darüber → zu hochwertig zum Shorten → skip
-MAX_UNIVERSE           = 250          # Cap für nächtliche yfinance-Last
+US_UNIVERSE_PATH       = os.path.join(_TRADING_ROOT, "data", "us_universe.csv")
+LEGACY_STAGE2_MAX      = 250          # bewahrt den bisherigen Alt-Universum-Scope
+MAX_STAGE2_CANDIDATES  = 400          # passt exakt in utils._PRICE_CACHE_MAX
+MIN_STAGE1_PRICE_USD   = 2.0
+MIN_STAGE1_TURNOVER_EUR = 500_000
 PREFETCH_CHUNK         = 50
 
 # Handelbare Börsen (Ticker-Suffix). "" = US (NYSE/NASDAQ, keine Endung).
@@ -283,7 +289,19 @@ def _is_tradeable(ticker: str) -> bool:
     return suffix in ALLOWED_SUFFIXES
 
 
-def _build_universe() -> list:
+def _load_us_universe(path: str = US_UNIVERSE_PATH) -> list:
+    """Lädt das deterministisch gebündelte US-/Nasdaq-Universum ohne Live-Crawl."""
+    try:
+        with open(path, newline="", encoding="utf-8") as handle:
+            return [row["ticker"].strip().upper() for row in csv.DictReader(handle)
+                    if row.get("ticker")]
+    except Exception as e:
+        log.warning("US-Universum nicht lesbar (%s)", e)
+        return []
+
+
+def _build_universe(include_nasdaq: bool = True) -> list:
+    """Gibt (Ticker, Channel) zurück; Alt-Universum bleibt unverändert vorne."""
     tickers = list(DAX40) + list(MDAX) + list(SP100)
     try:
         con = db_connect()
@@ -296,23 +314,70 @@ def _build_universe() -> list:
         tickers += [r["ticker"] for r in rows]
     except Exception as e:
         log.warning("companies-Universum nicht lesbar (%s)", e)
-    seen, uni = set(), []
+    seen, legacy = set(), []
     for t in tickers:
-        t = (t or "").strip()
+        t = (t or "").strip().upper()
         if t and t.upper() not in seen and _is_tradeable(t):
             seen.add(t.upper())
-            uni.append(t)
-    return uni[:MAX_UNIVERSE]
+            legacy.append((t, SCREENER_CHANNEL))
+    legacy = legacy[:LEGACY_STAGE2_MAX]
+    if not include_nasdaq:
+        return legacy
+    nasdaq = []
+    for t in _load_us_universe():
+        if t not in seen and "." not in t and _is_tradeable(t):
+            seen.add(t)
+            nasdaq.append((t, NASDAQ_CHANNEL))
+    return legacy + nasdaq
 
 
-def _register_source(con):
-    con.execute("""
+def stage1_prefilter(tickers: list, limit: int = MAX_STAGE2_CANDIDATES) -> list:
+    """Billiger Preis-/Volumen-Prefilter ohne ``yf.info``; rankt nach Turnover."""
+    ranked = []
+    for i in range(0, len(tickers), PREFETCH_CHUNK):
+        chunk = tickers[i:i + PREFETCH_CHUNK]
+        prefetch_prices(chunk)
+        for ticker in chunk:
+            _, _, df = get_price_data_cached(ticker)
+            if df is None or df.empty or len(df) < 20:
+                continue
+            close = df["Close"].iloc[:, 0] if df["Close"].ndim > 1 else df["Close"]
+            volume = df["Volume"].iloc[:, 0] if df["Volume"].ndim > 1 else df["Volume"]
+            price = float(close.dropna().iloc[-1]) if not close.dropna().empty else 0.0
+            turnover = turnover_to_eur(
+                float(close.tail(20).mean()), float(volume.tail(20).mean()), ticker
+            )
+            if price >= MIN_STAGE1_PRICE_USD and turnover >= MIN_STAGE1_TURNOVER_EUR:
+                ranked.append((turnover, ticker))
+    ranked.sort(key=lambda item: (-item[0], item[1]))
+    return [ticker for _, ticker in ranked[:limit]]
+
+
+def _register_sources(con):
+    for source_type, source_key, display_name, region, reason in (
+        ("screener", "screener", SCREENER_CHANNEL, "global",
+         "deterministic technical+quality screen"),
+        ("screener_nasdaq", "screener_nasdaq", NASDAQ_CHANNEL, "us",
+         "deterministic Nasdaq/US growth technical+quality screen"),
+    ):
+        con.execute("""
         INSERT OR IGNORE INTO source_registry
             (source_type, source_key, display_name, language, region,
              category, status, weight, enabled, added_by, discovery_reason)
-        VALUES ('screener','screener',?, 'en','global','technical',
-                'active',1.0,1,'system','deterministic technical+quality screen')
-    """, (SCREENER_CHANNEL,))
+        VALUES (?,?,?,?,?,'technical','active',1.0,1,'system',?)
+        """, (source_type, source_key, display_name, "en", region, reason))
+
+
+def _write_mention(con, candidate: dict, name: str, today: str) -> None:
+    channel = candidate["channel"]
+    con.execute("""
+        INSERT OR IGNORE INTO watchlist_mentions
+            (name, channel, video_id, video_title, sentiment, strength, reason, mention_date)
+        VALUES (?,?,?,?,?,?,?,?)
+    """, (name, channel, f"{channel}:{candidate['ticker']}:{today}",
+          "Technical+Quality Screen",
+          "bullish" if candidate["direction"] == "long" else "bearish",
+          candidate["strength"], candidate["reason"][:500], today))
 
 
 def _register_company(con, ticker: str, info: dict) -> str:
@@ -336,18 +401,27 @@ def _register_company(con, ticker: str, info: dict) -> str:
 # ════════════════════════════════════════════════════════════════════════════
 # Hauptablauf
 # ════════════════════════════════════════════════════════════════════════════
-def _make_cand(ticker, direction, strength, composite, conf, mt, quality, info):
+def _make_cand(ticker, channel, direction, strength, composite, conf, mt, quality, info):
     extreme = (f"{mt['pct_below_high']:.0f}% unter 52W-Hoch" if direction == "long"
                else f"{mt['pct_above_low']:.0f}% über 52W-Tief")
     reason = (f"Tech {direction.upper()} conf={conf:.2f}; {extreme}; "
               f"rel {mt['rel']:+.0f} vs {BENCHMARK}; Quality={quality}")
     return {
-        "ticker": ticker, "direction": direction, "strength": strength,
+        "ticker": ticker, "channel": channel, "direction": direction, "strength": strength,
         "composite": composite, "reason": reason, "info": info,
     }
 
 
-def main(dry_run: bool = False):
+def select_candidates(candidates: list, params: dict) -> list:
+    """Ein gemeinsames Regime-Limit über Legacy- und Nasdaq-Quelle."""
+    longs = sorted((c for c in candidates if c["direction"] == "long"),
+                   key=lambda c: c["composite"], reverse=True)
+    shorts = sorted((c for c in candidates if c["direction"] == "short"),
+                    key=lambda c: c["composite"], reverse=True)
+    return longs[:params["max_long"]] + shorts[:params["max_short"]]
+
+
+def main(dry_run: bool = False, include_nasdaq: bool = True):
     today = datetime.now().strftime("%Y-%m-%d")
     regime, vix, overlay = _current_regime()
     p = regime_params(regime, vix, overlay)
@@ -357,17 +431,27 @@ def main(dry_run: bool = False):
     log.info("Screener Start | regime=%s vix=%s overlay=%s params=%s",
              regime, vix, overlay, p)
 
-    universe = _build_universe()
-    print(f"  Universum: {len(universe)} Ticker", flush=True)
-
-    for i in range(0, len(universe), PREFETCH_CHUNK):
-        prefetch_prices(universe[i:i + PREFETCH_CHUNK])
+    universe = _build_universe(include_nasdaq=include_nasdaq)
+    channels = dict(universe)
+    legacy = [ticker for ticker, channel in universe if channel == SCREENER_CHANNEL]
+    nasdaq = [ticker for ticker, channel in universe if channel == NASDAQ_CHANNEL]
+    nasdaq_stage2 = stage1_prefilter(nasdaq, max(0, MAX_STAGE2_CANDIDATES - len(legacy)))
+    stage2 = legacy + nasdaq_stage2
+    # Stage 1 darf Einträge aus dem 400er-TTL-Cache verdrängen. Deshalb die exakt
+    # budgetierte Stage-2-Menge gemeinsam erneut vorladen: danach entstehen im
+    # vollen Screen keine Einzel-Downloads für Kursdaten.
+    for i in range(0, len(stage2), PREFETCH_CHUNK):
+        prefetch_prices(stage2[i:i + PREFETCH_CHUNK])
+    print(f"  Universum: {len(universe)} Ticker "
+          f"(Alt={len(legacy)}, Nasdaq/US={len(nasdaq)}; Stage 2={len(stage2)}, "
+          f"Nasdaq Stage 1→2={len(nasdaq_stage2)})", flush=True)
 
     bench_ret = _benchmark_return(REL_STRENGTH_LOOKBACK)
     print(f"  Benchmark ({BENCHMARK}) {REL_STRENGTH_LOOKBACK}d-Return: {bench_ret:+.1f}%", flush=True)
 
     longs, shorts = [], []
-    for tkr in universe:
+    for tkr in stage2:
+        channel = channels[tkr]
         try:
             tech = get_technical_score(tkr)
         except Exception:
@@ -389,7 +473,7 @@ def main(dry_run: bool = False):
             if quality == "junk":
                 continue
             strength, composite = map_strength("long", conf, mt, qbonus, quality)
-            longs.append(_make_cand(tkr, "long", strength, composite, conf, mt, quality, info))
+            longs.append(_make_cand(tkr, channel, "long", strength, composite, conf, mt, quality, info))
 
         elif (direction == "SHORT" and conf <= p["short_conf"]
                 and SHORT_MIN_PCT_ABOVE_LOW <= mt["pct_above_low"] <= MAX_PCT_FROM_EXTREME
@@ -400,44 +484,37 @@ def main(dry_run: bool = False):
             if quality == "ok" and qbonus >= SHORT_MAX_QUALITY_BONUS:
                 continue
             strength, composite = map_strength("short", conf, mt, qbonus, quality)
-            shorts.append(_make_cand(tkr, "short", strength, composite, conf, mt, quality, info))
+            shorts.append(_make_cand(tkr, channel, "short", strength, composite, conf, mt, quality, info))
 
-    longs.sort(key=lambda c: c["composite"], reverse=True)
-    shorts.sort(key=lambda c: c["composite"], reverse=True)
-    selected = longs[:p["max_long"]] + shorts[:p["max_short"]]
+    selected = select_candidates(longs + shorts, p)
     print(f"  Treffer: {len(longs)} long / {len(shorts)} short "
           f"→ {len(selected)} emittiert (Regime-Cap)", flush=True)
 
     if dry_run:
         for c in selected:
             print(f"  {c['direction'].upper():5} {c['ticker']:9} {c['strength']:8} "
+                  f"channel={c['channel']:17} "
                   f"comp={c['composite']:.2f}  {c['reason']}", flush=True)
         print("  (dry-run: nichts in die DB geschrieben)", flush=True)
         return
 
     con = db_connect()
     try:
-        _register_source(con)
+        _register_sources(con)
         written = 0
         for c in selected:
             name = _register_company(con, c["ticker"], c["info"])
-            con.execute("""
-                INSERT OR IGNORE INTO watchlist_mentions
-                    (name, channel, video_id, video_title, sentiment, strength, reason, mention_date)
-                VALUES (?,?,?,?,?,?,?,?)
-            """, (name, SCREENER_CHANNEL, f"screener:{c['ticker']}:{today}",
-                  "Technical+Quality Screen",
-                  "bullish" if c["direction"] == "long" else "bearish",
-                  c["strength"], c["reason"][:500], today))
+            _write_mention(con, c, name, today)
             if con.execute("SELECT changes()").fetchone()[0] > 0:
                 written += 1
         con.commit()
         print(f"  ✓ {written} Screener-Mentions geschrieben "
-              f"(Channel='{SCREENER_CHANNEL}')", flush=True)
+              f"(Channels='{SCREENER_CHANNEL}'/'{NASDAQ_CHANNEL}')", flush=True)
     finally:
         con.close()
     print("✅ Screener Source abgeschlossen", flush=True)
 
 
 if __name__ == "__main__":
-    main(dry_run="--dry-run" in sys.argv)
+    main(dry_run="--dry-run" in sys.argv,
+         include_nasdaq="--without-nasdaq" not in sys.argv)

@@ -104,6 +104,19 @@ def _weighted_sentiment(mentions_list, channel_weights, sentiment):
 HALF_LIFE_DAYS = CONVICTION_HALF_LIFE_DAYS
 PRIOR_NEUTRAL  = CONVICTION_PRIOR_NEUTRAL
 
+
+def get_top_long_signals(con, limit=10):
+    """Top LONG signals after the mandatory price-momentum gate."""
+    return con.execute("""
+        SELECT * FROM watchlist
+        WHERE status='watching'
+          AND weekly_trend='bullish'
+          AND tech_direction='LONG'
+        ORDER BY conviction_score DESC
+        LIMIT ?
+    """, (limit,)).fetchall()
+
+
 def calculate_conviction_aged(con, name, channel_weights=None,
                               half_life=HALF_LIFE_DAYS,
                               prior_neutral=PRIOR_NEUTRAL,
@@ -795,13 +808,9 @@ def main():
 
         con.commit()
     
-        # 7. Top Kandidaten ausgeben
-        top = con.execute("""
-            SELECT * FROM watchlist
-            WHERE status='watching'
-            ORDER BY conviction_score DESC
-            LIMIT 10
-        """).fetchall()
+        # 7. Top Kandidaten ausgeben. Momentum ist das Gate; News-Conviction
+        # sortiert nur innerhalb der technisch bestaetigten LONG-Kandidaten.
+        top = get_top_long_signals(con, limit=10)
     
         print("\n📋 TOP WATCHLIST:")
         print(f"{'Name':25} {'Ticker':10} {'Mentions':8} {'Bull/Bear':10} {'Conv':6} {'Bear':6} {'Tech':6} {'Richtung'}")

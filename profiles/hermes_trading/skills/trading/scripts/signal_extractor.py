@@ -26,6 +26,8 @@ import requests
 import json
 import os
 import sys
+import time
+from concurrent.futures import ThreadPoolExecutor
 sys.path.insert(0, "/root/.hermes/profiles/hermes_trading/skills/trading")
 import env_loader  # noqa: F401  (side-effect: laedt .env)
 from datetime import datetime, date
@@ -38,6 +40,22 @@ MODEL = "deepseek/deepseek-v4-flash-0731"
 FALLBACK_MODEL = "openai/gpt-4o-mini"
 CHUNK_SIZE = 15000
 OVERLAP = 1000
+
+
+def _env_int(name, default, minimum=1, maximum=None):
+    """Read a bounded positive integer without making a bad .env fatal."""
+    try:
+        value = int(os.environ.get(name, default))
+    except (TypeError, ValueError):
+        value = default
+    value = max(minimum, value)
+    return min(value, maximum) if maximum is not None else value
+
+
+REQUEST_TIMEOUT = _env_int("REQUEST_TIMEOUT", 120, minimum=30, maximum=300)
+REQUEST_MAX_ATTEMPTS = _env_int("REQUEST_MAX_ATTEMPTS", 3, minimum=1, maximum=5)
+REQUEST_BACKOFF = _env_int("REQUEST_BACKOFF", 2, minimum=1, maximum=30)
+SCOUT_MAX_WORKERS = _env_int("SCOUT_MAX_WORKERS", 3, minimum=1, maximum=4)
 
 # two_pass | legacy — Rollback ohne Deploy
 EXTRACTOR_MODE = os.environ.get("EXTRACTOR_MODE", "two_pass").strip().lower()
@@ -172,10 +190,9 @@ def _call(model, system_prompt, user_content, system_extra="", max_tokens=4000):
     Ein einzelner OpenRouter-Call.
 
     Returns: (text, tokens_in, tokens_out)
-    Retry-Logik unverändert aus dem bisherigen call_api() übernommen.
+    Wiederholt nur transiente Netzwerk-, 429- und 5xx-Fehler.
     """
-    @retry(max_attempts=3, backoff=2.0, exceptions=(requests.RequestException, KeyError))
-    def _request():
+    def _request_once():
         try:
             r = requests.post(
                 "https://openrouter.ai/api/v1/chat/completions",
@@ -191,8 +208,14 @@ def _call(model, system_prompt, user_content, system_extra="", max_tokens=4000):
                         {"role": "user",   "content": user_content}
                     ]
                 },
-                timeout=60
+                timeout=REQUEST_TIMEOUT
             )
+            if r.status_code == 429 or 500 <= r.status_code < 600:
+                error = requests.HTTPError(
+                    f"Transienter OpenRouter HTTP {r.status_code}", response=r
+                )
+                error.retry_after = r.headers.get("Retry-After")
+                raise error
             r.raise_for_status()
         except requests.RequestException as e:
             print(f"     ⚠ API-Verbindungsfehler ({model}): {e}", flush=True)
@@ -216,16 +239,39 @@ def _call(model, system_prompt, user_content, system_extra="", max_tokens=4000):
                 int(usage.get("prompt_tokens", 0) or 0),
                 int(usage.get("completion_tokens", 0) or 0))
 
-    return _request()
+    for attempt in range(1, REQUEST_MAX_ATTEMPTS + 1):
+        try:
+            return _request_once()
+        except (requests.Timeout, requests.ConnectionError, KeyError) as exc:
+            retry_after = None
+        except requests.HTTPError as exc:
+            status = exc.response.status_code if exc.response is not None else None
+            if status != 429 and (status is None or not 500 <= status < 600):
+                raise
+            retry_after = getattr(exc, "retry_after", None)
+        if attempt == REQUEST_MAX_ATTEMPTS:
+            raise exc
+        try:
+            wait = float(retry_after) if retry_after is not None else 0
+        except (TypeError, ValueError):
+            wait = 0
+        wait = max(wait, REQUEST_BACKOFF ** (attempt - 1))
+        print(f"     ⚠ transienter API-Fehler, Retry {attempt + 1}/"
+              f"{REQUEST_MAX_ATTEMPTS} in {wait:g}s", flush=True)
+        time.sleep(wait)
 
 
 def _try_parse(text):
-    """JSON parsen, bei Fehler konservative Reparatur versuchen."""
+    """Parse JSON conservatively from plain, fenced or prose-wrapped output."""
     try:
         return json.loads(text)
     except json.JSONDecodeError:
         import re
-        fixed = text
+        fixed = text.strip()
+        fenced = re.search(r"```(?:json)?\s*(.*?)\s*```", fixed,
+                           flags=re.IGNORECASE | re.DOTALL)
+        if fenced:
+            fixed = fenced.group(1)
         # Nur strukturelle Fehler reparieren, keine Strings manipulieren
         fixed = re.sub(r",\s*}", "}", fixed)    # trailing comma vor }
         fixed = re.sub(r",\s*]", "]", fixed)    # trailing comma vor ]
@@ -235,8 +281,16 @@ def _try_parse(text):
         # Stattdessen: beim Retry das Modell explizit zu reinem JSON drängen.
         try:
             return json.loads(fixed)
-        except json.JSONDecodeError:
-            raise
+        except json.JSONDecodeError as original_error:
+            decoder = json.JSONDecoder()
+            for match in re.finditer(r"[\[{]", fixed):
+                try:
+                    value, _end = decoder.raw_decode(fixed[match.start():])
+                    if isinstance(value, (dict, list)):
+                        return value
+                except json.JSONDecodeError:
+                    continue
+            raise original_error
 
 
 _STRICT_EXTRA = ("\n\nWICHTIG: Antworte AUSSCHLIESSLICH mit validem JSON. "
@@ -546,6 +600,21 @@ def _chunk_transcript(transcript):
     return chunks
 
 
+def _run_scout_chunks(chunks, channel, title, date_str, max_workers=None):
+    """Run Scout calls concurrently, bounded and returned in chunk order."""
+    total = len(chunks)
+    workers = min(max_workers or SCOUT_MAX_WORKERS, total) if total else 1
+
+    def run(item):
+        index, chunk = item
+        print(f"     → Scout-Chunk {index}/{total}...", flush=True)
+        return call_scout(chunk, channel, title, date_str, index, total)
+
+    with ThreadPoolExecutor(max_workers=workers,
+                            thread_name_prefix="extractor-scout") as pool:
+        return list(pool.map(run, enumerate(chunks, 1)))
+
+
 def analyze(transcript, channel, title, date_str, con=None):
     chunks = _chunk_transcript(transcript)
     total = len(chunks)
@@ -561,10 +630,7 @@ def analyze(transcript, channel, title, date_str, con=None):
         return merge_results(results)
 
     # ── Pass A: Scout ────────────────────────────────────────────────────
-    scout_results = []
-    for i, chunk in enumerate(chunks, 1):
-        print(f"     → Scout-Chunk {i}/{total}...", flush=True)
-        scout_results.append(call_scout(chunk, channel, title, date_str, i, total))
+    scout_results = _run_scout_chunks(chunks, channel, title, date_str)
     merged = merge_scout_results(scout_results)
 
     # ── Pass B: Analyst (ein Call für das ganze Video) ───────────────────

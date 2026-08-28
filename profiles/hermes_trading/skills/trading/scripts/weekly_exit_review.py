@@ -19,6 +19,8 @@ bevor neue Trades (z.B. Industrials aus Cooldown) starten.
 Meldet einen Telegram-Report im Trading-Channel. Läuft wöchentlich (So 07:00,
 nach nightly_eval). Cron-ID: <zuweisen>
 """
+import ast
+import json
 import os
 import sys
 
@@ -77,6 +79,24 @@ def check_config_drift():
         if calls:
             for c in calls:
                 issues.append(f"{label}.py nutzt Legacy: `{c}`")
+    with open(os.path.join(TRADING_ROOT, "data", "strategy_config.json")) as f:
+        strategy = json.load(f)
+    if strategy.get("profit_lock_atr") != 1.0:
+        issues.append("strategy_config.json profit_lock_atr ist nicht 1.0")
+    from config import DEFAULT_EXIT_CONFIG, _EXIT_CONFIG_MATRIX
+    if DEFAULT_EXIT_CONFIG.get("profit_lock_atr") != 1.0:
+        issues.append("DEFAULT_EXIT_CONFIG profit_lock_atr ist nicht 1.0")
+    if any(c.get("profit_lock_atr") != 1.0 for c in _EXIT_CONFIG_MATRIX.values()):
+        issues.append("_EXIT_CONFIG_MATRIX enthält profit_lock_atr != 1.0")
+    with open(os.path.join(scripts_dir, "signal_manager.py")) as f:
+        tree = ast.parse(f.read())
+    defaults = next(
+        ast.literal_eval(node.value) for node in tree.body
+        if isinstance(node, ast.Assign)
+        and any(isinstance(t, ast.Name) and t.id == "DEFAULT_CONFIG" for t in node.targets)
+    )
+    if defaults.get("profit_lock_atr") != 1.0:
+        issues.append("signal_manager.DEFAULT_CONFIG profit_lock_atr ist nicht 1.0")
     return issues
 
 
