@@ -277,12 +277,14 @@
     "created_at": "2026-06-18T06:22:43.849609+00:00",
     "created_by": null,
     "last_patched_at": null,
-    "last_used_at": "2026-08-27T04:00:43.995461+00:00",
+    "last_reused_patch_generation": 0,
+    "last_used_at": "2026-08-28T04:00:14.958870+00:00",
     "last_viewed_at": null,
     "patch_count": 0,
+    "patch_generation": 0,
     "pinned": false,
     "state": "active",
-    "use_count": 68,
+    "use_count": 69,
     "view_count": 0
   },
   "daily-news-compiler": {
