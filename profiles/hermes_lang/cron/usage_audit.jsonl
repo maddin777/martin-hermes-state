@@ -1,0 +1,1 @@
+{"ts": "2026-08-29T19:05:23.051Z", "job_id": "834083078a48", "fire_id": "aabe1011d6bd41458fd2cd0fd561208d", "prompt_tokens": 31096, "completion_tokens": 816, "total_tokens": 31912, "response_silent": false, "deliver_target": "telegram:-1003933492757", "model": "google/gemma-4-26b-a4b-it", "duration_ms": 264863, "error": null}

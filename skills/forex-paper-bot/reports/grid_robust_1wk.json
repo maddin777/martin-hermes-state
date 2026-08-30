@@ -1,0 +1,2054 @@
+{
+  "ranking": [
+    {
+      "combo": {
+        "fast": 5,
+        "slow": 50,
+        "min_strength": 0.003,
+        "sl_mult": 3.0,
+        "trailing": 0.5,
+        "mom_lb": 5,
+        "pyramid": true
+      },
+      "net": 137.5,
+      "trades": 11,
+      "n_pos": 1,
+      "robust": false,
+      "per_pair": {
+        "EURUSD=X": {
+          "trades": 3,
+          "net": -4.8,
+          "pf": 0.0,
+          "wr": 0.0
+        },
+        "GBPUSD=X": {
+          "trades": 2,
+          "net": -4.8,
+          "pf": 0.0,
+          "wr": 0.0
+        },
+        "AUDUSD=X": {
+          "trades": 5,
+          "net": 150.1,
+          "pf": 38.53,
+          "wr": 0.6
+        },
+        "USDCHF=X": {
+          "trades": 1,
+          "net": -3.0,
+          "pf": 0.0,
+          "wr": 0.0
+        }
+      }
+    },
+    {
+      "combo": {
+        "fast": 13,
+        "slow": 100,
+        "min_strength": 0.003,
+        "sl_mult": 2.5,
+        "trailing": 0.5,
+        "mom_lb": 5,
+        "pyramid": true
+      },
+      "net": 90.0,
+      "trades": 5,
+      "n_pos": 1,
+      "robust": false,
+      "per_pair": {
+        "EURUSD=X": {
+          "trades": 2,
+          "net": 96.4,
+          "pf": 96.36,
+          "wr": 1.0
+        },
+        "GBPUSD=X": {
+          "trades": 1,
+          "net": -2.4,
+          "pf": 0.0,
+          "wr": 0.0
+        },
+        "AUDUSD=X": {
+          "trades": 2,
+          "net": -4.0,
+          "pf": 0.0,
+          "wr": 0.0
+        },
+        "USDCHF=X": {
+          "trades": 0,
+          "net": 0.0,
+          "pf": 0.0,
+          "wr": 0.0
+        }
+      }
+    },
+    {
+      "combo": {
+        "fast": 13,
+        "slow": 50,
+        "min_strength": 0.0005,
+        "sl_mult": 2.0,
+        "trailing": 1.0,
+        "mom_lb": 8,
+        "pyramid": false
+      },
+      "net": 73.1,
+      "trades": 10,
+      "n_pos": 1,
+      "robust": false,
+      "per_pair": {
+        "EURUSD=X": {
+          "trades": 3,
+          "net": -4.8,
+          "pf": 0.0,
+          "wr": 0.0
+        },
+        "GBPUSD=X": {
+          "trades": 0,
+          "net": 0.0,
+          "pf": 0.0,
+          "wr": 0.0
+        },
+        "AUDUSD=X": {
+          "trades": 5,
+          "net": 83.9,
+          "pf": 11.49,
+          "wr": 0.2
+        },
+        "USDCHF=X": {
+          "trades": 2,
+          "net": -6.0,
+          "pf": 0.0,
+          "wr": 0.0
+        }
+      }
+    },
+    {
+      "combo": {
+        "fast": 13,
+        "slow": 50,
+        "min_strength": 0.0005,
+        "sl_mult": 3.0,
+        "trailing": 1.0,
+        "mom_lb": 3,
+        "pyramid": true
+      },
+      "net": 73.1,
+      "trades": 10,
+      "n_pos": 1,
+      "robust": false,
+      "per_pair": {
+        "EURUSD=X": {
+          "trades": 3,
+          "net": -4.8,
+          "pf": 0.0,
+          "wr": 0.0
+        },
+        "GBPUSD=X": {
+          "trades": 0,
+          "net": 0.0,
+          "pf": 0.0,
+          "wr": 0.0
+        },
+        "AUDUSD=X": {
+          "trades": 5,
+          "net": 83.9,
+          "pf": 11.49,
+          "wr": 0.2
+        },
+        "USDCHF=X": {
+          "trades": 2,
+          "net": -6.0,
+          "pf": 0.0,
+          "wr": 0.0
+        }
+      }
+    },
+    {
+      "combo": {
+        "fast": 8,
+        "slow": 34,
+        "min_strength": 0.003,
+        "sl_mult": 1.5,
+        "trailing": 0.5,
+        "mom_lb": 5,
+        "pyramid": true
+      },
+      "net": 34.2,
+      "trades": 16,
+      "n_pos": 1,
+      "robust": false,
+      "per_pair": {
+        "EURUSD=X": {
+          "trades": 4,
+          "net": -6.4,
+          "pf": 0.0,
+          "wr": 0.0
+        },
+        "GBPUSD=X": {
+          "trades": 5,
+          "net": -12.0,
+          "pf": 0.0,
+          "wr": 0.0
+        },
+        "AUDUSD=X": {
+          "trades": 5,
+          "net": -3.4,
+          "pf": 0.57,
+          "wr": 0.2
+        },
+        "USDCHF=X": {
+          "trades": 2,
+          "net": 56.0,
+          "pf": 19.68,
+          "wr": 0.5
+        }
+      }
+    },
+    {
+      "combo": {
+        "fast": 20,
+        "slow": 100,
+        "min_strength": 0.001,
+        "sl_mult": 1.0,
+        "trailing": 0.5,
+        "mom_lb": 5,
+        "pyramid": true
+      },
+      "net": 2.8,
+      "trades": 3,
+      "n_pos": 1,
+      "robust": false,
+      "per_pair": {
+        "EURUSD=X": {
+          "trades": 1,
+          "net": -1.6,
+          "pf": 0.0,
+          "wr": 0.0
+        },
+        "GBPUSD=X": {
+          "trades": 0,
+          "net": 0.0,
+          "pf": 0.0,
+          "wr": 0.0
+        },
+        "AUDUSD=X": {
+          "trades": 2,
+          "net": 4.4,
+          "pf": 3.19,
+          "wr": 0.5
+        },
+        "USDCHF=X": {
+          "trades": 0,
+          "net": 0.0,
+          "pf": 0.0,
+          "wr": 0.0
+        }
+      }
+    },
+    {
+      "combo": {
+        "fast": 26,
+        "slow": 34,
+        "min_strength": 0.001,
+        "sl_mult": 2.0,
+        "trailing": 0.5,
+        "mom_lb": 3,
+        "pyramid": true
+      },
+      "net": -9.4,
+      "trades": 10,
+      "n_pos": 1,
+      "robust": false,
+      "per_pair": {
+        "EURUSD=X": {
+          "trades": 2,
+          "net": -3.2,
+          "pf": 0.0,
+          "wr": 0.0
+        },
+        "GBPUSD=X": {
+          "trades": 2,
+          "net": -4.8,
+          "pf": 0.0,
+          "wr": 0.0
+        },
+        "AUDUSD=X": {
+          "trades": 4,
+          "net": 4.6,
+          "pf": 1.77,
+          "wr": 0.25
+        },
+        "USDCHF=X": {
+          "trades": 2,
+          "net": -6.0,
+          "pf": 0.0,
+          "wr": 0.0
+        }
+      }
+    },
+    {
+      "combo": {
+        "fast": 26,
+        "slow": 34,
+        "min_strength": 0.002,
+        "sl_mult": 2.5,
+        "trailing": 0.5,
+        "mom_lb": 3,
+        "pyramid": true
+      },
+      "net": -9.4,
+      "trades": 10,
+      "n_pos": 1,
+      "robust": false,
+      "per_pair": {
+        "EURUSD=X": {
+          "trades": 2,
+          "net": -3.2,
+          "pf": 0.0,
+          "wr": 0.0
+        },
+        "GBPUSD=X": {
+          "trades": 2,
+          "net": -4.8,
+          "pf": 0.0,
+          "wr": 0.0
+        },
+        "AUDUSD=X": {
+          "trades": 4,
+          "net": 4.6,
+          "pf": 1.77,
+          "wr": 0.25
+        },
+        "USDCHF=X": {
+          "trades": 2,
+          "net": -6.0,
+          "pf": 0.0,
+          "wr": 0.0
+        }
+      }
+    },
+    {
+      "combo": {
+        "fast": 20,
+        "slow": 50,
+        "min_strength": 0.0002,
+        "sl_mult": 1.0,
+        "trailing": 0.5,
+        "mom_lb": 5,
+        "pyramid": false
+      },
+      "net": -10.4,
+      "trades": 10,
+      "n_pos": 1,
+      "robust": false,
+      "per_pair": {
+        "EURUSD=X": {
+          "trades": 1,
+          "net": -1.6,
+          "pf": 0.0,
+          "wr": 0.0
+        },
+        "GBPUSD=X": {
+          "trades": 1,
+          "net": -2.4,
+          "pf": 0.0,
+          "wr": 0.0
+        },
+        "AUDUSD=X": {
+          "trades": 5,
+          "net": 2.6,
+          "pf": 1.32,
+          "wr": 0.2
+        },
+        "USDCHF=X": {
+          "trades": 3,
+          "net": -9.0,
+          "pf": 0.0,
+          "wr": 0.0
+        }
+      }
+    },
+    {
+      "combo": {
+        "fast": 5,
+        "slow": 34,
+        "min_strength": 0.003,
+        "sl_mult": 1.5,
+        "trailing": 0.5,
+        "mom_lb": 3,
+        "pyramid": false
+      },
+      "net": -14.9,
+      "trades": 15,
+      "n_pos": 1,
+      "robust": false,
+      "per_pair": {
+        "EURUSD=X": {
+          "trades": 4,
+          "net": -6.4,
+          "pf": 0.0,
+          "wr": 0.0
+        },
+        "GBPUSD=X": {
+          "trades": 4,
+          "net": -9.6,
+          "pf": 0.0,
+          "wr": 0.0
+        },
+        "AUDUSD=X": {
+          "trades": 5,
+          "net": 7.1,
+          "pf": 1.88,
+          "wr": 0.2
+        },
+        "USDCHF=X": {
+          "trades": 2,
+          "net": -6.0,
+          "pf": 0.0,
+          "wr": 0.0
+        }
+      }
+    },
+    {
+      "combo": {
+        "fast": 8,
+        "slow": 200,
+        "min_strength": 0.001,
+        "sl_mult": 1.0,
+        "trailing": 1.0,
+        "mom_lb": 3,
+        "pyramid": true
+      },
+      "net": 0.0,
+      "trades": 0,
+      "n_pos": 0,
+      "robust": false,
+      "per_pair": {
+        "EURUSD=X": {
+          "trades": 0,
+          "net": 0.0,
+          "pf": 0.0,
+          "wr": 0.0
+        },
+        "GBPUSD=X": {
+          "trades": 0,
+          "net": 0.0,
+          "pf": 0.0,
+          "wr": 0.0
+        },
+        "AUDUSD=X": {
+          "trades": 0,
+          "net": 0.0,
+          "pf": 0.0,
+          "wr": 0.0
+        },
+        "USDCHF=X": {
+          "trades": 0,
+          "net": 0.0,
+          "pf": 0.0,
+          "wr": 0.0
+        }
+      }
+    },
+    {
+      "combo": {
+        "fast": 5,
+        "slow": 200,
+        "min_strength": 0.003,
+        "sl_mult": 2.5,
+        "trailing": 2.0,
+        "mom_lb": 5,
+        "pyramid": true
+      },
+      "net": 0.0,
+      "trades": 0,
+      "n_pos": 0,
+      "robust": false,
+      "per_pair": {
+        "EURUSD=X": {
+          "trades": 0,
+          "net": 0.0,
+          "pf": 0.0,
+          "wr": 0.0
+        },
+        "GBPUSD=X": {
+          "trades": 0,
+          "net": 0.0,
+          "pf": 0.0,
+          "wr": 0.0
+        },
+        "AUDUSD=X": {
+          "trades": 0,
+          "net": 0.0,
+          "pf": 0.0,
+          "wr": 0.0
+        },
+        "USDCHF=X": {
+          "trades": 0,
+          "net": 0.0,
+          "pf": 0.0,
+          "wr": 0.0
+        }
+      }
+    },
+    {
+      "combo": {
+        "fast": 8,
+        "slow": 200,
+        "min_strength": 0.0005,
+        "sl_mult": 2.0,
+        "trailing": 2.0,
+        "mom_lb": 3,
+        "pyramid": false
+      },
+      "net": 0.0,
+      "trades": 0,
+      "n_pos": 0,
+      "robust": false,
+      "per_pair": {
+        "EURUSD=X": {
+          "trades": 0,
+          "net": 0.0,
+          "pf": 0.0,
+          "wr": 0.0
+        },
+        "GBPUSD=X": {
+          "trades": 0,
+          "net": 0.0,
+          "pf": 0.0,
+          "wr": 0.0
+        },
+        "AUDUSD=X": {
+          "trades": 0,
+          "net": 0.0,
+          "pf": 0.0,
+          "wr": 0.0
+        },
+        "USDCHF=X": {
+          "trades": 0,
+          "net": 0.0,
+          "pf": 0.0,
+          "wr": 0.0
+        }
+      }
+    },
+    {
+      "combo": {
+        "fast": 26,
+        "slow": 200,
+        "min_strength": 0.0002,
+        "sl_mult": 1.0,
+        "trailing": 1.0,
+        "mom_lb": 3,
+        "pyramid": true
+      },
+      "net": 0.0,
+      "trades": 0,
+      "n_pos": 0,
+      "robust": false,
+      "per_pair": {
+        "EURUSD=X": {
+          "trades": 0,
+          "net": 0.0,
+          "pf": 0.0,
+          "wr": 0.0
+        },
+        "GBPUSD=X": {
+          "trades": 0,
+          "net": 0.0,
+          "pf": 0.0,
+          "wr": 0.0
+        },
+        "AUDUSD=X": {
+          "trades": 0,
+          "net": 0.0,
+          "pf": 0.0,
+          "wr": 0.0
+        },
+        "USDCHF=X": {
+          "trades": 0,
+          "net": 0.0,
+          "pf": 0.0,
+          "wr": 0.0
+        }
+      }
+    },
+    {
+      "combo": {
+        "fast": 13,
+        "slow": 200,
+        "min_strength": 0.0005,
+        "sl_mult": 3.0,
+        "trailing": 0.5,
+        "mom_lb": 8,
+        "pyramid": true
+      },
+      "net": 0.0,
+      "trades": 0,
+      "n_pos": 0,
+      "robust": false,
+      "per_pair": {
+        "EURUSD=X": {
+          "trades": 0,
+          "net": 0.0,
+          "pf": 0.0,
+          "wr": 0.0
+        },
+        "GBPUSD=X": {
+          "trades": 0,
+          "net": 0.0,
+          "pf": 0.0,
+          "wr": 0.0
+        },
+        "AUDUSD=X": {
+          "trades": 0,
+          "net": 0.0,
+          "pf": 0.0,
+          "wr": 0.0
+        },
+        "USDCHF=X": {
+          "trades": 0,
+          "net": 0.0,
+          "pf": 0.0,
+          "wr": 0.0
+        }
+      }
+    },
+    {
+      "combo": {
+        "fast": 13,
+        "slow": 200,
+        "min_strength": 0.0005,
+        "sl_mult": 2.0,
+        "trailing": 0.5,
+        "mom_lb": 3,
+        "pyramid": false
+      },
+      "net": 0.0,
+      "trades": 0,
+      "n_pos": 0,
+      "robust": false,
+      "per_pair": {
+        "EURUSD=X": {
+          "trades": 0,
+          "net": 0.0,
+          "pf": 0.0,
+          "wr": 0.0
+        },
+        "GBPUSD=X": {
+          "trades": 0,
+          "net": 0.0,
+          "pf": 0.0,
+          "wr": 0.0
+        },
+        "AUDUSD=X": {
+          "trades": 0,
+          "net": 0.0,
+          "pf": 0.0,
+          "wr": 0.0
+        },
+        "USDCHF=X": {
+          "trades": 0,
+          "net": 0.0,
+          "pf": 0.0,
+          "wr": 0.0
+        }
+      }
+    },
+    {
+      "combo": {
+        "fast": 13,
+        "slow": 150,
+        "min_strength": 0.002,
+        "sl_mult": 2.5,
+        "trailing": 1.0,
+        "mom_lb": 5,
+        "pyramid": true
+      },
+      "net": 0.0,
+      "trades": 0,
+      "n_pos": 0,
+      "robust": false,
+      "per_pair": {
+        "EURUSD=X": {
+          "trades": 0,
+          "net": 0.0,
+          "pf": 0.0,
+          "wr": 0.0
+        },
+        "GBPUSD=X": {
+          "trades": 0,
+          "net": 0.0,
+          "pf": 0.0,
+          "wr": 0.0
+        },
+        "AUDUSD=X": {
+          "trades": 0,
+          "net": 0.0,
+          "pf": 0.0,
+          "wr": 0.0
+        },
+        "USDCHF=X": {
+          "trades": 0,
+          "net": 0.0,
+          "pf": 0.0,
+          "wr": 0.0
+        }
+      }
+    },
+    {
+      "combo": {
+        "fast": 20,
+        "slow": 200,
+        "min_strength": 0.003,
+        "sl_mult": 2.5,
+        "trailing": 2.0,
+        "mom_lb": 5,
+        "pyramid": true
+      },
+      "net": 0.0,
+      "trades": 0,
+      "n_pos": 0,
+      "robust": false,
+      "per_pair": {
+        "EURUSD=X": {
+          "trades": 0,
+          "net": 0.0,
+          "pf": 0.0,
+          "wr": 0.0
+        },
+        "GBPUSD=X": {
+          "trades": 0,
+          "net": 0.0,
+          "pf": 0.0,
+          "wr": 0.0
+        },
+        "AUDUSD=X": {
+          "trades": 0,
+          "net": 0.0,
+          "pf": 0.0,
+          "wr": 0.0
+        },
+        "USDCHF=X": {
+          "trades": 0,
+          "net": 0.0,
+          "pf": 0.0,
+          "wr": 0.0
+        }
+      }
+    },
+    {
+      "combo": {
+        "fast": 20,
+        "slow": 200,
+        "min_strength": 0.003,
+        "sl_mult": 2.5,
+        "trailing": 0.5,
+        "mom_lb": 3,
+        "pyramid": true
+      },
+      "net": 0.0,
+      "trades": 0,
+      "n_pos": 0,
+      "robust": false,
+      "per_pair": {
+        "EURUSD=X": {
+          "trades": 0,
+          "net": 0.0,
+          "pf": 0.0,
+          "wr": 0.0
+        },
+        "GBPUSD=X": {
+          "trades": 0,
+          "net": 0.0,
+          "pf": 0.0,
+          "wr": 0.0
+        },
+        "AUDUSD=X": {
+          "trades": 0,
+          "net": 0.0,
+          "pf": 0.0,
+          "wr": 0.0
+        },
+        "USDCHF=X": {
+          "trades": 0,
+          "net": 0.0,
+          "pf": 0.0,
+          "wr": 0.0
+        }
+      }
+    },
+    {
+      "combo": {
+        "fast": 13,
+        "slow": 150,
+        "min_strength": 0.001,
+        "sl_mult": 2.5,
+        "trailing": 2.0,
+        "mom_lb": 3,
+        "pyramid": true
+      },
+      "net": 0.0,
+      "trades": 0,
+      "n_pos": 0,
+      "robust": false,
+      "per_pair": {
+        "EURUSD=X": {
+          "trades": 0,
+          "net": 0.0,
+          "pf": 0.0,
+          "wr": 0.0
+        },
+        "GBPUSD=X": {
+          "trades": 0,
+          "net": 0.0,
+          "pf": 0.0,
+          "wr": 0.0
+        },
+        "AUDUSD=X": {
+          "trades": 0,
+          "net": 0.0,
+          "pf": 0.0,
+          "wr": 0.0
+        },
+        "USDCHF=X": {
+          "trades": 0,
+          "net": 0.0,
+          "pf": 0.0,
+          "wr": 0.0
+        }
+      }
+    },
+    {
+      "combo": {
+        "fast": 26,
+        "slow": 200,
+        "min_strength": 0.001,
+        "sl_mult": 1.5,
+        "trailing": 0.5,
+        "mom_lb": 5,
+        "pyramid": true
+      },
+      "net": 0.0,
+      "trades": 0,
+      "n_pos": 0,
+      "robust": false,
+      "per_pair": {
+        "EURUSD=X": {
+          "trades": 0,
+          "net": 0.0,
+          "pf": 0.0,
+          "wr": 0.0
+        },
+        "GBPUSD=X": {
+          "trades": 0,
+          "net": 0.0,
+          "pf": 0.0,
+          "wr": 0.0
+        },
+        "AUDUSD=X": {
+          "trades": 0,
+          "net": 0.0,
+          "pf": 0.0,
+          "wr": 0.0
+        },
+        "USDCHF=X": {
+          "trades": 0,
+          "net": 0.0,
+          "pf": 0.0,
+          "wr": 0.0
+        }
+      }
+    },
+    {
+      "combo": {
+        "fast": 20,
+        "slow": 200,
+        "min_strength": 0.0005,
+        "sl_mult": 2.0,
+        "trailing": 1.0,
+        "mom_lb": 5,
+        "pyramid": true
+      },
+      "net": 0.0,
+      "trades": 0,
+      "n_pos": 0,
+      "robust": false,
+      "per_pair": {
+        "EURUSD=X": {
+          "trades": 0,
+          "net": 0.0,
+          "pf": 0.0,
+          "wr": 0.0
+        },
+        "GBPUSD=X": {
+          "trades": 0,
+          "net": 0.0,
+          "pf": 0.0,
+          "wr": 0.0
+        },
+        "AUDUSD=X": {
+          "trades": 0,
+          "net": 0.0,
+          "pf": 0.0,
+          "wr": 0.0
+        },
+        "USDCHF=X": {
+          "trades": 0,
+          "net": 0.0,
+          "pf": 0.0,
+          "wr": 0.0
+        }
+      }
+    },
+    {
+      "combo": {
+        "fast": 26,
+        "slow": 200,
+        "min_strength": 0.001,
+        "sl_mult": 2.0,
+        "trailing": 2.0,
+        "mom_lb": 3,
+        "pyramid": false
+      },
+      "net": 0.0,
+      "trades": 0,
+      "n_pos": 0,
+      "robust": false,
+      "per_pair": {
+        "EURUSD=X": {
+          "trades": 0,
+          "net": 0.0,
+          "pf": 0.0,
+          "wr": 0.0
+        },
+        "GBPUSD=X": {
+          "trades": 0,
+          "net": 0.0,
+          "pf": 0.0,
+          "wr": 0.0
+        },
+        "AUDUSD=X": {
+          "trades": 0,
+          "net": 0.0,
+          "pf": 0.0,
+          "wr": 0.0
+        },
+        "USDCHF=X": {
+          "trades": 0,
+          "net": 0.0,
+          "pf": 0.0,
+          "wr": 0.0
+        }
+      }
+    },
+    {
+      "combo": {
+        "fast": 5,
+        "slow": 200,
+        "min_strength": 0.0005,
+        "sl_mult": 1.0,
+        "trailing": 0.5,
+        "mom_lb": 5,
+        "pyramid": false
+      },
+      "net": 0.0,
+      "trades": 0,
+      "n_pos": 0,
+      "robust": false,
+      "per_pair": {
+        "EURUSD=X": {
+          "trades": 0,
+          "net": 0.0,
+          "pf": 0.0,
+          "wr": 0.0
+        },
+        "GBPUSD=X": {
+          "trades": 0,
+          "net": 0.0,
+          "pf": 0.0,
+          "wr": 0.0
+        },
+        "AUDUSD=X": {
+          "trades": 0,
+          "net": 0.0,
+          "pf": 0.0,
+          "wr": 0.0
+        },
+        "USDCHF=X": {
+          "trades": 0,
+          "net": 0.0,
+          "pf": 0.0,
+          "wr": 0.0
+        }
+      }
+    },
+    {
+      "combo": {
+        "fast": 8,
+        "slow": 150,
+        "min_strength": 0.0002,
+        "sl_mult": 2.5,
+        "trailing": 0.5,
+        "mom_lb": 3,
+        "pyramid": true
+      },
+      "net": -2.0,
+      "trades": 1,
+      "n_pos": 0,
+      "robust": false,
+      "per_pair": {
+        "EURUSD=X": {
+          "trades": 0,
+          "net": 0.0,
+          "pf": 0.0,
+          "wr": 0.0
+        },
+        "GBPUSD=X": {
+          "trades": 0,
+          "net": 0.0,
+          "pf": 0.0,
+          "wr": 0.0
+        },
+        "AUDUSD=X": {
+          "trades": 1,
+          "net": -2.0,
+          "pf": 0.0,
+          "wr": 0.0
+        },
+        "USDCHF=X": {
+          "trades": 0,
+          "net": 0.0,
+          "pf": 0.0,
+          "wr": 0.0
+        }
+      }
+    },
+    {
+      "combo": {
+        "fast": 5,
+        "slow": 150,
+        "min_strength": 0.003,
+        "sl_mult": 2.0,
+        "trailing": 0.5,
+        "mom_lb": 5,
+        "pyramid": true
+      },
+      "net": -2.0,
+      "trades": 1,
+      "n_pos": 0,
+      "robust": false,
+      "per_pair": {
+        "EURUSD=X": {
+          "trades": 0,
+          "net": 0.0,
+          "pf": 0.0,
+          "wr": 0.0
+        },
+        "GBPUSD=X": {
+          "trades": 0,
+          "net": 0.0,
+          "pf": 0.0,
+          "wr": 0.0
+        },
+        "AUDUSD=X": {
+          "trades": 1,
+          "net": -2.0,
+          "pf": 0.0,
+          "wr": 0.0
+        },
+        "USDCHF=X": {
+          "trades": 0,
+          "net": 0.0,
+          "pf": 0.0,
+          "wr": 0.0
+        }
+      }
+    },
+    {
+      "combo": {
+        "fast": 8,
+        "slow": 150,
+        "min_strength": 0.001,
+        "sl_mult": 3.0,
+        "trailing": 2.0,
+        "mom_lb": 5,
+        "pyramid": true
+      },
+      "net": -2.0,
+      "trades": 1,
+      "n_pos": 0,
+      "robust": false,
+      "per_pair": {
+        "EURUSD=X": {
+          "trades": 0,
+          "net": 0.0,
+          "pf": 0.0,
+          "wr": 0.0
+        },
+        "GBPUSD=X": {
+          "trades": 0,
+          "net": 0.0,
+          "pf": 0.0,
+          "wr": 0.0
+        },
+        "AUDUSD=X": {
+          "trades": 1,
+          "net": -2.0,
+          "pf": 0.0,
+          "wr": 0.0
+        },
+        "USDCHF=X": {
+          "trades": 0,
+          "net": 0.0,
+          "pf": 0.0,
+          "wr": 0.0
+        }
+      }
+    },
+    {
+      "combo": {
+        "fast": 26,
+        "slow": 150,
+        "min_strength": 0.0005,
+        "sl_mult": 1.5,
+        "trailing": 1.0,
+        "mom_lb": 8,
+        "pyramid": true
+      },
+      "net": -2.0,
+      "trades": 1,
+      "n_pos": 0,
+      "robust": false,
+      "per_pair": {
+        "EURUSD=X": {
+          "trades": 0,
+          "net": 0.0,
+          "pf": 0.0,
+          "wr": 0.0
+        },
+        "GBPUSD=X": {
+          "trades": 0,
+          "net": 0.0,
+          "pf": 0.0,
+          "wr": 0.0
+        },
+        "AUDUSD=X": {
+          "trades": 1,
+          "net": -2.0,
+          "pf": 0.0,
+          "wr": 0.0
+        },
+        "USDCHF=X": {
+          "trades": 0,
+          "net": 0.0,
+          "pf": 0.0,
+          "wr": 0.0
+        }
+      }
+    },
+    {
+      "combo": {
+        "fast": 20,
+        "slow": 150,
+        "min_strength": 0.003,
+        "sl_mult": 3.0,
+        "trailing": 1.0,
+        "mom_lb": 8,
+        "pyramid": false
+      },
+      "net": -2.0,
+      "trades": 1,
+      "n_pos": 0,
+      "robust": false,
+      "per_pair": {
+        "EURUSD=X": {
+          "trades": 0,
+          "net": 0.0,
+          "pf": 0.0,
+          "wr": 0.0
+        },
+        "GBPUSD=X": {
+          "trades": 0,
+          "net": 0.0,
+          "pf": 0.0,
+          "wr": 0.0
+        },
+        "AUDUSD=X": {
+          "trades": 1,
+          "net": -2.0,
+          "pf": 0.0,
+          "wr": 0.0
+        },
+        "USDCHF=X": {
+          "trades": 0,
+          "net": 0.0,
+          "pf": 0.0,
+          "wr": 0.0
+        }
+      }
+    },
+    {
+      "combo": {
+        "fast": 26,
+        "slow": 150,
+        "min_strength": 0.002,
+        "sl_mult": 3.0,
+        "trailing": 0.5,
+        "mom_lb": 3,
+        "pyramid": false
+      },
+      "net": -2.0,
+      "trades": 1,
+      "n_pos": 0,
+      "robust": false,
+      "per_pair": {
+        "EURUSD=X": {
+          "trades": 0,
+          "net": 0.0,
+          "pf": 0.0,
+          "wr": 0.0
+        },
+        "GBPUSD=X": {
+          "trades": 0,
+          "net": 0.0,
+          "pf": 0.0,
+          "wr": 0.0
+        },
+        "AUDUSD=X": {
+          "trades": 1,
+          "net": -2.0,
+          "pf": 0.0,
+          "wr": 0.0
+        },
+        "USDCHF=X": {
+          "trades": 0,
+          "net": 0.0,
+          "pf": 0.0,
+          "wr": 0.0
+        }
+      }
+    },
+    {
+      "combo": {
+        "fast": 20,
+        "slow": 150,
+        "min_strength": 0.0002,
+        "sl_mult": 1.5,
+        "trailing": 0.5,
+        "mom_lb": 8,
+        "pyramid": true
+      },
+      "net": -2.0,
+      "trades": 1,
+      "n_pos": 0,
+      "robust": false,
+      "per_pair": {
+        "EURUSD=X": {
+          "trades": 0,
+          "net": 0.0,
+          "pf": 0.0,
+          "wr": 0.0
+        },
+        "GBPUSD=X": {
+          "trades": 0,
+          "net": 0.0,
+          "pf": 0.0,
+          "wr": 0.0
+        },
+        "AUDUSD=X": {
+          "trades": 1,
+          "net": -2.0,
+          "pf": 0.0,
+          "wr": 0.0
+        },
+        "USDCHF=X": {
+          "trades": 0,
+          "net": 0.0,
+          "pf": 0.0,
+          "wr": 0.0
+        }
+      }
+    },
+    {
+      "combo": {
+        "fast": 5,
+        "slow": 100,
+        "min_strength": 0.001,
+        "sl_mult": 1.0,
+        "trailing": 0.5,
+        "mom_lb": 8,
+        "pyramid": false
+      },
+      "net": -4.4,
+      "trades": 2,
+      "n_pos": 0,
+      "robust": false,
+      "per_pair": {
+        "EURUSD=X": {
+          "trades": 0,
+          "net": 0.0,
+          "pf": 0.0,
+          "wr": 0.0
+        },
+        "GBPUSD=X": {
+          "trades": 1,
+          "net": -2.4,
+          "pf": 0.0,
+          "wr": 0.0
+        },
+        "AUDUSD=X": {
+          "trades": 1,
+          "net": -2.0,
+          "pf": 0.0,
+          "wr": 0.0
+        },
+        "USDCHF=X": {
+          "trades": 0,
+          "net": 0.0,
+          "pf": 0.0,
+          "wr": 0.0
+        }
+      }
+    },
+    {
+      "combo": {
+        "fast": 5,
+        "slow": 100,
+        "min_strength": 0.0005,
+        "sl_mult": 2.0,
+        "trailing": 1.0,
+        "mom_lb": 8,
+        "pyramid": true
+      },
+      "net": -4.4,
+      "trades": 2,
+      "n_pos": 0,
+      "robust": false,
+      "per_pair": {
+        "EURUSD=X": {
+          "trades": 0,
+          "net": 0.0,
+          "pf": 0.0,
+          "wr": 0.0
+        },
+        "GBPUSD=X": {
+          "trades": 1,
+          "net": -2.4,
+          "pf": 0.0,
+          "wr": 0.0
+        },
+        "AUDUSD=X": {
+          "trades": 1,
+          "net": -2.0,
+          "pf": 0.0,
+          "wr": 0.0
+        },
+        "USDCHF=X": {
+          "trades": 0,
+          "net": 0.0,
+          "pf": 0.0,
+          "wr": 0.0
+        }
+      }
+    },
+    {
+      "combo": {
+        "fast": 26,
+        "slow": 100,
+        "min_strength": 0.003,
+        "sl_mult": 2.0,
+        "trailing": 0.5,
+        "mom_lb": 8,
+        "pyramid": false
+      },
+      "net": -7.2,
+      "trades": 4,
+      "n_pos": 0,
+      "robust": false,
+      "per_pair": {
+        "EURUSD=X": {
+          "trades": 2,
+          "net": -3.2,
+          "pf": 0.0,
+          "wr": 0.0
+        },
+        "GBPUSD=X": {
+          "trades": 0,
+          "net": 0.0,
+          "pf": 0.0,
+          "wr": 0.0
+        },
+        "AUDUSD=X": {
+          "trades": 2,
+          "net": -4.0,
+          "pf": 0.0,
+          "wr": 0.0
+        },
+        "USDCHF=X": {
+          "trades": 0,
+          "net": 0.0,
+          "pf": 0.0,
+          "wr": 0.0
+        }
+      }
+    },
+    {
+      "combo": {
+        "fast": 26,
+        "slow": 100,
+        "min_strength": 0.002,
+        "sl_mult": 2.5,
+        "trailing": 1.0,
+        "mom_lb": 8,
+        "pyramid": false
+      },
+      "net": -7.2,
+      "trades": 4,
+      "n_pos": 0,
+      "robust": false,
+      "per_pair": {
+        "EURUSD=X": {
+          "trades": 2,
+          "net": -3.2,
+          "pf": 0.0,
+          "wr": 0.0
+        },
+        "GBPUSD=X": {
+          "trades": 0,
+          "net": 0.0,
+          "pf": 0.0,
+          "wr": 0.0
+        },
+        "AUDUSD=X": {
+          "trades": 2,
+          "net": -4.0,
+          "pf": 0.0,
+          "wr": 0.0
+        },
+        "USDCHF=X": {
+          "trades": 0,
+          "net": 0.0,
+          "pf": 0.0,
+          "wr": 0.0
+        }
+      }
+    },
+    {
+      "combo": {
+        "fast": 26,
+        "slow": 100,
+        "min_strength": 0.001,
+        "sl_mult": 1.0,
+        "trailing": 1.0,
+        "mom_lb": 5,
+        "pyramid": false
+      },
+      "net": -9.2,
+      "trades": 5,
+      "n_pos": 0,
+      "robust": false,
+      "per_pair": {
+        "EURUSD=X": {
+          "trades": 2,
+          "net": -3.2,
+          "pf": 0.0,
+          "wr": 0.0
+        },
+        "GBPUSD=X": {
+          "trades": 0,
+          "net": 0.0,
+          "pf": 0.0,
+          "wr": 0.0
+        },
+        "AUDUSD=X": {
+          "trades": 3,
+          "net": -6.0,
+          "pf": 0.0,
+          "wr": 0.0
+        },
+        "USDCHF=X": {
+          "trades": 0,
+          "net": 0.0,
+          "pf": 0.0,
+          "wr": 0.0
+        }
+      }
+    },
+    {
+      "combo": {
+        "fast": 8,
+        "slow": 100,
+        "min_strength": 0.0005,
+        "sl_mult": 1.0,
+        "trailing": 1.0,
+        "mom_lb": 5,
+        "pyramid": false
+      },
+      "net": -9.4,
+      "trades": 4,
+      "n_pos": 0,
+      "robust": false,
+      "per_pair": {
+        "EURUSD=X": {
+          "trades": 0,
+          "net": 0.0,
+          "pf": 0.0,
+          "wr": 0.0
+        },
+        "GBPUSD=X": {
+          "trades": 1,
+          "net": -2.4,
+          "pf": 0.0,
+          "wr": 0.0
+        },
+        "AUDUSD=X": {
+          "trades": 2,
+          "net": -4.0,
+          "pf": 0.0,
+          "wr": 0.0
+        },
+        "USDCHF=X": {
+          "trades": 1,
+          "net": -3.0,
+          "pf": 0.0,
+          "wr": 0.0
+        }
+      }
+    },
+    {
+      "combo": {
+        "fast": 8,
+        "slow": 100,
+        "min_strength": 0.001,
+        "sl_mult": 1.5,
+        "trailing": 0.5,
+        "mom_lb": 3,
+        "pyramid": true
+      },
+      "net": -9.4,
+      "trades": 4,
+      "n_pos": 0,
+      "robust": false,
+      "per_pair": {
+        "EURUSD=X": {
+          "trades": 0,
+          "net": 0.0,
+          "pf": 0.0,
+          "wr": 0.0
+        },
+        "GBPUSD=X": {
+          "trades": 1,
+          "net": -2.4,
+          "pf": 0.0,
+          "wr": 0.0
+        },
+        "AUDUSD=X": {
+          "trades": 2,
+          "net": -4.0,
+          "pf": 0.0,
+          "wr": 0.0
+        },
+        "USDCHF=X": {
+          "trades": 1,
+          "net": -3.0,
+          "pf": 0.0,
+          "wr": 0.0
+        }
+      }
+    },
+    {
+      "combo": {
+        "fast": 13,
+        "slow": 100,
+        "min_strength": 0.001,
+        "sl_mult": 1.5,
+        "trailing": 1.0,
+        "mom_lb": 8,
+        "pyramid": false
+      },
+      "net": -12.6,
+      "trades": 6,
+      "n_pos": 0,
+      "robust": false,
+      "per_pair": {
+        "EURUSD=X": {
+          "trades": 2,
+          "net": -3.2,
+          "pf": 0.0,
+          "wr": 0.0
+        },
+        "GBPUSD=X": {
+          "trades": 1,
+          "net": -2.4,
+          "pf": 0.0,
+          "wr": 0.0
+        },
+        "AUDUSD=X": {
+          "trades": 2,
+          "net": -4.0,
+          "pf": 0.0,
+          "wr": 0.0
+        },
+        "USDCHF=X": {
+          "trades": 1,
+          "net": -3.0,
+          "pf": 0.0,
+          "wr": 0.0
+        }
+      }
+    },
+    {
+      "combo": {
+        "fast": 26,
+        "slow": 50,
+        "min_strength": 0.001,
+        "sl_mult": 2.5,
+        "trailing": 1.0,
+        "mom_lb": 5,
+        "pyramid": false
+      },
+      "net": -14.0,
+      "trades": 6,
+      "n_pos": 0,
+      "robust": false,
+      "per_pair": {
+        "EURUSD=X": {
+          "trades": 1,
+          "net": -1.6,
+          "pf": 0.0,
+          "wr": 0.0
+        },
+        "GBPUSD=X": {
+          "trades": 1,
+          "net": -2.4,
+          "pf": 0.0,
+          "wr": 0.0
+        },
+        "AUDUSD=X": {
+          "trades": 2,
+          "net": -4.0,
+          "pf": 0.0,
+          "wr": 0.0
+        },
+        "USDCHF=X": {
+          "trades": 2,
+          "net": -6.0,
+          "pf": 0.0,
+          "wr": 0.0
+        }
+      }
+    },
+    {
+      "combo": {
+        "fast": 26,
+        "slow": 50,
+        "min_strength": 0.0005,
+        "sl_mult": 1.0,
+        "trailing": 2.0,
+        "mom_lb": 8,
+        "pyramid": false
+      },
+      "net": -16.0,
+      "trades": 7,
+      "n_pos": 0,
+      "robust": false,
+      "per_pair": {
+        "EURUSD=X": {
+          "trades": 1,
+          "net": -1.6,
+          "pf": 0.0,
+          "wr": 0.0
+        },
+        "GBPUSD=X": {
+          "trades": 1,
+          "net": -2.4,
+          "pf": 0.0,
+          "wr": 0.0
+        },
+        "AUDUSD=X": {
+          "trades": 3,
+          "net": -6.0,
+          "pf": 0.0,
+          "wr": 0.0
+        },
+        "USDCHF=X": {
+          "trades": 2,
+          "net": -6.0,
+          "pf": 0.0,
+          "wr": 0.0
+        }
+      }
+    },
+    {
+      "combo": {
+        "fast": 8,
+        "slow": 50,
+        "min_strength": 0.0005,
+        "sl_mult": 1.0,
+        "trailing": 1.0,
+        "mom_lb": 5,
+        "pyramid": false
+      },
+      "net": -18.8,
+      "trades": 9,
+      "n_pos": 0,
+      "robust": false,
+      "per_pair": {
+        "EURUSD=X": {
+          "trades": 3,
+          "net": -4.8,
+          "pf": 0.0,
+          "wr": 0.0
+        },
+        "GBPUSD=X": {
+          "trades": 0,
+          "net": 0.0,
+          "pf": 0.0,
+          "wr": 0.0
+        },
+        "AUDUSD=X": {
+          "trades": 4,
+          "net": -8.0,
+          "pf": 0.0,
+          "wr": 0.0
+        },
+        "USDCHF=X": {
+          "trades": 2,
+          "net": -6.0,
+          "pf": 0.0,
+          "wr": 0.0
+        }
+      }
+    },
+    {
+      "combo": {
+        "fast": 20,
+        "slow": 50,
+        "min_strength": 0.0005,
+        "sl_mult": 1.5,
+        "trailing": 1.0,
+        "mom_lb": 3,
+        "pyramid": false
+      },
+      "net": -21.0,
+      "trades": 9,
+      "n_pos": 0,
+      "robust": false,
+      "per_pair": {
+        "EURUSD=X": {
+          "trades": 1,
+          "net": -1.6,
+          "pf": 0.0,
+          "wr": 0.0
+        },
+        "GBPUSD=X": {
+          "trades": 1,
+          "net": -2.4,
+          "pf": 0.0,
+          "wr": 0.0
+        },
+        "AUDUSD=X": {
+          "trades": 4,
+          "net": -8.0,
+          "pf": 0.0,
+          "wr": 0.0
+        },
+        "USDCHF=X": {
+          "trades": 3,
+          "net": -9.0,
+          "pf": 0.0,
+          "wr": 0.0
+        }
+      }
+    },
+    {
+      "combo": {
+        "fast": 8,
+        "slow": 34,
+        "min_strength": 0.003,
+        "sl_mult": 1.5,
+        "trailing": 1.0,
+        "mom_lb": 8,
+        "pyramid": true
+      },
+      "net": -22.8,
+      "trades": 10,
+      "n_pos": 0,
+      "robust": false,
+      "per_pair": {
+        "EURUSD=X": {
+          "trades": 1,
+          "net": -1.6,
+          "pf": 0.0,
+          "wr": 0.0
+        },
+        "GBPUSD=X": {
+          "trades": 3,
+          "net": -7.2,
+          "pf": 0.0,
+          "wr": 0.0
+        },
+        "AUDUSD=X": {
+          "trades": 4,
+          "net": -8.0,
+          "pf": 0.0,
+          "wr": 0.0
+        },
+        "USDCHF=X": {
+          "trades": 2,
+          "net": -6.0,
+          "pf": 0.0,
+          "wr": 0.0
+        }
+      }
+    },
+    {
+      "combo": {
+        "fast": 20,
+        "slow": 50,
+        "min_strength": 0.002,
+        "sl_mult": 1.0,
+        "trailing": 2.0,
+        "mom_lb": 5,
+        "pyramid": true
+      },
+      "net": -23.0,
+      "trades": 10,
+      "n_pos": 0,
+      "robust": false,
+      "per_pair": {
+        "EURUSD=X": {
+          "trades": 1,
+          "net": -1.6,
+          "pf": 0.0,
+          "wr": 0.0
+        },
+        "GBPUSD=X": {
+          "trades": 1,
+          "net": -2.4,
+          "pf": 0.0,
+          "wr": 0.0
+        },
+        "AUDUSD=X": {
+          "trades": 5,
+          "net": -10.0,
+          "pf": 0.0,
+          "wr": 0.0
+        },
+        "USDCHF=X": {
+          "trades": 3,
+          "net": -9.0,
+          "pf": 0.0,
+          "wr": 0.0
+        }
+      }
+    },
+    {
+      "combo": {
+        "fast": 26,
+        "slow": 34,
+        "min_strength": 0.001,
+        "sl_mult": 2.0,
+        "trailing": 1.0,
+        "mom_lb": 8,
+        "pyramid": true
+      },
+      "net": -24.0,
+      "trades": 11,
+      "n_pos": 0,
+      "robust": false,
+      "per_pair": {
+        "EURUSD=X": {
+          "trades": 2,
+          "net": -3.2,
+          "pf": 0.0,
+          "wr": 0.0
+        },
+        "GBPUSD=X": {
+          "trades": 2,
+          "net": -4.8,
+          "pf": 0.0,
+          "wr": 0.0
+        },
+        "AUDUSD=X": {
+          "trades": 5,
+          "net": -10.0,
+          "pf": 0.0,
+          "wr": 0.0
+        },
+        "USDCHF=X": {
+          "trades": 2,
+          "net": -6.0,
+          "pf": 0.0,
+          "wr": 0.0
+        }
+      }
+    },
+    {
+      "combo": {
+        "fast": 20,
+        "slow": 34,
+        "min_strength": 0.002,
+        "sl_mult": 1.0,
+        "trailing": 2.0,
+        "mom_lb": 8,
+        "pyramid": false
+      },
+      "net": -24.8,
+      "trades": 12,
+      "n_pos": 0,
+      "robust": false,
+      "per_pair": {
+        "EURUSD=X": {
+          "trades": 4,
+          "net": -6.4,
+          "pf": 0.0,
+          "wr": 0.0
+        },
+        "GBPUSD=X": {
+          "trades": 1,
+          "net": -2.4,
+          "pf": 0.0,
+          "wr": 0.0
+        },
+        "AUDUSD=X": {
+          "trades": 5,
+          "net": -10.0,
+          "pf": 0.0,
+          "wr": 0.0
+        },
+        "USDCHF=X": {
+          "trades": 2,
+          "net": -6.0,
+          "pf": 0.0,
+          "wr": 0.0
+        }
+      }
+    },
+    {
+      "combo": {
+        "fast": 5,
+        "slow": 34,
+        "min_strength": 0.0002,
+        "sl_mult": 1.0,
+        "trailing": 1.0,
+        "mom_lb": 8,
+        "pyramid": false
+      },
+      "net": -25.0,
+      "trades": 12,
+      "n_pos": 0,
+      "robust": false,
+      "per_pair": {
+        "EURUSD=X": {
+          "trades": 4,
+          "net": -6.4,
+          "pf": 0.0,
+          "wr": 0.0
+        },
+        "GBPUSD=X": {
+          "trades": 4,
+          "net": -9.6,
+          "pf": 0.0,
+          "wr": 0.0
+        },
+        "AUDUSD=X": {
+          "trades": 3,
+          "net": -6.0,
+          "pf": 0.0,
+          "wr": 0.0
+        },
+        "USDCHF=X": {
+          "trades": 1,
+          "net": -3.0,
+          "pf": 0.0,
+          "wr": 0.0
+        }
+      }
+    },
+    {
+      "combo": {
+        "fast": 13,
+        "slow": 34,
+        "min_strength": 0.0002,
+        "sl_mult": 2.0,
+        "trailing": 2.0,
+        "mom_lb": 5,
+        "pyramid": false
+      },
+      "net": -27.6,
+      "trades": 13,
+      "n_pos": 0,
+      "robust": false,
+      "per_pair": {
+        "EURUSD=X": {
+          "trades": 3,
+          "net": -4.8,
+          "pf": 0.0,
+          "wr": 0.0
+        },
+        "GBPUSD=X": {
+          "trades": 2,
+          "net": -4.8,
+          "pf": 0.0,
+          "wr": 0.0
+        },
+        "AUDUSD=X": {
+          "trades": 6,
+          "net": -12.0,
+          "pf": 0.0,
+          "wr": 0.0
+        },
+        "USDCHF=X": {
+          "trades": 2,
+          "net": -6.0,
+          "pf": 0.0,
+          "wr": 0.0
+        }
+      }
+    },
+    {
+      "combo": {
+        "fast": 8,
+        "slow": 34,
+        "min_strength": 0.0002,
+        "sl_mult": 3.0,
+        "trailing": 2.0,
+        "mom_lb": 5,
+        "pyramid": true
+      },
+      "net": -36.8,
+      "trades": 17,
+      "n_pos": 0,
+      "robust": false,
+      "per_pair": {
+        "EURUSD=X": {
+          "trades": 4,
+          "net": -6.4,
+          "pf": 0.0,
+          "wr": 0.0
+        },
+        "GBPUSD=X": {
+          "trades": 6,
+          "net": -14.4,
+          "pf": 0.0,
+          "wr": 0.0
+        },
+        "AUDUSD=X": {
+          "trades": 5,
+          "net": -10.0,
+          "pf": 0.0,
+          "wr": 0.0
+        },
+        "USDCHF=X": {
+          "trades": 2,
+          "net": -6.0,
+          "pf": 0.0,
+          "wr": 0.0
+        }
+      }
+    }
+  ]
+}

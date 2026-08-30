@@ -5,8 +5,8 @@
   "session_start_hour": 9,
   "session_end_hour": 22,
   "session_timezone": "Europe/Berlin",
-  "timeframe": "15m",
-  "trend_timeframe": "1h",
+  "timeframe": "1d",
+  "trend_timeframe": "1wk",
   "pairs": {
     "EURUSD=X": {"display": "EUR/USD", "spread_pips": 0.8, "pip_size": 0.0001, "pip_value_usd": 10.0},
     "GBPUSD=X": {"display": "GBP/USD", "spread_pips": 1.2, "pip_size": 0.0001, "pip_value_usd": 10.0},
@@ -16,20 +16,20 @@
   },
   "walk_forward": {
     "optimize_day": 6,
-    "lookback_weeks": 8,
-    "holding_days_cap": 5
+    "lookback_weeks": 140,
+    "holding_days_cap": 20
   },
   "sl_tp": {
-    "sl_atr_mult": 1.5,
+    "sl_atr_mult": 1.0,
     "tp_atr_mult": 2.5,
-    "trailing_atr_mult": 1.0
+    "trailing_atr_mult": 0.5
   },
   "signal": {
-    "ema_fast": 20,
-    "ema_slow": 50,
-    "momentum_lookback": 8,
+    "ema_fast": 13,
+    "ema_slow": 150,
+    "momentum_lookback": 5,
     "h1_ema": 20,
-    "min_trend_strength": 0.0002
+    "min_trend_strength": 0.002
   },
   "db_path": "data/forex.db",
   "reports_dir": "reports"

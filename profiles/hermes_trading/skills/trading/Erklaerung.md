@@ -936,3 +936,44 @@ US-Ticker korrekt USD→EUR (kein Bug). Keine Regression der Alt-Quelle.
 code-seitig erfüllt, wartet auf Live-Beweis. Erklaerung.md jetzt ergänzt (Reviewer-Should-Fix #1).
 
 **Finn-loop:** Task `pipeline-ki-analyse-haertung.md`, review-approved.
+
+---
+
+## 2026-08-29 — Vault-Insights Vorschläge 1+2 umgesetzt
+
+### Vorschlag 1 — `screener_nasdaq` korrekt im Source-Quality-Tracking
+
+**Problem:** `calc_source_quality()` (nightly_eval.py) speicherte `source_type` nie —
+alle Kanäle fielen auf den DB-Default `'youtube'`. Dadurch wurde `screener_nasdaq`
+(neuer US-Growth-Kanal, seit 27.08.) im Quality-Tracking/Dashboard als YouTube
+klassifiziert statt als eigene Quelle, ebenso alle RSS- und Screener-Quellen.
+
+**Fix (`scripts/nightly_eval.py`):** Pro Channel wird `source_type` aus
+`source_registry` aufgelöst (`source_key=? OR source_type=? OR lower(display_name)=lower(?)`),
+`rss:`-Prefix wird dabei gestrippt, Fallback bleibt `'youtube'`. Der `source_quality`-INSERT
+enthält jetzt die `source_type`-Spalte.
+
+**Verifiziert (Live-Lauf 29.08.):** `screener_nasdaq`→`screener_nasdaq`,
+`screener`→`screener`, alle `rss:*`→`rss`, YouTube-Kanäle→`youtube`.
+Counter: youtube 15 / rss 10 / screener 1 / screener_nasdaq 1.
+
+**Erwartung:** screener_nasdaq taucht im Dashboard-Sources-Qualitäts-Tab als eigene
+Screener-Quelle auf (Q≈0.77, 8 Mentions). Die Gewichtung selbst (weight=1.0, aktiv)
+läuft weiter über `source_lifecycle.adjust_weights()` — solange die Quelle <5 Trades
+hat, bleibt sie unverändert (korrekt).
+
+### Vorschlag 2 — `conviction_score_bear` im Watchlist-Export
+
+**Problem:** Der vault-insights-daily musste die Zahl der "echten Shorts"
+(`conviction_score_bear > conviction_score`) über netto Bear→Bull-Mentions
+approximieren, weil `export_watchlist.py` den Bear-Score nicht exportierte.
+
+**Fix (`scripts/export_watchlist.py`):** Neue Spalte **Short-C** (Conviction short/bear)
+nach Long-C im Watchlist-Markdown-Export. Wird im Canonical-Merge mitgeführt
+(übernommen beim Merge + beim Kampf um den höheren Conviction-Score).
+
+**Verifiziert (Live-Lauf 29.08.):** 105 Einträge exportiert, Spalte `Short-C` mit
+Werten (z.B. SK hynix Long-C 100% / Short-C 51%; CAT 100% / 28%; AAPL 100% / 88%).
+
+**Erwartung:** vault-insights-daily kann echte Shorts jetzt direkt aus `Watchlist.md`
+zählen (`Short-C > Long-C`), keine Approximation über Bear/Bull-Mentions mehr.

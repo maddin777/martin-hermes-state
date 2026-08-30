@@ -112,6 +112,7 @@ for w in raw:
                 existing["company_sector"] = w["company_sector"]
             existing["tech_score"] = w["tech_score"]
             existing["tech_direction"] = w["tech_direction"]
+            existing["conviction_score_bear"] = w["conviction_score_bear"]
             existing["last_seen"] = w["last_seen"]
         # Mentions addieren
         existing["mention_count"] = (existing.get("mention_count") or 0) + (w["mention_count"] or 0)
@@ -136,6 +137,7 @@ for w in raw:
             "bullish_count": w["bullish_count"],
             "bearish_count": w["bearish_count"],
             "conviction_score": w["conviction_score"],
+            "conviction_score_bear": w["conviction_score_bear"],
             "tech_score": w["tech_score"],
             "tech_direction": w["tech_direction"],
             "channels_raw": w["channels"] or "[]",
@@ -214,13 +216,14 @@ if sector_blacklist:
 lines.append("---\n")
 
 # Tabellen-Header
-lines.append("| # | Unternehmen | Ticker | Sektor | Mentions | Bull↑ | Bear↓ | Conviction | Tech | Richtung | Kanäle | Zuletzt |")
-lines.append("|---|-------------|--------|--------|----------|-------|-------|------------|------|----------|--------|---------|")
+lines.append("| # | Unternehmen | Ticker | Sektor | Mentions | Bull↑ | Bear↓ | Long-C | Short-C | Tech | Richtung | Kanäle | Zuletzt |")
+lines.append("|---|-------------|--------|--------|----------|-------|-------|--------|---------|------|----------|--------|---------|")
 
 for i, w in enumerate(watchlist, 1):
     channels_raw = json.loads(w.get("channels_raw") or "[]")
     channels_str = ", ".join(list(set(channels_raw))[:3])
     conviction = w["conviction_score"] or 0
+    conviction_bear = w["conviction_score_bear"] or 0
     tech = f"{w['tech_score']:.2f}" if w["tech_score"] else "–"
     direction = w["tech_direction"] or "–"
     status_icon = "🛒" if w["status"] == "bought" else ""
@@ -231,7 +234,7 @@ for i, w in enumerate(watchlist, 1):
         f"| {i} | {status_icon}{w['name']} | {ticker_display} | "
         f"{w['company_sector']} | {w['mention_count']} | "
         f"{w['bullish_count']} | {w['bearish_count']} | "
-        f"{conviction:.0%} | {tech} | {direction} | "
+        f"{conviction:.0%} | {conviction_bear:.0%} | {tech} | {direction} | "
         f"{channels_str} | {_normalize_date(w['last_seen']) or '–'} |"
     )
 

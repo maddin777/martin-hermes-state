@@ -15,6 +15,8 @@ import argparse
 import json
 import os
 import sys
+import urllib.request
+import urllib.parse
 from datetime import datetime
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -23,6 +25,37 @@ from fetch import fetch_pair, _scalar
 import forex_signal as sig
 
 import yfinance as yf
+
+
+# ── Telegram ─────────────────────────────────────────────────────────
+
+def send_telegram(text):
+    """Sendet eine Nachricht direkt via Telegram Bot API (aus Env-Token/ChatID).
+
+    Liest TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_ID aus der Umgebung (lädt der
+    forex_*.sh Wrapper). Silently-fail bei fehlendem Token — Logging per stdout.
+    """
+    token = os.environ.get("TELEGRAM_BOT_TOKEN")
+    chat_id = os.environ.get("TELEGRAM_CHAT_ID")
+    if not token or not chat_id:
+        print(f"  [no-telegram] chat_id/token nicht gesetzt: {text[:80]}", flush=True)
+        return False
+    url = f"https://api.telegram.org/bot{token}/sendMessage"
+    payload = urllib.parse.urlencode({"chat_id": chat_id, "text": text,
+                                      "parse_mode": "HTML"}).encode()
+    try:
+        req = urllib.request.Request(url, data=payload)
+        with urllib.request.urlopen(req, timeout=10) as r:
+            ok = json.loads(r.read()).get("ok", False)
+        print(f"  [telegram] {'✅' if ok else '❌'} {text[:60]}", flush=True)
+        return ok
+    except Exception as e:
+        print(f"  [telegram-Fehler] {e} | {text[:60]}", flush=True)
+        return False
+
+
+def _pair_display(pair):
+    return cfg.CONFIG["pairs"].get(pair, {}).get("display", pair)
 
 
 # ── Spread/PnL-Helfer ────────────────────────────────────────────────
@@ -79,6 +112,15 @@ def open_trade(con, pair, pair_cfg, params, price, direction):
          json.dumps(params))
     )
     con.commit()
+    emoji = "🟢 LONG" if direction == "LONG" else "🔴 SHORT"
+    disp = _pair_display(pair)
+    send_telegram(
+        f"<b>📈 FOREX-TRADE ERÖFFNET</b>\n"
+        f"{emoji} {disp} ({pair})\n"
+        f"Einstieg: {price:.5f}\n"
+        f"SL: {sl:.5f} | Größe: {size_units:.0f} units\n"
+        f"Risiko: {risk_eur:.2f} € ({cfg.CONFIG['risk_per_trade_pct']*100:.0f}%)"
+    )
     return {"pair": pair, "direction": direction, "price": price, "sl": sl, "tp": tp,
             "size": size_units}
 
@@ -155,6 +197,16 @@ def _close_trade(con, row, exit_price, reason, pair_cfg):
                 (new_cash, peak, pnl_net))
     con.commit()
 
+    emoji = "✅" if pnl_net > 0 else "❌"
+    disp = _pair_display(row["pair"])
+    reason_d = {"SL": "Stop-Loss", "TP": "Take-Profit", "CAP": "Haltezeit-Cap"}.get(reason, reason)
+    send_telegram(
+        f"<b>{emoji} FOREX-TRADE GESCHLOSSEN</b>\n"
+        f"{'🟢' if row['direction']=='LONG' else '🔴'} {disp} ({row['pair']})\n"
+        f"Exit ({reason_d}): {exit_price:.5f}\n"
+        f"PnL netto: <b>{pnl_net:+.2f} €</b> (gross {pnl_gross:+.2f}, Spread {spread_cost:.2f})"
+    )
+
 
 # ── Main ─────────────────────────────────────────────────────────────
 
@@ -180,15 +232,22 @@ def main():
             params_by_pair[row["pair"]] = dict(c["signal"])
 
     in_sess = sig.in_session(cfg_session=c.get("session", c))
+    # Bei 1D-Timeline ist das Intraday-Session-Fenster nicht relevant
+    # (Entries zum Tages-Schlusskurs). Nur für 15m anwenden.
+    gate_session = c.get("gate_session", True)
+    if c.get("timeframe", "15m") in ("1d", "1D", "1w", "1W"):
+        gate_session = False
+        in_sess = True
     dd = cfg.drawdown_pct(con)
     dd_blocked = dd >= c["max_drawdown_pct"]
 
     print(f"=== Forex Trade-Check ({datetime.now().strftime('%Y-%m-%d %H:%M')}) ===")
-    print(f"Session: {'✅' if in_sess else '⏸ außerhalb'} | Drawdown: {dd:.1%} "
+    print(f"Session-Gate: {'✅ aktiv' if gate_session else '⏸ aus (1D-Timeline)'} | Drawdown: {dd:.1%} "
           f"({'🚫 BLOCKED' if dd_blocked else '✅ ok'})")
 
-    # 1. Neue Entries nur wenn in Session + nicht drawdown-blocked
-    if in_sess and not dd_blocked and not args.test:
+    # 1. Neue Entries nur wenn (Session-Gate an AND in_session) + nicht drawdown-blocked
+    entry_ok = (not gate_session or in_sess) and not dd_blocked
+    if entry_ok and not args.test:
         for pair, pair_cfg in c["pairs"].items():
             params = params_by_pair.get(pair, dict(c["signal"]))
             res = sig.signal_for_pair(pair, params, c.get("signal", {}), pair_cfg)

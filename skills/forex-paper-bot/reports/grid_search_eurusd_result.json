@@ -1,0 +1,804 @@
+{
+  "ranking": [
+    {
+      "combo": {
+        "fast": 13,
+        "slow": 200,
+        "min_strength": 0.0002,
+        "sl_mult": 3.0,
+        "trailing": 0.5,
+        "mom_lb": 5,
+        "use_weekly": true,
+        "pyramid": false
+      },
+      "net": 68.4,
+      "trades": 10,
+      "pf": 7.11,
+      "wr": 0.3
+    },
+    {
+      "combo": {
+        "fast": 5,
+        "slow": 100,
+        "min_strength": 0.0002,
+        "sl_mult": 3.0,
+        "trailing": 0.5,
+        "mom_lb": 3,
+        "use_weekly": true,
+        "pyramid": true
+      },
+      "net": 61.5,
+      "trades": 9,
+      "pf": 6.5,
+      "wr": 0.222
+    },
+    {
+      "combo": {
+        "fast": 20,
+        "slow": 50,
+        "min_strength": 0.002,
+        "sl_mult": 2.0,
+        "trailing": 0.5,
+        "mom_lb": 8,
+        "use_weekly": true,
+        "pyramid": false
+      },
+      "net": 53.2,
+      "trades": 12,
+      "pf": 5.15,
+      "wr": 0.333
+    },
+    {
+      "combo": {
+        "fast": 20,
+        "slow": 200,
+        "min_strength": 0.0002,
+        "sl_mult": 1.5,
+        "trailing": 0.5,
+        "mom_lb": 8,
+        "use_weekly": true,
+        "pyramid": false
+      },
+      "net": 14.8,
+      "trades": 11,
+      "pf": 2.07,
+      "wr": 0.182
+    },
+    {
+      "combo": {
+        "fast": 8,
+        "slow": 200,
+        "min_strength": 0.0002,
+        "sl_mult": 2.0,
+        "trailing": 1.0,
+        "mom_lb": 8,
+        "use_weekly": true,
+        "pyramid": true
+      },
+      "net": 12.6,
+      "trades": 8,
+      "pf": 2.13,
+      "wr": 0.125
+    },
+    {
+      "combo": {
+        "fast": 13,
+        "slow": 200,
+        "min_strength": 0.001,
+        "sl_mult": 2.0,
+        "trailing": 0.5,
+        "mom_lb": 8,
+        "use_weekly": true,
+        "pyramid": false
+      },
+      "net": 5.8,
+      "trades": 9,
+      "pf": 1.51,
+      "wr": 0.222
+    },
+    {
+      "combo": {
+        "fast": 5,
+        "slow": 100,
+        "min_strength": 0.001,
+        "sl_mult": 1.5,
+        "trailing": 1.0,
+        "mom_lb": 3,
+        "use_weekly": true,
+        "pyramid": true
+      },
+      "net": 0.2,
+      "trades": 9,
+      "pf": 1.01,
+      "wr": 0.111
+    },
+    {
+      "combo": {
+        "fast": 8,
+        "slow": 100,
+        "min_strength": 0.001,
+        "sl_mult": 2.0,
+        "trailing": 1.0,
+        "mom_lb": 3,
+        "use_weekly": true,
+        "pyramid": true
+      },
+      "net": 0.2,
+      "trades": 9,
+      "pf": 1.01,
+      "wr": 0.111
+    },
+    {
+      "combo": {
+        "fast": 8,
+        "slow": 200,
+        "min_strength": 0.0005,
+        "sl_mult": 1.5,
+        "trailing": 0.5,
+        "mom_lb": 3,
+        "use_weekly": true,
+        "pyramid": false
+      },
+      "net": 75.0,
+      "trades": 6,
+      "pf": 12.72,
+      "wr": 0.333
+    },
+    {
+      "combo": {
+        "fast": 8,
+        "slow": 200,
+        "min_strength": 0.001,
+        "sl_mult": 3.0,
+        "trailing": 0.5,
+        "mom_lb": 5,
+        "use_weekly": true,
+        "pyramid": false
+      },
+      "net": 73.4,
+      "trades": 7,
+      "pf": 10.17,
+      "wr": 0.286
+    },
+    {
+      "combo": {
+        "fast": 8,
+        "slow": 200,
+        "min_strength": 0.001,
+        "sl_mult": 2.5,
+        "trailing": 1.0,
+        "mom_lb": 3,
+        "use_weekly": true,
+        "pyramid": true
+      },
+      "net": 15.8,
+      "trades": 6,
+      "pf": 2.98,
+      "wr": 0.167
+    },
+    {
+      "combo": {
+        "fast": 13,
+        "slow": 50,
+        "min_strength": 0.001,
+        "sl_mult": 1.5,
+        "trailing": 0.5,
+        "mom_lb": 3,
+        "use_weekly": true,
+        "pyramid": true
+      },
+      "net": 4.2,
+      "trades": 7,
+      "pf": 1.44,
+      "wr": 0.143
+    },
+    {
+      "combo": {
+        "fast": 13,
+        "slow": 21,
+        "min_strength": 0.003,
+        "sl_mult": 3.0,
+        "trailing": 1.0,
+        "mom_lb": 8,
+        "use_weekly": true,
+        "pyramid": false
+      },
+      "net": -1.3,
+      "trades": 8,
+      "pf": 0.88,
+      "wr": 0.125
+    },
+    {
+      "combo": {
+        "fast": 5,
+        "slow": 50,
+        "min_strength": 0.002,
+        "sl_mult": 1.5,
+        "trailing": 0.5,
+        "mom_lb": 3,
+        "use_weekly": true,
+        "pyramid": false
+      },
+      "net": -3.6,
+      "trades": 7,
+      "pf": 0.63,
+      "wr": 0.143
+    },
+    {
+      "combo": {
+        "fast": 20,
+        "slow": 34,
+        "min_strength": 0.003,
+        "sl_mult": 2.5,
+        "trailing": 2.0,
+        "mom_lb": 3,
+        "use_weekly": true,
+        "pyramid": false
+      },
+      "net": -6.4,
+      "trades": 4,
+      "pf": 0.0,
+      "wr": 0.0
+    },
+    {
+      "combo": {
+        "fast": 20,
+        "slow": 34,
+        "min_strength": 0.002,
+        "sl_mult": 2.5,
+        "trailing": 0.5,
+        "mom_lb": 3,
+        "use_weekly": true,
+        "pyramid": false
+      },
+      "net": -6.4,
+      "trades": 4,
+      "pf": 0.0,
+      "wr": 0.0
+    },
+    {
+      "combo": {
+        "fast": 5,
+        "slow": 50,
+        "min_strength": 0.0002,
+        "sl_mult": 3.0,
+        "trailing": 1.0,
+        "mom_lb": 5,
+        "use_weekly": true,
+        "pyramid": false
+      },
+      "net": -8.0,
+      "trades": 5,
+      "pf": 0.0,
+      "wr": 0.0
+    },
+    {
+      "combo": {
+        "fast": 5,
+        "slow": 50,
+        "min_strength": 0.0002,
+        "sl_mult": 1.0,
+        "trailing": 0.5,
+        "mom_lb": 5,
+        "use_weekly": true,
+        "pyramid": false
+      },
+      "net": -8.0,
+      "trades": 5,
+      "pf": 0.0,
+      "wr": 0.0
+    },
+    {
+      "combo": {
+        "fast": 20,
+        "slow": 200,
+        "min_strength": 0.002,
+        "sl_mult": 1.5,
+        "trailing": 1.0,
+        "mom_lb": 3,
+        "use_weekly": true,
+        "pyramid": false
+      },
+      "net": -8.0,
+      "trades": 5,
+      "pf": 0.0,
+      "wr": 0.0
+    },
+    {
+      "combo": {
+        "fast": 5,
+        "slow": 50,
+        "min_strength": 0.0002,
+        "sl_mult": 1.5,
+        "trailing": 0.5,
+        "mom_lb": 5,
+        "use_weekly": true,
+        "pyramid": true
+      },
+      "net": -8.0,
+      "trades": 5,
+      "pf": 0.0,
+      "wr": 0.0
+    },
+    {
+      "combo": {
+        "fast": 8,
+        "slow": 34,
+        "min_strength": 0.003,
+        "sl_mult": 3.0,
+        "trailing": 0.5,
+        "mom_lb": 3,
+        "use_weekly": true,
+        "pyramid": true
+      },
+      "net": -11.2,
+      "trades": 7,
+      "pf": 0.0,
+      "wr": 0.0
+    },
+    {
+      "combo": {
+        "fast": 20,
+        "slow": 200,
+        "min_strength": 0.0005,
+        "sl_mult": 2.0,
+        "trailing": 2.0,
+        "mom_lb": 3,
+        "use_weekly": true,
+        "pyramid": true
+      },
+      "net": -11.2,
+      "trades": 7,
+      "pf": 0.0,
+      "wr": 0.0
+    },
+    {
+      "combo": {
+        "fast": 5,
+        "slow": 200,
+        "min_strength": 0.003,
+        "sl_mult": 1.5,
+        "trailing": 2.0,
+        "mom_lb": 3,
+        "use_weekly": true,
+        "pyramid": false
+      },
+      "net": -11.2,
+      "trades": 7,
+      "pf": 0.0,
+      "wr": 0.0
+    },
+    {
+      "combo": {
+        "fast": 8,
+        "slow": 34,
+        "min_strength": 0.003,
+        "sl_mult": 2.0,
+        "trailing": 2.0,
+        "mom_lb": 8,
+        "use_weekly": true,
+        "pyramid": false
+      },
+      "net": -11.2,
+      "trades": 7,
+      "pf": 0.0,
+      "wr": 0.0
+    },
+    {
+      "combo": {
+        "fast": 8,
+        "slow": 34,
+        "min_strength": 0.002,
+        "sl_mult": 1.5,
+        "trailing": 2.0,
+        "mom_lb": 3,
+        "use_weekly": true,
+        "pyramid": true
+      },
+      "net": -11.2,
+      "trades": 7,
+      "pf": 0.0,
+      "wr": 0.0
+    },
+    {
+      "combo": {
+        "fast": 8,
+        "slow": 21,
+        "min_strength": 0.001,
+        "sl_mult": 3.0,
+        "trailing": 3.0,
+        "mom_lb": 3,
+        "use_weekly": true,
+        "pyramid": false
+      },
+      "net": -11.2,
+      "trades": 7,
+      "pf": 0.0,
+      "wr": 0.0
+    },
+    {
+      "combo": {
+        "fast": 13,
+        "slow": 34,
+        "min_strength": 0.001,
+        "sl_mult": 2.0,
+        "trailing": 2.0,
+        "mom_lb": 8,
+        "use_weekly": true,
+        "pyramid": false
+      },
+      "net": -11.2,
+      "trades": 7,
+      "pf": 0.0,
+      "wr": 0.0
+    },
+    {
+      "combo": {
+        "fast": 5,
+        "slow": 100,
+        "min_strength": 0.002,
+        "sl_mult": 2.0,
+        "trailing": 3.0,
+        "mom_lb": 8,
+        "use_weekly": true,
+        "pyramid": false
+      },
+      "net": -11.2,
+      "trades": 7,
+      "pf": 0.0,
+      "wr": 0.0
+    },
+    {
+      "combo": {
+        "fast": 8,
+        "slow": 21,
+        "min_strength": 0.002,
+        "sl_mult": 3.0,
+        "trailing": 3.0,
+        "mom_lb": 3,
+        "use_weekly": true,
+        "pyramid": true
+      },
+      "net": -11.2,
+      "trades": 7,
+      "pf": 0.0,
+      "wr": 0.0
+    },
+    {
+      "combo": {
+        "fast": 13,
+        "slow": 34,
+        "min_strength": 0.0005,
+        "sl_mult": 2.5,
+        "trailing": 1.0,
+        "mom_lb": 3,
+        "use_weekly": true,
+        "pyramid": false
+      },
+      "net": -11.2,
+      "trades": 7,
+      "pf": 0.0,
+      "wr": 0.0
+    },
+    {
+      "combo": {
+        "fast": 5,
+        "slow": 50,
+        "min_strength": 0.002,
+        "sl_mult": 1.5,
+        "trailing": 2.0,
+        "mom_lb": 3,
+        "use_weekly": true,
+        "pyramid": true
+      },
+      "net": -11.2,
+      "trades": 7,
+      "pf": 0.0,
+      "wr": 0.0
+    },
+    {
+      "combo": {
+        "fast": 13,
+        "slow": 34,
+        "min_strength": 0.0005,
+        "sl_mult": 1.0,
+        "trailing": 1.0,
+        "mom_lb": 3,
+        "use_weekly": true,
+        "pyramid": true
+      },
+      "net": -11.2,
+      "trades": 7,
+      "pf": 0.0,
+      "wr": 0.0
+    },
+    {
+      "combo": {
+        "fast": 8,
+        "slow": 50,
+        "min_strength": 0.001,
+        "sl_mult": 1.0,
+        "trailing": 2.0,
+        "mom_lb": 8,
+        "use_weekly": true,
+        "pyramid": true
+      },
+      "net": -11.2,
+      "trades": 7,
+      "pf": 0.0,
+      "wr": 0.0
+    },
+    {
+      "combo": {
+        "fast": 8,
+        "slow": 34,
+        "min_strength": 0.0005,
+        "sl_mult": 1.0,
+        "trailing": 0.5,
+        "mom_lb": 8,
+        "use_weekly": true,
+        "pyramid": true
+      },
+      "net": -12.3,
+      "trades": 8,
+      "pf": 0.0,
+      "wr": 0.0
+    },
+    {
+      "combo": {
+        "fast": 5,
+        "slow": 100,
+        "min_strength": 0.0002,
+        "sl_mult": 2.5,
+        "trailing": 2.0,
+        "mom_lb": 8,
+        "use_weekly": true,
+        "pyramid": false
+      },
+      "net": -12.8,
+      "trades": 8,
+      "pf": 0.0,
+      "wr": 0.0
+    },
+    {
+      "combo": {
+        "fast": 13,
+        "slow": 34,
+        "min_strength": 0.0002,
+        "sl_mult": 3.0,
+        "trailing": 0.5,
+        "mom_lb": 5,
+        "use_weekly": true,
+        "pyramid": false
+      },
+      "net": -12.8,
+      "trades": 8,
+      "pf": 0.0,
+      "wr": 0.0
+    },
+    {
+      "combo": {
+        "fast": 20,
+        "slow": 21,
+        "min_strength": 0.001,
+        "sl_mult": 3.0,
+        "trailing": 1.0,
+        "mom_lb": 8,
+        "use_weekly": true,
+        "pyramid": false
+      },
+      "net": -12.8,
+      "trades": 8,
+      "pf": 0.0,
+      "wr": 0.0
+    },
+    {
+      "combo": {
+        "fast": 13,
+        "slow": 21,
+        "min_strength": 0.001,
+        "sl_mult": 1.0,
+        "trailing": 2.0,
+        "mom_lb": 5,
+        "use_weekly": true,
+        "pyramid": true
+      },
+      "net": -12.8,
+      "trades": 8,
+      "pf": 0.0,
+      "wr": 0.0
+    },
+    {
+      "combo": {
+        "fast": 8,
+        "slow": 21,
+        "min_strength": 0.0002,
+        "sl_mult": 2.0,
+        "trailing": 1.0,
+        "mom_lb": 8,
+        "use_weekly": true,
+        "pyramid": false
+      },
+      "net": -12.8,
+      "trades": 8,
+      "pf": 0.0,
+      "wr": 0.0
+    },
+    {
+      "combo": {
+        "fast": 20,
+        "slow": 100,
+        "min_strength": 0.001,
+        "sl_mult": 2.5,
+        "trailing": 1.0,
+        "mom_lb": 3,
+        "use_weekly": true,
+        "pyramid": false
+      },
+      "net": -14.4,
+      "trades": 9,
+      "pf": 0.0,
+      "wr": 0.0
+    },
+    {
+      "combo": {
+        "fast": 20,
+        "slow": 50,
+        "min_strength": 0.003,
+        "sl_mult": 2.0,
+        "trailing": 2.0,
+        "mom_lb": 5,
+        "use_weekly": true,
+        "pyramid": false
+      },
+      "net": -14.4,
+      "trades": 9,
+      "pf": 0.0,
+      "wr": 0.0
+    },
+    {
+      "combo": {
+        "fast": 20,
+        "slow": 200,
+        "min_strength": 0.003,
+        "sl_mult": 1.5,
+        "trailing": 2.0,
+        "mom_lb": 5,
+        "use_weekly": true,
+        "pyramid": true
+      },
+      "net": -14.4,
+      "trades": 9,
+      "pf": 0.0,
+      "wr": 0.0
+    },
+    {
+      "combo": {
+        "fast": 13,
+        "slow": 200,
+        "min_strength": 0.002,
+        "sl_mult": 2.5,
+        "trailing": 1.0,
+        "mom_lb": 8,
+        "use_weekly": true,
+        "pyramid": true
+      },
+      "net": -14.4,
+      "trades": 9,
+      "pf": 0.0,
+      "wr": 0.0
+    },
+    {
+      "combo": {
+        "fast": 8,
+        "slow": 100,
+        "min_strength": 0.0005,
+        "sl_mult": 2.5,
+        "trailing": 3.0,
+        "mom_lb": 3,
+        "use_weekly": true,
+        "pyramid": true
+      },
+      "net": -14.4,
+      "trades": 9,
+      "pf": 0.0,
+      "wr": 0.0
+    },
+    {
+      "combo": {
+        "fast": 20,
+        "slow": 200,
+        "min_strength": 0.0005,
+        "sl_mult": 2.5,
+        "trailing": 1.0,
+        "mom_lb": 5,
+        "use_weekly": true,
+        "pyramid": true
+      },
+      "net": -16.0,
+      "trades": 10,
+      "pf": 0.0,
+      "wr": 0.0
+    },
+    {
+      "combo": {
+        "fast": 13,
+        "slow": 100,
+        "min_strength": 0.003,
+        "sl_mult": 1.5,
+        "trailing": 2.0,
+        "mom_lb": 3,
+        "use_weekly": true,
+        "pyramid": false
+      },
+      "net": -16.0,
+      "trades": 10,
+      "pf": 0.0,
+      "wr": 0.0
+    },
+    {
+      "combo": {
+        "fast": 5,
+        "slow": 21,
+        "min_strength": 0.0005,
+        "sl_mult": 1.5,
+        "trailing": 2.0,
+        "mom_lb": 8,
+        "use_weekly": true,
+        "pyramid": true
+      },
+      "net": -17.6,
+      "trades": 11,
+      "pf": 0.0,
+      "wr": 0.0
+    },
+    {
+      "combo": {
+        "fast": 8,
+        "slow": 100,
+        "min_strength": 0.0002,
+        "sl_mult": 2.5,
+        "trailing": 3.0,
+        "mom_lb": 8,
+        "use_weekly": true,
+        "pyramid": false
+      },
+      "net": -17.6,
+      "trades": 11,
+      "pf": 0.0,
+      "wr": 0.0
+    },
+    {
+      "combo": {
+        "fast": 8,
+        "slow": 100,
+        "min_strength": 0.0002,
+        "sl_mult": 2.5,
+        "trailing": 2.0,
+        "mom_lb": 8,
+        "use_weekly": true,
+        "pyramid": false
+      },
+      "net": -17.6,
+      "trades": 11,
+      "pf": 0.0,
+      "wr": 0.0
+    },
+    {
+      "combo": {
+        "fast": 20,
+        "slow": 50,
+        "min_strength": 0.0002,
+        "sl_mult": 2.5,
+        "trailing": 3.0,
+        "mom_lb": 8,
+        "use_weekly": true,
+        "pyramid": false
+      },
+      "net": -20.8,
+      "trades": 13,
+      "pf": 0.0,
+      "wr": 0.0
+    }
+  ]
+}

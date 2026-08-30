@@ -302,6 +302,20 @@ def calc_source_quality(con, today):
             (channel, d30)
         ).fetchone()[0]
 
+        # source_type korrekt klassifizieren statt pauschal 'youtube':
+        # screener_nasdaq / screener / rss-Quellen werden als eigene Quelle
+        # getrackt (Vorschlag vault-insights 29.08.). Lookup über source_registry;
+        # 'rss:'-Prefix strippen, display_name case-insensitiv matchen.
+        lookup = channel[4:] if channel.startswith("rss:") else channel
+        st_row = con.execute(
+            """SELECT source_type FROM source_registry
+               WHERE source_key = ? OR source_type = ?
+                  OR lower(display_name) = lower(?)
+               LIMIT 1""",
+            (channel, channel, lookup),
+        ).fetchone()
+        source_type = (st_row["source_type"] if st_row else None) or "youtube"
+
         # #19: source_channel ist eine kommagetrennte Liste (", ".join(...)).
         # Substring-LIKE '%channel%' konnte Quellen quer-attribuieren, deren Name
         # Teilstring eines anderen ist (z.B. "Aktien" in "Aktien Mag"). Jetzt exakt
@@ -352,9 +366,9 @@ def calc_source_quality(con, today):
         })
         con.execute("""
             INSERT OR REPLACE INTO source_quality
-            (date, channel, mentions_30d, bought_30d, win_rate_30d, avg_pnl_30d, quality_score)
-            VALUES (?,?,?,?,?,?,?)
-        """, (today, channel, mentions, bought, win_rate, avg_pnl, quality))
+            (date, channel, source_type, mentions_30d, bought_30d, win_rate_30d, avg_pnl_30d, quality_score)
+            VALUES (?,?,?,?,?,?,?,?)
+        """, (today, channel, source_type, mentions, bought, win_rate, avg_pnl, quality))
     con.commit()
     return sorted(results, key=lambda x: x["quality_score"], reverse=True)
 

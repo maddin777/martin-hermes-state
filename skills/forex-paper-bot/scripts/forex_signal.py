@@ -30,8 +30,17 @@ def ema(series, span):
 
 
 def h1_direction(pair, trend_cfg, cache_days=30):
-    """Liefert 'bullish'|'bearish'|'neutral' für H1-Trendfilter."""
-    df = fetch_trend_timeframe(pair, cache_days, "1h")
+    """Liefert 'bullish'|'bearish'|'neutral' für den Trendfilter (config trend_timeframe).
+
+    Bei 1D-Timeline ist der Trendfilter i.d.R. weekly (1wk) — dafür brauchen wir eine
+    lange Historie (cache_days ~400, sonst zu wenige Wochenkerzen).
+    """
+    tf = cfg.CONFIG.get("trend_timeframe", "1h")
+    if tf == "1wk":
+        lookback = max(cache_days, 400)
+    else:
+        lookback = cache_days
+    df = fetch_trend_timeframe(pair, lookback, tf)
     if df is None or len(df) < trend_cfg["h1_ema"] + 5:
         return "neutral"
     close = df["Close"].astype(float)
@@ -44,12 +53,18 @@ def h1_direction(pair, trend_cfg, cache_days=30):
 
 
 def signal_for_pair(pair, sig_cfg, trend_cfg, pair_cfg):
-    """Berechnet das Signal für ein Paar. Liefert dict."""
-    df15 = fetch_pair(pair, 5, "15m")
-    if df15 is None or len(df15) < sig_cfg["ema_slow"] + sig_cfg["momentum_lookback"] + 5:
+    """Berechnet das Signal für ein Paar. Liefert dict.
+
+    Nutzt die Konfig-Timeline (cfg.CONFIG['timeframe'], z.B. 15m oder 1d).
+    Einstieg nur wenn 15m/1D-EMA-Kreuz zur Trendfilter-Richtung passt + Momentum.
+    """
+    tf = cfg.CONFIG.get("timeframe", "15m")
+    cache_days = 5 if tf == "15m" else 500
+    df = fetch_pair(pair, cache_days, tf)
+    if df is None or len(df) < sig_cfg["ema_slow"] + sig_cfg["momentum_lookback"] + 5:
         return {"pair": pair, "signal": "NEUTRAL", "reason": "zu wenig Daten", "h1": "unknown"}
 
-    close = df15["Close"].astype(float)
+    close = df["Close"].astype(float)
     fast = ema(close, sig_cfg["ema_fast"])
     slow = ema(close, sig_cfg["ema_slow"])
 
@@ -60,22 +75,22 @@ def signal_for_pair(pair, sig_cfg, trend_cfg, pair_cfg):
     mom = (cur / prev - 1.0) if prev else 0.0
     min_strength = sig_cfg.get("min_trend_strength", 0.0002)
 
-    # 15m-Trend aus EMA-Kreuz (aktueller + vorheriger Wert)
+    # Timeline-Trend aus EMA-Kreuz (aktueller + vorheriger Wert)
     cross_now = _scalar(fast.iloc[-1]) > _scalar(slow.iloc[-1])
     cross_prev = _scalar(fast.iloc[-2]) > _scalar(slow.iloc[-2])
 
     h1 = h1_direction(pair, trend_cfg)
 
-    # Signal = 15m-Trend muss zur H1-Gate-Richtung passen UND Momentum stark genug
+    # Signal = Timeline-Trend muss zur Trendfilter-Richtung passen UND Momentum stark genug
     if h1 == "bullish" and cross_now and mom > min_strength:
-        return {"pair": pair, "signal": "LONG", "reason": f"H1 bullish + 15m EMA-Kreuz up, mom {mom:.5f}", "h1": h1}
+        return {"pair": pair, "signal": "LONG", "reason": f"{tf} bullish + EMA-Kreuz up, mom {mom:.5f}", "h1": h1}
     if h1 == "bearish" and not cross_now and mom < -min_strength:
-        return {"pair": pair, "signal": "SHORT", "reason": f"H1 bearish + 15m EMA-Kreuz down, mom {mom:.5f}", "h1": h1}
-    # Kreuz-Übergang als Signal (auch ohne super-starkes Momentum, aber mit H1-Gate)
+        return {"pair": pair, "signal": "SHORT", "reason": f"{tf} bearish + EMA-Kreuz down, mom {mom:.5f}", "h1": h1}
+    # Kreuz-Übergang als Signal (auch ohne super-starkes Momentum, aber mit Gate)
     if h1 == "bullish" and cross_now and not cross_prev:
-        return {"pair": pair, "signal": "LONG", "reason": "frischer 15m EMA-Kreuz up, H1 bullish", "h1": h1}
+        return {"pair": pair, "signal": "LONG", "reason": f"frischer {tf} EMA-Kreuz up, Trend bullish", "h1": h1}
     if h1 == "bearish" and not cross_now and cross_prev:
-        return {"pair": pair, "signal": "SHORT", "reason": "frischer 15m EMA-Kreuz down, H1 bearish", "h1": h1}
+        return {"pair": pair, "signal": "SHORT", "reason": f"frischer {tf} EMA-Kreuz down, Trend bearish", "h1": h1}
 
     return {"pair": pair, "signal": "NEUTRAL", "reason": "kein Treffer", "h1": h1}
 
