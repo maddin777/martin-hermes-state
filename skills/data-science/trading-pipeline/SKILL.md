@@ -1035,3 +1035,39 @@ curl -s "https://finnhub.io/api/v1/stock/profile2?symbol=AAPL&token=$(grep FINNH
 # SP500 SMA200-Check (Amumbo-Exit)
 python3 /root/.hermes/scripts/sp500_sma200_check.py
 ```
+
+### 🔴 Manuell gesetzte Watchlist-Kandidaten (30.08.2026)
+
+Die Pipeline vergibt `conviction_score` NUR aus Mentions (YouTube/RSS/Twitter).
+**Manuell eingefügte Ticker (ohne Mentions) bekommen `conviction=NULL` → sie werden
+NICHT automatisch von `signal_manager.py` als Entry gewählt, selbst bei `status='watching'`
+und vorhandenem `tech_score`/`tech_direction`** (Entry braucht conviction >= threshold).
+
+Am 30.08.2026 wurden 8 Longevity-Kandidaten manuell auf `status='watching'` gesetzt
+(Bericht "Longevity-Medizin", 2-Jahres-Horizont), damit sie in Export + Technical-Scan
+auftauchen:
+- **Stabilitätskern:** VRTX, MCK, IQV, NSIS-B (Novonesis)
+- **Value-Nachzügler:** SYK (Stryker), DEMANT (Demant)
+- **Wachstum/Enabler:** HNGE (Hinge Health), BLFS (BioLife)
+
+**Wichtig - Risiko:** `watchlist_cleanup.py` (22:30, Mo–Fr) droppt `status='watching'`
+Einträge mit `last_seen` > 60 Tage als `stale>60d` → `dropped`. Da diese manuellen
+Einträge KEINE Mentions bekommen (last_seen bleibt beim Insert-Datum), werden sie nach
+~60 Tagen wieder gedroppt. Falls sie longfristig tracked bleiben sollen: Note
+`manual-longterm` setzen ODER regelmäßig `last_seen` aktualisieren. Sie sind bewusst
+NUR als Beobachtung gedacht — nicht als System-Signalquelle.
+
+**Moonshots (DNLI, BEAM, CYBN/Helus) und überholte Thesen (PRE, HIMS, M1K.DE, XtalPi)**
+bewusst NICHT aufgenommen (zu spekulativ für 5-14-Tage-System / These widerlegt).
+
+**30.08. Abschluss:** Manuelle Conviction gesetzt + echte Tech-Scores aus `get_technical_score`
+in die DB geschrieben. **ALLE 8 jetzt entry-fähig** (Conv ≥0.63 + Tech-Score + direction LONG):
+VRTX 0.70/0.8, MCK 0.72/8.0, IQV 0.68/5.0, NSIS-B.CO 0.66/7.5, SYK 0.64/3.0, DEMANT.CO 0.63/5.5,
+HNGE 0.67/0.8, BLFS 0.65/4.5. ⚠️ Das sind **manuelle Entscheidungen außerhalb der Pipeline-Validierung** —
+Conviction kommt nicht aus Codes-Mentions, `llm_verdict`-Note dokumentiert es. Wichtig fürs APP:
+`sector_probation`/`last30days_gate`/`leverage`-Check gelten trotzdem für Entry.
+
+**⚠️ Ticker-Suffix-Pitfall bei nordischen/DK-Aktien:** yfinance kennt `DEMANT`/`NSIS-B` NICHT
+(404 "delisted"). Korrekte Yahoo-Symbole sind `DEMANT.CO`/`NSIS-B.CO` (Nasdaq Kopenhagen).
+Ohne `.CO` liefert `get_technical_score` → `None` und die Aktie ist trotz Conviction nicht kaufbar.
+Regel: Bei kopenhagener/nordischer Aktie immer das Börsen-Suffix (`.CO`) prüfen.
