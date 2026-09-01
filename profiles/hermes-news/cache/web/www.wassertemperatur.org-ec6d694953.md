@@ -34,6 +34,74 @@ Nachfolgend finden Sie Infos zum aktuellen Wetter und eine Wettervorhersage sowi
 
 ### Wetter am Schweriner See aktuell + 14 Tage Wettervorhersage:
 
+Schwerin
+
+**15°**
+
+Bedeckt
+
+99% Luftfeuchtigkeit
+
+Wind: 0m/s S
+
+MAX C 17 • MIN C 15
+
+21°
+
+DI
+
+22°
+
+MI
+
+20°
+
+DO
+
+18°
+
+FR
+
+17°
+
+SA
+
+20°
+
+SO
+
+22°
+
+MO
+
+24°
+
+DI
+
+26°
+
+MI
+
+19°
+
+DO
+
+15°
+
+FR
+
+16°
+
+SA
+
+17°
+
+SO
+
+19°
+
+MO
+
 ### Klimatabelle Schweriner See:
 
 |     |     |     |     |     |     |     |     |     |     |     |     |     |

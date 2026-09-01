@@ -1,9 +1,9 @@
 {
-  "last_report_path": "/root/.hermes/logs/curator/20260824-060524",
-  "last_run_at": "2026-08-24T06:05:24.106201+00:00",
-  "last_run_duration_seconds": 20.264663,
-  "last_run_summary": "auto: 1 reactivated; llm: skipped (consolidation off)",
+  "last_report_path": "/root/.hermes/logs/curator/20260831-070428",
+  "last_run_at": "2026-08-31T07:04:28.905316+00:00",
+  "last_run_duration_seconds": 299.857488,
+  "last_run_summary": "auto: 3 marked stale, 1 reactivated; llm: ## Structured summary (required)\n\n```yaml\nconsolidations:\n  - from: github-operations (new umbrella)\n    into: github-operations\n    reason: Created unified umbrella for GitHub workflow (auth, PRs, issues, repos, code review). Copied suppor…",
   "last_run_summary_shown_at": "2026-08-17T05:59:46.242059+00:00",
   "paused": false,
-  "run_count": 16
+  "run_count": 17
 }
