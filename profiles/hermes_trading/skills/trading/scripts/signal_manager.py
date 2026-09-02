@@ -1103,8 +1103,12 @@ def check_drawdown(con):
     elif drawdown >= 0.15:
         # FIX 17.08.2026 (Martin): 15-25%-Zone max_positions 4 → 6 — die 4er-Grenze
         # blockierte bei -18.5% Drawdown alle neuen Entries (4/8 offen, aber Cap war 4).
-        # Size 0.50 + Conf 0.80 bleiben (graduierte Bremse intakt), nur mehr Slots.
-        return drawdown, "ok", {"size_factor": 0.50, "min_confidence": 0.80, "max_positions": 6}
+        # FIX 01.09.2026 (Martin): Sanfte Heilungs-Beschleunigung — size_factor 0.50→0.65,
+        # min_confidence 0.80→0.75. Grund: bei -18% sind mit 50% Size + 80% Conf nur wenige
+        # Kandidaten (23 mit conv≥0.80) entry-fähig, Trades klein → Heilung dauerte ewig
+        # (braucht +651€ = 10-20 kleine Winner). 65% Size + 75% Conf lässt mehr Kandidaten
+        # durch bei moderatem Risiko. Schutz-Bremse bleibt (size<1, conf>default 0.60).
+        return drawdown, "ok", {"size_factor": 0.65, "min_confidence": 0.75, "max_positions": 6}
     elif drawdown >= 0.12:
         return drawdown, "ok", {"size_factor": 0.75, "min_confidence": 0.75, "max_positions": 6}
     else:

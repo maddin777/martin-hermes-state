@@ -1,6 +1,6 @@
 # Änderungshistorie — Trading Skill
 
-**Stand:** Paketen A–D + Sprints 1–7 + Bugfix-Sprint + Screener-Source + Watchlist-Performance-Fix + Rollen-Sprint R1–R4 + **Turtle-Konfluenz-Sprint** + **Phase 1+2 Fix (09.08.2026)** + **Watchlist-Cleanup-Archivierung (09.08.2026)** + **UK-Microcap-Gate (14.08.2026)** + **DQ-Isolation + Alarm-Crons (16.08.2026)** + **Drawdown-15-25-Zone auf 6 Pos (17.08.2026)** + **DQ-.L-Aufräumung im Cleanup + täglicher Cleanup (19.08.2026)** + **DQ-Deaktivierungs-Verifikation + Cleanup 1c (24.08.2026)** + **DQ-Root-Clause-Fix: keine Reaktivierung gedroppter .L + Dry-Run read-only (26.08.2026)** + **Selection Momentum-/Liquiditäts-Gate (27.08.2026)**
+**Stand:** Paketen A–D + Sprints 1–7 + Bugfix-Sprint + Screener-Source + Watchlist-Performance-Fix + Rollen-Sprint R1–R4 + **Turtle-Konfluenz-Sprint** + **Phase 1+2 Fix (09.08.2026)** + **Watchlist-Cleanup-Archivierung (09.08.2026)** + **UK-Microcap-Gate (14.08.2026)** + **DQ-Isolation + Alarm-Crons (16.08.2026)** + **Drawdown-15-25-Zone auf 6 Pos (17.08.2026)** + **DQ-.L-Aufräumung im Cleanup + täglicher Cleanup (19.08.2026)** + **DQ-Deaktivierungs-Verifikation + Cleanup 1c (24.08.2026)** + **DQ-Root-Clause-Fix: keine Reaktivierung gedroppter .L + Dry-Run read-only (26.08.2026)** + **Selection Momentum-/Liquiditäts-Gate (27.08.2026)** + **Drawdown-Heilungs-Beschleunigung 15-25%: Size 65% + Conf 75% (01.09.2026)**
 
 ## 27.08.2026 — Selection-Rebuild: Momentum ist Gate, Sentiment ist Stärke
 
@@ -92,6 +92,31 @@ Ergänzung zum DQ-Cleanup-Fix. Verifiziert am 19.08.: Die Quelle Share Talk (sou
 - Cron `53f222b00811` (vault-insights-daily) Prompt nachgeschärft: SHORT sentiment-basiert zählen (bear>long), tech_direction=SHORT bei bought-LONG-Positionen NICHT als neue Bärenwelle darstellen; DQ-Zufluss aus anderen Quellen überwachen
 
 
+
+## 01.09.2026 — Drawdown 15-25%-Zone: Größe 65% + Conf 75% (Heilungs-Beschleunigung)
+
+### Problem
+Portfolio bei **-18.1% Drawdown** vom ATH (11.208 → 9.211, Cash 82.5%). Es gab zwar **23-34 entry-fähige Kandidaten** (conv≥0.60-0.80 + tech_score + direction), aber die 15-25%-Bremszone (Size 50% + Conf 80%) machte die Heilung mathematisch endlos: Mit ±40-60€ PnL pro Trade brauchte es **10-20 profitable Winner** für die +651€, um die Zone zu verlassen (unter 12% DD). Zusätzlich filterte die 80%-Confidence die meisten der 23 Kandidaten raus (nur conv≥0.80 kamen durch). Resultat: 82% Cash, 2 Positionen, festgefahren.
+
+### Fix
+In `check_drawdown()` (signal_manager.py), 15-25%-Zone:
+- `size_factor`: **0.50 → 0.65** (Positionen ~30% größer, jeder Winner bringt mehr)
+- `min_confidence`: **0.80 → 0.75** (nun 34 statt 23 Kandidaten entry-fähig)
+- `max_positions`: 6 (unverändert)
+
+### Drawdown-Matrix (aktuell)
+| Drawdown | Size | Conf | Max Pos | Wirkung |
+|----------|------|------|---------|---------|
+| < 12% | 100% | 70% | 8 | Normalbetrieb |
+| 12-15% | 75% | 75% | 6 | Warnzone |
+| 15-25% | **65%** | **75%** | **6** | Bremszone, gemildert (01.09.) |
+| ≥ 25% | close_all | 100% | 0 | Notbremse + 7d Cooldown |
+
+### Schutz bleibt intakt
+`size_factor < 1` (noch nicht volle Größe) + `min_confidence > default 0.60` (noch strenger als Normalbetrieb). Es war eine Milderung der Bremse, kein Aushebeln. Erwartete Wirkung: ~5-8 Trades statt 10-20 zur Heilung.
+
+### Verifiziert
+`check_drawdown()` live bei 18.1% → size_factor 0.65, min_confidence 0.75, max_positions 6. Syntax + Funktion OK.
 
 ## 17.08.2026 — Drawdown 15-25%-Zone: max_positions 4 → 6
 

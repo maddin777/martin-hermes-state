@@ -617,6 +617,13 @@ Siehe `references/sector-blacklist-probation.md`.
 | **< 12%** | 100% | 70% | 8 | Normalbetrieb |
 | **12–15%** | 75% | 75% | 6 | Warnzone: reduzierte Size |
 | **15–25%** | 50% | 80% | 6 | Bremszone: halbe Size, höhere Qualität (17.08: 4→6, Slots für 2 zusätzliche Trades) |
+
+> **FIX 01.09.2026 (Heilungs-Beschleunigung):** In der 15–25%-Zone gilt jetzt **Size 65% + Conf 75%**
+> (statt 50% + 80%). Grund (Martin): Bei -18% waren mit 50% Size + 80% Conf nur die 23 Kandidaten
+> mit conv≥0.80 entry-fähig, Trades klein (±40-60€) → die +651€ zum Verlassen der Bremszone
+> brauchten 10-20 kleine Winner, Heilung dauerte "ewig". 65% Size + 75% Conf lässt 34 statt 23
+> Kandidaten durch und vergrößert Positionen um ~30% → ~5-8 Trades statt 10-20. **Schutz bleibt:**
+> size<1, conf>default 0.60. Implementiert in `signal_manager.check_drawdown()` (hardcoded, nicht Config).
 | **≥ 25%** | close_all + 7d Cooldown | — | 0 | Notbremse (wie gehabt) |
 
 **Heilungsmechanismus:** Bei 50% Size + 80% Confidence reichen 1-2 solide Trades mit +3-4% Gewinn, um den Drawdown von 15% auf unter 12% zu drücken → volle Size wieder frei.
