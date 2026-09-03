@@ -650,7 +650,7 @@ def main():
     
         print(f"  → {len(mentions)} Unternehmen in Watchlist", flush=True)
 
-        _grok_counter = 0  # Limit Grok API-Calls
+        _boost_counter = 0  # Limit X-Sentiment-API-Calls (twitterapi.io)
         for m in mentions:
             name       = m["name"]
             channels_list = m["channels"].split(",") if m["channels"] else []
@@ -710,17 +710,17 @@ def main():
                     conviction_bear = min(1.0, conviction_bear + pead_short)
                     print(f"    📊 PEAD-Boost (MISS) +{pead_short:.0%} → conviction_bear={conviction_bear:.2f}", flush=True)
     
-            # Grok X-Boost: Nur Top 20 mit conviction ≥ 0.80 (reduziert API-Calls um ~75%)
-            if conviction >= 0.80 and ticker and _grok_counter < 20:
-                _grok_counter += 1
+            # X-Sentiment-Boost: Nur Top 20 mit conviction ≥ 0.80 (reduziert API-Calls um ~75%)
+            if conviction >= 0.80 and ticker and _boost_counter < 20:
+                _boost_counter += 1
                 try:
                     from xsearch_helper import conviction_boost as x_conviction_boost
                     new_conv, reason = x_conviction_boost(ticker, canonical_name, conviction)
                     if new_conv != conviction:
                         conviction = new_conv
-                        print(f"    🐦 Grok: {reason} → conviction={conviction:.2f}", flush=True)
+                        print(f"    🐦 X: {reason} → conviction={conviction:.2f}", flush=True)
                 except Exception:
-                    pass  # Grok-Fehler stoppen die Pipeline nicht
+                    pass  # X-Sentiment-Fehler stoppen die Pipeline nicht
     
             # INSERT: bei Ticker-Konflikt nichts tun, UPDATE-Pfad weiter unten kuemmert sich
             con.execute("""

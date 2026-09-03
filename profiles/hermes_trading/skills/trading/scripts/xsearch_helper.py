@@ -1,10 +1,13 @@
 """
-xAI x_search Helper via Hermes AIAgent
-Nutzt Grok OAuth - kein separater API-Key nötig.
+x_search Helper via twitterapi.io (Standard seit 01.09.2026).
+
+Die frühere Grok/xAI-`x_search`-Integration wurde entfernt (Dienst nicht mehr genutzt).
+Stattdessen wird twitterapi.io für X-Suchen genutzt: generische Keyword-Suche über
+`advanced_search`, dann Sentiment-Extraktion via OpenRouter (DeepSeek). Das JSON-Format
+(sentiment/confidence/mention_count/breaking_news/top_signals) bleibt unverändert,
+damit die aufbauenden Helper (conviction_boost, breaking_news_check, disk) weiter laufen.
 """
 import sys, os, json, re
-
-HERMES_AGENT_PATH = '/root/.hermes/hermes-agent'
 
 def _load_env():
     for env_path in [
@@ -19,78 +22,61 @@ def _load_env():
                         k, v = line.split("=", 1)
                         os.environ.setdefault(k.strip(), v.strip())
 
-def _get_agent():
-    """Startet einen isolierten Subprozess für den Hermes AIAgent.
-    Vermeidet sys.path/sys.modules-Kollisionen mit der Trading-Umgebung."""
-    _load_env()
-    import subprocess, json, sys as _sys
-    cmd = [
-        _sys.executable, "-c", """
-import sys, json
-sys.path.insert(0, '/root/.hermes/hermes-agent')
-from run_agent import AIAgent
-agent = AIAgent(
-    enabled_toolsets=["x_search"],
-    quiet_mode=True,
-    skip_memory=True,
-)
-result = agent.chat(sys.stdin.read())
-print(result)
-"""
-    ]
-    return _SubprocessAgent(cmd)
+def _twapi_key():
+    return os.environ.get("TWITTERAPI_IO_KEY", "").strip()
 
+def _search_tweets(query, max_results=15):
+    """Führt eine twitterapi.io advanced_search durch. Liefert Liste von Tweet-Dicts."""
+    import requests
+    key = _twapi_key()
+    if not key:
+        return []
+    r = requests.get(
+        "https://api.twitterapi.io/twitter/tweet/advanced_search",
+        headers={"X-API-Key": key},
+        params={"query": query, "queryType": "Latest"},
+        timeout=20,
+    )
+    if r.status_code != 200:
+        print(f"  ✗ twitterapi.io HTTP {r.status_code}", flush=True)
+        return []
+    return r.json().get("tweets", [])[:max_results]
 
-class _SubprocessAgent:
-    """Wrapper, der AIAgent via Subprozess aufruft — volle Import-Isolation."""
-
-    def __init__(self, cmd):
-        self._cmd = cmd
-
-    def chat(self, message):
-        import subprocess, json
-        try:
-            p = subprocess.run(
-                self._cmd, input=message, capture_output=True,
-                text=True, timeout=120
-            )
-            if p.returncode != 0:
-                raise RuntimeError(p.stderr.strip() or f"exit {p.returncode}")
-            return p.stdout.strip()
-        except subprocess.TimeoutExpired:
-            raise RuntimeError("AIAgent timeout (120s)")
-
-def x_search(query, hours=24, allowed_handles=None):
-    """Fuehrt x_search via Hermes AIAgent aus."""
+def _extract_sentiment(texts):
+    """Lässt DeepSeek aus Roh-Tweets sentiment/mention_count/breaking_news erzeugen."""
+    import requests
+    api_key = os.environ.get("OPENROUTER_API_KEY", "")
+    if not api_key or not texts:
+        return {"sentiment": "neutral", "confidence": 0.5, "mention_count": len(texts),
+                "top_signals": [], "breaking_news": False, "breaking_summary": None}
+    joined = "\n---\n".join(t[:300] for t in texts[:15])[:2500]
     try:
-        time_hint  = "letzte {} Stunden".format(hours) if hours <= 24 else "letzte {} Tage".format(hours//24)
-        handle_hint = "Accounts: {}.".format(', '.join(allowed_handles)) if allowed_handles else ""
-        prompt = (
-            'Suche auf X nach: "{}". '.format(query) +
-            'Zeitraum: {}. {} '.format(time_hint, handle_hint) +
-            'Antworte NUR mit validem JSON, keine Backticks: '
-            '{"sentiment":"bullish|bearish|neutral","confidence":0.0,'
-            '"mention_count":0,"top_signals":[],'
-            '"breaking_news":false,"breaking_summary":null}'
-        )
-        agent    = _get_agent()
-        response = agent.chat(prompt)
-        # #18: Greedy r'\{.*\}' fasste bei mehreren JSON-Blöcken die falsche Spanne
-        # (erstes { bis letztes }) und scheiterte am Müll dazwischen. Jetzt: ersten
-        # SAUBER dekodierbaren JSON-Block per raw_decode finden.
-        parsed = _extract_first_json(response)
-        return parsed
+        r = requests.post(
+            "https://openrouter.ai/api/v1/chat/completions",
+            headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+            json={
+                "model": "deepseek/deepseek-v4-flash-0731", "max_tokens": 400,
+                "messages": [{
+                    "role": "system",
+                    "content": """Analysiere diese Tweets zu einem Ticker/Unternehmen. Antworte NUR mit JSON:
+{"sentiment":"bullish|bearish|neutral","confidence":0.0,"mention_count":<n>,
+ "top_signals":[{"ticker":"NVDA","handle":"@x","text":"...","sentiment":"bullish"}],
+ "breaking_news":false,"breaking_summary":null}
+Wenn die Tweets negative/Positive Haltung zu einem börsennotierten Unternehmen zeigen, setze sentiment entsprechend."""
+                }, {"role": "user", "content": joined}]
+            }, timeout=30)
+        data = r.json()
+        content = data["choices"][0]["message"].get("content")
+        if content:
+            return _parse_first_json(content)
     except Exception as e:
-        print("  x_search Fehler: {}".format(e), flush=True)
-        return None
+        print(f"  ✗ Sentiment-Extraktion Fehler: {e}", flush=True)
+    return {"sentiment": "neutral", "confidence": 0.5, "mention_count": len(texts),
+            "top_signals": [], "breaking_news": False, "breaking_summary": None}
 
-
-def _extract_first_json(text):
-    """Findet das erste vollständig parsebare JSON-Objekt in einem Freitext."""
-    if not text:
-        return None
+def _parse_first_json(text):
     dec = json.JSONDecoder()
-    for idx, ch in enumerate(text):
+    for idx, ch in enumerate(text or ""):
         if ch != "{":
             continue
         try:
@@ -100,6 +86,39 @@ def _extract_first_json(text):
         except ValueError:
             continue
     return None
+
+def x_search(query, hours=24, allowed_handles=None):
+    """X-Suche via twitterapi.io — liefert dasselbe JSON wie die frühere Grok-Variante.
+
+    query: Keyword/Ticker-String. allowed_handles: optional, auf Accounts einschränken.
+    """
+    try:
+        # Zeitfenster → since-Query (24h/48h etc.)
+        since = ""
+        import datetime
+        now = datetime.datetime.now(datetime.timezone.utc)
+        since = now - datetime.timedelta(hours=hours)
+        since_str = since.strftime("%Y-%m-%d_%H:%M:%S_UTC")
+
+        if allowed_handles:
+            # Account-spezifische Abfrage: from:handle
+            handles = "," .join(h.lstrip("@") for h in allowed_handles)
+            q = f"from:{handles} since:{since_str}"
+        else:
+            # generische Keyword-Suche
+            q = f'{query} since:{since_str}'
+
+        tweets = _search_tweets(q, max_results=15)
+        if not tweets:
+            return {"sentiment": "neutral", "confidence": 0.5, "mention_count": 0,
+                    "top_signals": [], "breaking_news": False, "breaking_summary": None}
+        texts = [t.get("text", "") for t in tweets if t.get("text")]
+        result = _extract_sentiment(texts)
+        result["mention_count"] = len(texts)
+        return result
+    except Exception as e:
+        print(f"  x_search(twitterapi.io) Fehler: {e}", flush=True)
+        return None
 
 
 def conviction_boost(ticker, name, current_conviction):
@@ -147,62 +166,37 @@ def breaking_news_check(ticker, name):
 
 def watchlist_expansion():
     """Top-10 erwaehnte Aktien auf X finden."""
-    result = x_search(
-        "Aktie kaufen Empfehlung bullish Deutschland USA 2026",
-        hours=24
-    )
+    result = x_search("Aktie kaufen Empfehlung bullish Deutschland USA 2026", hours=24)
     if not result:
         return []
     return result.get("top_signals", [])
 
 
 def discover_finance_accounts(query=None, hours=72):
-    """
-    Findet aktive Finanz-Twitter-Accounts via Grok-Suche.
+    """Findet aktive Finanz-Twitter-Accounts via twitterapi.io-Suche.
 
-    Extrahiert @handles aus den top_signals der Grok-Antwort.
-    Gibt Liste von Dicts zurueck: [{handle, snippet, sentiment}, ...]
-    Wird von source_lifecycle.discover_twitter_via_grok() aufgerufen.
-
-    Vorteil gegenueber reiner LLM-Discovery: Handles existieren wirklich,
-    weil Grok echte Tweets durchsucht.
+    Liefert Liste von Dicts: [{handle, snippet, sentiment}, ...].
     """
     if query is None:
         query = "Aktie kaufen Empfehlung Analyse bullish"
     try:
-        time_hint = (
-            "letzte {} Stunden".format(hours) if hours <= 24
-            else "letzte {} Tage".format(hours // 24)
-        )
-        prompt = (
-            'Suche auf X nach: "{}". '.format(query) +
-            'Zeitraum: {}. '.format(time_hint) +
-            'Finde aktive Accounts die Aktien analysieren. '
-            'Antworte NUR mit validem JSON ohne Backticks. '
-            'Jedes top_signals-Element MUSS ein "handle"-Feld haben: '
-            '{"sentiment":"neutral","confidence":0.5,"mention_count":0,'
-            '"top_signals":[{"ticker":"NVDA","handle":"@finanzguru","text":"Kaufe NVDA","sentiment":"bullish"}],'
-            '"breaking_news":false,"breaking_summary":null}'
-        )
-        agent    = _get_agent()
-        response = agent.chat(prompt)
-        m = re.search(r'\{.*\}', response, re.DOTALL)
-        if not m:
-            return []
-        data = json.loads(m.group(0))
+        tweets = _search_tweets(query, max_results=15)
         handles = []
-        seen    = set()
-        for sig in data.get("top_signals", []):
-            raw = sig.get("handle", "").lstrip("@").lower().strip()
-            if not raw or len(raw) < 3 or raw in seen:
+        seen = set()
+        for t in tweets:
+            handle_raw = (t.get("author", {}) or {}).get("handle", "")
+            if not handle_raw:
                 continue
-            seen.add(raw)
+            handle = handle_raw.lstrip("@").lower().strip()
+            if not handle or len(handle) < 3 or handle in seen:
+                continue
+            seen.add(handle)
             handles.append({
-                "handle":    raw,
-                "snippet":   sig.get("text", "")[:120],
-                "sentiment": sig.get("sentiment", "neutral"),
+                "handle": handle,
+                "snippet": (t.get("text", "") or "")[:120],
+                "sentiment": "neutral",
             })
         return handles
     except Exception as e:
-        print("  discover_finance_accounts Fehler: {}".format(e), flush=True)
+        print(f"  discover_finance_accounts Fehler: {e}", flush=True)
         return []

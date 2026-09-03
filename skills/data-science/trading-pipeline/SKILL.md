@@ -22,8 +22,8 @@ Bevor du eine Änderung am Trading-System vorschlägst, prüfe ob sie zu unserem
 | **Pipeline-Takt** | Pipeline läuft 1x täglich morgens (03:30). Kein Markt-Daemon. |
 | **Hebel** | Paper-Trading mit 1x Hebel + TR-Gebühren (1€/Trade). Intraday-Edge wird killt. |
 | **Datenquellen** | yfinance (täglich), YouTube/RSS/Twitter (morgens). Kein Echtzeit-Feed. |
-| **Modell-Kosten** | OpenRouter (DeepSeek, Gemini) für Pipeline-Extraktion. xAI/Grok via OAuth NUR für Twitter-Daten (x_search) — KEINE Textgenerierung (beneficiary_mapper etc. nutzen DeepSeek). Kein API-Key — OAuth-Token aus auth.json. |
-| **Model-Naming** | Alle DeepSeek-Modelle nutzen `deepseek/deepseek-v4-flash-0731` (die fixe Version, kein `-latest`-Suffix). `grok-2-latest` existiert nicht mehr auf der xAI API — nur `grok-4.5`/`grok-3` auf dem Responses API Endpoint. |
+| **Modell-Kosten** | OpenRouter (DeepSeek, Gemini) für Pipeline-Extraktion. twitterapi.io für Twitter-Daten (API-Key). Kein xAI/Grok. |
+| **Model-Naming** | Alle DeepSeek-Modelle nutzen `deepseek/deepseek-v4-flash-0731` (die fixe Version, kein `-latest`-Suffix). |
 
 ### DB-First-Prinzip
 
@@ -386,7 +386,7 @@ Die Referenz enthält 23 klassifizierte Unternehmen plus Implementierungsvorschl
 - Gelber Ghost-Eintrag → Pitfall 14 (Dashboard Ghost Entries)
 - `database is locked` → Transaction-in-Loop-Pattern (API-Call zwischen execute und commit) oder **Inter-Cron-Job Kaskade** (vorgelagerter Job hält Lock, crasht, und lässt offene Transaktion). Siehe `references/db-lock-short-transactions.md` und `references/yt-cleanup-db-lock.md`. **Cascading Lock erkennen:** Wenn 4 Pipeline-Schritte ❌ sind (YouTube + Screener + Watchlist + Signal Manager), ist der YouTube Scan INSERT-Crash die Ursache — nicht einzeln debuggen.
 - `sqlite3.Row` AttributeError → Pitfall 16
-- Pipeline läuft länger als 1h → Watchlist Update zu langsam (Grok/yfinance API)
+- Pipeline läuft länger als 1h → Watchlist Update zu langsam (yfinance API)
 | `Finnhub 403` → API-Key abgelaufen oder limitiert (siehe `references/finnhub-api-key-management.md`)
 | `pos.get("asset_type")` → Pitfall 16 (sqlite3.Row) — `pos["asset_type"] if "asset_type" in pos.keys() else "STANDARD"` verwenden
 | **`cron_health.py` ❌ false-positive** → Timing-Konflikt: `cron-health-daily` und `strategy_optimizer` starten beide um 08:00 (Sonntag). Der Optimizer braucht ~2 Min, der Health-Check findet nur START ohne DONE → flagged als crashed. Fix: staggered Schedules (z.B. health um 08:30).
@@ -658,84 +658,50 @@ Siehe `references/graduated-drawdown-reduction.md`.
 - Output: `🟢 AMUMBO HALTEN` / `🔴 AMUMBO RAUS`
 - Doku: `wiki/concepts/Leveraged ETFs.md` (LETF-Exit-Modus)
 
-## Grok / xAI Twitter Integration (seit 31.07.2026)
+## Twitter/X Integration — twitterapi.io (Standard seit 01.09.2026)
 
-Twitter/X-Daten werden primär über die xAI Responses API mit `x_search`-Tool\nbezogen — kein separater Drittanbieter für die Twitter-Daten mehr nötig.\n`twitterapi.io` dient als Fallback wenn das xAI-OAuth-Token fehlt oder die API\nnicht erreichbar ist.
+Twitter/X-Daten werden über **twitterapi.io** bezogen — der **einzige und primäre**
+X-Anbieter. Die frühere Grok/xAI-`x_search`-Integration wurde **komplett entfernt**
+(Dienst wird nicht mehr genutzt, 01.09.2026). Es gibt KEINEN Grok-Fallback mehr.
 
-### Auth-Architektur
+### Setup
 
-- **Token-Quelle:** `~/.hermes/auth.json` → `credential_pool.xai-oauth` (sortiert nach `last_refresh` desc — nicht hart index 0! Es können 3+ Einträge parallel existieren, der älteste ist oft abgelaufen)
-- **Auth-Typ:** OAuth 2.0 (PKCE-Flow, eingerichtet via `hermes auth add xai-oauth`)
-- **Token-Refresh:** 
-  - Primär: `resolve_xai_http_credentials()` mit auto-refresh via credential_pool
-  - Fallback: auth.json direkt lesen (ohne Cache) — nötig bei Namespace-Kollision mit Trading-Profil `utils.py`
-  - Env-Fallback: `XAI_API_KEY`
-- **Kein Session-Cache** seit 04.08.2026 — jeder Call liest frisch
-- **Base URL:** `https://api.x.ai/v1`
-- **Retry in `_call_x_search()`:** 180s Timeout, max 3 Versuche (initial + 2 Retries), 429→exponential backoff, 5xx→retry
-
-**Bekanntes Problem:** OAuth-Tokens sind kurzlebig (~6h). Der Refresh-Token hält ~30 Tage. Wenn `hermes auth add xai-oauth` länger als 30 Tage zurückliegt, muss der Flow neu durchlaufen werden. Symptom: HTTP 403 vom xAI Responses API.
+- **API-Key:** `TWITTERAPI_IO_KEY` (liegt im Haupt-`.env` `/root/.hermes/.env`; wird von
+  `env_loader.py` geladen, das zuerst die Profil-`.env` dann die Haupt-`.env` lädt via
+  `setdefault` → auch ohne Key in der Profil-Env funktioniert er)
+- **Auth:** `X-API-Key: <TWITTERAPI_IO_KEY>` Header
+- **Endpunkt:** `GET https://api.twitterapi.io/twitter/tweet/advanced_search`
 
 ### Data Flow
 
 | Schritt | Was passiert | Ort |
 |---------|-------------|-----|
-| 1. Token lesen | `_resolve_xai_token()` liest aus auth.json (3-stufig: credential_pool → providers → env var) | `social_scanner.py` |
-| 2. xSearch aufrufen | `_call_x_search()` → POST `{XAI_BASE}/responses` mit `tools=[{"type": "x_search"}]` | `social_scanner.py` |
-| 3. Modell antwortet | Grok/grok-4.5 sucht X, extrahiert Unternehmen + Sentiment, gibt JSON zurück | xAI API |
-| 4. Speichern | Ergebnis in `external_mentions`-Tabelle (source_type='twitter' oder 'x_search') | `social_scanner.py` |
-| 5. Fallback | Bei Fehler: `fetch_twitter()` mit twitterapi.io + Telegram-Alert im Trading-Channel | `social_scanner.py` |
-| Telegram-Alert | `_send_telegram_alert()` sendet via `TELEGRAM_CHAT_ID` (nicht `TELEGRAM_HOME_CHANNEL`!) — das Trading-Profil hat eine eigene .env mit `TELEGRAM_CHAT_ID=-1003918757178` | `social_scanner.py` |
+| 1. Accounts laden | `get_active_twitter_accounts(con)` — `source_type='twitter'`, active+probation | `social_scanner.py` |
+| 2. Account-Scan | `fetch_twitter(con, accounts)` — Query `from:@handle -is:retweet since:<24h>` | `social_scanner.py` |
+| 3. Roh-Tweets | twitterapi.io liefert Tweets (id, text, createdAt) | Twitter-API |
+| 4. Extraktion | `extract_companies(text, ...)` via OpenRouter (DeepSeek) extrahiert Unternehmen + Sentiment | `social_scanner.py` |
+| 5. Speichern | in `external_mentions` (source_type='twitter') | `social_scanner.py` |
 
-### Zwei Modi
+Kein `x_search`-source_type mehr (Grok-only-Pfad entfallen). Die generische
+X-Stichwortsuche (früher via Grok) ist **nicht** verfügbar — nur Account-Scans.
 
-1. **Account-Scan** (`source_type='twitter'` in `source_registry`):
-   - Query: `from:handle -is:retweet`
-   - Prompt: "Search X for tweets from @handle in the last 24h. Extract companies..."
-   - Ein Call: Suche + Extraktion in einem API-Request
-
-2. **Generische X-Search** (`source_type='x_search'` in `source_registry`):
-   - `source_key` = Such-Query-String (z.B. "AI regulation 2026")
-   - `display_name` = Anzeigename für die Quelle
-   - Kein Account-Filter — sucht ganz X nach dem Keyword
-   - Ergebnis in `external_mentions` mit `source_type='x_search'`
-
-### Single-Call-Pattern
-
-Der entscheidende Vorteil gegenüber der alten twitterapi.io-Lösung:
-- **Alt:** 2 Calls (twitterapi.io → Roh-Tweets → DeepSeek → Unternehmen)
-- **Neu:** 1 Call (xAI x_search → Unternehmen + Sentiment)
-
-Der Prompt fordert explizit JSON-Output:
-```
-Search X for tweets from @{handle} in the last 24h (since {today}).
-Extract ALL publicly traded companies mentioned in these tweets.
-Return ONLY valid JSON — no markdown, no explanation, no extra text:
-{"companies": [{"name": "CompanyName", "sentiment": "bullish|bearish|neutral"}], "market_outlook": "bullish|bearish|neutral"}
-```
-
-### Source Registry
+### Source Registry (Twitter-Accounts)
 
 ```sql
--- Account-Scan
 INSERT INTO source_registry (source_type, source_key, display_name, enabled, status)
-VALUES ('twitter', 'elonmusk', 'Elon Musk', 1, 'active');
-
--- Keyword-Search
-INSERT INTO source_registry (source_type, source_key, display_name, enabled, status)
-VALUES ('x_search', 'AI regulation 2026', 'AI Regulation News', 1, 'active');
+VALUES ('twitter', 'TheChartReport', 'The Chart Report', 1, 'probation');
 ```
 
-### Bekannte Fehler
+- `source_key` = X-Handle **ohne** `@` (bzw. wird im Code gestripter)
+- Nur `source_type='twitter'` wird verarbeitet; `x_search`-Einträge sind obsolet.
+
+### Fehlermodi
 
 | Fehler | Ursache | Fix |
 |--------|---------|-----|
-| HTTP 403 | OAuth-Token abgelaufen | `hermes auth add xai-oauth` neu ausführen |
-| HTTP 400 "Model not found" | Modell existiert nicht im Responses API | `grok-2-latest` funktioniert nicht mit Responses API — `grok-4.5` nutzen |
-| Leeres Ergebnis | xAI Index hat keine Posts im Filter-Zeitraum | Fallback auf twitterapi.io (automatisch) |
-| JSON Parse Error | Grok antwortet mit Text statt JSON | `_parse_grok_json()` bereinigt Markdown-Wrapper + Regex-Fallback |
-
-Siehe `references/xai-oauth-token-management.md` für OAuth-Token-Refresh-Details.
+| `TWITTERAPI_IO_KEY nicht gesetzt` | Key fehlt in Env | Key in `/root/.hermes/.env` prüfen |
+| HTTP 4xx | Key ungültig/Limit | twitterapi.io Dashboard prüfen |
+| Keine Tweets in 24h | Account hat nichts gepostet | Normal, kein Fehler |
 
 ## PEAD Signal Integration (seit 11.07.2026)
 

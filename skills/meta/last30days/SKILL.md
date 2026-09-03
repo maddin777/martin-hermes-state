@@ -30,7 +30,7 @@ Pro Query:
 - **Reddit**: `web_search(query="site:reddit.com <query>")`
 - **HN**: `web_search(query="site:news.ycombinator.com <query>")`
 - **Web**: `web_search(query="<query>")`
-- **X**: `x_search(query="<query>")`
+- **X**: `x_search` (Entfällt — X-Recherche über twitterapi.io, Standard seit 01.09.2026; siehe `trading-pipeline` Skill)
 - **GitHub**: `web_search(query="site:github.com <query>")`
 
 Limit: 5 Ergebnisse pro Query-Quelle-Kombination, max 30 Ergebnisse gesamt.
@@ -86,6 +86,6 @@ Der wöchentliche Cron-Job lädt diesen Skill mit einem Thema aus `~/hermes/goal
 
 ## Known Limits
 - Reddit/HN: Nur öffentliche Posts, keine Kommentar-Tiefensuche
-- X: via xAI's x_search, abhängig von verfügbaren Credentials
+- X: über twitterapi.io (Standard seit 01.09.2026, kein xAI/Grok mehr; siehe `trading-pipeline` Skill)
 - GitHub: Nur öffentliche Repos/Issues/PRs
 - Kein YouTube/TikTok/Instagram ohne API-Keys

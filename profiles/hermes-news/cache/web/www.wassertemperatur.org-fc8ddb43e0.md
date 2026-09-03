@@ -93,13 +93,13 @@ Rostock
 
 **13°**
 
-Überwiegend bewölkt
+Bedeckt
 
-94% Luftfeuchtigkeit
+93% Luftfeuchtigkeit
 
-Wind: 5m/s OSO
+Wind: 4m/s WSW
 
-MAX C 14 • MIN C 13
+MAX C 13 • MIN C 12
 
 ### Klimatabelle Rostock:
 

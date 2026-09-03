@@ -329,7 +329,7 @@ def discover_new_sources(con):
 GESUCHTE LÜCKE:
 - Region: {gap['region']}
 - Kategorie: {gap['category']}
-- Typ: YouTube-Kanäle oder RSS-Feeds/Blogs (KEIN Twitter – dafür gibt es Grok-Discovery)
+- Typ: YouTube-Kanäle oder RSS-Feeds/Blogs (KEIN Twitter – dafür gibt es twitterapi.io)
 
 BEREITS VORHANDEN:
 {json.dumps(existing_names[:30], indent=2)}
@@ -406,7 +406,7 @@ Antworte NUR mit einem JSON-Array von maximal 3 Vorschlägen (kein Markdown, kei
                 if slots <= 0:
                     break
                 audience = s.get("estimated_audience", 0)
-                # Twitter wird ausschließlich über Grok-Discovery gefunden (discover_twitter_via_grok)
+                # Twitter wird über twitterapi.io gefunden (Standard seit 01.09.2026)
                 # LLM-Vorschläge für Twitter überspringen da halluzinationsanfällig
                 if s["type"] == "twitter":
                     continue

@@ -39,7 +39,7 @@ Du bist mein News-Agent. Erstelle ein tägliches Morgen-Briefing (06:00).
    New York Times, TechCrunch, The Verge, heise online, Golem,
    Table.Media
 
-2. X-RECHERCHE: Nutze x_search parallel für Breaking News und
+2. X-RECHERCHE: Nutze X über twitterapi.io (Standard seit 01.09.2026, kein Grok/xAI mehr) parallel für Breaking News und
    regionale Entwicklungen. Markiere X-Quellen mit [X].
 
 3. DEDUP: Identische Meldungen aus verschiedenen Quellen NUR EINMAL.
@@ -106,7 +106,7 @@ Wassertemperaturen (seatemperature.org, wassertemperatur.org, DWD):
 
 4. **Multi-message delivery:** Up to 5 Telegram messages, 3000 chars each. Each message = 1-2 sections. Weather goes on the last message.
 
-5. **Two-tier research:** web_search for long-form articles + x_search for breaking news and real-time regional developments. X sources marked with `[X]`.
+5. **Two-tier research:** web_search for long-form articles + X via twitterapi.io (Standard seit 01.09.2026, kein Grok/xAI) for breaking news and real-time regional developments. X sources marked with `[X]`.
 
 6. **Regional weather + water temps:** Always included at the end. Water temps are saisonal (Mai–September) in practice but defined in the prompt year-round.
 

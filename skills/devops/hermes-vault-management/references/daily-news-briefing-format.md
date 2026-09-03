@@ -25,7 +25,7 @@ Wassertemperaturen als saisonale Ergänzung (Mai–September) hinzugefügt.
 
 ### Quellen
 - Primär: Web-Scraping (Tagesschau, FAZ, NZZ, Welt, Handelsblatt, Reuters, Bloomberg, Spiegel, lokale MV/SH-Zeitungen, Gazeta Wyborcza, Dziennik, SVT, NRK, Yle)
-- Ergänzend: X-Suche via x_search (aktuellste Entwicklungen)
+- Ergänzend: X-Suche via twitterapi.io (Standard seit 01.09.2026, kein Grok/xAI)
 - Cross-Check: min 2-3 Quellen pro Meldung
 
 ### Output-Format

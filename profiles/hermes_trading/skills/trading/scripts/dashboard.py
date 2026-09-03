@@ -641,7 +641,7 @@ def build_sources_section(data):
         {sum(1 for a in sources.get('twitter_accounts',[]) if a.get('enabled'))} aktiv)
     </div>
     <div style="font-size:0.8em;color:#888;margin-bottom:10px">
-        ℹ️ Twitter/X-Daten via xAI Grok x_search (Primär), Fallback: twitterapi.io
+        ℹ️ Twitter/X-Daten via twitterapi.io (Standard seit 01.09.2026, kein Grok)
     </div>
     <table>
         <tr>

@@ -1623,7 +1623,7 @@ def open_new_positions(con, cfg):
 
     # #6: Richtungsabhängige Conviction. LONG nutzt conviction_score (bullish),
     # SHORT nutzt conviction_score_bear (bearish). Vorher wurde durchgängig die
-    # bullishe Conviction für Ranking, Sizing und den Grok-Gate genommen.
+    # bullishe Conviction für Ranking, Sizing und den X-Sentiment-Gate genommen.
     def _dir_conviction(c, direction):
         if direction == "SHORT":
             v = c["conviction_score_bear"] if "conviction_score_bear" in c.keys() else None
@@ -1778,18 +1778,18 @@ def open_new_positions(con, cfg):
             print(f"  🚫 {c['name']}: {seg_reason}")
             continue
 
-        # Grok Breaking-News-Check: Negative Breaking News → kein Entry
-        # Nur für HIGH-Conviction (spart Grok-Calls für schwächere Kandidaten)
+        # X Breaking-News-Check: Negative Breaking News → kein Entry (via twitterapi.io)
+        # Nur für HIGH-Conviction (spart X-API-Calls für schwächere Kandidaten)
         if cand_conviction >= cfg.get("conviction_high", 0.80):
             try:
                 from xsearch_helper import breaking_news_check
                 has_breaking, summary = breaking_news_check(ticker, c["name"])
                 if has_breaking:
-                    print(f"  🐦 {c['name']}: Grok meldet negative Breaking News → Entry abgebrochen")
+                    print(f"  🐦 {c['name']}: X meldet negative Breaking News → Entry abgebrochen")
                     print(f"     {summary}", flush=True)
                     continue
             except Exception:
-                pass  # Grok-Fehler stoppen den Entry nicht
+                pass  # X-Fehler stoppen den Entry nicht
 
         # Last30days Gate: Shadow Validator — prüft News-Sentiment
         if cand_conviction >= cfg.get("conviction_high", 0.80):

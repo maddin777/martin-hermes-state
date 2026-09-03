@@ -672,7 +672,7 @@ the `cronjob` tool, the `hermes cron` CLI (`list`, `add`, `edit`,
   - **Beispiel-News-Cron:**
     ```
     Setze /goal: Erstelle taegliches News-Briefing (max 8, Politik/Wirtschaft)
-    /subgoal 1 — X-Recherche via x_search nach Top-News der letzten 12h
+    /subgoal 1 — X-Recherche via twitterapi.io nach Top-News der letzten 12h (Standard seit 01.09.2026, kein Grok/xAI)
     /subgoal 2 — Web-Recherche via web_search parallel
     /subgoal 3 — Kombinieren, deduplizieren, priorisieren
     /handoff wenn fertig — unter 2500 Zeichen, deutsch, Quellenlinks mit [X] fuer X

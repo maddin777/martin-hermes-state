@@ -148,7 +148,7 @@ Du bist mein News-Agent. Erstelle ein tägliches Morgen-Briefing (06:00).
 
 ═══ ARBEITSSCHRITTE ═══
 1. WEB-RECHERCHE: web_search intensiv
-2. X-RECHERCHE: x_search parallel
+2. X-RECHERCHE: X via twitterapi.io (Standard seit 01.09.2026, kein Grok/xAI) parallel
 3. DEDUP: gleiche Meldung einmal
 4. ÜBERSETZUNG: international → Deutsch
 

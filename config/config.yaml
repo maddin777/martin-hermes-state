@@ -561,10 +561,6 @@ lsp:
   wait_mode: document
   wait_timeout: 5
   install_strategy: auto
-x_search:
-  model: grok-4.20-reasoning
-  timeout_seconds: 180
-  retries: 2
 secrets:
   bitwarden:
     enabled: false
@@ -599,7 +595,6 @@ platform_toolsets:
     - tts
     - vision
     - web
-    - x_search
   discord:
     - hermes-discord
   homeassistant:
