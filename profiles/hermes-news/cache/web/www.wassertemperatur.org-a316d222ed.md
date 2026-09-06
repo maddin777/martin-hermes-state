@@ -95,13 +95,13 @@ Wismar
 
 **14°**
 
-Bedeckt
+Ein paar Wolken
 
-91% Luftfeuchtigkeit
+88% Luftfeuchtigkeit
 
-Wind: 3m/s SW
+Wind: 7m/s W
 
-MAX C 15 • MIN C 13
+MAX C 15 • MIN C 14
 
 ### Klimatabelle Wismar:
 

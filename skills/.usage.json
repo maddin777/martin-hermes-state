@@ -789,14 +789,14 @@
     "created_by": null,
     "last_patched_at": "2026-07-25T01:06:14.964569+00:00",
     "last_reused_patch_generation": 0,
-    "last_used_at": "2026-08-29T01:01:06.990104+00:00",
-    "last_viewed_at": "2026-08-29T01:01:06.980808+00:00",
+    "last_used_at": "2026-09-05T01:00:42.286884+00:00",
+    "last_viewed_at": "2026-09-05T01:00:42.260855+00:00",
     "patch_count": 30,
     "patch_generation": 0,
     "pinned": false,
     "state": "active",
-    "use_count": 54,
-    "view_count": 54
+    "use_count": 55,
+    "view_count": 55
   },
   "hermes-voice": {
     "archived_at": null,
@@ -1148,14 +1148,14 @@
     "created_by": null,
     "last_patched_at": "2026-07-11T01:10:31.710850+00:00",
     "last_reused_patch_generation": 0,
-    "last_used_at": "2026-09-04T14:00:39.408414+00:00",
-    "last_viewed_at": "2026-08-31T07:05:29.525973+00:00",
+    "last_used_at": "2026-09-05T14:00:00.830046+00:00",
+    "last_viewed_at": "2026-09-05T01:00:42.279537+00:00",
     "patch_count": 11,
     "patch_generation": 0,
     "pinned": false,
     "state": "active",
-    "use_count": 84,
-    "view_count": 30
+    "use_count": 86,
+    "view_count": 31
   },
   "ocr-and-documents": {
     "archived_at": null,
