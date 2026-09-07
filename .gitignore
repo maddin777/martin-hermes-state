@@ -2,6 +2,9 @@
 .env
 .env.*
 **/.env
+*.bak_xai
+*.bak_grok
+*auth.json*
 **/venv/
 **/__pycache__/
 *.pyc

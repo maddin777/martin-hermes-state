@@ -81,6 +81,7 @@ def fetch_ohlc(ticker, entry_date):
             "time": idx.strftime("%Y-%m-%d"),
             "high": float(row["High"]), "low": float(row["Low"]),
             "close": float(row["Close"]),
+            "volume": float(row["Volume"]) if "Volume" in row else 0.0,
         })
     return bars
 
@@ -174,6 +175,36 @@ def simulate_variant_c(pos, bars, rr=RR, time_stop=TIME_STOP_DAYS, chandelier=CH
     return last, "EOF", r
 
 
+def simulate_variant_volume(pos, bars, boom_mult=1.5, avg_back=20):
+    """VOLUME-Bestätigungs-Filter (Momentum-Swing-Post-Regel).
+
+    Prüft ob der Entry-Tag von erhöhtem Volumen begleitet wurde (Breakout-Bestätigung),
+    ODER ob eine enge Konsolidierung (niedriges Volumen) vorausging.
+    Blockt den Trade wenn das Volumen am Entry-Tag nicht "aktiv genug" war.
+
+    Returns (blocked: bool, reason: str). blocked=True => Entry wäre NICHT genommen worden.
+    """
+    entry_date = pos["entry_date"][:10]
+    # Entry-Bar index
+    idx = None
+    for i, b in enumerate(bars):
+        if b["time"] >= entry_date:
+            idx = i
+            break
+    if idx is None or idx < avg_back:
+        return False, "nodata"
+    # 20-Tage-Ø-Volumen VOR Entry (ohne Entry-Tag)
+    vols = [b["volume"] for b in bars[idx - avg_back:idx]]
+    ref = sum(vols) / len(vols) if vols else 0
+    entry_vol = bars[idx]["volume"]
+    if ref <= 0:
+        return False, "novol"
+    # Post-Regel: Breakout sollte von Volumen bestätigt sein (≥ boom_mult × Ø)
+    if entry_vol < boom_mult * ref:
+        return True, f"low-vol-entry ({entry_vol:.0f} < {boom_mult:.1f}× Ø {ref:.0f})"
+    return False, f"volume-ok (x{entry_vol/ref:.2f})"
+
+
 def main():
     con = sqlite3.connect(DB)
     con.row_factory = sqlite3.Row
@@ -203,6 +234,7 @@ def main():
 
     results = []
     cache = {}
+    vol_blocked = {"count": 0, "real_pnl_avoided": 0.0, "good_blocks": 0, "bad_blocks": 0}
     for t in trades:
         bars = cache.get(t["ticker"])
         if bars is None:
@@ -220,6 +252,18 @@ def main():
             row["c_pnl_eur"] = shares * direction_sign * (exit_p - t["entry_price"])
         else:
             row["c_exit_p"], row["c_reason"], row["c_r"], row["c_pnl_eur"] = None, "NO_DATA", None, None
+
+        # ── VOLUME-GATE: hätte der Filter diesen Trade geblockt? ──
+        blocked, vreason = simulate_variant_volume(t, bars) if bars else (False, "nobars")
+        row["volume_blocked"] = blocked
+        row["volume_reason"] = vreason
+        if blocked and t["pnl_eur"] is not None:
+            vol_blocked["count"] += 1
+            vol_blocked["real_pnl_avoided"] += t["pnl_eur"]  # PnL der NICHT-nahme
+            if t["pnl_eur"] < 0:
+                vol_blocked["good_blocks"] += 1   # Verlust verhinndert
+            else:
+                vol_blocked["bad_blocks"] += 1    # Gewinn verpasst
         results.append(row)
 
     # ── Aggregation ──
@@ -262,6 +306,28 @@ def main():
 
     # Note zu Punkt-in-Zeit
     print("\n  (Caveat: mention_count ist AKTUELL, nicht Point-in-Time am Entry — Naeherung)")
+
+    # ── Variante D: Volume-Bestätigungs-Filter (Momentum-Swing-Post) ──
+    print("\n===== VARIANTE D: Volume-Bestätigung (low-volume-Entry blocken) =====")
+    n_total = len(results)
+    n_blocked = vol_blocked["count"]
+    avoided = vol_blocked["real_pnl_avoided"]
+    good = vol_blocked["good_blocks"]
+    bad = vol_blocked["bad_blocks"]
+    print(f"  Von {n_total} Entries wären {n_blocked} durch low-volume-Gate geblockt worden.")
+    print(f"  Diese {n_blocked} Trades hatten zusammen REAL PnL {avoided:+.0f}€.")
+    print(f"  Davon {good} Verlust-Trades vermieden, {bad} Gewinn-Trades verpasst.")
+    if n_blocked:
+        # Was wären die geblockten gewesen? Aggregat über Nicht-geblockte
+        not_blocked = [x for x in results if not x["volume_blocked"]]
+        blocked_lst = [x for x in results if x["volume_blocked"]]
+        agg(not_blocked, "NUR volume-bestätigte Entries (real)")
+        agg(blocked_lst, "Geblockte low-volume-Entries (real, Kontrafaktisch)")
+        print("  => Wenn der Filter aktiv wäre: PnL = nur-volume-bestätigte minus Geblockte-Neuverteilung")
+        total_real = sum(x['pnl_eur'] for x in results if x['pnl_eur'] is not None)
+        after = sum(x['pnl_eur'] for x in not_blocked if x['pnl_eur'] is not None)
+        print(f"  GESAMT real={total_real:+.0f}€ → mit Volume-Gate (geblockte weggelassen)={after:+.0f}€ "
+              f"(Diff {after - total_real:+.0f}€)")
 
     with open(os.path.join(DATA_DIR, "backtest_variants_result.json"), "w") as f:
         json.dump({"results": results}, f, indent=1, default=str)

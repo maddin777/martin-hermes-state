@@ -19,6 +19,9 @@ cat > .gitignore << 'EOF'
 .env
 .env.*
 **/.env
+*.bak_xai
+*.bak_grok
+*auth.json*
 **/venv/
 **/__pycache__/
 *.pyc
@@ -54,7 +57,7 @@ for profile_path in "$HERMES"/profiles/hermes-* "$HERMES"/profiles/hermes_lang "
   dst="profiles/$profile"
   rsync -a --delete \
     --exclude='.env' --exclude='.env.*' \
-    --exclude='auth.json' --exclude='*auth.json' \
+    --exclude='auth.json' --exclude='*auth.json*' --exclude='*.bak_xai' --exclude='*.bak_grok' \
     --exclude='config.yaml' --exclude='config.yaml.bak' \
     --exclude='models_dev_cache.json' \
     --exclude='venv/' --exclude='__pycache__/' --exclude='*.pyc' \
