@@ -1009,7 +1009,58 @@ curl -s "https://finnhub.io/api/v1/stock/profile2?symbol=AAPL&token=$(grep FINNH
 python3 /root/.hermes/scripts/sp500_sma200_check.py
 ```
 
-### 🔴 Manuell gesetzte Watchlist-Kandidaten (30.08.2026)
+### 🗂️ Sektor-abhängige Regime (06.09.2026)
+
+**Problem:** Ein globales Regime (SPY 60% + DAX 40%) wurde auf ALLE Entries/Exits
+angewendet. Wenn der Gesamtmarkt sideways ist, aber z.B. Energy/Gold-Minen bull
+laufen, würgte das System deren Momentum-Kandidaten mit einem für sie falschen
+Regime ab.
+
+**Lösung — Regime pro Sektor:**
+- **`sector_regimes`-Tabelle** (config.py legt sie an): `(sector, etf_ticker, regime, date, ret_20d)` je Tag
+- **`SECTOR_TO_ETF`** (config.py): GICS-Sektor → ETF (Tech=XLK, Comm=XLC, ConsumerCyc=XLY,
+  ConsumerDef=XLP, Healthcare=XLV, Financials=XLF, Energy=XLE, Industrials=XLI,
+  BasicMaterials=XLB, Utilities=XLU, RealEstate=XLRE)
+- **Edelmetall-Sonderfall:** Gold/Silber-Minen in "Basic Materials" → GDX-Regime
+  (`sector_regime_key(sector, industry)`, gespeichert als `"Basic Materials (Gold)"`)
+- **`fundamental_data.detect_market_regime()`** lädt nun zusätzlich alle Sektor-ETFs
+  (gleiche Z-Score-Methode) und schreibt je Sektor ein Regime in `sector_regimes`.
+- **Overlay-Bug gefixt:** Zeile `current_regime = regimes.iloc[-1]` überschrieb den
+  makro-adjustierten Wert — das Makro-Overlay (VIX/HYG/DXY) war damit wirkungslos.
+
+**Hybrid-Umsetzung im Entry/Exit (signal_manager + active_exit_check):**
+| Sektor-Regime | LONG | SHORT |
+|---------------|------|-------|
+| bull | volle Größe | kein Short |
+| sideways | 50% Size | 50% Size |
+| bear | kein Long | erlaubt |
+
+- **signal_manager open_new_positions:** je Kandidat Sektor-Regime via
+  `get_sector_regime(sector_regime_key(sector, industry))`; bear-Long geblockt,
+  sideways → `sector_size_factor=0.5`; Sizing nutzt Sektor-Regime-SL.
+- **active_exit_check + check_open_positions:** Exit-Matrix (`get_exit_config`)
+  nutzt das Sektor-Regime der Position statt des globalen.
+
+**Verifiziert (07.09.):** SPY=sideways (−0.4%), aber Energy(XLE)=bull (+11.4%),
+Gold(GDX)=bull (+10.4%), Healthcare(XLV)=bull. Gold-Mine (industry=Gold) → GDX bull
+= volle LONG-Größe; Chemie in Basic Materials → XLB sideways = 50%.
+
+### 💡 Volume-Bestätigung getestet — NICHT übernommen (06.09.2026)
+
+**Kontext:** Momentum-Swing-Post-Regel ("nur kaufen wenn Breakout von hohem Volumen bestätigt").
+Getestet in `backtest_variants.py` auf den 84 realen geschlossenen Positionen.
+
+**Ergebnisse (mit/ohne Volume-Gate 1.2×):**
+- Naive R-Simulation (1R/3R): 1.2×-Gate schien +1.275€ zu retten → **Artefakt der alten Exit-Annahme**
+- Variante E (aktuelle `get_exit_config`-Matrix, ohne Partial): Ø −0.97% → +0.09% mit Gate
+- **Variante F (aktuelle Matrix MIT Partial-TP 50%@partial_atr): Ø −0.78% → −0.69% mit Gate (+0.094 pp, n=21 vs 61) — statistisch unbedeutend**
+
+**Fazit: Volume-Gate NICHT eingebaut.** Unter der realistischen Partial-TP-Exit-Struktur
+bringt es ~nichts. Der naive Sweep war ein Simulations-Artefakt. Das eigentliche Problem
+ist die **negative Ø-Erwartung des Systems** (−0.78%/Trade), nicht die Entry-Volume-Qualität.
+
+**Config unverändert gelassen.** Neue Exit-Simulationen zuerst gegen `get_exit_config`
++ Partial-TP validieren, nie gegen naive 1R/3R-Annahmen.
 
 Die Pipeline vergibt `conviction_score` NUR aus Mentions (YouTube/RSS/Twitter).
 **Manuell eingefügte Ticker (ohne Mentions) bekommen `conviction=NULL` → sie werden

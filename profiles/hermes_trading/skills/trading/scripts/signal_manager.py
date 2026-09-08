@@ -23,7 +23,7 @@ from datetime import datetime, timedelta
 from utils import passes_liquidity_filter, apply_slippage, COMMISSION_EUR, get_price_data_cached, prefetch_prices, realized_pnl_from_effective_entry, get_crabel_patterns, get_donchian_breakout, get_technical_score
 from utils import get_logger, price_to_eur, position_size_in_shares, open_positions_market_value_eur, calc_pnl_with_costs
 log = get_logger("signal_manager")
-from config import DB_PATH, SIGNALS_VALIDATED_PATH, STRATEGY_CONFIG_PATH, MACRO_SIGNAL_PATH, db_connect, get_asset_type, get_exit_config
+from config import DB_PATH, SIGNALS_VALIDATED_PATH, STRATEGY_CONFIG_PATH, MACRO_SIGNAL_PATH, db_connect, get_asset_type, get_exit_config, get_sector_regime, sector_regime_key
 from exit_rules import initial_stop, peak_chandelier_stop, protected_time_stop_price, time_stop_due
 CONFIG_PATH = STRATEGY_CONFIG_PATH
 
@@ -749,7 +749,19 @@ def check_open_positions(con, cfg):
         # FIX 16.08.: Exit-Matrix (get_exit_config) als EINZIGE Quelle
         # (Legacy get_asset_multipliers hatte trailing_step=0.5 für STANDARD).
         pos_asset_type = pos["asset_type"] if "asset_type" in pos.keys() else "STANDARD"
-        pos_mult = get_exit_config(asset_type=pos_asset_type, regime=_regime)
+        # SEKTOR-REGIME (06.09.2026): Exit-Matrix nutzt Sektor-Regime der Position,
+        # konsistent zu active_exit_check + Entry-Filter. Fallback: globales _regime.
+        pos_regime = _regime
+        try:
+            _ps = con.execute("SELECT sector, industry FROM companies WHERE ticker=?", (ticker,)).fetchone()
+            if _ps and _ps["sector"]:
+                _prk = sector_regime_key(_ps["sector"], _ps["industry"])
+                _psreg = get_sector_regime(_prk, con)
+                if _psreg in ("bull", "sideways", "bear"):
+                    pos_regime = _psreg
+        except Exception:
+            pass
+        pos_mult = get_exit_config(asset_type=pos_asset_type, regime=pos_regime)
 
         if time_stop_due(pos["entry_date"], cfg.get("time_stop_trading_days", 7)) \
                 and not reached_target:
@@ -1702,11 +1714,41 @@ def open_new_positions(con, cfg):
             continue
 
         ticker_sector = "Other"
+        ticker_industry = None
         sector_row = con.execute(
-            "SELECT sector FROM companies WHERE ticker=?", (ticker,)
+            "SELECT sector, industry FROM companies WHERE ticker=?", (ticker,)
         ).fetchone()
         if sector_row and sector_row["sector"]:
             ticker_sector = sector_row["sector"]
+            ticker_industry = sector_row["industry"]
+
+        # ── SEKTOR-REGIME-FILTER (06.09.2026): Hybrid pro Kandidat-Sektor ──
+        # Statt globalem SPY-Regime nutzt jeder Kandidat das Regime SEINES Sektors.
+        # Edelmetall-Minen (Gold/Silber) → GDX-Regime; sonst Sektor-ETF-Regime.
+        regime_key = sector_regime_key(ticker_sector, ticker_industry)
+        sector_regime = get_sector_regime(regime_key, con)  # aus config
+        sector_size_factor = 1.0
+        if direction == "LONG":
+            if sector_regime == "bear":
+                print(f"  ⛔ {c['name']}: Sektor {regime_key} = {sector_regime.upper()} "
+                      f"→ kein LONG (Sektor-Regime)", flush=True)
+                log_blocked_entry(con, c, ticker, direction, "sector-regime-bear",
+                                  current_price, atr, ticker_sector,
+                                  cand_conviction, None, None)
+                continue
+            elif sector_regime == "sideways":
+                sector_size_factor = 0.5
+                print(f"  📐 {c['name']}: Sektor {regime_key} = {sector_regime.upper()} "
+                      f"→ Size 50%", flush=True)
+        elif direction == "SHORT":
+            if sector_regime == "bull":
+                print(f"  ⛔ {c['name']}: Sektor {regime_key} = {sector_regime.upper()} "
+                      f"→ kein SHORT (Sektor-Regime)", flush=True)
+                continue
+            elif sector_regime == "sideways":
+                sector_size_factor = 0.5
+                print(f"  📐 {c['name']}: Sektor {regime_key} = {sector_regime.upper()} "
+                      f"→ Size 50%", flush=True)
 
         canonical_ticker = get_canonical_ticker(con, ticker)
         technical = get_technical_score(canonical_ticker)
@@ -1985,6 +2027,11 @@ def open_new_positions(con, cfg):
             pct = pct * dd_size_factor
             sizing_label += f" | Drawdown ({dd_size_factor:.0%})"
 
+        # Sektor-Regime-Faktor (06.09.2026): sideways-Sektor → 50% Größe
+        if sector_size_factor < 1.0:
+            pct = pct * sector_size_factor
+            sizing_label += f" | Sektor-Regime ({sector_size_factor:.0%})"
+
         # Committee-REDUCE: nur im active-Mode gesetzt, im Shadow-Mode immer 1.0
         if committee_size_factor < 1.0:
             pct = pct * committee_size_factor
@@ -2000,8 +2047,9 @@ def open_new_positions(con, cfg):
         # pro Trade um bis zu ±33% vom Zielrisiko ab. FIX 16.08.: Matrix statt
         # Legacy get_asset_multipliers.
         _asset_type_for_sizing = get_asset_type(ticker_sector)
-        _sreg, _svix = get_current_regime(con)
-        sl_multiplier  = get_exit_config(asset_type=_asset_type_for_sizing, regime=_sreg)["sl"]
+        # 06.09.2026: Sizing nutzt das SEKTOR-Regime (sector_regime aus dem Entry-Filter)
+        # statt des globalen, damit SL-Abstand zum Sektor-Trend passt.
+        sl_multiplier  = get_exit_config(asset_type=_asset_type_for_sizing, regime=sector_regime if sector_regime in ("bull","sideways","bear") else "sideways")["sl"]
         # ATR in EUR umrechnen (FX-aware) für korrektes Sizing
         atr_eur        = price_to_eur(atr, ticker)
         sl_distance_eur = sl_multiplier * atr_eur

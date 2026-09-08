@@ -330,8 +330,9 @@ def detect_market_regime(con):
             total = sum(counts.values()) or 1
             probs[state] = {k: round(v/total, 3) for k, v in counts.items()}
 
-        # Aktuelles Regime
-        current_regime = regimes.iloc[-1]
+        # Aktuelles Regime (bereits mit Overlay in Zeile ~304-312 bestimmt;
+        # NICHT mehr hier überschreiben — der Overlay-Fix 06.09. verhindert,
+        # dass regimes.iloc[-1] den makro-adjustierten Wert zurücksetzt)
         current_spy    = round(float(spy_ret.iloc[-1]), 4)
         current_dax    = round(float(dax_ret.iloc[-1]), 4)
 
@@ -374,6 +375,69 @@ def detect_market_regime(con):
               round(float(vix.iloc[-1]), 1) if len(vix) > 0 else None,
               datetime.now().isoformat()))
         con.commit()
+
+        # ── SEKTOR-REGIME (06.09.2026): Regime pro Sektor-ETF ──
+        # Jeder Sektor bekommt sein eigenes Regime aus seinem Sektor-ETF,
+        # gespeichert in sector_regimes. Ermöglicht: Tech bull obwohl SPY sideways.
+        try:
+            from config import sector_to_etf, init_sector_regimes_table, SECTOR_TO_ETF
+            init_sector_regimes_table(con)
+            # Für jeden Sektor dessen ETF laden und Regime berechnen (gleiche Z-Score-Methode)
+            sector_map = {etf: sec for sec, etf in SECTOR_TO_ETF.items()}
+            # Gold-Sonderfall: Basic-Materials-Titel die Gold-Minen sind → GDX statt XLB.
+            # Wir speichern zusätzlich ein GDX-Regime unter sector='Basic Materials (Gold)'.
+            etfs_to_check = sorted(set(SECTOR_TO_ETF.values()) | {"GDX", "SPY"})  # XLK, XLC, XLY, ... + GDX + SPY
+            import yfinance as _yf
+            # Vorladen aller Sektor-ETF-Schlusskurse (2y) in einem Download
+            etf_close = {}
+            try:
+                _df = _yf.download(etfs_to_check, period="2y", interval="1d",
+                                   progress=False, auto_adjust=True, threads=True)
+                for etf in etfs_to_check:
+                    try:
+                        etf_close[etf] = _df["Close"][etf].dropna()
+                    except Exception:
+                        etf_close[etf] = _df["Close"].iloc[:, 0] if etf in etfs_to_check and len(_df["Close"].columns) == len(etfs_to_check) else None
+            except Exception as e:
+                print(f"  ⚠ Sektor-ETF-Download fehlgeschlagen: {e}", flush=True)
+
+            for etf in etfs_to_check:
+                sec = sector_map.get(etf)
+                if not sec:
+                    continue
+                s_close = etf_close.get(etf)
+                if s_close is None or len(s_close) < 30:
+                    continue
+                s_ret = s_close.pct_change(20).dropna()
+                if len(s_ret) < 5 or s_ret.std() == 0:
+                    continue
+                z = float(s_ret.iloc[-1]) / float(s_ret.std())
+                s_regime = "bull" if z > 0.5 else "bear" if z < -0.5 else "sideways"
+                # Overlay auf Sektor anwenden (VIX/HYG/DXY global, aber nur als nudge)
+                if overlay >= 1.5 and s_regime == "sideways":
+                    s_regime = "bull"
+                elif overlay <= -1.5 and s_regime in ("sideways", "bull"):
+                    s_regime = "bear"
+                con.execute("""
+                    INSERT OR REPLACE INTO sector_regimes (sector, etf_ticker, regime, date, ret_20d)
+                    VALUES (?,?,?,?,?)
+                """, (sec, etf, s_regime, today, round(float(s_ret.iloc[-1]), 4)))
+                print(f"  📊 Sektor {sec:25} ({etf}): {s_regime.upper()} (20d {s_ret.iloc[-1]:+.1%})", flush=True)
+            # Gold-Sonderfall (GDX) — für Basic-Materials-Gold-Minen
+            gdx = etf_close.get("GDX")
+            if gdx is not None and len(gdx) > 30:
+                gdx_ret = gdx.pct_change(20).dropna()
+                if len(gdx_ret) >= 5 and gdx_ret.std() > 0:
+                    z = float(gdx_ret.iloc[-1]) / float(gdx_ret.std())
+                    g_regime = "bull" if z > 0.5 else "bear" if z < -0.5 else "sideways"
+                    con.execute("""
+                        INSERT OR REPLACE INTO sector_regimes (sector, etf_ticker, regime, date, ret_20d)
+                        VALUES (?,?,?,?,?)
+                    """, ("Basic Materials (Gold)", "GDX", g_regime, today, round(float(gdx_ret.iloc[-1]), 4)))
+                    print(f"  🥇 Gold-Miner (GDX): {g_regime.upper()} (20d {gdx_ret.iloc[-1]:+.1%})", flush=True)
+            con.commit()
+        except Exception as e:
+            print(f"  ⚠ Sektor-Regime-Berechnung Fehler: {e}", flush=True)
 
         # In macro_signal.json schreiben
         import json as _json

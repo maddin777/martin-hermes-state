@@ -1,9 +1,9 @@
 {
-  "last_report_path": "/root/.hermes/logs/curator/20260831-070428",
-  "last_run_at": "2026-08-31T07:04:28.905316+00:00",
-  "last_run_duration_seconds": 299.857488,
-  "last_run_summary": "auto: 3 marked stale, 1 reactivated; llm: ## Structured summary (required)\n\n```yaml\nconsolidations:\n  - from: github-operations (new umbrella)\n    into: github-operations\n    reason: Created unified umbrella for GitHub workflow (auth, PRs, issues, repos, code review). Copied suppor…",
+  "last_report_path": "/root/.hermes/logs/curator/20260907-080434",
+  "last_run_at": "2026-09-07T08:04:34.921769+00:00",
+  "last_run_duration_seconds": 347.0212,
+  "last_run_summary": "auto: 2 marked stale, 8 reactivated; llm: This is actually a legitimate class-level skill about bugfix workflow, not a session artifact.\n\nBased on my comprehensive analysis, the skill collection is **already reasonably organized** with proper umbrellas in place:\n\n1. **GitHub cluste…",
   "last_run_summary_shown_at": "2026-08-17T05:59:46.242059+00:00",
   "paused": false,
-  "run_count": 17
+  "run_count": 18
 }

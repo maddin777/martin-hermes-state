@@ -88,6 +88,34 @@ SECTOR_TO_ASSET_TYPE = {
     # Alles andere → STANDARD
 }
 
+# ── Sektor→ETF-Regime-Map (06.09.2026) ──────────────────────────────────────
+# Jeder Sektor bekommt sein eigenes Markt-Regime aus seinem Sektor-ETF,
+# statt dem globalen SPY/DAX-Regime. Ermöglicht: Tech kann bull sein, während
+# der Gesamtmarkt sideways ist — Gold-Minen können bull sein, wenn SPY seitwärts.
+# Fallback für unbekannte Sektoren = SPY.
+SECTOR_TO_ETF = {
+    "Technology":              "XLK",   # Tech-Sektor
+    "Communication Services":  "XLC",   # Kommunikation
+    "Consumer Cyclical":       "XLY",   # zyklischer Konsum
+    "Consumer Defensive":      "XLP",   # defensiver Konsum
+    "Healthcare":              "XLV",   # Gesundheit
+    "Financial Services":      "XLF",   # Finanzen
+    "Energy":                  "XLE",   # Energie
+    "Industrials":             "XLI",   # Industrie
+    "Basic Materials":         "XLB",   # Grundstoffe (inkl. Gold-Minen-Proxy... GDX besser)
+    "Utilities":               "XLU",   # Versorger
+    "Real Estate":             "XLRE",  # Immobilien
+}
+# Edelmetall-Sonderfall: Basic Materials enthält Gold-Minen, die sich stark von
+# XLB unterscheiden. GDX (Gold-Miner) ist der bessere Regime-Proxy für Gold-Titel.
+# Wird in fundamental_data.py je nach Unternehmen (Gold) aufgelöst; hier als
+# Zusatz-Hinweis dokumentiert.
+PRECIOUS_METALS_SECTOR_HINT = "Basic Materials"
+
+# Alle Sektor-ETFs die ein eigenes Regime bekommen (für den täglichen Scan).
+REGIME_ETF_UNIVERSE = sorted(set(SECTOR_TO_ETF.values()) | {"XLK", "GDX", "SPY"})
+
+
 ASSET_TYPE_MULTIPLIERS = {
     "STANDARD": {
         "atr_sl": 1.5,
@@ -195,3 +223,80 @@ def db_connect(path=None):
     con.execute("PRAGMA busy_timeout=30000;")
     con.row_factory = sqlite3.Row
     return con
+
+
+# ── Sektor-Regime (06.09.2026) ────────────────────────────────────────────────
+# Jeder Sektor hat sein eigenes Markt-Regime (aus Sektor-ETF), gespeichert in
+# der `sector_regimes`-Tabelle. signal_manager/get_exit_config lesen daraus das
+# regime für den Sektor eines Kandidaten statt das globale SPY-Regime.
+
+def sector_to_etf(sector: str) -> str:
+    """Gibt den Sektor-ETF für einen GICS-Sektor zurück. Fallback SPY."""
+    if sector is None:
+        return "SPY"
+    return SECTOR_TO_ETF.get(sector, "SPY")
+
+
+# Edelmetall-Industries (Gold/Silber/Edelmetall-Minen) → GDX statt XLB,
+# weil sie sich stark vom allgemeinen Grundstoff-Sektor unterscheiden.
+# Siehe auch SECTOR_TO_ETF-Kommentar zu Basic Materials.
+PRECIOUS_METAL_INDUSTRIES = {
+    "Gold", "Silver", "Other Precious Metals & Mining", "Gold & Silver",
+    "Precious Metals", "Gold and Silver",
+}
+
+
+def sector_regime_key(sector: str, industry: str = None) -> str:
+    """Bestimmt den Regime-Schlüssel (sector in sector_regimes) für einen Ticker.
+
+    Für Edelmetall-Industries innerhalb 'Basic Materials' → 'Basic Materials (Gold)'
+    (dort wird das GDX-Regime gespeichert). Sonst der Sektor selbst.
+    """
+    if sector == "Basic Materials" and industry and industry in PRECIOUS_METAL_INDUSTRIES:
+        return "Basic Materials (Gold)"
+    return sector
+
+
+def init_sector_regimes_table(con=None):
+    """Legt die sector_regimes-Tabelle an (idempotent)."""
+    own = con is None
+    if own:
+        con = db_connect()
+    try:
+        con.execute("""
+            CREATE TABLE IF NOT EXISTS sector_regimes (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                sector TEXT NOT NULL,
+                etf_ticker TEXT NOT NULL,
+                regime TEXT NOT NULL,
+                date TEXT NOT NULL,
+                ret_20d REAL,
+                UNIQUE(sector, date)
+            )
+        """)
+        con.commit()
+    finally:
+        if own:
+            con.close()
+
+
+def get_sector_regime(sector: str, con=None) -> str:
+    """Liefert das aktuelle Regime für einen Sektor (aus sector_regimes).
+
+    Fallback: wenn kein Sektor-Eintrag, 'sideways' (konservativ). Das globale
+    Regime bleibt über regime_history verfügbar.
+    """
+    if sector is None:
+        return "sideways"
+    own = con is None
+    if own:
+        con = db_connect()
+    try:
+        row = con.execute(
+            "SELECT regime FROM sector_regimes WHERE sector=? ORDER BY date DESC, id DESC LIMIT 1",
+            (sector,)
+        ).fetchone()
+        return row["regime"] if row and row["regime"] in ("bull", "sideways", "bear") else "sideways"
+    finally:
+        if own:
+            con.close()

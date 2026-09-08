@@ -166,10 +166,26 @@ def main():
             atr_entry = pos["atr_at_entry"] or 0
             # Asset-Typ für dynamische Exit-Regeln
             pos_asset_type = pos["asset_type"] if "asset_type" in pos.keys() else "STANDARD"
+            # SEKTOR-REGIME (06.09.2026): Exit-Matrix nutzt das Regime des Sektors
+            # der Position (nicht das globale SPY-Regime), konsistent zum Entry-Filter.
+            # Edelmetall-Minen (Gold) → GDX-Regime; sonst Sektor-ETF-Regime.
+            pos_regime = regime  # globaler Fallback
+            try:
+                _sr = con.execute(
+                    "SELECT sector, industry FROM companies WHERE ticker=?", (ticker,)
+                ).fetchone()
+                if _sr and _sr["sector"]:
+                    from config import sector_regime_key, get_sector_regime
+                    _rk = sector_regime_key(_sr["sector"], _sr["industry"])
+                    _sreg = get_sector_regime(_rk, con)
+                    if _sreg in ("bull", "sideways", "bear"):
+                        pos_regime = _sreg
+            except Exception:
+                pass  # Fallback bleibt globales regime
             # FIX 16.08.: Exit-Matrix als EINZIGE Quelle (SL/TP/partial/profit_lock/step).
             # get_asset_multipliers (Legacy) hatte trailing_step=0.5 für STANDARD,
             # die Matrix step=0.75 → Drift. Jetzt konsistent zu signal_manager.
-            pos_mult = get_exit_config(asset_type=pos_asset_type, regime=regime)
+            pos_mult = get_exit_config(asset_type=pos_asset_type, regime=pos_regime)
             direction = pos["direction"]
 
             current_price, atr_now, tech_status = get_tech_status(ticker)
