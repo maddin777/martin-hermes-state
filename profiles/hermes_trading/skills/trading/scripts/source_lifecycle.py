@@ -175,41 +175,114 @@ def migrate_existing_sources(con):
     print("  ✅ Migration abgeschlossen")
 
 
+def channel_variants(display_name: str) -> list:
+    """Schreibweisen, unter denen eine Quelle in den Mention-/Trade-Tabellen steht.
+
+    watchlist_mentions.channel wird vom watchlist_manager auf lower()/strip()
+    normalisiert; RSS-Quellen tragen zusaetzlich das 'rss:'-Praefix.
+    source_registry.display_name ist dagegen die Original-Schreibweise.
+    """
+    dn = (display_name or "").strip()
+    low = dn.lower()
+    return list(dict.fromkeys([dn, low, f"rss:{low}"]))
+
+
+def _channel_match_sql(column: str, variants: list):
+    """(SQL-Fragment, Parameter) fuer exaktes Token-Match in einer Komma-Liste.
+
+    positions.source_channel ist eine kommagetrennte Liste (', '.join(...)).
+    Ein blosses LIKE '%name%' wuerde Quellen quer-attribuieren, deren Name
+    Teilstring eines anderen ist – deshalb wird das ganze Token gematcht
+    (identisch zu nightly_eval.calc_source_quality).
+    """
+    clauses, params = [], []
+    for v in variants:
+        clauses.append(
+            f"({column} = ? OR {column} LIKE ? OR {column} LIKE ? OR {column} LIKE ?)"
+        )
+        params += [v, f"{v}, %", f"%, {v}", f"%, {v}, %"]
+    return " OR ".join(clauses), params
+
+
 def evaluate_active_sources(con):
+    """Schreibt die Performance-Kennzahlen einer Quelle in source_registry.
+
+    FIX 08.09.2026 — Root-Cause der inflationierten Zaehler:
+    Vorher wurde `total_bought = total_bought + ?` geschrieben, wobei `?` die
+    SUMME rollierender 30-Tage-Snapshots ueber 90 Tage aus `source_quality` war.
+    source_quality bekommt taeglich eine Zeile, jeder Trade steckt also in ~30
+    Snapshots; diese Summe wurde dann bei JEDEM Wochenlauf erneut ADDIERT.
+    Ergebnis: exponentielle Inflation (Live-DB: 'der aktionaer' total_bought=6358
+    bei insgesamt 84 geschlossenen Trades im ganzen System). `total_mentions`
+    wurde nie geschrieben und stand ueberall auf 0.
+
+    Das ist nicht kosmetisch: `demote_bad_sources()` und `adjust_weights()`
+    gaten auf `total_bought >= min_trades_for_eval` und regeln danach das
+    Quellen-Gewicht, das direkt in die Conviction eingeht (get_channel_weights
+    + get_channel_calibration im watchlist_manager).
+
+    Jetzt: alle Kennzahlen werden ABSOLUT aus den Primaerquellen (`positions`,
+    `watchlist_mentions`) berechnet und per SET geschrieben. Der Lauf ist damit
+    idempotent – zweimal ausfuehren aendert nichts mehr.
+    """
     print("📊 Evaluiere aktive Quellen...", flush=True)
     active = con.execute("""
         SELECT * FROM source_registry WHERE status IN ('active', 'probation')
     """).fetchall()
     for src in active:
-        sq = con.execute("""
-            SELECT SUM(mentions_30d) as mentions, SUM(bought_30d) as bought,
-                   AVG(win_rate_30d) as avg_wr, AVG(avg_pnl_30d) as avg_pnl
-            FROM source_quality WHERE channel = ? AND date >= date('now', '-90 days')
-        """, (src["display_name"],)).fetchone()
-        recent = con.execute("""
-            SELECT pnl_eur FROM positions WHERE status='closed'
-            AND source_channel LIKE ? ORDER BY exit_date DESC LIMIT 10
-        """, (f"%{src['display_name']}%",)).fetchall()
+        variants = channel_variants(src["display_name"])
+        ph = ",".join("?" * len(variants))
+        trade_sql, trade_params = _channel_match_sql("source_channel", variants)
+
+        # Alle jemals dieser Quelle zurechenbaren geschlossenen Trades (absolut).
+        all_trades = con.execute(f"""
+            SELECT pnl_eur, exit_date FROM positions
+            WHERE status='closed' AND ({trade_sql})
+            ORDER BY exit_date DESC
+        """, trade_params).fetchall()
+
+        total_bought = len(all_trades)
+        total_pnl    = sum((t["pnl_eur"] or 0) for t in all_trades)
+        avg_pnl      = (total_pnl / total_bought) if total_bought else 0.0
+        total_wins   = sum(1 for t in all_trades if (t["pnl_eur"] or 0) > 0)
+        total_losses = total_bought - total_wins
+        wr_alltime   = (total_wins / total_bought) if total_bought else 0.0
+
+        # 90-Tage-Fenster fuer win_rate_90d (Demote-/Promote-Entscheidungen).
+        cutoff_90d = (datetime.now() - timedelta(days=90)).strftime("%Y-%m-%d")
+        recent_90d = [t for t in all_trades if (t["exit_date"] or "") >= cutoff_90d]
+        win_rate = (sum(1 for t in recent_90d if (t["pnl_eur"] or 0) > 0)
+                    / len(recent_90d)) if recent_90d else 0.0
+
+        # Verluststreak: letzte 10 Trades, neueste zuerst.
         consec = 0
-        for t in recent:
+        for t in all_trades[:10]:
             if (t["pnl_eur"] or 0) <= 0:
                 consec += 1
             else:
                 break
-        total_bought = sq["bought"] or 0
-        win_rate = sq["avg_wr"] or 0
-        avg_pnl = sq["avg_pnl"] or 0
+
+        mention_row = con.execute(f"""
+            SELECT COUNT(*) AS n, MAX(mention_date) AS last_seen
+            FROM watchlist_mentions WHERE channel IN ({ph})
+        """, variants).fetchone()
+        total_mentions = mention_row["n"] or 0
+
         con.execute("""
-            UPDATE source_registry SET win_rate_90d=?, avg_pnl_per_trade=?,
-                total_bought=total_bought+?, consecutive_losses=?,
-                last_mention_date=COALESCE(
-                    (SELECT MAX(mention_date) FROM watchlist_mentions WHERE channel=?),
-                    last_mention_date)
+            UPDATE source_registry SET
+                total_mentions=?, total_bought=?, total_wins=?, total_losses=?,
+                win_rate_alltime=?, win_rate_90d=?, avg_pnl_per_trade=?,
+                consecutive_losses=?,
+                last_mention_date=COALESCE(?, last_mention_date)
             WHERE id=?
-        """, (round(win_rate, 3), round(avg_pnl, 2), total_bought, consec,
-              src["display_name"], src["id"]))
+        """, (total_mentions, total_bought, total_wins, total_losses,
+              round(wr_alltime, 3), round(win_rate, 3), round(avg_pnl, 2),
+              consec, mention_row["last_seen"], src["id"]))
+
         icon = "🟢" if win_rate >= 0.5 else "🟡" if win_rate >= 0.35 else "🔴"
-        print(f"  {icon} {src['display_name']:30} WR={win_rate:.0%} n={total_bought} avg_pnl={avg_pnl:+.1f}% consec_L={consec}")
+        print(f"  {icon} {src['display_name']:30} WR90={win_rate:.0%} "
+              f"trades={total_bought} mentions={total_mentions} "
+              f"avg_pnl={avg_pnl:+.1f}€ consec_L={consec}")
 
 
 def demote_bad_sources(con):

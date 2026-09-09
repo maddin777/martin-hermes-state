@@ -104,6 +104,65 @@ def _intersect_beneficiaries(results: dict) -> list:
     return beneficiaries
 
 
+
+# ── Beneficiary-Lifecycle (08.09.2026) ──────────────────────────────────────
+# Befund: `theme_beneficiaries.status` wurde von KEINER Codestelle je geaendert.
+# Der Mapper schreibt 'candidate', nichts befoerdert und nichts archiviert —
+# in der Live-DB standen alle 220 Eintraege auf 'candidate', 208 davon aelter
+# als 60 Tage (juengstes last_updated: 13.07.). Die Filter `status != 'archived'`
+# in watchlist_manager, briefing und dashboard waren damit wirkungslos, und
+# 33 Ticker bekamen aus monatealten Mappings dauerhaft Conviction-Boost.
+#
+# Zustaende:
+#   active    Theme aktiv UND letzter Thesis-Check INTACT  → voller Boost
+#   candidate gemappt, aber (noch) unbestaetigt            → minimaler Boost
+#   archived  Theme nicht mehr aktiv, These gebrochen oder Mapping veraltet
+#             → kein Boost, faellt aus Briefing und Dashboard
+#
+# Rein ableitend: der Status wird bei jedem Lauf aus den Fakten neu bestimmt,
+# es gibt keinen Zustand, den ein fehlgeschlagener Lauf dauerhaft verfaelscht.
+BENEFICIARY_MAX_AGE_DAYS = 60
+
+
+def sync_beneficiary_status(con, max_age_days: int = BENEFICIARY_MAX_AGE_DAYS) -> dict:
+    """Leitet theme_beneficiaries.status aus Theme, Thesis und Alter ab."""
+    rows = con.execute("""
+        SELECT tb.id, tb.ticker, tb.status,
+               td.status AS theme_status,
+               julianday('now') - julianday(COALESCE(tb.last_updated, tb.added_date)) AS age,
+               (SELECT l.status FROM thesis_status_log l
+                 WHERE l.beneficiary_id = tb.id OR l.ticker = tb.ticker
+                 ORDER BY (l.beneficiary_id IS NULL), l.id DESC LIMIT 1) AS thesis
+        FROM theme_beneficiaries tb
+        LEFT JOIN theme_definitions td ON td.id = tb.theme_id
+    """).fetchall()
+
+    counts = {"active": 0, "candidate": 0, "archived": 0, "changed": 0}
+    for r in rows:
+        thesis = (r["thesis"] or "").strip().lower()
+        age = r["age"] if r["age"] is not None else 0
+
+        if (r["theme_status"] != "active"
+                or thesis in ("broken", "degraded")
+                or age > max_age_days):
+            new = "archived"
+        elif thesis == "intact":
+            new = "active"
+        else:
+            new = "candidate"
+
+        counts[new] += 1
+        if new != r["status"]:
+            counts["changed"] += 1
+            con.execute("UPDATE theme_beneficiaries SET status=? WHERE id=?", (new, r["id"]))
+
+    con.commit()
+    print(f"[Beneficiary Lifecycle] active={counts['active']} "
+          f"candidate={counts['candidate']} archived={counts['archived']} "
+          f"({counts['changed']} geaendert)", flush=True)
+    return counts
+
+
 def main():
     con = _db_connect()
     today = date.today().isoformat()
@@ -218,6 +277,13 @@ def main():
                 total_new += 1
 
     con.commit()
+
+    # Status aus Theme/Thesis/Alter neu ableiten (siehe sync_beneficiary_status).
+    try:
+        sync_beneficiary_status(con)
+    except Exception as e:
+        print(f"[Beneficiary Lifecycle] uebersprungen: {e}", flush=True)
+
     con.close()
     print(f"[Beneficiary Mapper] DONE: {total_new} neue Beneficiaries", flush=True)
 

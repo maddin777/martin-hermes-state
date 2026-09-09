@@ -221,7 +221,12 @@ lines.append("|---|-------------|--------|--------|----------|-------|-------|--
 
 for i, w in enumerate(watchlist, 1):
     channels_raw = json.loads(w.get("channels_raw") or "[]")
-    channels_str = ", ".join(list(set(channels_raw))[:3])
+    # Deterministisch + vollständig (FIX 08.09.): `list(set(x))[:3]` war per-Prozess
+    # nicht-deterministisch (PYTHONHASHSEED-Randomization) → dieselben Kanäle zeigten
+    # je Export-Lauf andere Top-3 → die daraus abgeleitete Quellen-Attribution oszillierte
+    # (mario lochner 20↔7). `sorted(set(...))` ist stabil; volle Liste statt Top-3-Kürzung,
+    # damit die Quellen-Zählung die komplette Kanal-Attribution erfasst.
+    channels_str = ", ".join(sorted(set(channels_raw)))
     conviction = w["conviction_score"] or 0
     conviction_bear = w["conviction_score_bear"] or 0
     tech = f"{w['tech_score']:.2f}" if w["tech_score"] else "–"
@@ -252,7 +257,7 @@ if dq_entries:
     lines.append("|---|-------------|--------|--------|------------|--------|---------|")
     for j, w in enumerate(dq_entries, 1):
         channels_raw = json.loads(w.get("channels_raw") or "[]")
-        channels_str = ", ".join(list(set(channels_raw))[:3])
+        channels_str = ", ".join(sorted(set(channels_raw)))
         conviction = w["conviction_score"] or 0
         lines.append(
             f"| {j} | {w['name']} | {w['canonical_ticker']} | "

@@ -23,7 +23,8 @@ from datetime import datetime, timedelta
 from utils import passes_liquidity_filter, apply_slippage, COMMISSION_EUR, get_price_data_cached, prefetch_prices, realized_pnl_from_effective_entry, get_crabel_patterns, get_donchian_breakout, get_technical_score
 from utils import get_logger, price_to_eur, position_size_in_shares, open_positions_market_value_eur, calc_pnl_with_costs
 log = get_logger("signal_manager")
-from config import DB_PATH, SIGNALS_VALIDATED_PATH, STRATEGY_CONFIG_PATH, MACRO_SIGNAL_PATH, db_connect, get_asset_type, get_exit_config, get_sector_regime, sector_regime_key
+from config import DB_PATH, SIGNALS_VALIDATED_PATH, STRATEGY_CONFIG_PATH, MACRO_SIGNAL_PATH, db_connect, get_asset_type, get_exit_config, get_sector_regime, sector_regime_key, drawdown_params
+from config import DETERMINISTIC_CHANNELS, MIN_MENTIONS_DETERMINISTIC
 from exit_rules import initial_stop, peak_chandelier_stop, protected_time_stop_price, time_stop_due
 CONFIG_PATH = STRATEGY_CONFIG_PATH
 
@@ -34,7 +35,23 @@ TELEGRAM_HOME_CHANNEL = os.environ.get("TELEGRAM_HOME_CHANNEL") \
 
 DEFAULT_CONFIG = {
     "starting_capital":       10000.0,
-    "max_position_pct":       0.15,
+    # ── Position Sizing (08.09.2026 neu gefasst) ──────────────────────────────
+    # Die Groesse haengt NICHT mehr von der Conviction ab. Gegenrechnung auf den
+    # 84 realen Trades (P&L = pnl_pct x Groesse, gleiche Trades, nur andere
+    # Gewichtung):
+    #     IST, conviction-skaliert        -1.196 EUR   (Median 997, Max 3.006)
+    #     gleiche Groesse 875 EUR           -148 EUR
+    #     gleiches Risiko, Cap 1.200 EUR     -86 EUR
+    # Rund 1.050 der 1.196 EUR Verlust gingen also auf die Conviction-Skalierung
+    # zurueck, nicht auf die Signalauswahl. Ursache: die Conviction ist am oberen
+    # Ende gegenlaeufig (Band 1.00 = 29 Trades, WR 34%, -1.168 EUR), und das
+    # Sizing setzte dort das meiste Geld ein.
+    #
+    # Conviction entscheidet weiterhin, OB ein Trade genommen wird und in welcher
+    # Reihenfolge (priority_score) — nur nicht mehr, wie gross er wird.
+    "max_position_pct":       0.125,   # 1/8 des 70%-Rahmens, als Sicherheitsdeckel
+    # DEPRECATED: Conviction-Stufen im Sizing. Keys bleiben fuer alte
+    # strategy_config.json stehen, werden aber nicht mehr gelesen.
     "max_position_pct_high":  0.20,
     "max_position_pct_low":   0.10,
     "max_positions":          8,
@@ -46,7 +63,15 @@ DEFAULT_CONFIG = {
     "conviction_low":         0.60,
     "atr_sl_multiplier":      1.5,
     "atr_tp_multiplier":      4.5,
+    # DEPRECATED (08.09.2026) — wird vom Entry-Pfad NICHT gelesen.
+    # Die wirksame Tech-Score-Schwelle liefert drawdown_params() (0.70/0.75),
+    # damit sie an das Portfolio-Risiko gekoppelt ist. Der Key bleibt nur
+    # aus Kompatibilitaetsgruenden stehen (alte strategy_config.json,
+    # Dashboard-Historie); adapt_strategy und strategy_optimizer schreiben
+    # ihn nicht mehr.
     "min_confidence":         0.60,
+    # ACHTUNG: trotz des Namens eine CONVICTION-Schwelle (conviction_score_bear),
+    # keine Tech-Confidence — so wird sie in der SHORT-Kandidatenabfrage benutzt.
     "min_confidence_short":   0.65,   # BUGFIX: war 0.5 im Query, Default jetzt konsistent
     "min_conviction":         0.60,
     "min_mentions":           2,
@@ -62,8 +87,20 @@ DEFAULT_CONFIG = {
     "min_liquidity_eur":      500000,
     "earnings_blackout_days": 5,
     "max_correlation":        0.70,
-    # Risiko-Parity: Zielrisiko pro Trade als % des Portfolios
-    "risk_pct_per_trade":     0.015,  # 1.5% – jetzt konfigurierbar
+    # Risiko-Parity: Zielrisiko pro Trade als % des Portfolios.
+    #
+    # FIX 08.09.2026: 1.5% war unerreichbar und damit wirkungslos. 1.5% x 8
+    # Positionen = 12% Portfoliorisiko, der Allokationsrahmen (70%, 8 Slots)
+    # erlaubt aber nur ~875 EUR pro Position — bei typischer ATR-Distanz sind das
+    # ~0.6% Risiko. Gemessen an den 84 Trades: Median-Ist-Risiko 71 EUR gegen
+    # 150 EUR Ziel. `min(vol_size, pct x portfolio, ...)` waehlte deshalb fast
+    # immer den pct-Deckel → die Risk-Parity war dekorativ und die
+    # Conviction-Stufe bestimmte die Groesse allein.
+    # 0.8% bindet innerhalb des Rahmens: der pct-Deckel wird zur Sicherheits-
+    # grenze, das Risiko zum Steuerinstrument.
+    "risk_pct_per_trade":     0.008,
+    # Untergrenze der Bremskaskade (siehe SIZE_BRAKE_FLOOR).
+    "size_brake_floor":       0.40,
     # Crabel Breakout-Bestätigung (EOD-Adaption des Opening Range Breakout):
     #   "contraction" (Default): Gate greift nur, wenn der letzte abgeschlossene
     #                 Bar ein Kontraktions-Pattern war (NR4/NR7/ID/2Bar-NR) –
@@ -354,22 +391,35 @@ def get_current_regime(con):
 
 def adapt_strategy(cfg, con):
     """Passt Strategie nach Marktregime + Trade-Performance an.
-    
+
     === REGIME-BASIS (15.07.2026) ===
     Die Parameter werden zuerst auf das aktuelle Marktregime kalibriert,
     DANN kommen die Trade-basierten Anpassungen (consecutive wins/losses).
-    
-    | Regime    | SL Multi | TP Multi | Trailing ab | Min. Confidence |
-    |-----------|----------|----------|-------------|-----------------|
-    | Bull      | 1.5x     | 3.5x     | +1.5x ATR  | 0.65            |
-    | Sideways  | 1.5x     | 2.5x     | +2.0x ATR  | 0.70            |
-    | Bear      | 2.0x     | 3.0x     | +2.5x ATR  | 0.75            |
+    SL/TP kommen aus der Exit-Matrix (config.get_exit_config).
+
+    === DEPRECATION min_confidence (08.09.2026) ===
+    Alle min_confidence-Anpassungen wurden hier entfernt. Der Key wird vom
+    Entry-Pfad NICHT gelesen: die wirksame Tech-Score-Schwelle liefert
+    check_drawdown()/drawdown_params() und ist bewusst risikogekoppelt.
+    adapt_strategy hat den Wert trotzdem laufend verstellt und dafuer
+    Telegram-Meldungen wie "Min. Konfidenz erhoeht auf 80%" verschickt, die
+    eine Wirkung suggerierten, die es nicht gab. Eine zweite, konkurrierende
+    Quelle fuer dieselbe Schwelle scharf zu schalten waere genau das Muster,
+    das die Exit-Matrix am 09.08. beseitigt hat.
     """
-    if cfg["total_trades"] < 3:
+    closed_total = con.execute(
+        "SELECT COUNT(*) FROM positions WHERE status='closed'"
+    ).fetchone()[0]
+    if closed_total < 3:
         return cfg
 
     regime, vix = get_current_regime(con)
-    win_rate = cfg["winning_trades"] / cfg["total_trades"] if cfg["total_trades"] > 0 else 0
+    # Win-Rate aus der DB, nicht aus den cfg-Zaehlern: die werden nur im
+    # SL/TP-Pfad hochgezaehlt und sind gegenueber positions gedriftet.
+    wins_total = con.execute(
+        "SELECT COUNT(*) FROM positions WHERE status='closed' AND pnl_eur > 0"
+    ).fetchone()[0]
+    win_rate = wins_total / closed_total if closed_total else 0
     changes = []
 
     # ── Regime-Basis setzen ──
@@ -385,8 +435,6 @@ def adapt_strategy(cfg, con):
     if ec:
         old_sl = cfg["atr_sl_multiplier"]
         old_tp = cfg["atr_tp_multiplier"]
-        old_conf = cfg.get("min_confidence", 0.60)
-        cond_conf = {"bull": 0.65, "sideways": 0.70, "bear": 0.75}.get(regime, 0.70)
 
         if old_sl != ec["sl"]:
             cfg["atr_sl_multiplier"] = ec["sl"]
@@ -395,50 +443,24 @@ def adapt_strategy(cfg, con):
         if old_tp != ec["tp"]:
             cfg["atr_tp_multiplier"] = ec["tp"]
             changes.append(f"Regime {regime}: TP {old_tp}→{ec['tp']}x ATR")
-        # Confidence-Floor pro Regime
-        if old_conf < cond_conf:
-            cfg["min_confidence"] = cond_conf
-            changes.append(f"Regime {regime}: Min. Confidence {old_conf:.0%}→{cond_conf:.0%}")
 
     if cfg["consecutive_wins"] >= 3:
-        if regime == "sideways":
-            # Im Sideways: TP nicht weiter machen (unerreichbar)
-            if cfg["min_confidence"] < 0.75:
-                cfg["min_confidence"] = min(0.75, cfg["min_confidence"] + 0.03)
-                changes.append(f"Sideways → Min. Konfidenz erhöht auf {cfg['min_confidence']:.0%}")
-        else:
+        # Im Sideways bleibt der TP bewusst unverändert (weitere Ziele sind dort
+        # unerreichbar). Vorher wurde stattdessen min_confidence angehoben — ein
+        # Parameter ohne Wirkung, siehe Deprecation-Hinweis im Docstring.
+        if regime != "sideways":
             cfg["atr_tp_multiplier"] = min(3.5, cfg["atr_tp_multiplier"] + 0.25)
             changes.append(f"TP erhöht auf {cfg['atr_tp_multiplier']}x ATR")
         cfg["consecutive_wins"] = 0
 
     if cfg["consecutive_losses"] >= 3:
-        if regime == "sideways":
-            # Im Sideways: SL NICHT enger machen (tödlich!)
-            if cfg["min_confidence"] < 0.80:
-                cfg["min_confidence"] = min(0.80, cfg["min_confidence"] + 0.05)
-                changes.append(f"Sideways → Min. Konfidenz erhöht auf {cfg['min_confidence']:.0%}")
-        else:
+        # Im Sideways den SL NICHT enger ziehen (tödlich!) — dort passiert also
+        # bewusst nichts. Die Risikoreduktion nach Verlustserien läuft im
+        # Sideways ohnehin über die Drawdown-Matrix (Size + Positionslimit).
+        if regime != "sideways":
             cfg["atr_sl_multiplier"] = max(1.2, cfg["atr_sl_multiplier"] - 0.25)
             changes.append(f"SL enger auf {cfg['atr_sl_multiplier']}x ATR")
         cfg["consecutive_losses"] = 0
-
-    # VIX-basierte Konfidenzanpassung
-    if vix > 25 and cfg["min_confidence"] < 0.70:
-        cfg["min_confidence"] = min(0.70, cfg["min_confidence"] + 0.03)
-        changes.append(f"VIX {vix:.0f} → Min. Konfidenz erhöht auf {cfg['min_confidence']:.0%}")
-
-    # #13: Recovery-Pfad. adapt_strategy hob min_confidence nur an (VIX, Loss-Serien)
-    # und senkte nie – über Wochen ratcht das Richtung 0.80 → Entry-Starvation.
-    # Bei ruhigem Markt (VIX < 20) und solider Win-Rate schrittweise zurück Richtung
-    # Basiswert (Floor 0.60).
-    conf_floor = cfg.get("min_confidence_floor", 0.60)
-    if vix < 20 and win_rate >= 0.55 and cfg["min_confidence"] > conf_floor \
-            and cfg["consecutive_losses"] == 0:
-        old = cfg["min_confidence"]
-        cfg["min_confidence"] = round(max(conf_floor, old - 0.02), 2)
-        if cfg["min_confidence"] < old:
-            changes.append(f"Ruhiger Markt + WR {win_rate:.0%} → Min. Konfidenz "
-                           f"gesenkt auf {cfg['min_confidence']:.0%}")
 
     if changes:
         msg = "🔧 <b>Strategie angepasst:</b>\n" + "\n".join(f"• {c}" for c in changes)
@@ -1078,9 +1100,14 @@ def check_drawdown(con):
       action = 'close_all' → ≥25%: alle Positionen schließen
       params: dict mit size_factor, min_confidence, max_positions
     """
+    def _result(dd):
+        """Matrix-Lookup → (drawdown, action, params) im bisherigen Rückgabeformat."""
+        p = dict(drawdown_params(dd))
+        return dd, p.pop("action"), p
+
     portfolio = con.execute("SELECT cash, total_value, ath_value FROM portfolio WHERE id=1").fetchone()
     if not portfolio:
-        return 0.0, "ok", {"size_factor": 1.0, "min_confidence": 0.70, "max_positions": 8}
+        return _result(0.0)
 
     cash = portfolio["cash"] or 0
     open_positions = con.execute(
@@ -1105,26 +1132,10 @@ def check_drawdown(con):
     con.commit()
 
     if ath == 0:
-        return 0.0, "ok", {"size_factor": 1.0, "min_confidence": 0.70, "max_positions": 8}
+        return _result(0.0)
 
-    drawdown = (ath - total) / ath
-
-    # Graduierte Reduzierung statt Binary-Stopp
-    if drawdown >= 0.25:
-        return drawdown, "close_all", {"size_factor": 0.0, "min_confidence": 1.0, "max_positions": 0}
-    elif drawdown >= 0.15:
-        # FIX 17.08.2026 (Martin): 15-25%-Zone max_positions 4 → 6 — die 4er-Grenze
-        # blockierte bei -18.5% Drawdown alle neuen Entries (4/8 offen, aber Cap war 4).
-        # FIX 01.09.2026 (Martin): Sanfte Heilungs-Beschleunigung — size_factor 0.50→0.65,
-        # min_confidence 0.80→0.75. Grund: bei -18% sind mit 50% Size + 80% Conf nur wenige
-        # Kandidaten (23 mit conv≥0.80) entry-fähig, Trades klein → Heilung dauerte ewig
-        # (braucht +651€ = 10-20 kleine Winner). 65% Size + 75% Conf lässt mehr Kandidaten
-        # durch bei moderatem Risiko. Schutz-Bremse bleibt (size<1, conf>default 0.60).
-        return drawdown, "ok", {"size_factor": 0.65, "min_confidence": 0.75, "max_positions": 6}
-    elif drawdown >= 0.12:
-        return drawdown, "ok", {"size_factor": 0.75, "min_confidence": 0.75, "max_positions": 6}
-    else:
-        return drawdown, "ok", {"size_factor": 1.0, "min_confidence": 0.70, "max_positions": 8}
+    # Graduierte Reduzierung statt Binary-Stopp – Matrix in drawdown_params()
+    return _result((ath - total) / ath)
 
 
 def _is_drawdown_cooldown_active(cfg) -> bool:
@@ -1296,8 +1307,9 @@ def compute_sl_tp(effective_entry: float, atr: float, asset_type: str, direction
     return sl, tp
 
 
-def log_blocked_entry(con, c, ticker, direction, gate, current_price, atr,
-                      ticker_sector, conviction, crabel, breakout_level):
+def log_blocked_entry(con, c, ticker, direction, gate, current_price=None, atr=None,
+                      ticker_sector=None, conviction=None, crabel=None,
+                      breakout_level=None):
     """
     Shadow-Log: schreibt einen vom Gate verhinderten Entry mit allen Levels,
     die gegolten hätten. `crabel_shadow_eval.py` bepreist die Einträge später
@@ -1310,10 +1322,19 @@ def log_blocked_entry(con, c, ticker, direction, gate, current_price, atr,
     mehrfache signal_manager-Läufe am selben Tag erzeugen nur einen Eintrag.
     """
     try:
-        asset_type      = get_asset_type(ticker_sector)
-        effective_entry = apply_slippage(current_price, direction, is_entry=True)
-        _regime, _vix   = get_current_regime(con)
-        would_sl, would_tp = compute_sl_tp(effective_entry, atr, asset_type, direction, regime=_regime)
+        asset_type = get_asset_type(ticker_sector)
+        # FIX 08.09.2026: Gates, die VOR der Preisabfrage greifen (Krypto-Ticker,
+        # 24h-Sperre, Makro-Filter), haben weder Kurs noch ATR. Statt sie gar nicht
+        # zu protokollieren, wird die Zeile mit NULL-Levels geschrieben — der
+        # Counterfactual ist dann nicht simulierbar, die HAeUFIGKEIT des Gates aber
+        # messbar. crabel_shadow_eval ueberspringt Zeilen ohne would_entry.
+        has_levels = bool(current_price) and bool(atr)
+        effective_entry = would_sl = would_tp = None
+        if has_levels:
+            effective_entry = apply_slippage(current_price, direction, is_entry=True)
+            _regime, _vix   = get_current_regime(con)
+            would_sl, would_tp = compute_sl_tp(effective_entry, atr, asset_type,
+                                               direction, regime=_regime)
         now = datetime.now()
         con.execute("""
             INSERT OR IGNORE INTO blocked_entries
@@ -1324,8 +1345,11 @@ def log_blocked_entry(con, c, ticker, direction, gate, current_price, atr,
         """, (
             ticker, c["name"], direction, gate,
             now.strftime("%Y-%m-%d %H:%M"), now.strftime("%Y-%m-%d"),
-            round(current_price, 4), round(effective_entry, 4),
-            round(would_sl, 4), round(would_tp, 4), round(atr, 4),
+            round(current_price, 4) if current_price else None,
+            round(effective_entry, 4) if effective_entry else None,
+            round(would_sl, 4) if would_sl else None,
+            round(would_tp, 4) if would_tp else None,
+            round(atr, 4) if atr else None,
             asset_type, conviction,
             (c["tech_score"] if "tech_score" in c.keys() else None),
             json.dumps(crabel) if crabel else None,
@@ -1437,6 +1461,63 @@ def entry_gate_reason(candidate, direction, ticker, technical,
             weekly_trend == "bearish" and tech_direction == "SHORT"):
         return "momentum-gate"
     return None
+
+
+# Quellenabhaengige Mindest-Mentions (08.09.2026).
+#
+# `min_mentions >= 2` war das bindende Entry-Kriterium: von 23 Kandidaten mit
+# Conviction >= 0.65 passierten nur 2, am Ende blieb 0 — die Pipeline meldete
+# taeglich "Keine Watchlist-Kandidaten" bei 79% Cash. Ursache ist nicht die
+# Schwelle an sich, sondern dass sie auf ALLE Quellen gleich angewandt wurde:
+# der Screener schreibt genau eine Zeile pro Ticker und Tag und konnte sie
+# strukturell nie erreichen.
+#
+# Die Bedingung ist bewusst NICHT "min_mentions global auf 1": das liesse
+# genau das Verlustband wieder herein (Einzel-Mentions von Meinungsquellen,
+# 29 Trades / -1.168 EUR). Gemessen an der Live-DB: 0 -> 6 Kandidaten mit der
+# Quellenregel, 0 -> 13 bei pauschalem min_mentions=1.
+_DET_PLACEHOLDERS = ",".join("?" * len(DETERMINISTIC_CHANNELS))
+MENTIONS_CLAUSE = f"""
+            AND (w.mention_count >= ?
+                 OR (w.mention_count >= ?
+                     AND EXISTS (SELECT 1 FROM json_each(w.channels)
+                                 WHERE json_each.value IN ({_DET_PLACEHOLDERS}))))
+"""
+
+
+def _mentions_params(min_mentions):
+    """Parameter zu MENTIONS_CLAUSE, in der Reihenfolge der Platzhalter."""
+    return [min_mentions, MIN_MENTIONS_DETERMINISTIC, *DETERMINISTIC_CHANNELS]
+
+
+# Untergrenze fuer die kombinierte Groessen-Bremse.
+#
+# Vorher wirkten Drawdown, Sektor-Regime, VIX und Probation MULTIPLIKATIV:
+# 0.65 x 0.5 x 0.5 = 0.16 — ein valider Kandidat schrumpfte auf 16% der
+# Basisgroesse und fiel dann unter die 200-EUR-Mindestgroesse, wo er stumm
+# verworfen wurde (das neue Gate `size-below-minimum` macht genau das sichtbar).
+# Jetzt werden die Reduktionen ADDIERT und am Floor abgeschnitten: mehrere
+# Bremsen verstaerken sich, koennen den Trade aber nicht rechnerisch ausloeschen.
+# Wer bei -18% Drawdown im Sideways-Sektor nicht handeln will, soll das ueber
+# ein Gate entscheiden, nicht ueber eine Multiplikation gegen null.
+SIZE_BRAKE_FLOOR = 0.40
+
+
+def combine_size_brakes(factors, floor=SIZE_BRAKE_FLOOR):
+    """Kombiniert Groessen-Bremsen additiv statt multiplikativ.
+
+    factors: Iterable von (label, faktor) mit faktor in (0, 1].
+    Rueckgabe: (kombinierter_faktor, [labels der wirksamen Bremsen])
+    """
+    reduction = 0.0
+    labels = []
+    for label, f in factors:
+        if f is not None and f < 1.0:
+            reduction += (1.0 - f)
+            labels.append(f"{label} ({f:.0%})")
+    if not labels:
+        return 1.0, []
+    return max(floor, 1.0 - reduction), labels
 
 
 def open_new_positions(con, cfg):
@@ -1588,36 +1669,36 @@ def open_new_positions(con, cfg):
     candidates_short = []
 
     if allow_long and open_long_count < effective_max_long:
-        candidates_long = con.execute("""
+        candidates_long = con.execute(f"""
             SELECT w.*,
                    json_array_length(channels) as channel_count
             FROM watchlist w
             WHERE w.status = 'watching'
             AND w.conviction_score >= ?
-            AND w.mention_count >= ?
+            {MENTIONS_CLAUSE}
             AND w.tech_score >= ?
             AND w.tech_direction = 'LONG'
             AND w.ticker IS NOT NULL
         """, (
             cfg.get("min_conviction", 0.60),
-            cfg.get("min_mentions", 2),
+            *_mentions_params(cfg.get("min_mentions", 2)),
             dd_min_confidence,  # Drawdown-abhängig: 0.70/0.75/0.80
         )).fetchall()
 
     if allow_short and open_short_count < effective_max_short:
-        candidates_short = con.execute("""
+        candidates_short = con.execute(f"""
             SELECT w.*,
                    json_array_length(channels) as channel_count
             FROM watchlist w
             WHERE w.status = 'watching'
             AND w.conviction_score_bear >= ?
-            AND w.mention_count >= ?
+            {MENTIONS_CLAUSE}
             AND w.tech_score IS NOT NULL
             AND w.tech_direction = 'SHORT'
             AND w.ticker IS NOT NULL
         """, (
             cfg.get("min_confidence_short", 0.65),   # BUGFIX: war 0.5, jetzt konsistent
-            cfg.get("min_mentions_short", 2)
+            *_mentions_params(cfg.get("min_mentions_short", 2)),
         )).fetchall()
 
     all_candidates = []
@@ -1686,11 +1767,35 @@ def open_new_positions(con, cfg):
 
         ticker = c["ticker"]
         cand_conviction = _dir_conviction(c, direction)   # #6: LONG=bullish, SHORT=bearish
+
+        # Pro-Iteration-Defaults, damit _skip() auch VOR der Preisabfrage
+        # aufgerufen werden kann (siehe unten).
+        current_price = atr = None
+        ticker_sector = "Other"
+        crabel = None
+
+        def _skip(gate, level=None):
+            """Kandidat verwerfen UND den Grund in blocked_entries protokollieren.
+
+            FIX 08.09.2026: Vorher protokollierten nur drei der ~20 `continue`-Pfade
+            (crabel, sector-regime-bear, momentum/liquidity). In der Live-DB stand
+            deshalb ausschliesslich `gate='crabel'` — die Counterfactual-Auswertung,
+            die die Gates rechtfertigen soll, hatte fuer alle anderen keine
+            Datenbasis, und es war nicht feststellbar, WO der Kandidatenstrom
+            versiegt. Jetzt bekommt jeder Abbruch eine Zeile; das UNIQUE
+            (ticker, direction, block_date, gate) haelt Mehrfachlaeufe pro Tag
+            zusammen. Reines Logging, trifft keine Entscheidung.
+            """
+            log_blocked_entry(con, c, ticker, direction, gate,
+                              current_price, atr, ticker_sector,
+                              cand_conviction, crabel, level)
+
         # wie "OpenAI"/"Anthropic" als CRYPTOCURRENCY-Ticker getradet werden.
         # yfinance liefert fuer XYZ-USD echte Preise/Volumen – Liquiditaetsfilter
         # blockt das nicht zuverlaessig.
         if ticker and (ticker.endswith(('-USD', '-EUR', '-USDT', '-BTC')) or '/' in ticker):
             print(f"  🚫 {c['name']}: Krypto-Ticker {ticker} – uebersprungen")
+            _skip("crypto-ticker")
             continue
 
         channels = json.loads(c["channels"] or "[]")
@@ -1698,19 +1803,25 @@ def open_new_positions(con, cfg):
 
         # Filter
         if ticker in open_tickers:
+            # Position laeuft bereits – kein geblockter Entry, sondern ein Duplikat.
+            # Bewusst NICHT geloggt, sonst floodet es blocked_entries taeglich.
             continue
         if ticker in recent_tickers:
+            _skip("cooldown-24h")
             continue
 
         # Makro-Filter für SHORT
         if direction == "SHORT" and macro == "bullish" and regime == "bull":
             print(f"  ⛔ {c['name']}: SHORT nicht erlaubt bei BULLISH + BULL-Regime")
+            _skip("macro-short")
             continue
 
         # Preis/ATR und Sektor werden vor den harten Entry-Gates benoetigt, damit
         # auch geblockte Kandidaten vollstaendig in blocked_entries landen.
         current_price, atr = get_current_price_and_atr(ticker)
         if not current_price or not atr or math.isnan(current_price) or math.isnan(atr):
+            current_price = atr = None      # _skip schreibt dann NULL-Levels
+            _skip("no-price-data")
             continue
 
         ticker_sector = "Other"
@@ -1732,9 +1843,7 @@ def open_new_positions(con, cfg):
             if sector_regime == "bear":
                 print(f"  ⛔ {c['name']}: Sektor {regime_key} = {sector_regime.upper()} "
                       f"→ kein LONG (Sektor-Regime)", flush=True)
-                log_blocked_entry(con, c, ticker, direction, "sector-regime-bear",
-                                  current_price, atr, ticker_sector,
-                                  cand_conviction, None, None)
+                _skip("sector-regime-bear")
                 continue
             elif sector_regime == "sideways":
                 sector_size_factor = 0.5
@@ -1744,6 +1853,7 @@ def open_new_positions(con, cfg):
             if sector_regime == "bull":
                 print(f"  ⛔ {c['name']}: Sektor {regime_key} = {sector_regime.upper()} "
                       f"→ kein SHORT (Sektor-Regime)", flush=True)
+                _skip("sector-regime-bull")
                 continue
             elif sector_regime == "sideways":
                 sector_size_factor = 0.5
@@ -1761,9 +1871,7 @@ def open_new_positions(con, cfg):
         if gate_reason:
             print(f"  {'📈' if gate_reason == 'momentum-gate' else '💧'} "
                   f"{c['name']}: {gate_reason} → Entry geblockt", flush=True)
-            log_blocked_entry(con, c, ticker, direction, gate_reason,
-                              current_price, atr, ticker_sector,
-                              cand_conviction, None, None)
+            _skip(gate_reason)
             continue
 
         # Short-Thesis Score: min. 2 von 4 Kriterien nötig
@@ -1774,6 +1882,7 @@ def open_new_positions(con, cfg):
             if short_score < 2:
                 print(f"  📊 {c['name']}: SHORT-Thesis Score {short_score}/4 "
                       f"(mind. 2 nötig) → übersprungen")
+                _skip("short-thesis")
                 continue
             print(f"  ✅ SHORT-Thesis {short_score}/4: {', '.join(short_reasons)}", flush=True)
 
@@ -1781,9 +1890,11 @@ def open_new_positions(con, cfg):
         # Allokations-Limit pro Richtung
         if direction == "LONG" and long_invested >= max_long:
             print(f"  💰 LONG-Allokation voll ({long_invested:.0f}€/{max_long:.0f}€)")
+            _skip("allocation-long")
             continue
         if direction == "SHORT" and short_invested >= max_short:
             print(f"  💰 SHORT-Allokation voll ({short_invested:.0f}€/{max_short:.0f}€)")
+            _skip("allocation-short")
             continue
 
         # Sektor-Check: Blacklist + Probation
@@ -1791,6 +1902,7 @@ def open_new_positions(con, cfg):
         sector_ok, is_probation, sector_reason = is_sector_allowed(ticker_sector, con, cfg)
         if not sector_ok:
             print(f"  🚫 {c['name']}: {sector_reason}")
+            _skip("sector-blacklist")
             continue
         if is_probation:
             probation_factor = cfg.get("sector_probation_size_pct", 0.5)
@@ -1800,24 +1912,28 @@ def open_new_positions(con, cfg):
         corr_ok, corr_reason = check_correlation_with_open(con, ticker, direction, cfg)
         if not corr_ok:
             print(f"  🔗 {c['name']}: {corr_reason}")
+            _skip("correlation")
             continue
 
 
         # Earnings-Blackout
         if has_upcoming_earnings(ticker, cfg.get("earnings_blackout_days", 5)):
             print(f"  📅 {c['name']}: Earnings in <{cfg.get('earnings_blackout_days', 5)} Tagen – überspringe")
+            _skip("earnings-blackout")
             continue
 
         # Makro-Event-Blackout (FIX b 09.08., glm-Review): systemweite US-Events
         # (NFP/FOMC/CPI) verursachen Tag-0-Gaps — blocke den Entry am Event-Tag.
         if is_macro_event_day():
             print(f"  🌎 {c['name']}: US-Makro-Event heute (NFP/FOMC/CPI) – überspringe Entry")
+            _skip("macro-event-day")
             continue
 
         # Loop 3: Pre-Entry Validation Gate – Segment-Historie prüfen
         seg_ok, seg_reason = check_segment_performance(con, ticker, direction, cand_conviction)
         if not seg_ok:
             print(f"  🚫 {c['name']}: {seg_reason}")
+            _skip("segment-history")
             continue
 
         # X Breaking-News-Check: Negative Breaking News → kein Entry (via twitterapi.io)
@@ -1829,6 +1945,7 @@ def open_new_positions(con, cfg):
                 if has_breaking:
                     print(f"  🐦 {c['name']}: X meldet negative Breaking News → Entry abgebrochen")
                     print(f"     {summary}", flush=True)
+                    _skip("breaking-news")
                     continue
             except Exception:
                 pass  # X-Fehler stoppen den Entry nicht
@@ -1846,6 +1963,7 @@ def open_new_positions(con, cfg):
                     if r.returncode == 2:
                         print(f"  📰 {c['name']}: Last30days-Gate BLOCK (" 
                               f"stark negative News) → Entry abgebrochen", flush=True)
+                        _skip("last30days")
                         continue
                     elif r.returncode == 1:
                         print(f"  📰 {c['name']}: Last30days-Gate WARNING "
@@ -1862,6 +1980,7 @@ def open_new_positions(con, cfg):
             _cur, _prev = get_prev_close_ratio(ticker)
             if has_overnight_gap(_cur, atr, _prev):
                 print(f"  ↔️ {c['name']}: Overnight-Gap ({_cur:.2f} vs Vortag {_prev:.2f}) – überspringe Entry")
+                _skip("overnight-gap")
                 continue
         except Exception:
             pass  # Gap-Check-Fehler stoppen den Entry nicht (fail-open)
@@ -1900,9 +2019,7 @@ def open_new_positions(con, cfg):
                           f"− Stretch {crabel['stretch']:.2f}) → warte auf Bestätigung",
                           flush=True)
                 if blocked:
-                    log_blocked_entry(con, c, ticker, direction, "crabel",
-                                      current_price, atr, ticker_sector,
-                                      cand_conviction, crabel, level)
+                    _skip("crabel", level)
                     continue
                 if crabel["contraction"]:
                     print(f"  📏 {c['name']}: Crabel-Breakout bestätigt "
@@ -1952,9 +2069,7 @@ def open_new_positions(con, cfg):
                             if cfg.get("committee_mode") == "active":
                                 print(f"  🏛 {c['name']}: Committee-VETO → Entry geblockt",
                                       flush=True)
-                                log_blocked_entry(con, c, ticker, direction, "committee",
-                                                  current_price, atr, ticker_sector,
-                                                  cand_conviction, crabel, None)
+                                _skip("committee")
                                 send_telegram(
                                     f"🏛 <b>COMMITTEE-VETO: {c['name']} ({ticker})</b>\n"
                                     f"Richtung: {direction}\n"
@@ -2000,42 +2115,31 @@ def open_new_positions(con, cfg):
         except Exception:
             pass
 
-        # Position Sizing
+        # ── Position Sizing (08.09.2026 neu gefasst) ────────────────────────
+        # Die Basisgroesse ist fuer alle Kandidaten gleich. Die Conviction wird
+        # weiterhin berechnet und fliesst in priority_score (Reihenfolge) und in
+        # die Entry-Gates ein — aber NICHT mehr in die Groesse. Begruendung und
+        # Gegenrechnung stehen bei DEFAULT_CONFIG["max_position_pct"].
         conviction = _dir_conviction(c, direction)   # #6: LONG=bullish, SHORT=bearish
         conviction = apply_regime_filter(conviction, direction, regime)
 
-        if conviction >= cfg.get("conviction_high", 0.80):
-            pct = cfg.get("max_position_pct_high", 0.20)
-            sizing_label = "HIGH"
-        elif conviction < cfg.get("conviction_low", 0.60) + 0.05:
-            pct = cfg.get("max_position_pct_low", 0.10)
-            sizing_label = "LOW"
-        else:
-            pct = cfg.get("max_position_pct", 0.15)
-            sizing_label = "NORMAL"
+        pct = cfg.get("max_position_pct", 0.125)
+        sizing_label = "BASIS"
 
-        # VIX-Faktor anwenden (vor allen weiteren Caps)
-        pct = pct * vix_factor
-
-        # Probation-Faktor: nur 50% Size für Sektoren im Re-Entry-Test
-        if is_probation:
-            pct = pct * probation_factor
-            sizing_label += f" | Probation ({probation_factor:.0%})"
-
-        # Drawdown-Faktor: Positionsgröße ab 12% Drawdown reduziert
-        if dd_size_factor < 1.0:
-            pct = pct * dd_size_factor
-            sizing_label += f" | Drawdown ({dd_size_factor:.0%})"
-
-        # Sektor-Regime-Faktor (06.09.2026): sideways-Sektor → 50% Größe
-        if sector_size_factor < 1.0:
-            pct = pct * sector_size_factor
-            sizing_label += f" | Sektor-Regime ({sector_size_factor:.0%})"
-
-        # Committee-REDUCE: nur im active-Mode gesetzt, im Shadow-Mode immer 1.0
-        if committee_size_factor < 1.0:
-            pct = pct * committee_size_factor
-            sizing_label += f" | Committee ({committee_size_factor:.0%})"
+        # Bremsen additiv kombinieren, am Floor abgeschnitten.
+        brake, brake_labels = combine_size_brakes(
+            [
+                ("VIX",           vix_factor),
+                ("Probation",     probation_factor if is_probation else 1.0),
+                ("Drawdown",      dd_size_factor),
+                ("Sektor-Regime", sector_size_factor),
+                ("Committee",     committee_size_factor),
+            ],
+            floor=cfg.get("size_brake_floor", SIZE_BRAKE_FLOOR),
+        )
+        if brake_labels:
+            pct = pct * brake
+            sizing_label += (f" | Bremse {brake:.0%} [" + ", ".join(brake_labels) + "]")
 
         # Volatilitätsbereinigtes Positionsgrößensystem (Risk-Parity)
         # Risiko pro Trade capped auf risk_pct_per_trade % des Gesamtportfolios
@@ -2067,6 +2171,12 @@ def open_new_positions(con, cfg):
 
         print(f"  💰 Position Sizing: {sizing_label} = {position_size:.0f}€", flush=True)
         if position_size < 200:
+            # Wichtig fuer die Diagnose: die multiplikative Bremskaskade (Drawdown x
+            # Sektor-Regime x VIX x Probation) kann einen validen Kandidaten unter
+            # die Mindestgroesse druecken. Das sah im Log bisher wie "kein Kandidat" aus.
+            print(f"  🪙 {c['name']}: Positionsgröße {position_size:.0f}€ < 200€ "
+                  f"(Bremskaskade) → übersprungen", flush=True)
+            _skip("size-below-minimum")
             continue
 
         # Sektor-Exposure-Cap: max X% des Portfolios pro Sektor
@@ -2077,6 +2187,7 @@ def open_new_positions(con, cfg):
             print(f"  🏭 {c['name']}: Sektor '{ticker_sector}' Exposure-Limit erreicht "
                   f"({new_exposure_pct:.1%} > {max_sector_exposure:.0%}) "
                   f"[aktuell {current_exposure:.0f}€ + {position_size:.0f}€]")
+            _skip("sector-exposure")
             continue
 
         # Slippage auf Entry anwenden
@@ -2207,21 +2318,38 @@ def print_portfolio_summary(con, cfg):
     positions = con.execute("SELECT * FROM positions WHERE status='open'").fetchall()
     closed = con.execute("SELECT * FROM positions WHERE status='closed'").fetchall()
 
-    total_pnl = sum(p["pnl_eur"] or 0 for p in closed)
-    win_rate = (cfg["winning_trades"] / cfg["total_trades"] * 100
-                if cfg["total_trades"] > 0 else 0)
+    # FIX 08.09.2026: Trade-Anzahl und Win-Rate aus der DB statt aus cfg.
+    # cfg["total_trades"]/["winning_trades"] werden NUR im SL/TP-Pfad von
+    # check_open_positions() hochgezaehlt – nicht bei TECH_BROKEN, TIME_STOP,
+    # DRAWDOWN_EMERGENCY oder Exits aus active_exit_check.py. Die Zaehler waren
+    # dadurch monatelang gedriftet (54 statt 84 Trades, 35% statt 39% WR).
+    # Die cfg-Zaehler bleiben bestehen (adapt_strategy nutzt consecutive_losses),
+    # sind aber nicht mehr die Report-Wahrheit.
+    total_pnl     = sum(p["pnl_eur"] or 0 for p in closed)
+    closed_count  = len(closed)
+    winning_count = sum(1 for p in closed if (p["pnl_eur"] or 0) > 0)
+    win_rate = (winning_count / closed_count * 100) if closed_count > 0 else 0
 
     print(f"\n{'='*50}")
     print("PORTFOLIO ÜBERSICHT")
     print(f"{'='*50}")
     print(f"Cash:           {portfolio['cash']:.2f}€")
     print(f"Offene Pos.:    {len(positions)}/{cfg['max_positions']}")
-    print(f"Abgeschlossen:  {cfg['total_trades']} Trades")
+    print(f"Abgeschlossen:  {closed_count} Trades ({winning_count} Gewinner)")
     print(f"Win Rate:       {win_rate:.0f}%")
     print(f"Gesamt P&L:     {total_pnl:+.2f}€")
     print(f"SL Multiplikator: {cfg['atr_sl_multiplier']}x ATR")
     print(f"TP Multiplikator: {cfg['atr_tp_multiplier']}x ATR")
-    print(f"Min. Konfidenz: {cfg['min_confidence']:.0%}")
+    # FIX 08.09.2026: die WIRKSAME Tech-Score-Schwelle kommt aus der Drawdown-Matrix
+    # (drawdown-gekoppelt), nicht aus cfg["min_confidence"] – letzteres wurde vom
+    # Entry-Pfad nie gelesen (siehe Deprecation-Hinweis in DEFAULT_CONFIG).
+    # Bewusst OHNE check_drawdown(): das schreibt total_value/ath_value in die DB,
+    # ein Report darf keine Seiteneffekte haben. total_value ist zu diesem Zeitpunkt
+    # bereits von check_drawdown() im selben Lauf auf Mark-to-Market gesetzt.
+    _ath = portfolio["ath_value"] or portfolio["total_value"] or 0
+    _dd  = ((_ath - (portfolio["total_value"] or 0)) / _ath) if _ath else 0.0
+    print(f"Min. Tech-Score:  {drawdown_params(_dd)['min_confidence']:.0%} "
+          f"(Drawdown -{_dd:.1%})")
 
     if positions:
         print("\nOFFENE POSITIONEN:")

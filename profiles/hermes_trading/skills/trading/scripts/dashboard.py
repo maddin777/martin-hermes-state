@@ -6,7 +6,7 @@ from urllib.parse import parse_qs, urlparse
 from datetime import datetime, timedelta
 import sys, os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from config import DB_PATH, SCRIPTS_DIR, CRON_LOG_PATH, SOURCES_CONFIG_PATH, STRATEGY_CONFIG_PATH, THEMATIC_LOG_PATH, db_connect
+from config import DB_PATH, SCRIPTS_DIR, CRON_LOG_PATH, SOURCES_CONFIG_PATH, STRATEGY_CONFIG_PATH, THEMATIC_LOG_PATH, db_connect, drawdown_params
 
 # Aliase für dashboard.py (abweichende Namen im Skript)
 CONFIG_PATH = STRATEGY_CONFIG_PATH
@@ -280,12 +280,20 @@ def get_data():
     open_pos  = con.execute("SELECT * FROM positions WHERE status='open' ORDER BY entry_date DESC").fetchall()
     closed    = con.execute("SELECT * FROM positions WHERE status='closed' ORDER BY exit_date DESC LIMIT 20").fetchall()
     total_pnl = sum(p["pnl_eur"] or 0 for p in con.execute("SELECT pnl_eur FROM positions WHERE status='closed'").fetchall())
-    win_rate  = (cfg["winning_trades"]/cfg["total_trades"]*100 if cfg["total_trades"]>0 else 0)
+    # FIX 08.09.2026: Trade-Anzahl und Win-Rate aus der DB. cfg["total_trades"]/
+    # ["winning_trades"] werden nur im SL/TP-Pfad des signal_manager hochgezaehlt
+    # (nicht bei TECH_BROKEN/TIME_STOP/DRAWDOWN_EMERGENCY/active_exit_check) und
+    # waren gegenueber positions gedriftet.
+    closed_total = con.execute("SELECT COUNT(*) FROM positions WHERE status='closed'").fetchone()[0]
+    closed_wins  = con.execute("SELECT COUNT(*) FROM positions WHERE status='closed' AND pnl_eur > 0").fetchone()[0]
+    win_rate  = (closed_wins/closed_total*100 if closed_total>0 else 0)
     cash      = portfolio["cash"] if portfolio else cfg["starting_capital"]
     open_val  = sum(p["position_size"] or 0 for p in con.execute("SELECT position_size FROM positions WHERE status='open'").fetchall())
     open_pnl  = sum(p["pnl_eur"] or 0 for p in con.execute("SELECT pnl_eur FROM positions WHERE status='open'").fetchall())
     total_value  = cash + open_val + open_pnl
     total_return = (total_value - cfg["starting_capital"]) / cfg["starting_capital"] * 100
+    _ath = (portfolio["ath_value"] if portfolio and "ath_value" in portfolio.keys() else None) or total_value
+    _dd  = ((_ath - total_value) / _ath) if _ath else 0.0
     try:
        watchlist = [dict(w) for w in con.execute("""
             SELECT w.*, c.canonical_name AS company_name, c.sector AS company_sector
@@ -368,9 +376,14 @@ def get_data():
         "equity_curve": equity_rows,
         "stats": {
             "total_pnl": round(total_pnl,2), "win_rate": round(win_rate,1),
-            "total_trades": cfg["total_trades"], "total_return": round(total_return,2),
+            "total_trades": closed_total, "total_return": round(total_return,2),
             "total_value": round(total_value,2), "cash": round(cash,2),
-            "start_cap": cfg["starting_capital"]
+            "start_cap": cfg["starting_capital"],
+            # Wirksame Entry-Schwelle: kommt aus der Drawdown-Matrix (config.py),
+            # NICHT aus cfg["min_confidence"] – der Key wird vom Entry-Pfad nicht
+            # gelesen (Deprecation 08.09.2026).
+            "drawdown_pct": round(_dd*100, 1),
+            "min_tech_score": drawdown_params(_dd)["min_confidence"]
         }
     }
 
@@ -1053,7 +1066,7 @@ def build_html(data):
         <div class="strat-item"><span>Max Positionen</span><span>{cfg.get("max_positions",8)}</span></div>
         <div class="strat-item"><span>Stop-Loss</span><span>{cfg.get('atr_sl_multiplier',1.5)}x ATR</span></div>
         <div class="strat-item"><span>Take-Profit</span><span>{cfg.get('atr_tp_multiplier',3.0)}x ATR</span></div>
-        <div class="strat-item"><span>Min. Konfidenz</span><span>{int(cfg.get('min_confidence',0.65)*100)}%</span></div>
+        <div class="strat-item"><span>Min. Tech-Score</span><span>{int(s['min_tech_score']*100)}% (Drawdown -{s['drawdown_pct']:.1f}%)</span></div>
         <div class="strat-item"><span>High Conv. Size</span><span>20% | 15% | 10%</span></div>
         <div class="strat-item"><span>Exit-Check</span><span>10:00 + 15:30</span></div>
         <div class="strat-item"><span>Startkapital</span><span>{cfg.get("starting_capital",10000):.0f}€</span></div>

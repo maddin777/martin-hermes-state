@@ -46,12 +46,38 @@ def _fetch_price_data(ticker: str):
         return None
 
 
-def _compute_momentum_score(close, idx: int = -1) -> float:
-    """6M-Return minus 1M-Return, Perzentil."""
-    if len(close) < 126:
-        return 0.5
-    ret_6m = (close.iloc[idx] / close.iloc[max(0, idx - 126)] - 1) if idx >= 0 else 0
-    ret_1m = (close.iloc[idx] / close.iloc[max(0, idx - 21)] - 1) if idx >= 0 else 0
+# Lookbacks in Handelstagen. 126 ~ 6 Monate, 21 ~ 1 Monat.
+# Der juengste Monat wird ABGEZOGEN (klassisches "6-1"-Momentum): die kurzfristige
+# Umkehr in den letzten Wochen ist empirisch das Gegenteil des Trendeffekts.
+MOM_LOOKBACK_LONG  = 126
+MOM_LOOKBACK_SHORT = 21
+
+
+def _compute_momentum_score(close, idx: int = -1):
+    """6M-Return minus 1M-Return. None, wenn die Historie nicht reicht.
+
+    FIX 08.09.2026 — dieser Score war fuer JEDEN Ticker identisch 0.
+    Der Default `idx = -1` liess die Bedingung `if idx >= 0` immer fehlschlagen,
+    also wurden beide Returns auf 0 gesetzt und die Funktion gab 0 - 0 = 0
+    zurueck. `_percentile()` einer Liste aus lauter Nullen liefert fuer jedes
+    Element 1.0 — in der Live-DB stand `momentum_score = 1.0` in allen 4.844
+    Zeilen. Der mit 30% hoechstgewichtete Faktor trug damit exakt null
+    Querschnitts-Information; das Composite-Ranking lief allein auf
+    Quality/Value/Revision/LowVol.
+
+    Jetzt wird der negative Index korrekt in eine Position uebersetzt.
+    """
+    n = len(close)
+    i = idx if idx >= 0 else n + idx
+    if i < MOM_LOOKBACK_LONG or i >= n:
+        return None                      # zu wenig Historie -> aus dem Ranking
+    px_now = float(close.iloc[i])
+    px_6m  = float(close.iloc[i - MOM_LOOKBACK_LONG])
+    px_1m  = float(close.iloc[i - MOM_LOOKBACK_SHORT])
+    if px_6m <= 0 or px_1m <= 0:
+        return None
+    ret_6m = px_now / px_6m - 1.0
+    ret_1m = px_now / px_1m - 1.0
     return ret_6m - ret_1m
 
 
@@ -104,13 +130,45 @@ def _compute_lowvol_score(close) -> float:
 
 
 def _percentile(values: list) -> list:
-    """Konvertiert Rohwerte zu Perzentil-Ranks (0-1)."""
-    arr = np.array([v for v in values if v is not None])
+    """Konvertiert Rohwerte zu Perzentil-Ranks (0-1).
+
+    FIX 08.09.2026: Sind alle Werte gleich, gab die alte Fassung fuer jedes
+    Element 1.0 zurueck (`sum(arr <= v)` = len(arr)) — ein toter Faktor sah damit
+    aus wie "alle maximal stark" statt wie "keine Information". Genau so blieb
+    der Momentum-Bug ein Jahr lang unsichtbar. Jetzt: neutral 0.5, plus Warnung.
+    """
+    arr = np.array([v for v in values if v is not None], dtype=float)
     if len(arr) == 0:
         return [0.5] * len(values)
-    ranks = [np.sum(arr <= v) / len(arr) if v is not None else 0.5
+    if float(np.ptp(arr)) == 0.0:
+        print("[Factor Ranker] \u26a0 Faktor ohne Streuung (alle Werte identisch) "
+              "\u2192 neutral 0.5", flush=True)
+        return [0.5] * len(values)
+    ranks = [float(np.sum(arr <= v)) / len(arr) if v is not None else 0.5
              for v in values]
     return ranks
+
+
+US_UNIVERSE_PATH = os.path.join(
+    os.path.dirname(os.path.dirname(__file__)), "data", "us_universe.csv"
+)
+
+
+def _merge_us_universe(universe: list) -> list:
+    """Mischt data/us_universe.csv dazu (Reihenfolge stabil, ohne Duplikate)."""
+    merged = list(universe)
+    seen = set(merged)
+    try:
+        with open(US_UNIVERSE_PATH, encoding="utf-8") as f:
+            for line in f:
+                t = line.split(",")[0].strip().upper()
+                if t and t != "TICKER" and t not in seen:
+                    seen.add(t)
+                    merged.append(t)
+    except FileNotFoundError:
+        print(f"[Factor Ranker] {US_UNIVERSE_PATH} nicht gefunden \u2013 "
+              f"nur universe.json", flush=True)
+    return merged
 
 
 def main():
@@ -123,11 +181,18 @@ def main():
     with open(UNIVERSE_PATH) as f:
         universe = json.load(f)
 
-    print(f"[Factor Ranker] Universum: {len(universe)} Ticker", flush=True)
+    # 08.09.2026: fuer echtes Querschnitts-Ranking (Top-Dezil) sind 136 Ticker
+    # duenn. `us_universe.csv` (600 liquide US-Titel, seit 27.08. fuer den
+    # Nasdaq-Screener gepflegt) wird dazugemischt, Duplikate entfernt.
+    universe = _merge_us_universe(universe)
+    max_tickers = int(cfg.get("factor_max_tickers", 400))
+    print(f"[Factor Ranker] Universum: {len(universe)} Ticker "
+          f"(Limit {max_tickers})", flush=True)
 
     # Alle Rohdaten sammeln
     results = []
-    for ticker in universe[:200]:  # Limit auf 200 fuer Geschwindigkeit
+    skipped_no_mom = 0
+    for ticker in universe[:max_tickers]:
         data = _fetch_price_data(ticker)
         if data is None:
             continue
@@ -135,6 +200,11 @@ def main():
         close = data["close"]
 
         mom = _compute_momentum_score(close)
+        if mom is None:
+            # Ohne Momentum kein Ranking — der Ticker faellt raus, statt mit
+            # einem erfundenen Neutralwert das Perzentil zu verwaessern.
+            skipped_no_mom += 1
+            continue
         qual = _compute_quality_score(ticker)
         val = _compute_value_score(ticker)
         rev = _compute_revision_score(ticker)
@@ -148,6 +218,10 @@ def main():
             "revision_raw": rev,
             "lowvol_raw": lowvol,
         })
+
+    if skipped_no_mom:
+        print(f"[Factor Ranker] {skipped_no_mom} Ticker ohne ausreichende "
+              f"Historie uebersprungen", flush=True)
 
     if not results:
         print("[Factor Ranker] Keine validen Ticker.")

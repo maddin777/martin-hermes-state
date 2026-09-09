@@ -19,17 +19,60 @@ Usage:
 from __future__ import annotations
 
 import logging
+import os
 from datetime import datetime, timedelta
 
 import yfinance as yf
 
 log = logging.getLogger("pead_signal")
 
-# Konfiguration
-PEAD_BOOST_AMOUNT = 0.05       # Conviction-Boost bei Earnings-Surprise
-PEAD_SIGNAL_WINDOW_DAYS = 4     # Nur innerhalb von 4 Tagen nach Filing
+# ── Konfiguration ────────────────────────────────────────────────────────────
+#
+# Kalibrierung 08.09.2026. Befund: nur 9 von 1.038 Cache-Eintraegen hatten
+# ueberhaupt einen Boost != 0 (0.9 %). Das ist kein Fehler, sondern strukturell —
+# aber zwei Parameter passten nicht zum Effekt, den sie abbilden sollen:
+#
+# 1. FENSTER. 4 Tage nach dem Filing erfassen die Ankuendigungs-Reaktion, nicht
+#    den Drift. Post-Earnings-Announcement-Drift laeuft ueber Wochen NACH der
+#    Meldung — ein 4-Tage-Fenster misst also gerade das, was der Effekt nicht ist.
+#    Auf 10 Tage erweitert (Einstiegsfenster; die Haltedauer bestimmt der Exit).
+#
+# 2. SCHWELLE. `diff > 0` zaehlte jede noch so kleine Abweichung als BEAT — auch
+#    +0.0001 EPS. Ein reiner Vorzeichentest auf verrauschten Schaetzungen ist
+#    nahe an einem Muenzwurf. Jetzt ist eine relative Mindest-Ueberraschung
+#    noetig; `surprise_pct` wird zusaetzlich mitgeschrieben, damit die Schwelle
+#    spaeter aus Daten kalibriert werden kann statt geraten zu werden
+#    (shadow_selection.py, Hypothese h2_pead).
+#
+# Beides per Environment uebersteuerbar, Rollback ohne Deploy.
+def _env_float(name, default, lo, hi):
+    try:
+        v = float(os.environ.get(name, default))
+    except (TypeError, ValueError):
+        v = default
+    return max(lo, min(hi, v))
+
+
+def _env_int(name, default, lo, hi):
+    try:
+        v = int(os.environ.get(name, default))
+    except (TypeError, ValueError):
+        v = default
+    return max(lo, min(hi, v))
+
+
+PEAD_BOOST_AMOUNT = 0.05        # Conviction-Boost bei Earnings-Surprise
+PEAD_SIGNAL_WINDOW_DAYS = _env_int("PEAD_WINDOW_DAYS", 10, 1, 60)
+PEAD_MIN_SURPRISE_PCT   = _env_float("PEAD_MIN_SURPRISE_PCT", 0.02, 0.0, 1.0)
 PEAD_EARNINGS_LIMIT = 4         # Letzte 4 Earnings-Events prüfen
 PEAD_CACHE_TTL_HOURS = 6        # Cache nach 6 Stunden verfallen lassen
+
+
+def _surprise_pct(actual: float, estimate: float):
+    """Relative Ueberraschung. None, wenn die Schaetzung ~0 ist (nicht skalierbar)."""
+    if estimate is None or abs(estimate) < 1e-9:
+        return None
+    return (actual - estimate) / abs(estimate)
 
 
 def get_pead_boost(ticker: str) -> tuple[float, float, dict | None]:
@@ -97,25 +140,25 @@ def get_pead_boost(ticker: str) -> tuple[float, float, dict | None]:
             if not (isinstance(est, (int, float)) and isinstance(act, (int, float))):
                 continue
 
-            diff = act - est
-            if diff > 0:
-                info = {
-                    "surprise": "BEAT",
-                    "filing_date": filing_date_str,
-                    "eps_actual": act,
-                    "eps_estimate": est,
-                    "age_days": age_days,
-                }
+            # Relative statt absoluter Ueberraschung: +0.01 EPS auf eine
+            # Schaetzung von 0.05 ist etwas anderes als +0.01 auf 4.00.
+            surp = _surprise_pct(act, est)
+            if surp is None or abs(surp) < PEAD_MIN_SURPRISE_PCT:
+                continue
+
+            info = {
+                "surprise": "BEAT" if surp > 0 else "MISS",
+                "filing_date": filing_date_str,
+                "eps_actual": act,
+                "eps_estimate": est,
+                "surprise_pct": round(surp, 4),
+                "age_days": age_days,
+                "window_days": PEAD_SIGNAL_WINDOW_DAYS,
+                "min_surprise_pct": PEAD_MIN_SURPRISE_PCT,
+            }
+            if surp > 0:
                 return PEAD_BOOST_AMOUNT, 0.0, info
-            elif diff < 0:
-                info = {
-                    "surprise": "MISS",
-                    "filing_date": filing_date_str,
-                    "eps_actual": act,
-                    "eps_estimate": est,
-                    "age_days": age_days,
-                }
-                return 0.0, PEAD_BOOST_AMOUNT, info
+            return 0.0, PEAD_BOOST_AMOUNT, info
 
         return 0.0, 0.0, None
 

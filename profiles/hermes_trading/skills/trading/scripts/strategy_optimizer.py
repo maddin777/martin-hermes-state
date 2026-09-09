@@ -25,10 +25,18 @@ MIN_TRADES       = 10      # Mindestanzahl Trades für Optimierung
 IMPROVEMENT_THRESHOLD = 0.10  # 10% Verbesserung nötig
 
 # Parameter-Grid für Optimierung
+#
+# min_confidence wurde am 08.09.2026 ENTFERNT (6 Stufen → Grid um Faktor 6
+# kleiner). Grund: der Key wird vom Live-Entry-Pfad gar nicht gelesen — die
+# wirksame Tech-Score-Schwelle kommt aus signal_manager.drawdown_params().
+# Der Optimizer hat ihn trotzdem durchgesucht und das Ergebnis zurueck in
+# strategy_config.json geschrieben. Zusaetzlich war die Simulation dafuer ein
+# falscher Proxy: backtest_params filterte gegen positions.confidence, das seit
+# dem Short-Fix die RICHTUNGS-Conviction enthaelt, nicht den tech_score
+# (siehe alter Kommentar #10 in backtest_params).
 PARAM_GRID = {
     "atr_sl_multiplier": [1.0, 1.25, 1.5, 1.75, 2.0, 2.5],
     "atr_tp_multiplier": [2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0],
-    "min_confidence":    [0.60, 0.65, 0.70, 0.75, 0.80, 0.85],
 }
 
 def send_telegram(message):
@@ -54,7 +62,6 @@ def load_config():
         "max_positions":    4,
         "atr_sl_multiplier": 1.5,
         "atr_tp_multiplier": 3.0,
-        "min_confidence":    0.65,
         "consecutive_wins":  0,
         "consecutive_losses":0,
         "total_trades":      0,
@@ -132,30 +139,30 @@ def calculate_metrics(trades):
         "total_pnl":      round(sum(pnls), 2),
     }
 
-def backtest_params(trades, sl_mult, tp_mult, min_conf):
+def backtest_params(trades, sl_mult, tp_mult, min_conf=None):
     """
     Simuliert wie Trades mit anderen Parametern ausgesehen hätten.
     Nutzt ATR bei Entry und simuliert SL/TP Hits.
 
     #10 – Bekannte Grenzen dieser Vereinfachung (bewusst, keine Fundamentaldaten
     für einen echten Pfad-Backtest vorhanden):
-    • positions.confidence enthält seit dem Short-Fix die RICHTUNGS-Conviction
-      (bull bzw. bear), nicht den Tech-Confidence-Wert. min_conf filtert hier
-      also über Conviction, während der LIVE-Entry-Filter min_confidence gegen
-      tech_score prüft. Die Optimierung von min_confidence ist damit nur ein
-      grober Proxy – primär sind SL/TP-Multiplikatoren aussagekräftig.
     • Es liegt nur der Exit-Preis vor, kein Intraday-Pfad. Ein WEITERER TP kann
       daher nie „getroffen" werden, wenn der Original-Exit früher lag → leichter
       Bias Richtung enger Parameter. Deshalb greift die Auto-Übernahme erst ab
       IMPROVEMENT_THRESHOLD (10%) und der Walk-Forward-Pfad ab 30 Trades.
+
+    `min_conf` (08.09.2026): nur noch fuer Rueckwaertskompatibilitaet des
+    Aufrufs vorhanden, Default None = kein Filter. Der frueher hier angewandte
+    Konfidenz-Filter war ein falscher Proxy — positions.confidence enthaelt
+    seit dem Short-Fix die RICHTUNGS-Conviction (bull bzw. bear), nicht den
+    Tech-Confidence-Wert, gegen den der Live-Entry filtert. Aussagekraeftig
+    sind allein die SL/TP-Multiplikatoren.
     """
     simulated = []
 
     for trade in trades:
-        # Konfidenz-Filter
-        conf = trade.get("confidence") or 0
-        if conf < min_conf:
-            continue  # Trade wäre nicht eingegangen worden
+        if min_conf is not None and (trade.get("confidence") or 0) < min_conf:
+            continue  # Legacy-Pfad: Trade wäre nicht eingegangen worden
 
         atr   = trade.get("atr_at_entry")
         entry = trade.get("entry_price")
@@ -206,21 +213,19 @@ def run_grid_search(trades, current_config):
 
     total_combos = (
         len(PARAM_GRID["atr_sl_multiplier"]) *
-        len(PARAM_GRID["atr_tp_multiplier"]) *
-        len(PARAM_GRID["min_confidence"])
+        len(PARAM_GRID["atr_tp_multiplier"])
     )
     print(f"  Grid Search: {total_combos} Kombinationen...", flush=True)
 
-    for sl, tp, conf in itertools.product(
+    for sl, tp in itertools.product(
         PARAM_GRID["atr_sl_multiplier"],
-        PARAM_GRID["atr_tp_multiplier"],
-        PARAM_GRID["min_confidence"]
+        PARAM_GRID["atr_tp_multiplier"]
     ):
         # TP muss > SL sein (mind. 1.5x Ratio)
         if tp / sl < 1.5:
             continue
 
-        sim_trades = backtest_params(trades, sl, tp, conf)
+        sim_trades = backtest_params(trades, sl, tp)
         if len(sim_trades) < 3:
             continue
 
@@ -229,7 +234,7 @@ def run_grid_search(trades, current_config):
             continue
 
         results.append({
-            "sl": sl, "tp": tp, "conf": conf,
+            "sl": sl, "tp": tp,
             "composite": metrics["composite"],
             "win_rate":  metrics["win_rate"],
             "p":        metrics["profit_factor"],
@@ -240,7 +245,7 @@ def run_grid_search(trades, current_config):
         if metrics["composite"] > best_score:
             best_score  = metrics["composite"]
             best_params = {"atr_sl_multiplier": sl, "atr_tp_multiplier": tp,
-                          "min_confidence": conf, "composite": best_score}
+                           "composite": best_score}
 
     # Top 5 sortiert
     results.sort(key=lambda x: x["composite"], reverse=True)
@@ -296,8 +301,7 @@ def main():
                    max(current_metrics["composite"], 0.001)
 
     print(f"  Beste Parameter: SL={best_params['atr_sl_multiplier']}x "
-          f"TP={best_params['atr_tp_multiplier']}x "
-          f"Conf={best_params['min_confidence']:.0%}", flush=True)
+          f"TP={best_params['atr_tp_multiplier']}x", flush=True)
     print(f"  Verbesserung: {improvement*100:+.1f}%", flush=True)
 
     # Report speichern
@@ -307,7 +311,6 @@ def main():
         "current_params": {
             "atr_sl_multiplier": cfg["atr_sl_multiplier"],
             "atr_tp_multiplier": cfg["atr_tp_multiplier"],
-            "min_confidence":    cfg["min_confidence"],
         },
         "current_metrics":  current_metrics,
         "best_params":      best_params,
@@ -323,7 +326,6 @@ def main():
     if improvement >= IMPROVEMENT_THRESHOLD:
         cfg["atr_sl_multiplier"] = best_params["atr_sl_multiplier"]
         cfg["atr_tp_multiplier"] = best_params["atr_tp_multiplier"]
-        cfg["min_confidence"]    = best_params["min_confidence"]
 
         with open(STRATEGY_CONFIG_PATH, "w") as f:
             json.dump(cfg, f, indent=2)
@@ -335,9 +337,7 @@ def main():
             f"• Stop-Loss:    {best_params['atr_sl_multiplier']}x ATR "
             f"(vorher: {report['current_params']['atr_sl_multiplier']}x)\n"
             f"• Take-Profit:  {best_params['atr_tp_multiplier']}x ATR "
-            f"(vorher: {report['current_params']['atr_tp_multiplier']}x)\n"
-            f"• Min Konfidenz:{best_params['min_confidence']:.0%} "
-            f"(vorher: {report['current_params']['min_confidence']:.0%})\n\n"
+            f"(vorher: {report['current_params']['atr_tp_multiplier']}x)\n\n"
             "<b>Performance:</b>\n"
             f"• Win Rate:     {current_metrics['win_rate']}%\n"
             f"• Profit Factor:{current_metrics['profit_factor']}\n"
@@ -358,8 +358,7 @@ def main():
             f"• Trades:       {len(trades)}\n\n"
             "<b>Beste gefundene Parameter (nicht übernommen):</b>\n"
             f"• SL: {best_params['atr_sl_multiplier']}x ATR\n"
-            f"• TP: {best_params['atr_tp_multiplier']}x ATR\n"
-            f"• Konfidenz: {best_params['min_confidence']:.0%}"
+            f"• TP: {best_params['atr_tp_multiplier']}x ATR"
         )
 
     print(f"\n{msg}", flush=True)
@@ -434,21 +433,12 @@ def adjust_from_eval_metrics(con, cfg):
     changes = []
     pf = avg_pf if avg_pf is not None else 1.0
 
-    # Min Confidence dynamisch — ASYMMETRIE-BEWUSST.
-    # Eine niedrige Win-Rate allein ist KEIN Grund, strenger zu werden: ein
-    # Trendfolge-Profil (WR ~35-40%) ist profitabel, solange die Payoff-Ratio
-    # stimmt. Nur enger stellen, wenn zusätzlich der Profit Factor kippt
-    # (echter Edge-Verlust, nicht nur „oft falsch, aber groß richtig").
-    if avg_wr < 0.40 and pf < 1.1:
-        old = cfg.get("min_confidence", 0.65)
-        cfg["min_confidence"] = round(min(0.85, old + 0.05), 2)
-        changes.append(f"📊 Min Konfidenz: {old:.0%}→{cfg['min_confidence']:.0%} "
-                       f"(WR:{avg_wr:.0%} UND PF:{pf:.2f} < 1.1)")
-    elif avg_wr > 0.65 and pf > 1.5:
-        old = cfg.get("min_confidence", 0.65)
-        cfg["min_confidence"] = round(max(0.55, old - 0.05), 2)
-        changes.append(f"📊 Min Konfidenz: {old:.0%}→{cfg['min_confidence']:.0%} "
-                       f"(WR:{avg_wr:.0%}, PF:{pf:.2f} – Edge robust)")
+    # Der frueher hier stehende min_confidence-Block wurde am 08.09.2026 entfernt:
+    # der Key wird vom Entry-Pfad nicht gelesen (Deprecation siehe
+    # signal_manager.DEFAULT_CONFIG), die Anpassung war wirkungslos und die
+    # daraus erzeugten Telegram-Zeilen ("Min Konfidenz erhoeht") irrefuehrend.
+    # Die Risikosteuerung nach schwacher Performance laeuft ueber die
+    # Drawdown-Matrix (Size/Confidence/Positionslimit) in signal_manager.
 
     # SL anpassen bei zu vielen SL-Hits (unverändert – Risikoschutz)
     if avg_sl and avg_sl > 0.60:
@@ -516,13 +506,12 @@ def main():
             if new_params:
                 cfg["atr_sl_multiplier"] = new_params["atr_sl_multiplier"]
                 cfg["atr_tp_multiplier"] = new_params["atr_tp_multiplier"]
-                cfg["min_confidence"] = new_params["min_confidence"]
                 # #4: WF-Parameter wurden vorher NUR im Speicher gesetzt und nie
                 # geschrieben – Telegram meldete "übernommen", auf Platte No-Op.
                 with open(STRATEGY_CONFIG_PATH, "w") as f:
                     json.dump(cfg, f, indent=2)
                 print(f"  ✅ WF-Parameter übernommen: SL={new_params['atr_sl_multiplier']}x "
-                      f"TP={new_params['atr_tp_multiplier']}x Conf={new_params['min_confidence']:.0%}")
+                      f"TP={new_params['atr_tp_multiplier']}x")
             else:
                 print("  ⚠ WF nicht robust – Grid Search Fallback")
                 _original_main()
@@ -544,16 +533,14 @@ def main():
             "🔧 <b>Strategy Optimizer - Wochenbericht</b>\n\n"
             f"Anpassungen diese Woche:\n{changes_text}\n\n"
             f"SL: {cfg.get('atr_sl_multiplier',1.5)}x ATR | "
-            f"TP: {cfg.get('atr_tp_multiplier',3.0)}x ATR | "
-            f"Min Conf: {cfg.get('min_confidence',0.65):.0%}"
+            f"TP: {cfg.get('atr_tp_multiplier',3.0)}x ATR"
         )
     else:
         msg = (
             "🔧 <b>Strategy Optimizer</b>\n\n"
             "Keine Anpassungen notwendig.\n"
             f"SL: {cfg.get('atr_sl_multiplier',1.5)}x | "
-            f"TP: {cfg.get('atr_tp_multiplier',3.0)}x | "
-            f"Min Conf: {cfg.get('min_confidence',0.65):.0%}"
+            f"TP: {cfg.get('atr_tp_multiplier',3.0)}x"
         )
 
     import requests as _req

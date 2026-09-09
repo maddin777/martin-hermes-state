@@ -300,3 +300,94 @@ def get_sector_regime(sector: str, con=None) -> str:
     finally:
         if own:
             con.close()
+
+# ── Drawdown-Matrix (Single Source of Truth, 08.09.2026) ──────────────────
+# Wie get_exit_config() eine reine, deterministische Matrix ohne DB-Zugriff.
+# signal_manager.check_drawdown() wendet sie an, dashboard.py und der
+# Portfolio-Report zeigen sie an — damit kann kein Report eine andere
+# Schwelle behaupten als die, die der Entry-Loop tatsaechlich anwendet.
+
+def drawdown_params(drawdown: float) -> dict:
+    """Drawdown-Matrix als reine Funktion (keine DB, keine Seiteneffekte).
+
+    Einzige Quelle für die Zuordnung Drawdown → (size_factor, min_confidence,
+    max_positions, action). check_drawdown() und print_portfolio_summary() lesen
+    beide hier – damit kann der Report keine andere Schwelle anzeigen als die,
+    die der Entry-Loop tatsächlich anwendet.
+
+    | Drawdown | Size | min_confidence | Max Pos |
+    |----------|------|----------------|---------|
+    | < 12%    | 100% | 0.70           | 8       |
+    | 12–15%   |  75% | 0.75           | 6       |
+    | 15–25%   |  65% | 0.75           | 6       |  (01.09.2026: Heilungs-Beschleunigung)
+    | >= 25%   | close_all           | 0       |
+    """
+    if drawdown >= 0.25:
+        return {"action": "close_all", "size_factor": 0.0,
+                "min_confidence": 1.0, "max_positions": 0}
+    if drawdown >= 0.15:
+        # FIX 17.08.2026: max_positions 4 → 6 — die 4er-Grenze blockierte bei
+        # -18.5% Drawdown alle neuen Entries (4/8 offen, aber Cap war 4).
+        # FIX 01.09.2026: size_factor 0.50→0.65, min_confidence 0.80→0.75.
+        # Bei -18% waren mit 50% Size + 80% Conf nur wenige Kandidaten entry-fähig,
+        # die Trades zu klein → Heilung dauerte ewig. Schutz-Bremse bleibt
+        # (size < 1, conf > default 0.60).
+        return {"action": "ok", "size_factor": 0.65,
+                "min_confidence": 0.75, "max_positions": 6}
+    if drawdown >= 0.12:
+        return {"action": "ok", "size_factor": 0.75,
+                "min_confidence": 0.75, "max_positions": 6}
+    return {"action": "ok", "size_factor": 1.0,
+            "min_confidence": 0.70, "max_positions": 8}
+
+
+# ── Quellen-Taxonomie (08.09.2026) ───────────────────────────────────────────
+# Deterministische Quellen sind reproduzierbare Messungen (ein Screener-Lauf
+# ueber ein definiertes Universum). Meinungsquellen sind Einzelaussagen von
+# Menschen (YouTube, RSS, X).
+#
+# Der Unterschied ist fuer zwei Entscheidungen relevant:
+#
+#   1. MINDEST-MENTIONS. Eine Screener-Zeile pro Ticker und Tag ist vollstaendig;
+#      Wiederholung fuegt keine Information hinzu. `min_mentions >= 2` schloss
+#      diese Quelle deshalb strukturell vom Entry aus (Befund 08.09.: 0 statt 6
+#      Kandidaten). Bei Meinungsquellen ist Wiederholung dagegen genau das
+#      Evidenzsignal und bleibt gefordert.
+#
+#   2. BESTAETIGUNG IM SENTIMENT-TERM. Der Auswertung der 84 Trades nach:
+#      Conviction = 1.00 → 29 Trades, WR 34%, -1.168 EUR (93% des Gesamtverlusts);
+#      Conviction < 0.90 → 36 Trades, WR 44%, +100 EUR. Ursache: `sentiment_score`
+#      ist der Bull-Anteil der Mentions und wird bei EINER bullishen Mention 1.0 —
+#      maximale Einigkeit ohne jede Bestaetigung (69% aller 1.00-Eintraege haben
+#      genau eine Mention). Deshalb wird der Sentiment-Term bei Meinungsquellen
+#      mit der Zahl UNABHAENGIGER Kanaele skaliert. Zwei Mentions aus einem Kanal
+#      sind eine Meinung, keine Bestaetigung.
+DETERMINISTIC_CHANNELS = ("screener", "screener_nasdaq")
+
+MIN_MENTIONS_DETERMINISTIC = 1   # deterministische Quelle: eine Zeile genuegt
+MIN_CONFIRM_CHANNELS       = 2   # Meinungsquellen: volle Sentiment-Wertung ab 2 Kanaelen
+
+
+def is_deterministic_source(channels) -> bool:
+    """True, wenn ALLE Kanaele eines Eintrags deterministische Quellen sind.
+
+    Bewusst `all` und nicht `any`: sobald eine Meinungsquelle beteiligt ist,
+    gelten die strengeren Meinungs-Regeln fuer den ganzen Eintrag.
+    """
+    chans = [str(c).strip() for c in (channels or []) if str(c).strip()]
+    return bool(chans) and all(c in DETERMINISTIC_CHANNELS for c in chans)
+
+
+def confirmation_factor(unique_channels: int, channels=None) -> float:
+    """Skaliert den Sentiment-Term nach der Zahl unabhaengiger Kanaele.
+
+    Deterministische Quellen sind selbstbestaetigend → Faktor 1.0.
+    Meinungsquellen: 1 Kanal → 0.5, ab MIN_CONFIRM_CHANNELS → 1.0.
+    """
+    if is_deterministic_source(channels):
+        return 1.0
+    try:
+        n = int(unique_channels or 0)
+    except (TypeError, ValueError):
+        n = 0
+    return min(1.0, n / MIN_CONFIRM_CHANNELS) if MIN_CONFIRM_CHANNELS > 0 else 1.0

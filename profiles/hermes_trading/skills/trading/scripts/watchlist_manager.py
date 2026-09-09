@@ -20,7 +20,7 @@ import sys as _sys
 _sys.path.insert(0, '/root/.hermes/profiles/hermes_trading/skills/trading/scripts')
 from company_validator import validate_and_register
 # DRY: zentrale Funktionen aus Shared-Modulen
-from utils import get_technical_score, prefetch_prices  # war lokale Kopie
+from utils import get_technical_score, prefetch_prices, clamp_tech_score  # war lokale Kopie
 from company_normalizer import (                   # war lokale Kopie
 
     normalize_company_name, NORMALIZE_ALIASES,
@@ -29,7 +29,8 @@ from company_normalizer import (                   # war lokale Kopie
 from utils import get_logger
 log = get_logger("watchlist_manager")
 from config import (DB_PATH, SIGNALS_PATH, WATCHLIST_DAYS, MIN_MENTIONS, MIN_CONVICTION,
-                    CONVICTION_HALF_LIFE_DAYS, CONVICTION_PRIOR_NEUTRAL, STRATEGY_CONFIG_PATH, db_connect)
+                    CONVICTION_HALF_LIFE_DAYS, CONVICTION_PRIOR_NEUTRAL, STRATEGY_CONFIG_PATH, db_connect,
+                    confirmation_factor)
 from pead_signal import get_pead_boost_cached, ensure_pead_cache_table
 
 def get_channel_weights(con):
@@ -222,6 +223,12 @@ def calculate_conviction(bullish, bearish, neutral, mention_count, unique_channe
     else:
         sentiment_score = effective_bullish / effective_total if effective_total > 0 else 0
 
+    # FIX 08.09.2026: Bestaetigungs-Faktor. Der Bull-Anteil allein wird bei EINER
+    # bullishen Mention 1.0 — maximale Einigkeit ohne Bestaetigung. Genau dieses
+    # Band trug 93% des Gesamtverlusts (siehe config.DETERMINISTIC_CHANNELS).
+    # Deterministische Quellen sind davon ausgenommen, sie sind selbstbestaetigend.
+    sentiment_score *= confirmation_factor(unique_channels, channels_list)
+
     mention_weight = math.log(mention_count + 1) / math.log(11)
     channel_bonus  = min(unique_channels / 3, 1.0) * 0.2
     conviction = (sentiment_score * 0.6 + mention_weight * 0.4) * (1 + channel_bonus)
@@ -250,6 +257,9 @@ def calculate_conviction_bear(bullish, bearish, neutral, mention_count, unique_c
         bear_ratio = (effective_bearish / effective_total) * avg_weight if effective_total > 0 else 0
     else:
         bear_ratio = effective_bearish / effective_total if effective_total > 0 else 0
+
+    # Bestaetigungs-Faktor, symmetrisch zur bullishen Seite (siehe dort).
+    bear_ratio *= confirmation_factor(unique_channels, channels_list)
 
     mention_weight = math.log(mention_count + 1) / math.log(11)
     channel_bonus  = min(unique_channels / 3, 1.0) * 0.2
@@ -301,7 +311,15 @@ def get_thesis_conviction_boost(con, ticker):
       +0.08  bei intact + hohem Theme-Momentum (bullish)
       +0.05  bei intact (Standard)
       +0.02  bei kein Check vorhanden (aber Beneficiary-Eintrag existiert)
-       0.00  bei broken / degraded / archived
+       0.00  bei broken / weakening / degraded / archived
+
+    FIX (08.09.2026): Der Status-Vergleich war case-sensitiv gegen Kleinschreibung,
+    thesis_status_log.status wird aber vom thesis_monitor in GROSSSCHREIBUNG
+    geschrieben (INTACT/WEAKENING/BROKEN/UNCERTAIN). Dadurch traf KEIN Eintrag je
+    die broken-Abzweigung – jede Position mit Beneficiary-Eintrag bekam +0.02,
+    auch bei nachweislich gebrochener These. Jetzt wird normalisiert verglichen
+    (wie in active_exit_check.py). WEAKENING wird zusaetzlich explizit auf 0.0
+    gemappt statt in den else-Zweig zu fallen.
     """
     if not ticker:
         return 0.0
@@ -314,6 +332,12 @@ def get_thesis_conviction_boost(con, ticker):
             WHERE tb.ticker = ?
               AND tb.status != 'archived'
               AND td.status = 'active'
+              -- FIX 08.09.2026: Altersgrenze als zweites Netz. Der Lifecycle in
+              -- beneficiary_mapper.sync_beneficiary_status archiviert veraltete
+              -- Mappings; faellt der Lauf aus, darf ein monatealtes Mapping
+              -- trotzdem keinen Boost mehr geben (Live-Befund: 208 von 220
+              -- Eintraegen aelter als 60 Tage, juengstes Update 13.07.).
+              AND julianday('now') - julianday(COALESCE(tb.last_updated, tb.added_date)) <= 60
             ORDER BY td.momentum DESC
             LIMIT 1
         """, (ticker,)).fetchone()
@@ -321,16 +345,26 @@ def get_thesis_conviction_boost(con, ticker):
         if not row:
             return 0.0
 
-        # Letzten Thesis-Status prüfen
+        # Letzten Thesis-Status prüfen.
+        # FIX 08.09.2026 (2/2): zusaetzlich ueber den TICKER matchen. Weder
+        # scripts/thesis_monitor.py noch thematic/thesis_monitor.py schreiben
+        # `beneficiary_id` in ihren INSERT (nur position_id/ticker/theme_id) —
+        # in der Live-DB ist die Spalte in ALLEN Zeilen NULL. Die Abfrage lief
+        # damit immer leer und jede Position fiel in den no_check-Zweig (+0.02),
+        # egal wie die These wirklich stand. beneficiary_id bleibt als bevorzugter
+        # Schluessel erhalten, falls die Writer sie spaeter befuellen.
         latest = con.execute("""
             SELECT status FROM thesis_status_log
-            WHERE beneficiary_id = ?
-            ORDER BY id DESC LIMIT 1
-        """, (row["id"],)).fetchone()
+            WHERE beneficiary_id = ? OR ticker = ?
+            ORDER BY (beneficiary_id IS NULL), id DESC
+            LIMIT 1
+        """, (row["id"], ticker)).fetchone()
 
-        thesis_status = latest["status"] if latest else "no_check"
+        # Normalisiert vergleichen: der thesis_monitor schreibt GROSSSCHREIBUNG,
+        # aeltere Eintraege existieren in Kleinschreibung.
+        thesis_status = ((latest["status"] if latest else None) or "no_check").strip().lower()
 
-        if thesis_status == "broken" or thesis_status == "degraded":
+        if thesis_status in ("broken", "degraded", "weakening"):
             return 0.0
         elif thesis_status == "intact":
             # Extra-Boost bei bullishem Theme-Momentum
@@ -405,8 +439,18 @@ def normalize_mentions(con):
         print(f"  ✓ Keine Duplikate gefunden", flush=True)
     return merged
 
-def main():
-    print("📋 Watchlist Manager gestartet", flush=True)
+def main(dry_run=False):
+    """Aggregiert Mentions je Ticker und pflegt die Watchlist.
+
+    dry_run=True: Aggregation wird gerechnet und alt/neu gegenuebergestellt,
+    aber KEINE Watchlist-Zeile geschrieben (Phase A/B-Umstellung 08.09.2026 —
+    mention_count steigt bei Mehrfach-Varianten-Tickern und veraendert damit
+    die Conviction und die Entry-Kandidatenmenge; das will man einmal sehen,
+    bevor es live geht). Achtung: validate_and_register schreibt auch im
+    Dry-Run in companies/company_aliases/Reject-Cache — der Dry-Run ist auf
+    die WATCHLIST bezogen, nicht auf die gesamte DB.
+    """
+    print(f"📋 Watchlist Manager gestartet{' (DRY-RUN)' if dry_run else ''}", flush=True)
     con = db_connect()
     try:
         # Migration: conviction_score_bear Spalte hinzufügen
@@ -530,7 +574,10 @@ def main():
     
         # 1. Alte Einträge bereinigen (> 14 Tage ohne Mention)
         cutoff = (datetime.now() - timedelta(days=WATCHLIST_DAYS)).strftime("%Y-%m-%d")
-        dropped = con.execute("""
+        if dry_run:
+            print("  ⏭ Dry-Run: Hygiene-Stufen (stale/kein-Ticker/low-tech) uebersprungen",
+                  flush=True)
+        dropped = 0 if dry_run else con.execute("""
             UPDATE watchlist SET status='dropped'
             WHERE last_seen < ? AND status='watching'
         """, (cutoff,)).rowcount
@@ -540,7 +587,7 @@ def main():
     
         # 2. Einträge ohne Ticker nach 7 Tagen droppen
         cutoff_7d = (datetime.now() - timedelta(days=7)).strftime("%Y-%m-%d")
-        dropped_no_ticker = con.execute("""
+        dropped_no_ticker = 0 if dry_run else con.execute("""
             UPDATE watchlist SET status='dropped'
             WHERE ticker IS NULL
             AND first_seen < ?
@@ -552,7 +599,7 @@ def main():
     
         # 3. Einträge mit tech_score < 0.3 nach 3 Tagen ohne neue Mention droppen
         cutoff_3d = (datetime.now() - timedelta(days=3)).strftime("%Y-%m-%d")
-        dropped_low_tech = con.execute("""
+        dropped_low_tech = 0 if dry_run else con.execute("""
             UPDATE watchlist SET status='dropped'
             WHERE tech_score < 0.30
             AND last_seen < ?
@@ -617,37 +664,118 @@ def main():
         normalize_mentions(con)
     
         # 5. Watchlist aggregieren
-        mentions = con.execute("""
-            SELECT name,
-                   COUNT(*) as mention_count,
-                   SUM(CASE WHEN sentiment='bullish' THEN 1 ELSE 0 END) as bullish,
-                   SUM(CASE WHEN sentiment='bearish' THEN 1 ELSE 0 END) as bearish,
-                   SUM(CASE WHEN sentiment='neutral' THEN 1 ELSE 0 END) as neutral,
-                   -- Gewichtete Counts: strong=1.0, moderate=0.6, weak=0.3
-                   SUM(CASE WHEN sentiment='bullish' THEN
-                       CASE COALESCE(strength,'moderate')
-                         WHEN 'strong'   THEN 1.0
-                         WHEN 'moderate' THEN 0.6
-                         WHEN 'weak'     THEN 0.3
-                         ELSE 0.6 END
-                       ELSE 0 END) as bullish_weighted,
-                   SUM(CASE WHEN sentiment='bearish' THEN
-                       CASE COALESCE(strength,'moderate')
-                         WHEN 'strong'   THEN 1.0
-                         WHEN 'moderate' THEN 0.6
-                         WHEN 'weak'     THEN 0.3
-                         ELSE 0.6 END
-                       ELSE 0 END) as bearish_weighted,
-                   COUNT(DISTINCT channel) as unique_channels,
-                   GROUP_CONCAT(DISTINCT channel) as channels,
-                   MIN(mention_date) as first_seen,
-                   MAX(mention_date) as last_seen
-            FROM watchlist_mentions
-            WHERE mention_date >= ?
-            GROUP BY name
-            ORDER BY mention_count DESC
+        #
+        # FIX 08.09.2026 — Zwei-Phasen-Aggregation (Root-Cause der Entry-Starvation).
+        #
+        # Vorher lief hier EINE Abfrage mit `GROUP BY name` (dem rohen Mention-Namen)
+        # und der Loop schrieb pro Namensgruppe ein `UPDATE ... WHERE ticker=?`.
+        # Die watchlist ist aber auf TICKER eindeutig. Bei mehreren Namensvarianten
+        # desselben Unternehmens (Live-DB: GOOGL, HOOD, CRM, DBK.DE, CRWD, COIN, ...)
+        # lief das UPDATE mehrfach auf dieselbe Zeile und der ZULETZT verarbeitete
+        # Variant gewann — statt der Summe aller Mentions stand die Teilmenge einer
+        # Schreibweise in der Zeile. Betroffen waren ausgerechnet die meistgenannten
+        # Titel.
+        #
+        # Wirkung: `mention_count` war systematisch zu klein. In der Kandidaten-
+        # abfrage des signal_manager ist `mention_count >= 2` damit zum bindenden
+        # Kriterium geworden (150 von 215 watching-Eintraegen standen auf 1) und die
+        # Pipeline meldete taeglich "Keine Watchlist-Kandidaten die alle Kriterien
+        # erfuellen" — bei 79% Cash und 13 technisch validen Kandidaten.
+        #
+        # Jetzt:
+        #   Phase A: pro Rohnamen Ticker aufloesen (validate_and_register, wie bisher
+        #            — Reject-Cache und Logging unveraendert) und Namen je Ticker
+        #            sammeln.
+        #   Phase B: EINE kombinierte Aggregation ueber ALLE Namen eines Tickers,
+        #            daraus EIN Conviction-Set und EIN INSERT/UPDATE.
+        # calculate_conviction_aged() bleibt unveraendert — die aggregiert bereits
+        # ueber company_aliases und war damit schon vorher konsistent.
+        #
+        # Dry-Run: `python3 watchlist_manager.py --dry-run` stellt alt/neu je Ticker
+        # gegenueber, ohne zu schreiben.
+
+        names = con.execute("""
+            SELECT DISTINCT name FROM watchlist_mentions WHERE mention_date >= ?
         """, (cutoff,)).fetchall()
-    
+
+        # ── Phase A: Rohnamen → Ticker ────────────────────────────────────────
+        ticker_names = {}       # ticker -> [Rohnamen]
+        ticker_primary = {}     # ticker -> erster akzeptierter Rohname (fuer aged)
+        resolved = skipped = 0
+        for row in names:
+            name = row["name"]
+            # Validierungs-Pipeline (Paket B): con wird durchgereicht → alle
+            # DB-Zugriffe laufen auf DERSELBEN Connection (kein Lock-Konflikt mit
+            # der offenen Loop-Transaktion, Negativ-Cache kann schreiben).
+            result = validate_and_register(name, con=con)
+            if result["status"] == "rejected":
+                skipped += 1          # Krypto, Indizes, abgeschnittene Namen, ...
+                continue
+            ticker = result["ticker"]
+            if not ticker:
+                skipped += 1          # status='private' (OpenAI, SpaceX, ...)
+                continue
+            ticker_names.setdefault(ticker, []).append(name)
+            ticker_primary.setdefault(ticker, name)
+            resolved += 1
+
+        print(f"  → {len(names)} Mention-Namen → {len(ticker_names)} Ticker "
+              f"({resolved} aufgeloest, {skipped} uebersprungen)", flush=True)
+        _multi = {t: v for t, v in ticker_names.items() if len(v) > 1}
+        if _multi:
+            print(f"  🔗 {len(_multi)} Ticker mit mehreren Namensvarianten "
+                  f"— Mentions werden jetzt zusammengefasst "
+                  f"(z.B. {', '.join(list(_multi)[:5])})", flush=True)
+
+        # ── Phase B: kombinierte Aggregation je Ticker ────────────────────────
+        mentions = []
+        for ticker, name_list in ticker_names.items():
+            placeholders = ",".join("?" * len(name_list))
+            agg = con.execute(f"""
+                SELECT COUNT(*) as mention_count,
+                       SUM(CASE WHEN sentiment='bullish' THEN 1 ELSE 0 END) as bullish,
+                       SUM(CASE WHEN sentiment='bearish' THEN 1 ELSE 0 END) as bearish,
+                       SUM(CASE WHEN sentiment='neutral' THEN 1 ELSE 0 END) as neutral,
+                       -- Gewichtete Counts: strong=1.0, moderate=0.6, weak=0.3
+                       SUM(CASE WHEN sentiment='bullish' THEN
+                           CASE COALESCE(strength,'moderate')
+                             WHEN 'strong'   THEN 1.0
+                             WHEN 'moderate' THEN 0.6
+                             WHEN 'weak'     THEN 0.3
+                             ELSE 0.6 END
+                           ELSE 0 END) as bullish_weighted,
+                       SUM(CASE WHEN sentiment='bearish' THEN
+                           CASE COALESCE(strength,'moderate')
+                             WHEN 'strong'   THEN 1.0
+                             WHEN 'moderate' THEN 0.6
+                             WHEN 'weak'     THEN 0.3
+                             ELSE 0.6 END
+                           ELSE 0 END) as bearish_weighted,
+                       COUNT(DISTINCT channel) as unique_channels,
+                       GROUP_CONCAT(DISTINCT channel) as channels,
+                       MIN(mention_date) as first_seen,
+                       MAX(mention_date) as last_seen
+                FROM watchlist_mentions
+                WHERE mention_date >= ? AND name IN ({placeholders})
+            """, [cutoff] + name_list).fetchone()
+            if not agg or not agg["mention_count"]:
+                continue
+            mentions.append({
+                "ticker":            ticker,
+                "name":              ticker_primary[ticker],
+                "mention_count":     agg["mention_count"],
+                "bullish":           agg["bullish"] or 0,
+                "bearish":           agg["bearish"] or 0,
+                "neutral":           agg["neutral"] or 0,
+                "bullish_weighted":  agg["bullish_weighted"] or 0.0,
+                "bearish_weighted":  agg["bearish_weighted"] or 0.0,
+                "unique_channels":   agg["unique_channels"] or 0,
+                "channels":          agg["channels"],
+                "first_seen":        agg["first_seen"],
+                "last_seen":         agg["last_seen"],
+            })
+        mentions.sort(key=lambda m: m["mention_count"], reverse=True)
+
         print(f"  → {len(mentions)} Unternehmen in Watchlist", flush=True)
 
         _boost_counter = 0  # Limit X-Sentiment-API-Calls (twitterapi.io)
@@ -668,20 +796,12 @@ def main():
                 bearish_weighted=m["bearish_weighted"],
                 calibration=channel_calibration,
             )
-    
-            # --- Validierungs-Pipeline (Paket B): Cache-Hit, neue Firma anlegen, oder skippen ---
-            # con wird durchgereicht -> alle DB-Zugriffe der Validierung laufen auf
-            # DERSELBEN Connection (kein Lock-Konflikt mit der offenen Loop-Transaktion,
-            # Negativ-Cache kann schreiben).
-            result = validate_and_register(name, con=con)
-            if result["status"] == "rejected":
-                # Krypto, Indizes, abgeschnittene Namen, Mehrdeutigkeiten -> skip
-                continue
-            ticker = result["ticker"]
-            if not ticker:
-                # status='private' (OpenAI, SpaceX, ...) -> kein Trade moeglich
-                continue
-    
+
+            # Ticker ist bereits in Phase A aufgeloest (validate_and_register),
+            # inkl. Reject-/Private-Filterung — hier kein zweiter Aufruf noetig.
+            ticker = m["ticker"]
+
+
             # Sektor aus companies-Tabelle (single source of truth)
             sector_row = con.execute(
                 "SELECT canonical_name, sector FROM companies WHERE ticker=?", (ticker,)
@@ -722,6 +842,20 @@ def main():
                 except Exception:
                     pass  # X-Sentiment-Fehler stoppen die Pipeline nicht
     
+            if dry_run:
+                prev = con.execute(
+                    "SELECT mention_count, conviction_score FROM watchlist WHERE ticker=?",
+                    (ticker,)
+                ).fetchone()
+                old_mc = prev["mention_count"] if prev else None
+                old_cv = prev["conviction_score"] if prev else None
+                if old_mc != m["mention_count"]:
+                    print(f"    🔍 {ticker:10} mentions {old_mc} → {m['mention_count']}"
+                          f"   conviction {old_cv if old_cv is None else round(old_cv,2)}"
+                          f" → {round(conviction,2)}"
+                          f"   [{len(ticker_names[ticker])} Namensvariante(n)]", flush=True)
+                continue
+
             # INSERT: bei Ticker-Konflikt nichts tun, UPDATE-Pfad weiter unten kuemmert sich
             con.execute("""
                 INSERT INTO watchlist (name, ticker, first_seen, last_seen,
@@ -761,7 +895,12 @@ def main():
                   conviction_aged,
                   json.dumps(channels_list), ticker))
         con.commit()
-    
+
+        if dry_run:
+            print("\n  ℹ Dry-Run: keine Watchlist-Zeile geschrieben, "
+                  "Tech-Score-Refresh uebersprungen.", flush=True)
+            return
+
         # 6. Technische Scores für Top-Kandidaten aktualisieren (LONG + SHORT)
         # FIX 09.08. (Phase 2C): Schwelle MIN_CONVICTION*0.5 (0.30) → MIN_CONVICTION
         # (0.60) — nur noch Kandidaten mit solider Conviction bekommen Tech-Scores.
@@ -794,7 +933,8 @@ def main():
         for c in top_candidates:
             tech = get_technical_score(c["ticker"])
             if tech:
-                tech_score = tech["confidence"]
+                # FIX 08.09.2026: Wertebereich [0,1] erzwingen (siehe clamp_tech_score).
+                tech_score = clamp_tech_score(tech["confidence"])
                 direction  = tech["direction"]
                 con.execute("""
                     UPDATE watchlist SET tech_score=?, tech_direction=?, weekly_trend=?
@@ -872,4 +1012,9 @@ def main():
     print("\n✅ Watchlist Manager abgeschlossen", flush=True)
 
 if __name__ == "__main__":
-    main()
+    import argparse
+    _ap = argparse.ArgumentParser()
+    _ap.add_argument("--dry-run", action="store_true",
+                     help="Aggregation rechnen und alt/neu vergleichen, "
+                          "ohne die Watchlist zu schreiben")
+    main(dry_run=_ap.parse_args().dry_run)

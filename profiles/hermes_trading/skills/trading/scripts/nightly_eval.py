@@ -373,6 +373,43 @@ def calc_source_quality(con, today):
     return sorted(results, key=lambda x: x["quality_score"], reverse=True)
 
 
+def build_shadow_line(con):
+    """Kompakte Zeile je Selektions-Hypothese fuer den Telegram-Report.
+
+    Die Schattenbuecher (shadow_selection.py) sind der einzige Weg, die Frage
+    "welches Signal traegt?" zu beantworten — sie muessen deshalb im taeglichen
+    Report auftauchen und nicht nur im cron.log. Fehlt die Tabelle (Skript noch
+    nicht deployed), liefert die Funktion None und der Report bleibt unveraendert.
+    """
+    try:
+        rows = con.execute("""
+            SELECT hypothesis,
+                   COUNT(*) total,
+                   SUM(eval_status='evaluated') ev,
+                   SUM(CASE WHEN eval_status='evaluated' AND pnl_pct_sim > 0
+                            THEN 1 ELSE 0 END) wins,
+                   AVG(CASE WHEN eval_status='evaluated' THEN pnl_pct_sim END) avg_pct
+            FROM shadow_selection GROUP BY hypothesis ORDER BY hypothesis
+        """).fetchall()
+    except Exception:
+        return None
+    if not rows:
+        return None
+
+    lines = ["\n\U0001f500 <b>Schattenbücher (Selektion)</b>"]
+    for r in rows:
+        ev = r["ev"] or 0
+        if ev:
+            wr = (r["wins"] or 0) / ev * 100
+            lines.append(f"• {r['hypothesis']}: {r['total']} ausgew., {ev} bewertet, "
+                         f"WR {wr:.0f}%, Ø {r['avg_pct']:+.2f}%")
+        else:
+            lines.append(f"• {r['hypothesis']}: {r['total']} ausgew., noch keine Bewertung")
+    if all((r["ev"] or 0) < 30 for r in rows):
+        lines.append("<i>N&lt;30 je Hypothese – noch nicht belastbar</i>")
+    return "\n".join(lines)
+
+
 def check_half_life_calibration(con):
     """
     Prüft ob CONVICTION_HALF_LIFE_DAYS gut kalibriert ist.
@@ -754,6 +791,7 @@ def main():
         top_line = f"Top-Quelle: <b>{top_src['channel']}</b> (WR:{top_src['win_rate_30d']:.0%}, Q:{top_src['quality_score']:.2f})" if top_src else ""
         signals_line = build_top_signals_line(con, limit=5)
         src_win_line = build_signal_source_line(con)
+        shadow_line  = build_shadow_line(con) or ""
         bm_line = ""
         if bm:
             a_spy_icon = "✅" if bm["alpha_spy"] >= 0 else "❌"
@@ -781,7 +819,8 @@ def main():
                 f"{bm_line}"
                 f"{committee_line}\n"
                 f"{top_line}\n\n"
-                f"{signals_line}{src_win_line}\n\n"
+                f"{signals_line}{src_win_line}"
+                f"{shadow_line}\n\n"
                 "🔧 Strategy Optimizer läuft um 08:00..."
             )
         else:
@@ -802,6 +841,7 @@ def main():
                 f"{committee_line}\n"
                 f"{top_line}\n\n"
                 f"{signals_line}{src_win_line}"
+                f"{shadow_line}"
             )
 
         send_telegram(msg)

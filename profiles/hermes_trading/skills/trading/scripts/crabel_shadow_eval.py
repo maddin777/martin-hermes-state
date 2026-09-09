@@ -167,6 +167,7 @@ def main():
     rows = con.execute("""
         SELECT * FROM blocked_entries
         WHERE eval_status='pending' AND block_date <= ?
+          AND would_entry IS NOT NULL AND would_sl IS NOT NULL
         ORDER BY block_date ASC
     """, (cutoff,)).fetchall()
 
@@ -178,7 +179,18 @@ def main():
         con.close()
         return
 
-    print(f"  {len(rows)} geblockte Entries auswertbar", flush=True)
+    # FIX 08.09.2026: seit der vollstaendigen Gate-Protokollierung landen auch
+    # Blockaden VOR der Preisabfrage in der Tabelle (crypto-ticker, cooldown-24h,
+    # macro-short, no-price-data). Die haben keine would_entry/would_sl-Levels und
+    # sind damit nicht vorwaerts bepreisbar — sie zaehlen fuer die Haeufigkeits-
+    # statistik, nicht fuer den Counterfactual. Query oben filtert sie aus.
+    _nolevel = con.execute("""
+        SELECT COUNT(*) FROM blocked_entries
+        WHERE eval_status='pending' AND block_date <= ? AND would_entry IS NULL
+    """, (cutoff,)).fetchone()[0]
+    print(f"  {len(rows)} geblockte Entries auswertbar"
+          + (f" ({_nolevel} ohne Levels, nur Haeufigkeit)" if _nolevel else ""),
+          flush=True)
     evaluated = no_data = 0
 
     for row in rows:

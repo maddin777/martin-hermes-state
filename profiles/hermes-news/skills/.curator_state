@@ -1,9 +1,9 @@
 {
-  "last_report_path": "/root/.hermes/profiles/hermes-news/logs/curator/20260901-062033",
-  "last_run_at": "2026-09-01T06:20:33.827139+00:00",
-  "last_run_duration_seconds": 2.067144,
-  "last_run_summary": "auto: 3 marked stale; llm: skipped (consolidation off)",
+  "last_report_path": "/root/.hermes/profiles/hermes-news/logs/curator/20260908-065430",
+  "last_run_at": "2026-09-08T06:54:30.586174+00:00",
+  "last_run_duration_seconds": 2.141003,
+  "last_run_summary": "auto: no changes; llm: skipped (consolidation off)",
   "last_run_summary_shown_at": null,
   "paused": false,
-  "run_count": 16
+  "run_count": 17
 }

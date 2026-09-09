@@ -644,13 +644,32 @@ def analyze(transcript, channel, title, date_str, con=None):
     }
 
 
+# Terminaler Zustand nach MAX_ERROR_ATTEMPTS erfolglosen Versuchen.
+# 'failed' ist bewusst ein eigener Status und nicht 'error': nur so ist
+# unterscheidbar, was noch wiederholt wird und was aufgegeben wurde.
+MAX_ERROR_ATTEMPTS = _env_int("MAX_ERROR_ATTEMPTS", 3, minimum=1, maximum=10)
+
+
 def main():
     con = db_connect()
-    pending = con.execute(
-        "SELECT * FROM videos WHERE status='pending' ORDER BY upload_date DESC"
-    ).fetchall()
+    # FIX 08.09.2026: 'error'-Videos MITAUSWAEHLEN.
+    # Die Retry-Logik weiter unten ("nach 3 Fehler-Versuchen dauerhaft skippen")
+    # war toter Code: die Abfrage holte ausschliesslich status='pending', ein auf
+    # 'error' gesetztes Video kam nie wieder in die Schleife. Live-Beweis: alle
+    # 36 Fehler-Videos standen auf error_count=1 — kein einziges hat je einen
+    # zweiten Versuch bekommen. Jeder transiente Fehler (Netzwerk, 429, Timeout)
+    # war damit endgueltiger Signalverlust.
+    pending = con.execute("""
+        SELECT * FROM videos
+        WHERE status='pending'
+           OR (status='error' AND COALESCE(error_count,0) < ?)
+        ORDER BY upload_date DESC
+    """, (MAX_ERROR_ATTEMPTS,)).fetchall()
 
-    print(f"Pending Videos: {len(pending)} [Modus: {EXTRACTOR_MODE}]", flush=True)
+    _retries = sum(1 for r in pending if r["status"] == "error")
+    print(f"Pending Videos: {len(pending)} "
+          f"(davon {_retries} Wiederholungen) [Modus: {EXTRACTOR_MODE}]", flush=True)
+    stats = {"done": 0, "failed": 0, "expired": 0, "retried": 0}
 
     # Signals-JSON laden (Append-only – bestehende Ergebnisse bleiben)
     if os.path.exists(SIGNALS_PATH):
@@ -684,9 +703,31 @@ def main():
             row_status = row["status"]
         except (IndexError, KeyError):
             row_status = "pending"
-        if row_status == "error" and error_count >= 3:
-            print(f"  ⏭ Zu viele Fehler ({error_count}x) – dauerhaft übersprungen", flush=True)
+        if row_status == "error" and error_count >= MAX_ERROR_ATTEMPTS:
+            # Sollte durch die WHERE-Klausel nicht mehr vorkommen — als Netz belassen.
+            con.execute("UPDATE videos SET status='failed' WHERE video_id=?",
+                        (row["video_id"],))
+            con.commit()
+            stats["failed"] += 1
+            print(f"  ⏭ Zu viele Fehler ({error_count}x) – Quarantäne", flush=True)
             continue
+
+        # Ohne Transkript ist keine Analyse moeglich. cleanup_db() in
+        # yt_channel_monitor leert Transkripte aelter als 7 Tage — ein Video, das
+        # in diesem Fenster gescheitert ist, kann nicht mehr nachgeholt werden.
+        # Eigener Endzustand, damit es nicht endlos im Retry-Pool kreist.
+        if not (row["transcript"] or "").strip():
+            con.execute("UPDATE videos SET status='transcript_expired' WHERE video_id=?",
+                        (row["video_id"],))
+            con.commit()
+            stats["expired"] += 1
+            print("  ⏭ Kein Transkript mehr vorhanden (>7d, von cleanup_db geleert)",
+                  flush=True)
+            continue
+
+        if row_status == "error":
+            stats["retried"] += 1
+            print(f"  ↻ Wiederholung {error_count + 1}/{MAX_ERROR_ATTEMPTS}", flush=True)
 
         try:
             result = analyze(row['transcript'], row['channel'], row['title'],
@@ -707,14 +748,20 @@ def main():
                 (datetime.now().isoformat(), row['video_id'])
             )
             con.commit()
+            stats["done"] += 1
             all_signals.append(result)
 
         except Exception as e:
-            print(f"  ✗ Fehler: {e}", flush=True)
             new_error_count = error_count + 1
+            exhausted = new_error_count >= MAX_ERROR_ATTEMPTS
+            new_status = "failed" if exhausted else "error"
+            if exhausted:
+                stats["failed"] += 1
+            print(f"  ✗ Fehler ({new_error_count}/{MAX_ERROR_ATTEMPTS}"
+                  f"{', Quarantäne' if exhausted else ''}): {e}", flush=True)
             con.execute(
-                "UPDATE videos SET status='error', error_count=? WHERE video_id=?",
-                (new_error_count, row['video_id'])
+                "UPDATE videos SET status=?, error_count=? WHERE video_id=?",
+                (new_status, new_error_count, row['video_id'])
             )
             con.commit()
 
@@ -731,6 +778,28 @@ def main():
 
     total_co = sum(len(s.get('companies', [])) for s in all_signals)
     print(f"\n✅ Fertig. {len(all_signals)} Videos, {total_co} Unternehmen.", flush=True)
+
+    # FIX 08.09.2026: Ausfaelle sichtbar machen. Bisher liefen gescheiterte Videos
+    # voellig stumm durch — in der Live-DB lagen 36 Stueck auf status='error',
+    # ohne dass irgendein Report sie erwaehnt haette (stiller Signalverlust an
+    # der Quelle). Jetzt: Lauf-Bilanz plus DB-weiter Bestand.
+    print(f"   Lauf: {stats['done']} analysiert, {stats['retried']} Wiederholungen, "
+          f"{stats['failed']} in Quarantäne, {stats['expired']} ohne Transkript",
+          flush=True)
+    backlog = {r["status"]: r["n"] for r in con.execute("""
+        SELECT status, COUNT(*) n FROM videos
+        WHERE status IN ('error','failed','transcript_expired','no_transcript')
+        GROUP BY status
+    """).fetchall()}
+    if backlog:
+        print("   Bestand: "
+              + ", ".join(f"{k}={v}" for k, v in sorted(backlog.items())), flush=True)
+        _stuck = backlog.get("failed", 0) + backlog.get("transcript_expired", 0)
+        if _stuck >= 10:
+            log.warning("Video-Backlog: %d Videos endgueltig ohne Analyse "
+                        "(failed/transcript_expired) – yt-dlp/Transkript-Pfad pruefen",
+                        _stuck)
+
     con.close()
 
 

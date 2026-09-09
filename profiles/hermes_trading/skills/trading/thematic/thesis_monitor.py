@@ -146,11 +146,22 @@ def main(intraday: bool = False):
         # Log
         con.execute("""
             INSERT INTO thesis_status_log
-            (position_id, ticker, theme_id, check_date, status, confidence,
+            (position_id, beneficiary_id, ticker, theme_id, check_date, status, confidence,
              rationale, news_summary, triggering_urls, llm_model_used)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
-            pos["id"], ticker,
+            # FIX 08.09.2026: beneficiary_id MITSCHREIBEN. Die Spalte war in allen
+            # 81 Live-Zeilen NULL, weil kein Writer sie befuellt hat — der Lookup in
+            # watchlist_manager.get_thesis_conviction_boost lief dadurch immer leer
+            # und JEDE Position fiel in den no_check-Zweig (+0.02 Conviction), auch
+            # bei gebrochener These. Aufloesung ueber (theme_id, ticker); NULL bleibt
+            # zulaessig, wenn der Ticker kein Beneficiary des Themas ist.
+            pos["id"],
+            (con.execute(
+                "SELECT id FROM theme_beneficiaries WHERE ticker=? AND theme_id IS ? LIMIT 1",
+                (ticker, pos["thesis_theme_id"])
+            ).fetchone() or [None])[0],
+            ticker,
             pos["thesis_theme_id"],
             today, verdict, confidence,
             rationale,

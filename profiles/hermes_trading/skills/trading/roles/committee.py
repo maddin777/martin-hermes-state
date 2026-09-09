@@ -23,6 +23,9 @@ import traceback
 from datetime import date as _date
 
 sys.path.insert(0, "/root/.hermes/profiles/hermes_trading/skills/trading")
+# scripts/ mit auf den Pfad: _parse_role_json importiert den gehaerteten
+# JSON-Parser aus signal_extractor (lazy, in try/except).
+sys.path.insert(0, "/root/.hermes/profiles/hermes_trading/skills/trading/scripts")
 import env_loader  # noqa: F401  (side-effect: laedt .env)
 
 from roles import ensure_roles_schema
@@ -121,6 +124,50 @@ def _market_text(context: dict) -> str:
     )
 
 
+# Token-Deckel pro Rolle (FIX 08.09.2026).
+# Vorher pauschal 800 fuer alle drei Rollen. Der Bull (DeepSeek-pro) laeuft laut
+# Erklaerung.md (20.07.2026) in ~1 von 7 Calls in einen Longtail und stiess an
+# diesen Deckel → abgeschnittenes JSON → Parse-Fehler → ERROR_FAIL_OPEN. Die
+# eigene Regel dort lautete "JSON-Repair bauen, sobald die Ausreisserquote >5%
+# liegt"; die Live-Auswertung zeigt 5 von 11 Checks als ERROR_FAIL_OPEN (45%).
+# Bear und Risk antworten kurz und behalten deshalb ein kleineres Budget.
+ROLE_MAX_TOKENS = {
+    "committee_bull": 1600,
+    "committee_bear": 1000,
+    "committee_risk": 1000,
+}
+DEFAULT_MAX_TOKENS = 1000
+
+
+def _parse_role_json(res, model_task):
+    """JSON aus der Rollen-Antwort, mit Repair-Stufe vor dem Fail-Open.
+
+    Stufe 1: llm_client.parse_json_response (Markdown-Wrapper, erstes {...}).
+    Stufe 2: der gehaertete Parser aus signal_extractor._try_parse — behandelt
+             fenced Bloecke, trailing commas, Steuerzeichen und lokalisiert per
+             raw_decode das erste vollstaendige Objekt. Bewusst wiederverwendet
+             statt nachgebaut (dieselbe Klasse von Modell-Ausgaben).
+    Beides fehlgeschlagen → {} und der Aufrufer geht in den Fail-Open-Pfad.
+    Der Repair-Versuch ERSETZT das Fail-Open nicht, er sitzt nur davor.
+    """
+    data = llm_client.parse_json_response(res, default={})
+    if isinstance(data, dict) and data:
+        return data
+
+    raw = (res.get("content") or "").strip()
+    if raw:
+        try:
+            from signal_extractor import _try_parse
+            repaired = _try_parse(raw)
+            if isinstance(repaired, dict) and repaired:
+                print(f"     🔧 Committee/{model_task}: JSON repariert "
+                      f"({len(raw)} Zeichen)", flush=True)
+                return repaired
+        except Exception:
+            pass  # Repair ist best-effort und darf nie werfen
+    return {}
+
+
 def _call_role(con, today, prompt, model_task, results_acc):
     """
     Ein Rollen-Call inkl. Budget-Buchung.
@@ -129,7 +176,8 @@ def _call_role(con, today, prompt, model_task, results_acc):
     """
     model = llm_client.get_model(model_task)
     res = llm_client.call_llm(
-        prompt, model, temperature=0.3, json_mode=True, max_tokens=800
+        prompt, model, temperature=0.3, json_mode=True,
+        max_tokens=ROLE_MAX_TOKENS.get(model_task, DEFAULT_MAX_TOKENS)
     )
     toks = res.get("tokens") or {}
     t_in, t_out = int(toks.get("input", 0) or 0), int(toks.get("output", 0) or 0)
@@ -142,10 +190,16 @@ def _call_role(con, today, prompt, model_task, results_acc):
         print(f"     ⚠ Committee/{model_task}: {res.get('error')}", flush=True)
         return {}, False
 
-    data = llm_client.parse_json_response(res, default={})
+    data = _parse_role_json(res, model_task)
     if not isinstance(data, dict) or not data:
-        print(f"     ⚠ Committee/{model_task}: Parse-Fehler", flush=True)
-        return {}, False
+        # FIX 08.09.2026: Rohantwort mitgeben. Vorher ging bei einem Parse-Fehler
+        # ein leeres {} zurueck und committee_log bekam eine NULL-Spalte — genau
+        # die Payload, die man zur Diagnose braucht, war weg. Die 5 historischen
+        # ERROR_FAIL_OPEN-Zeilen sind deshalb nachtraeglich nicht analysierbar.
+        raw = (res.get("content") or "")
+        print(f"     ⚠ Committee/{model_task}: Parse-Fehler "
+              f"({len(raw)} Zeichen Rohantwort, {t_out} Output-Tokens)", flush=True)
+        return {"_parse_error": True, "_raw": raw[:4000]}, False
     return data, True
 
 
@@ -197,6 +251,9 @@ def run_committee(con, candidate_row, direction: str, context: dict) -> dict:
             raise RuntimeError("Prompt committee_bull_v1.md nicht gefunden")
         bull, ok = _call_role(con, today, p_bull, "committee_bull", acc)
         if not ok:
+            # bull enthaelt hier ggf. {"_parse_error", "_raw"} — bleibt fuer den
+            # Audit-Trail in committee_log stehen, wird aber nie als Urteil benutzt
+            # (der raise fuehrt direkt in den Fail-Open-Pfad).
             raise RuntimeError("Bull-Call fehlgeschlagen")
 
         # ── Call 2: Bear Analyst ──────────────────────────────────────────
@@ -212,6 +269,9 @@ def run_committee(con, candidate_row, direction: str, context: dict) -> dict:
             raise RuntimeError("Prompt committee_bear_v1.md nicht gefunden")
         bear, ok = _call_role(con, today, p_bear, "committee_bear", acc)
         if not ok:
+            # bear enthaelt hier ggf. {"_parse_error", "_raw"} — bleibt fuer den
+            # Audit-Trail in committee_log stehen, wird aber nie als Urteil benutzt
+            # (der raise fuehrt direkt in den Fail-Open-Pfad).
             raise RuntimeError("Bear-Call fehlgeschlagen")
 
         # ── Call 3: Risk Officer ──────────────────────────────────────────
@@ -228,6 +288,9 @@ def run_committee(con, candidate_row, direction: str, context: dict) -> dict:
             raise RuntimeError("Prompt committee_risk_v1.md nicht gefunden")
         risk, ok = _call_role(con, today, p_risk, "committee_risk", acc)
         if not ok:
+            # risk enthaelt hier ggf. {"_parse_error", "_raw"} — bleibt fuer den
+            # Audit-Trail in committee_log stehen, wird aber nie als Urteil benutzt
+            # (der raise fuehrt direkt in den Fail-Open-Pfad).
             raise RuntimeError("Risk-Call fehlgeschlagen")
 
         # ── Entscheidungsregel (deterministisch, Abschnitt 2.4) ───────────

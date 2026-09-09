@@ -17,7 +17,7 @@ import argparse
 sys.path.insert(0, "/root/.hermes/profiles/hermes_trading/skills/trading")
 import env_loader  # noqa
 from config import DB_PATH, db_connect
-from utils import get_technical_score
+from utils import get_technical_score, clamp_tech_score
 
 
 def main():
@@ -49,12 +49,21 @@ def main():
               end="  ", flush=True)
         tech = get_technical_score(c["ticker"])
         if tech:
+            # FIX 08.09.2026: (a) tech_score auf [0,1] klemmen – Bestandszeilen mit
+            # Werten ausserhalb (z.B. 5.0) passieren jeden `tech_score >= X`-Filter.
+            # (b) weekly_trend MITSCHREIBEN. Vorher wurde er hier nur im else-Zweig
+            # gecleart, nie aktualisiert → ein Refresh setzte einen frischen
+            # tech_score neben einen veralteten weekly_trend. Beide zusammen bilden
+            # das Momentum-Gate in entry_gate_reason(); sie muessen aus demselben
+            # get_technical_score()-Aufruf stammen.
+            score = clamp_tech_score(tech["confidence"])
             con.execute("""
-                UPDATE watchlist SET tech_score=?, tech_direction=?
+                UPDATE watchlist SET tech_score=?, tech_direction=?, weekly_trend=?
                 WHERE ticker=?
-            """, (tech["confidence"], tech["direction"], c["ticker"]))
+            """, (score, tech["direction"], tech.get("weekly_trend"), c["ticker"]))
             con.commit()
-            print(f"→ {tech['confidence']:.2f} {tech['direction']}", flush=True)
+            print(f"→ {score:.2f} {tech['direction']} ({tech.get('weekly_trend')})",
+                  flush=True)
             ok += 1
         else:
             # FIX 16.08.: veraltete Scores NICHT stehen lassen. Wenn der

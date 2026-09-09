@@ -1,6 +1,373 @@
 # Änderungshistorie — Trading Skill
 
-**Stand:** Paketen A–D + Sprints 1–7 + Bugfix-Sprint + Screener-Source + Watchlist-Performance-Fix + Rollen-Sprint R1–R4 + **Turtle-Konfluenz-Sprint** + **Phase 1+2 Fix (09.08.2026)** + **Watchlist-Cleanup-Archivierung (09.08.2026)** + **UK-Microcap-Gate (14.08.2026)** + **DQ-Isolation + Alarm-Crons (16.08.2026)** + **Drawdown-15-25-Zone auf 6 Pos (17.08.2026)** + **DQ-.L-Aufräumung im Cleanup + täglicher Cleanup (19.08.2026)** + **DQ-Deaktivierungs-Verifikation + Cleanup 1c (24.08.2026)** + **DQ-Root-Clause-Fix: keine Reaktivierung gedroppter .L + Dry-Run read-only (26.08.2026)** + **Selection Momentum-/Liquiditäts-Gate (27.08.2026)** + **Drawdown-Heilungs-Beschleunigung 15-25%: Size 65% + Conf 75% (01.09.2026)** + **Grok entfernt, twitterapi.io Standard (01.09.2026)** + **Alternative Momentum-Swing-Strategie dokumentiert (06.09.2026)** + **Volume-Backtest: NICHT übernommen (06.09.2026)** + **Sektor-abhängige Regime (07.09.2026)** + **Overlay-Bug Fix (07.09.2026)**
+**Stand:** Paketen A–D + Sprints 1–7 + Bugfix-Sprint + Screener-Source + Watchlist-Performance-Fix + Rollen-Sprint R1–R4 + **Turtle-Konfluenz-Sprint** + **Phase 1+2 Fix (09.08.2026)** + **Watchlist-Cleanup-Archivierung (09.08.2026)** + **UK-Microcap-Gate (14.08.2026)** + **DQ-Isolation + Alarm-Crons (16.08.2026)** + **Drawdown-15-25-Zone auf 6 Pos (17.08.2026)** + **DQ-.L-Aufräumung im Cleanup + täglicher Cleanup (19.08.2026)** + **DQ-Deaktivierungs-Verifikation + Cleanup 1c (24.08.2026)** + **DQ-Root-Clause-Fix: keine Reaktivierung gedroppter .L + Dry-Run read-only (26.08.2026)** + **Selection Momentum-/Liquiditäts-Gate (27.08.2026)** + **Drawdown-Heilungs-Beschleunigung 15-25%: Size 65% + Conf 75% (01.09.2026)** + **Grok entfernt, twitterapi.io Standard (01.09.2026)** + **Alternative Momentum-Swing-Strategie dokumentiert (06.09.2026)** + **Volume-Backtest: NICHT übernommen (06.09.2026)** + **Sektor-abhängige Regime (07.09.2026)** + **Overlay-Bug Fix (07.09.2026)** + **Analyse-Sprint: 7 Defekte behoben (08.09.2026)** + **Messbarkeit: Gates, Quellen-Taxonomie, Beneficiary-Lifecycle, Video-Retry (08.09.2026)** + **Sizing entkoppelt, Momentum-Faktor repariert, Schattenbuecher (08.09.2026)**
+
+## 08.09.2026 — Sizing entkoppelt, Momentum-Faktor repariert, Schattenbücher
+
+Dritter Teil des Analyse-Sprints. Adressiert den Verstärker (Sizing) und macht die
+Selektionsfrage messbar (Schattenbücher), statt sie zu erraten.
+
+### Sizing — die Conviction bestimmt nicht mehr die Größe
+
+Gegenrechnung auf denselben 84 Trades (`P&L = pnl_pct × Größe`, keine Annahme über
+andere Entries):
+
+| Regel | P&L | Median | Max |
+|---|---|---|---|
+| **IST** (conviction-skaliert) | **−1.196 €** | 997 € | 3.006 € |
+| Gleiche Größe 875 € (budgetkonform) | **−148 €** | 875 € | 875 € |
+| Gleiches Risiko, Cap 1.200 € | −86 € | 1.200 € | 1.200 € |
+| IST, hart auf 1.200 € gedeckelt | −494 € | 997 € | 1.200 € |
+
+**Rund 1.050 der 1.196 € gingen auf die Conviction-Skalierung zurück, nicht auf die
+Signalauswahl.** Ursache: die Conviction ist am oberen Ende gegenläufig (Band 1.00 =
+29 Trades, WR 34 %, −1.168 €), und `max_position_pct_high` = 20 % setzte dort das
+meiste Geld ein. Positionen ≥ 1.800 € (Ø-Conviction 0.95): 25 Trades, WR 24 %,
+−1.659 €. Positionen 800–1.200 € (Ø-Conviction 0.87): 25 Trades, WR 52 %, +566 €.
+
+Drei zusammenhängende Änderungen:
+
+1. **Basisgröße für alle.** `max_position_pct` = 0.125 (1/8 des 70 %-Rahmens) als
+   einziger Deckel. `max_position_pct_high/_low` bleiben als deprecated stehen und
+   werden nicht mehr gelesen. Conviction entscheidet weiterhin, OB ein Trade genommen
+   wird und in welcher Reihenfolge (`priority_score`) — nur nicht mehr, wie groß.
+2. **`risk_pct_per_trade` 1.5 % → 0.8 %.** Der alte Wert war unerreichbar und damit
+   wirkungslos: 1.5 % × 8 Positionen = 12 % Portfoliorisiko, der Allokationsrahmen
+   erlaubt aber nur ~875 € pro Position ≈ 0.6 % Risiko. Gemessen: Median-Ist-Risiko
+   **71 €** gegen 150 € Ziel. `min(vol_size, pct × portfolio, …)` wählte deshalb fast
+   immer den pct-Deckel — die Risk-Parity war dekorativ. Bei 0.8 % bindet sie
+   innerhalb des Rahmens, der pct-Deckel wird zur Sicherheitsgrenze.
+3. **Bremskaskade additiv statt multiplikativ** (`combine_size_brakes()`, Floor 0.40).
+   Vorher: Drawdown × Sektor-Regime × VIX × Probation = 0.65 × 0.5 × 0.5 = **16 %** der
+   Basisgröße — ein valider Kandidat fiel unter die 200-€-Mindestgröße und wurde stumm
+   verworfen (das neue Gate `size-below-minimum` zeigt genau das). Jetzt werden die
+   Reduktionen addiert und am Floor abgeschnitten: mehrere Bremsen verstärken sich,
+   können den Trade aber nicht rechnerisch auslöschen. Wer in einer Lage gar nicht
+   handeln will, soll das über ein Gate entscheiden, nicht über eine Multiplikation
+   gegen null.
+
+### Momentum-Faktor — war für jeden Ticker identisch
+
+`factor_scores.momentum_score` stand in **allen 4.844 Zeilen auf 1.0**. Ursache in
+`_compute_momentum_score()`: der Default `idx = -1` ließ die Bedingung `if idx >= 0`
+immer fehlschlagen, beide Returns wurden auf `0` gesetzt, die Funktion gab `0 − 0 = 0`
+zurück — für jeden Ticker. `_percentile()` einer Liste aus lauter Nullen liefert für
+jedes Element 1.0. Der mit 30 % höchstgewichtete Faktor trug damit exakt null
+Querschnitts-Information; das Composite-Ranking lief allein auf
+Quality/Value/Revision/LowVol.
+
+- Negativer Index wird korrekt in eine Position übersetzt; zu kurze Historie liefert
+  `None` und fällt aus dem Ranking, statt es mit einem erfundenen Neutralwert zu
+  verwässern.
+- `_percentile()` gibt bei Eingaben ohne Streuung jetzt 0.5 plus Warnung zurück statt
+  1.0 — genau diese Rückgabe hatte den Bug unsichtbar gemacht („toter Faktor" sah aus
+  wie „alle maximal stark").
+- Universum: `us_universe.csv` (600 liquide US-Titel) wird dazugemischt, Limit von 200
+  auf 400 angehoben (`factor_max_tickers`). 136 Ticker sind für ein Top-Dezil zu dünn.
+
+Verifiziert an synthetischen Kursverläufen: Aufwärtstrend +0.566, Seitwärts −0.002,
+Abwärts −0.254, Trend-mit-Spike +0.157 (der jüngste Monat wird korrekt abgezogen).
+
+### PEAD — Fenster und Schwelle kalibriert
+
+Befund: nur **9 von 1.038** Cache-Einträgen hatten überhaupt einen Boost ≠ 0 (0,9 %).
+Das ist nicht kaputt, sondern strukturell — aber zwei Parameter passten nicht zum
+Effekt, den sie abbilden sollen:
+
+- **Fenster 4 → 10 Tage.** Post-Earnings-Announcement-Drift läuft über Wochen *nach*
+  der Meldung; ein 4-Tage-Fenster misst die Ankündigungs-Reaktion, also gerade das,
+  was der Effekt nicht ist.
+- **Mindest-Überraschung 2 % (relativ).** Vorher zählte `diff > 0` jede Abweichung als
+  BEAT, auch +0,0001 EPS. Ein Vorzeichentest auf verrauschten Schätzungen ist nahe an
+  einem Münzwurf. `surprise_pct` wird jetzt mitgeschrieben, damit die Schwelle später
+  aus Daten kalibriert statt geraten wird.
+
+Beides per Environment übersteuerbar (`PEAD_WINDOW_DAYS`, `PEAD_MIN_SURPRISE_PCT`).
+
+### Schattenbücher — `scripts/shadow_selection.py` (neu)
+
+Vier Selektions-Regeln laufen täglich parallel, jede mit eigenem Buch und eigenem P&L.
+Das Skript trifft **keine** Entscheidung: es ändert weder Config noch `positions`.
+
+| Buch | Regel |
+|---|---|
+| `live_baseline` | Was der Live-Entry heute wählen würde — dieselbe Klausel wie `signal_manager`, inklusive der quellenabhängigen Mindest-Mentions. Ohne diese Referenz sind die anderen Zahlen bedeutungslos. |
+| `h1_momentum` | Cross-sectional: Top-N nach `factor_scores.composite_score` mit Momentum-Perzentil ≥ 0.60. Kein absoluter Schwellenwert → hungert nie, flutet nie. Überspringt sich selbst mit Begründung, wenn `factor_scores` älter als 7 Tage ist. |
+| `h2_pead` | PEAD als Primärquelle statt als +2 %-Aufschlag. |
+| `h3_crowding` | Sentiment invertiert: unter den preisbestätigten Kandidaten die mit der *niedrigsten* Conviction — im **Band 0.30–0.65**. Die Untergrenze ist wesentlich: rankt man einfach aufsteigend, gewinnen Einträge mit conv≈0.12, und das ist kein leises Signal, sondern gar keines. |
+
+Alle Bücher bekommen Levels aus derselben Quelle wie der Live-Entry
+(`get_exit_config` über den Sektor-Regime-Schlüssel) und werden mit derselben
+Simulation bewertet (`crabel_shadow_eval.simulate_forward`, per Import statt Nachbau) —
+sonst wäre der Vergleich durch unterschiedliche Exit-Parameter verzerrt. Alle Bücher
+nennen gleich viele Kandidaten (TOP_N = 5), sonst misst man Selektivität statt
+Signalgüte.
+
+Eingehängt als Schritt 7 der `trading_pipeline` (nach dem Signal Manager, damit das
+Baseline-Buch denselben Watchlist-Zustand sieht wie der Live-Entry) und als kompakte
+Zeile im täglichen Telegram-Report (`nightly_eval.build_shadow_line()`).
+
+### Geänderte Dateien
+| Datei | Änderung |
+|---|---|
+| `scripts/signal_manager.py` | Sizing von der Conviction entkoppelt; `combine_size_brakes()` |
+| `data/strategy_config.json` | `max_position_pct` 0.15→0.125, `risk_pct_per_trade` 0.015→0.008, `size_brake_floor` neu |
+| `thematic/factor_ranker.py` | Momentum-Index-Bug, `_percentile`-Guard, Universums-Merge, Limit 200→400 |
+| `scripts/pead_signal.py` | Fenster 4→10 Tage, relative Mindest-Überraschung, `surprise_pct` im Info-Dict |
+| `scripts/shadow_selection.py` (neu) | Vier Selektions-Bücher, Vorwärtsbepreisung, Bericht |
+| `scripts/trading_pipeline.py` | Schritt 7 „Shadow Selection" |
+| `scripts/nightly_eval.py` | `build_shadow_line()` in beiden Report-Formaten |
+
+### Verifikation
+Test-Suite 29 grün, AST über 21 Dateien. Bremskaskade gegen Referenzwerte geprüft
+(Drawdown+Sektor+VIX: alt 16 % → neu 40 %). Momentum-Score an vier synthetischen
+Kursverläufen. Schattenbücher gegen DB-Kopie: Auswahl idempotent (zweiter Lauf am
+selben Tag erzeugt keine Duplikate), `positions` unberührt. Bewertungspfad mit echten
+`exit_rules` und synthetischen Verläufen: steigend → TIME_STOP nach 7 d bei +4,80 %,
+fallend → SL_HIT nach 4 d bei exakt −3,75 % (= 1,5 × ATR), seitwärts → TIME_STOP 0 %.
+
+### Offen
+`h1_momentum` liefert erst Kandidaten, wenn `factor_ranker` wieder läuft — die
+Thematic-Pipeline steht seit 13.07. Das Buch meldet das selbst und übergeht sich,
+statt stillzuschweigen. Und die Bücher entscheiden nichts: erst ab N≈30 je Hypothese
+ist der Vergleich mit `live_baseline` belastbar.
+
+## 08.09.2026 — Messbarkeit: Gate-Protokollierung, Quellen-Taxonomie, Beneficiary-Lifecycle, Video-Retry
+
+Nachtrag zum Analyse-Sprint. Die vier als „offen" markierten Punkte sind umgesetzt.
+Auslöser war eine Auswertung der 84 Trades nach Dimensionen, die einen Befund lieferte,
+der die Priorisierung verändert hat.
+
+### Vorbefund — die Conviction ist am oberen Ende gegenläufig
+
+| Conviction beim Entry | n | WR | P&L | Ø Size |
+|---|---|---|---|---|
+| **= 1.00** | 29 | 34 % | **−1.168 €** | 1.402 € |
+| 0.90–0.99 | 19 | 37 % | −193 € | 1.496 € |
+| **unter 0.90** | 36 | 44 % | **+100 €** | 1.058 € |
+
+93 % des Gesamtverlusts steckt im Top-Band des eigenen Scores; alles unterhalb 0.90 ist
+zusammen leicht profitabel. Ursache in der Formel: `sentiment_score` ist der Bull-Anteil
+der Mentions und wird bei **einer** bullishen Mention 1.0 — maximale Einigkeit ohne jede
+Bestätigung. Verifiziert: 69 % aller Einträge mit Conviction 1.00 haben genau eine Mention.
+
+Das Sizing verstärkt genau das: Positionen ≥ 1.800 € (Ø-Conviction 0.95) machen 25 Trades,
+WR 24 %, **−1.659 €**; Positionen 800–1.200 € (Ø-Conviction 0.87) machen 25 Trades,
+WR 52 %, **+566 €**. Ergänzend: 43 % der Trades sterben unter 4 Tagen und kosten −1.884 €,
+die übrigen 48 Trades machen +623 €.
+
+### Punkt 1 — Gate-Protokollierung an jedem Abbruch (`signal_manager.py`)
+Von ~20 `continue`-Pfaden im Entry-Loop protokollierten drei. In der Live-DB stand deshalb
+ausschließlich `gate='crabel'`, und es war nicht feststellbar, **wo** der Kandidatenstrom
+versiegt. Jetzt schreibt ein Closure `_skip(gate)` an jedem Abbruch eine Zeile; 22 von 23
+Pfaden sind angeschlossen (`already-open` bewusst nicht — das ist ein Duplikat, kein
+geblockter Entry, und würde die Tabelle täglich fluten). Neue Gate-Namen u.a.
+`cooldown-24h`, `no-price-data`, `sector-regime-bull`, `correlation`, `earnings-blackout`,
+`macro-event-day`, `segment-history`, `size-below-minimum`, `sector-exposure`.
+
+`size-below-minimum` ist dabei der diagnostisch wichtigste: die multiplikative Bremskaskade
+(Drawdown × Sektor-Regime × VIX × Probation) kann einen validen Kandidaten unter 200 €
+drücken — im Log sah das bisher aus wie „kein Kandidat".
+
+`log_blocked_entry()` verträgt jetzt fehlende Preis-/ATR-Daten (Gates vor der Preisabfrage
+schreiben NULL-Levels), und `crabel_shadow_eval.py` filtert Zeilen ohne `would_entry` aus
+der Vorwärtsbepreisung — sie zählen für die Häufigkeitsstatistik, nicht für den
+Counterfactual.
+
+### Punkt 2 — Quellen-Taxonomie statt globaler Schwellen (`config.py`)
+`min_mentions >= 2` war das bindende Entry-Kriterium (23 Kandidaten mit Conviction ≥ 0.65 →
+2 → 0). Die Schwelle galt für alle Quellen gleich, obwohl der Screener genau eine Zeile pro
+Ticker und Tag schreibt und sie strukturell nie erreichen konnte.
+
+Neu in `config.py`: `DETERMINISTIC_CHANNELS`, `is_deterministic_source()`,
+`confirmation_factor()`. Zwei Regeln bauen darauf auf:
+
+1. **Mindest-Mentions quellenabhängig** — deterministische Quelle: 1 Mention genügt,
+   Meinungsquellen: unverändert ≥ 2. Gemessen: **0 → 6 Kandidaten**. Bewusst nicht
+   `min_mentions=1` global — das ergäbe 13 und ließe genau das Verlustband wieder herein.
+2. **Bestätigungs-Faktor auf dem Sentiment-Term** — der Bull-Anteil wird mit der Zahl
+   *unabhängiger Kanäle* skaliert (1 Kanal → ×0.5, ab 2 → ×1.0). Deterministische Quellen
+   sind ausgenommen: eine reproduzierbare Messung gewinnt durch Wiederholung keine
+   Information. Wirkung: Screener-Kandidat behält 0.763, Einzelmeinung fällt 0.763 → 0.443
+   (unter `min_conviction`), „2 Mentions aus einem Kanal" 0.835 → 0.515. Das HIGH-Sizing-Band
+   (≥ 0.80, 20 % Position) schrumpft von 2 auf 1 Kandidaten.
+
+### Punkt 3 — Beneficiary-Lifecycle (`beneficiary_mapper.py`, beide `thesis_monitor.py`)
+Zwei Befunde: `theme_beneficiaries.status` wurde von **keiner** Codestelle je geändert
+(alle 220 auf `candidate`, die Filter `status != 'archived'` überall wirkungslos), und
+208 davon sind älter als 60 Tage — jüngstes `last_updated` ist der 13.07. Trotzdem bekamen
+33 Ticker daraus dauerhaft Conviction-Boost.
+
+- **Schreibseite**: beide `thesis_monitor`-Writer setzen jetzt `beneficiary_id` (aufgelöst
+  über `theme_id` + `ticker`). Die Spalte war in allen 81 Zeilen NULL — der Lookup lief
+  immer leer, deshalb griff auch der Case-Fix vom selben Tag ins Nichts.
+- **Lifecycle**: `sync_beneficiary_status()` leitet den Status bei jedem Mapper-Lauf neu ab —
+  `archived` bei nicht-aktivem Theme, gebrochener These oder Mapping > 60 Tage; `active` bei
+  aktivem Theme + INTACT; sonst `candidate`. Rein ableitend, damit kein fehlgeschlagener
+  Lauf einen Zustand dauerhaft verfälscht. Verifiziert gegen DB-Kopie: 208 archiviert,
+  Boost-Kreis **33 → 12 Ticker**, zweiter Lauf 0 Änderungen.
+- **Zweites Netz**: `get_thesis_conviction_boost()` prüft zusätzlich das Alter, damit ein
+  ausgefallener Mapper-Lauf keinen Boost aus monatealten Mappings durchlässt.
+
+### Punkt 4 — Video-Retry und Quarantäne (`signal_extractor.py`)
+Die Retry-Logik („nach 3 Fehlversuchen dauerhaft skippen") war **toter Code**: die Abfrage
+holte ausschließlich `status='pending'`, ein auf `error` gesetztes Video kam nie wieder in
+die Schleife. Beweis: alle 36 Fehler-Videos standen auf `error_count=1` — kein einziges hat
+je einen zweiten Versuch bekommen. Jeder transiente Fehler war endgültiger Signalverlust.
+
+- Auswahl umfasst jetzt `status='error' AND error_count < MAX_ERROR_ATTEMPTS` (Default 3,
+  per Env übersteuerbar).
+- Neuer Endzustand `failed` statt weiter `error` — nur so ist unterscheidbar, was noch
+  wiederholt wird und was aufgegeben wurde.
+- Neuer Endzustand `transcript_expired`: `cleanup_db()` leert Transkripte älter als 7 Tage;
+  ein in diesem Fenster gescheitertes Video ist nicht nachholbar und kreist sonst endlos
+  im Retry-Pool. Von den 36: **11 echt wiederholbar, 25 ohne Transkript**.
+- Lauf-Bilanz und DB-Bestand werden am Ende ausgegeben, ab 10 endgültig gescheiterten
+  Videos zusätzlich eine Log-Warnung. Bisher lief der Ausfall vollständig stumm.
+
+### Geänderte Dateien
+| Datei | Änderung |
+|---|---|
+| `scripts/signal_manager.py` | `_skip()`-Closure an 22 Gate-Pfaden; `log_blocked_entry` verträgt NULL-Levels; quellenabhängige `MENTIONS_CLAUSE` in beiden Kandidaten-Abfragen |
+| `config.py` | `DETERMINISTIC_CHANNELS`, `is_deterministic_source()`, `confirmation_factor()`, `MIN_MENTIONS_DETERMINISTIC`, `MIN_CONFIRM_CHANNELS` |
+| `scripts/watchlist_manager.py` | Bestätigungs-Faktor in beiden Conviction-Funktionen; Altersgrenze beim Thesis-Boost |
+| `scripts/crabel_shadow_eval.py` | filtert Zeilen ohne `would_entry` aus der Vorwärtsbepreisung |
+| `thematic/beneficiary_mapper.py` | `sync_beneficiary_status()` + Aufruf am Ende von `main()` |
+| `scripts/thesis_monitor.py`, `thematic/thesis_monitor.py` | `beneficiary_id` wird geschrieben |
+| `scripts/signal_extractor.py` | Retry-Auswahl, `MAX_ERROR_ATTEMPTS`, Zustände `failed`/`transcript_expired`, Lauf-Bilanz + Backlog-Warnung |
+
+### Verifikation
+Test-Suite 29 grün, AST-Check über 16 geänderte Dateien. Gegen DB-Kopien verifiziert:
+`log_blocked_entry` mit und ohne Preisdaten inkl. Dedup über
+`UNIQUE(ticker, direction, block_date, gate)`; die neue Kandidaten-Klausel liefert 6 statt 0;
+`sync_beneficiary_status` ist idempotent; `watchlist_manager --dry-run` lässt die
+Watchlist-Tabelle bit-identisch.
+
+### Weiterhin offen — und bewusst nicht entschieden
+Die Selektionsfrage selbst. Die obigen Fixes machen sie **messbar**, sie beantworten sie
+nicht. Aus der Datenlage folgen drei Kandidaten, die als eigene Schattenbücher gegen den
+Status quo laufen müssten, bevor eines davon live geht:
+Cross-sectional Momentum (12-1 + SMA200-Filter, `screener_source.setup_metrics()` liefert
+die Inputs bereits), PEAD als Primärquelle statt +2 %-Nudge (`pead_signal.py` vollständig
+vorhanden), und Sentiment als Crowding-Malus statt als Selektor — die einzige Lesart, die
+die 84 Trades stützen. Ebenfalls offen: SHORT (9 Trades, 22 % WR, −251 €, kein
+Borrow-/Kostenmodell) und das Sizing, das noch immer mit der Conviction skaliert.
+
+## 08.09.2026 — Analyse-Sprint: 7 Defekte aus Code-Review + DB-Auswertung
+
+Vollständige Analyse von Codebasis, fachlichen Prozessen und **Live-DB** (84 geschlossene
+Trades, 62 Pipeline-Läufe 28.07.–08.09.). Kernbefund: das System handelt nicht mehr
+(79 % Cash, 2/8 Positionen, Log meldet täglich "Keine Watchlist-Kandidaten"). Sieben
+Defekte behoben — bewusst OHNE neue Gates, ohne Exit-Umbau, ohne Änderung an
+`get_exit_config()` / `check_drawdown()` / den Entry-Schwellen.
+
+### Fix 1 — Mention-Aggregation je Ticker statt je Rohname (`watchlist_manager.py`)
+`GROUP BY name` über die Rohnamen, aber `UPDATE ... WHERE ticker=?` — bei mehreren
+Namensvarianten pro Ticker lief das UPDATE mehrfach und der **zuletzt verarbeitete
+Variant gewann**. `mention_count` war dadurch systematisch zu klein, ausgerechnet bei
+den meistgenannten Titeln. Jetzt zwei Phasen: (A) Rohname → Ticker via
+`validate_and_register`, (B) EINE kombinierte Aggregation über alle Namen eines Tickers,
+EIN INSERT/UPDATE. Neu: `--dry-run` stellt alt/neu gegenüber, ohne zu schreiben.
+Verifiziert (Live-DB, 14d-Fenster): 13 Ticker mit mehreren Varianten, z.B. GOOGL
+1 → 22 Mentions, Conviction 0.12 → 0.78; HOOD 6 → 9; CRM 2 → 9; DBK.DE 2 → 8.
+
+> ⚠️ **Wichtig — das behebt die Entry-Starvation NICHT allein.** Gemessen an der
+> Live-DB bleibt `mention_count >= 2` das bindende Kriterium: von 23 Kandidaten mit
+> Conviction ≥ 0.65 passieren nur **2**. Der hochbewertete Pool besteht überwiegend aus
+> **Screener-Signalen mit genau einer Mention** (eine Zeile pro Ticker und Tag, ein
+> Name, keine Varianten) — für die ändert die Aggregation nichts. Ob `min_mentions`
+> für deterministische Quellen gelockert wird, ist eine Strategieentscheidung und
+> wurde hier bewusst NICHT getroffen.
+
+### Fix 2 — Thesis-Boost griff nie bei gebrochenen Thesen (`watchlist_manager.py`)
+Zwei überlagerte Fehler: (a) `thesis_status_log.status` wird in GROSSSCHREIBUNG
+geschrieben, der Vergleich lief case-sensitiv gegen Kleinschreibung; (b) **`beneficiary_id`
+ist in allen 81 Zeilen NULL** — weder `scripts/thesis_monitor.py` noch
+`thematic/thesis_monitor.py` schreiben die Spalte, der Lookup lief also immer leer.
+Jede Position mit Beneficiary-Eintrag bekam dadurch +0.02, auch bei BROKEN. Jetzt
+normalisierter Vergleich + Lookup zusätzlich über den Ticker; WEAKENING → 0.0.
+
+### Fix 3 — `source_registry`-Zähler (`source_lifecycle.py` + `fix_source_counters.py` NEU)
+`evaluate_active_sources()` schrieb `total_bought = total_bought + SUM(rollierende
+30d-Snapshots über 90d)`. Jeder Trade steckte in ~30 Snapshots, und die Summe wurde
+**wöchentlich erneut addiert** → exponentielle Inflation (`der aktionaer` = 6358 bei
+84 Trades im ganzen System); `total_mentions` wurde nie geschrieben. Aus diesen Feldern
+speisen sich `adjust_weights()` und `get_channel_calibration()` — das Sentiment-Signal
+wurde also doppelt gedämpft (0.3 × 0.3) auf Basis einer Statistik, die etwas anderes
+misst, als ihr Name sagt. Jetzt werden alle Kennzahlen absolut aus `positions` /
+`watchlist_mentions` berechnet und per SET geschrieben (idempotent verifiziert).
+`scripts/fix_source_counters.py` korrigiert die Bestandswerte einmalig
+(Dry-Run-Default, read-only per DB-Hash verifiziert; `--apply`, `--reset-weights`).
+Nach der Korrektur: max. 32 Trades je Quelle, `techaktien` avg_pnl −19.1 € → **+3.1 €**.
+
+### Fix 4 — Portfolio-Report zeigte falsche Zahlen (`signal_manager.py`, `dashboard.py`)
+Report meldete "54 Trades / 35 % WR", die DB sagt **84 / 39 %**. `cfg["total_trades"]`
+und `winning_trades` werden nur im SL/TP-Pfad hochgezählt — nicht bei `TECH_BROKEN`,
+`TIME_STOP`, `DRAWDOWN_EMERGENCY` oder Exits aus `active_exit_check.py`. Beide Reports
+lesen jetzt aus `positions`; `adapt_strategy()` ebenso für die Win-Rate.
+
+### Fix 5 — `tech_score`-Wertebereich (`utils.py`, `watchlist_manager.py`, `refresh_tech_scores.py`)
+Neuer Helfer `clamp_tech_score()` auf [0,1] an beiden Schreibstellen. Eine Bestandszeile
+stand auf **5.0** (IQV) und passierte damit jeden `tech_score >= X`-Entry-Filter
+automatisch. Zusätzlich schreibt `refresh_tech_scores.py` jetzt `weekly_trend` mit —
+vorher wurde er dort nur gecleart, nie aktualisiert, sodass ein Refresh einen frischen
+`tech_score` neben einen veralteten `weekly_trend` setzte. Beide bilden zusammen das
+Momentum-Gate in `entry_gate_reason()` und müssen aus demselben Aufruf stammen.
+
+### Fix 6 — Committee-Fehlerquote 45 % (`roles/committee.py`)
+5 von 11 Checks endeten in `ERROR_FAIL_OPEN`; Logmarker `Committee/committee_bull:
+Parse-Fehler`. Die eigene Regel vom 20.07. ("JSON-Repair ab >5 % Ausreißerquote")
+war deutlich überschritten. Jetzt: `max_tokens` pro Rolle (Bull 800 → 1600, Bear/Risk
+1000) und eine Repair-Stufe vor dem Fail-Open, die den gehärteten `_try_parse()` aus
+`signal_extractor.py` wiederverwendet. Getestet gegen die realen Fehlermuster: trailing
+commas, Steuerzeichen und Mehrfach-Objekte werden gerettet, hart abgeschnittenes JSON
+bleibt Fail-Open (dagegen hilft nur der höhere Token-Deckel). Zusätzlich wird die
+Rohantwort bei Parse-Fehler in `committee_log` persistiert — bisher ging genau die
+Payload verloren, die man zur Diagnose braucht.
+
+### Fix 7 — toter Parameter `min_confidence` entfernt
+Der Key wurde vom Entry-Pfad **nie gelesen**: die wirksame Tech-Score-Schwelle liefert
+die Drawdown-Matrix (0.70/0.75). `adapt_strategy()` verstellte ihn trotzdem laufend und
+verschickte Telegram-Zeilen wie "Min. Konfidenz erhöht auf 80 %", der
+`strategy_optimizer` durchsuchte 6 Stufen im Grid und schrieb das Ergebnis zurück.
+Entfernt statt scharfgeschaltet — eine zweite, konkurrierende Quelle für dieselbe
+Schwelle wäre genau das Muster, das die Exit-Matrix am 09.08. beseitigt hat.
+Grid dadurch 6× kleiner. Die Drawdown-Matrix liegt jetzt als reine Funktion
+`drawdown_params()` in `config.py` (SSOT neben `get_exit_config()`); Report und
+Dashboard zeigen die tatsächlich wirksame Schwelle.
+
+### Geänderte Dateien
+| Datei | Änderung |
+|---|---|
+| `scripts/watchlist_manager.py` | Zwei-Phasen-Aggregation je Ticker + `--dry-run`; Thesis-Boost case-insensitiv + Ticker-Lookup; `clamp_tech_score` |
+| `scripts/source_lifecycle.py` | `evaluate_active_sources` rechnet absolut aus `positions`/`watchlist_mentions`; `channel_variants()`/`_channel_match_sql()` neu |
+| `scripts/fix_source_counters.py` (neu) | Einmalige Bestandskorrektur, Dry-Run-Default |
+| `scripts/signal_manager.py` | Trade-Zähler + Win-Rate aus DB; `min_confidence`-Mutationen raus; `drawdown_params` aus config |
+| `config.py` | `drawdown_params()` (Drawdown-Matrix als SSOT) |
+| `utils.py` | `clamp_tech_score()` |
+| `scripts/refresh_tech_scores.py` | Clamping + `weekly_trend` mitschreiben |
+| `scripts/strategy_optimizer.py`, `scripts/backtester.py` | `min_confidence` aus Grid/Write-Back/Reports entfernt |
+| `scripts/dashboard.py` | Trades/WR aus DB; "Min. Konfidenz" → wirksamer "Min. Tech-Score" |
+| `roles/committee.py` | Token-Budget je Rolle, JSON-Repair vor Fail-Open, Rohantwort im Audit-Log |
+
+### Verifikation
+Test-Suite **29 passed** (`PYTHONUTF8=1 python -m pytest tests/ -q`; ohne das Flag
+scheitert `test_exit_asymmetry` unter Windows an cp1252 — die Tests öffnen Dateien ohne
+`encoding=`, auf dem Server ist UTF-8 Default). AST-Check aller 11 geänderten Dateien
+grün. `watchlist_manager --dry-run` gegen eine DB-Kopie durchlaufen: Watchlist-Tabelle
+bit-identisch (Hash vor/nach gleich). `fix_source_counters.py` Dry-Run read-only
+(DB-Hash unverändert), `--apply` idempotent (2. Lauf = 0 Änderungen).
+
+### Offen (bewusst nicht angefasst)
+- `min_mentions >= 2` blockt weiterhin fast alle Kandidaten (siehe Kasten bei Fix 1).
+- `theme_beneficiaries`: 220 Einträge, **alle** im Status `candidate` — keiner wurde je
+  promoted. Die Thematic-Pipeline läuft täglich mit LLM-Kosten und wirkt über genau
+  einen Pfad in den Handel (Conviction-Boost), der bis heute defekt war (Fix 2).
+- `blocked_entries` enthält nur `gate='crabel'` — die Gates vom 27.08. (`momentum-gate`,
+  `liquidity-gate`) und 06.09. (Sektor-Regime) haben in 62 Läufen keine Zeile erzeugt.
+- 36 Videos hängen dauerhaft auf `status='error'`.
+- `watchlist` hat nach dem Table-Swap keinen PRIMARY KEY und `id INT` nullable — die
+  Ursache des `rowid`-vs-`id`-Pitfalls vom 09.08.
 
 ## 27.08.2026 — Selection-Rebuild: Momentum ist Gate, Sentiment ist Stärke
 

@@ -11,6 +11,7 @@ Reihenfolge (fachlich korrekt):
   4. Watchlist Dedup       – Duplikate bereinigen
   5. Technical Analysis    – Tech-Score schreiben (nach Watchlist!)
   6. Signal Manager        – Portfolio-Entscheidungen
+  7. Shadow Selection      – konkurrierende Selektions-Hypothesen (nur messen)
 """
 import subprocess
 import os
@@ -83,6 +84,10 @@ def main():
         ("watchlist_dedup.py",     "Watchlist Dedup"),
         ("technical_validator.py", "Technical Analysis"),  # NACH watchlist_manager!
         ("signal_manager.py",      "Signal Manager", "full"),
+        # NACH dem Signal Manager: das Baseline-Buch soll denselben Watchlist-
+        # Zustand sehen, den der Live-Entry gesehen hat. Rein messend — der
+        # Schritt aendert weder Config noch positions (siehe Modul-Docstring).
+        ("shadow_selection.py",    "Shadow Selection"),
     ]
 
     results = []

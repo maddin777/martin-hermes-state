@@ -133,25 +133,27 @@ def backtest_params(trades, sl_mult, tp_mult, min_conf):
     return sim
 
 def run_grid_search(trades):
+    # min_confidence-Dimension am 08.09.2026 entfernt (Grid 5x kleiner) — der Key
+    # wird vom Live-Entry-Pfad nicht gelesen, siehe Kommentar in
+    # strategy_optimizer.PARAM_GRID. Der Walk-Forward-Pfad optimierte ihn sonst
+    # weiter mit und schrieb ihn in strategy_config.json zurueck.
     best_score, best_params, results = -1, None, []
     for sl in [1.0, 1.25, 1.5, 1.75, 2.0, 2.5]:
         for tp in [2.0, 2.5, 3.0, 3.5, 4.0]:
-            for conf in [0.55, 0.60, 0.65, 0.70, 0.75]:
-                if tp / sl < 1.5:
-                    continue
-                sim = backtest_params(trades, sl, tp, conf)
-                if len(sim) < 3:
-                    continue
-                m = calculate_metrics(sim)
-                if not m:
-                    continue
-                results.append({"sl": sl, "tp": tp, "con": conf, "composite": m["composite"],
-                                "win_rate": m["win_rate"], "p": m["profit_factor"],
-                                "sharpe": m["sharpe"], "trades": len(sim)})
-                if m["composite"] > best_score:
-                    best_score = m["composite"]
-                    best_params = {"atr_sl_multiplier": sl, "atr_tp_multiplier": tp,
-                                   "min_confidence": conf}
+            if tp / sl < 1.5:
+                continue
+            sim = backtest_params(trades, sl, tp)
+            if len(sim) < 3:
+                continue
+            m = calculate_metrics(sim)
+            if not m:
+                continue
+            results.append({"sl": sl, "tp": tp, "composite": m["composite"],
+                            "win_rate": m["win_rate"], "p": m["profit_factor"],
+                            "sharpe": m["sharpe"], "trades": len(sim)})
+            if m["composite"] > best_score:
+                best_score = m["composite"]
+                best_params = {"atr_sl_multiplier": sl, "atr_tp_multiplier": tp}
     results.sort(key=lambda x: x["composite"], reverse=True)
     return best_params, results[:5]
 
@@ -168,7 +170,7 @@ def walk_forward_optimize(trades, n_folds=4):
         bp, _ = run_grid_search(train)
         if not bp:
             continue
-        test_sim = backtest_params(test, bp["atr_sl_multiplier"], bp["atr_tp_multiplier"], bp["min_confidence"])
+        test_sim = backtest_params(test, bp["atr_sl_multiplier"], bp["atr_tp_multiplier"])
         tm = calculate_metrics(test_sim)
         oos.append({"fold": i, "train_size": len(train), "test_size": len(test),
                      "params": bp, "oos_metrics": tm})
@@ -178,7 +180,6 @@ def walk_forward_optimize(trades, n_folds=4):
         return {
             "atr_sl_multiplier": median([r["params"]["atr_sl_multiplier"] for r in prof]),
             "atr_tp_multiplier": median([r["params"]["atr_tp_multiplier"] for r in prof]),
-            "min_confidence": median([r["params"]["min_confidence"] for r in prof]),
         }
     return None
 
@@ -201,7 +202,7 @@ def main():
         print("  Walk-Forward Optimierung (4 Folds)...", flush=True)
         new_params = walk_forward_optimize(trades, n_folds=4)
         if new_params:
-            print(f"  ✅ WF-Parameter: SL={new_params['atr_sl_multiplier']}x TP={new_params['atr_tp_multiplier']}x Conf={new_params['min_confidence']:.0%}", flush=True)
+            print(f"  ✅ WF-Parameter: SL={new_params['atr_sl_multiplier']}x TP={new_params['atr_tp_multiplier']}x", flush=True)
         else:
             print("  ⚠ WF nicht robust – Grid Search Fallback", flush=True)
             bp, top5 = run_grid_search(trades)

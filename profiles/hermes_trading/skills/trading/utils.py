@@ -417,6 +417,27 @@ TECH_MIN_BARS         = 200      # ~1 Jahr Handelstage
 TECH_MIN_TURNOVER_EUR = 500_000  # 20-Tage-Durchschnitt, in EUR
 
 
+def clamp_tech_score(value):
+    """Erzwingt den Wertebereich [0.0, 1.0] fuer watchlist.tech_score.
+
+    get_technical_score() klemmt die confidence bereits, aber in der Live-DB
+    existieren Bestandszeilen mit Werten ausserhalb des Bereichs (z.B. 5.0 aus
+    einem aelteren Schreibpfad). Solche Zeilen passieren jeden `tech_score >= X`
+    Entry-Filter automatisch und sind damit ein stiller Gate-Bypass.
+    Jede Schreibstelle geht deshalb durch diesen Helfer. None bleibt None
+    (fehlender Score ist ein gueltiger, eigener Zustand).
+    """
+    if value is None:
+        return None
+    try:
+        v = float(value)
+    except (TypeError, ValueError):
+        return None
+    if v != v:  # NaN
+        return None
+    return round(max(0.0, min(1.0, v)), 3)
+
+
 def get_technical_score(ticker):
     """
     Berechnet den technischen Confluence Score für einen Ticker.
