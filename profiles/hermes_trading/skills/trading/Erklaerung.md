@@ -1,6 +1,101 @@
 # Änderungshistorie — Trading Skill
 
-**Stand:** Paketen A–D + Sprints 1–7 + Bugfix-Sprint + Screener-Source + Watchlist-Performance-Fix + Rollen-Sprint R1–R4 + **Turtle-Konfluenz-Sprint** + **Phase 1+2 Fix (09.08.2026)** + **Watchlist-Cleanup-Archivierung (09.08.2026)** + **UK-Microcap-Gate (14.08.2026)** + **DQ-Isolation + Alarm-Crons (16.08.2026)** + **Drawdown-15-25-Zone auf 6 Pos (17.08.2026)** + **DQ-.L-Aufräumung im Cleanup + täglicher Cleanup (19.08.2026)** + **DQ-Deaktivierungs-Verifikation + Cleanup 1c (24.08.2026)** + **DQ-Root-Clause-Fix: keine Reaktivierung gedroppter .L + Dry-Run read-only (26.08.2026)** + **Selection Momentum-/Liquiditäts-Gate (27.08.2026)** + **Drawdown-Heilungs-Beschleunigung 15-25%: Size 65% + Conf 75% (01.09.2026)** + **Grok entfernt, twitterapi.io Standard (01.09.2026)** + **Alternative Momentum-Swing-Strategie dokumentiert (06.09.2026)** + **Volume-Backtest: NICHT übernommen (06.09.2026)** + **Sektor-abhängige Regime (07.09.2026)** + **Overlay-Bug Fix (07.09.2026)** + **Analyse-Sprint: 7 Defekte behoben (08.09.2026)** + **Messbarkeit: Gates, Quellen-Taxonomie, Beneficiary-Lifecycle, Video-Retry (08.09.2026)** + **Sizing entkoppelt, Momentum-Faktor repariert, Schattenbuecher (08.09.2026)**
+**Stand:** Paketen A–D + Sprints 1–7 + Bugfix-Sprint + Screener-Source + Watchlist-Performance-Fix + Rollen-Sprint R1–R4 + **Turtle-Konfluenz-Sprint** + **Phase 1+2 Fix (09.08.2026)** + **Watchlist-Cleanup-Archivierung (09.08.2026)** + **UK-Microcap-Gate (14.08.2026)** + **DQ-Isolation + Alarm-Crons (16.08.2026)** + **Drawdown-15-25-Zone auf 6 Pos (17.08.2026)** + **DQ-.L-Aufräumung im Cleanup + täglicher Cleanup (19.08.2026)** + **DQ-Deaktivierungs-Verifikation + Cleanup 1c (24.08.2026)** + **DQ-Root-Clause-Fix: keine Reaktivierung gedroppter .L + Dry-Run read-only (26.08.2026)** + **Selection Momentum-/Liquiditäts-Gate (27.08.2026)** + **Drawdown-Heilungs-Beschleunigung 15-25%: Size 65% + Conf 75% (01.09.2026)** + **Grok entfernt, twitterapi.io Standard (01.09.2026)** + **Alternative Momentum-Swing-Strategie dokumentiert (06.09.2026)** + **Volume-Backtest: NICHT übernommen (06.09.2026)** + **Sektor-abhängige Regime (07.09.2026)** + **Overlay-Bug Fix (07.09.2026)** + **Analyse-Sprint: 7 Defekte behoben (08.09.2026)** + **Messbarkeit: Gates, Quellen-Taxonomie, Beneficiary-Lifecycle, Video-Retry (08.09.2026)** + **Sizing entkoppelt, Momentum-Faktor repariert, Schattenbuecher (08.09.2026)** + **Kanonik-Mirror-Fix (.SG/.MU/ISIN) + Attributions-Oszillation Root-Cause (10.09.2026)**
+
+## 10.09.2026 — Kanonik-Mirror-Fix + Attributions-Oszillation (Vault-Insights-Vorschläge 1–3)
+
+Umgesetzt aus dem vault-insights-daily-Report vom 10.09.2026 (Abschnitt C).
+Beide Vorschläge hatten dieselbe Ursache-Klasse: **Spiegel-Listings und
+eingefrorene Felder verzerrten Statistiken, ohne dass sich real etwas verschob.**
+
+### Vorschlag 1+3 — `.SG`/`.MU`/ISIN-Spiegel-Ticker als Pseudo-Shorts
+
+**Symptom:** NetApp stand als `NTA.SG` in der Watchlist (Sektor `Other`,
+kein `tech_score`), Short-C 82 % > Long-C 77 % → zählte als Bärensignal.
+Analog Snowflake (`US8334451098.SG`), Swatch (`UHRN.SG`), Chevron (`CHV.SG`),
+XPeng (`8XPA.SG`), Seagate (`IE00BKVD2N49.SG`), MicroStrategy (`MIGA.MU`),
+Evercore (`QGJ.MU`).
+
+**Root Cause:** `technical_validator.resolve_ticker()` Schritt 3 (yfinance-Suche)
+bevorzugte **explizit** eine DE-Börse:
+`if q.get("exchange") in ("GER","XETRA","FRA","STU","MUN"): return q.get("symbol")`.
+`STU` = Stuttgart = `.SG`. Damit wurde systematisch das Nebenboersen-Spiegel-
+Symbol genommen statt des Primärlistings. Folgen: yfinance liefert für diese
+Symbole KEINEN Sektor (→ `Other`) und zu wenig Liquidität/Bars für einen
+`tech_score` → die Zeile fiel ohne Filterung als Sentiment-Short in die Statistik.
+
+**Fix:**
+1. `technical_validator.resolve_ticker()` — DE-Bevorzugung entfernt; es gilt
+   jetzt dieselbe Priorität wie in `company_validator._exchange_priority`
+   (US-Primär > `.DE` > Sonstige > `.SG/.MU/.F/.DU/.HM/.BE`). Zusätzlich wird
+   das DB-Kanonik-Mapping auf jedes Ergebnis angewendet.
+2. **DB-First (kein Hardcode):** 18 neue Regeln in `canonical_tickers`
+   (NTA.SG→NTAP, US8334451098.SG→SNOW, UHRN.SG→UHRN.SW, CHV.SG→CVX,
+   8XPA.SG→XPEV, IE00BKVD2N49.SG→STX, MIGA.MU→MSTR, QGJ.MU→EVR, NYT.SG→NYT,
+   PFE.F→PFE, ISIN-Varianten ohne Suffix …). Seed-Listen in `signal_manager.py`
+   und `watchlist_manager.py` mitgezogen (greifen nur bei leerer Tabelle).
+3. **Einmal-Migration `scripts/canonicalize_watchlist.py`** (Dry-Run default,
+   `--apply` schreibt, `--auto` löst zusätzlich Nebenboersen-Mirror ohne Score
+   per yfinance-Namenssuche auf). 9 Zeilen umbenannt, 2 gemerged
+   (MIGA.MU→MSTR, YDX.MU→NBIS). Danach `refresh_tech_scores.py`.
+   **Guard:** `resolve_primary()` verlangt Namensähnlichkeit ≥ 0.6 und
+   Priorität vor Ähnlichkeit — sonst wurde "Contemporary Amperex Technology"
+   (CATL) auf `TSM` (TSMC, sim 0.45) bzw. Galaxy Digital auf `0P0.DE` statt
+   `GLXY` gemappt. Ergebnis: CATL → `3750.HK` (sim 1.00).
+4. Sektoren der neuen Primär-Zeilen aus yfinance nachgezogen (EVR, GLXY, NYT,
+   SNOW, STX, UHRN.SW, XPEV waren leer geerbt).
+5. `watchlist_cleanup.py` Stufe 1b erweitert: `.L` → auch `.F/.MU/.SG/.DU/.HM/.BE`
+   ohne `tech_score` werden auf `dropped` / `notes='no-liquidity-gate'` gesetzt
+   (Sicherheitsgurt; verhindert Wiederauferstehung via Resurrection-Guard).
+6. Zombie entfernt: `WDI.HM` (Wirecard AG, insolvent seit 2020, 0,015 €,
+   aber `tech_score` 0.825) → `dropped`.
+
+**Verifikation:** 0 aktive Nicht-Primär-Ticker im Export; NTAP hat jetzt
+`tech_score` 0.85 / Technology, SNOW 0.825, CVX 0.80, DELL 0.85, GTLB 0.875.
+
+### Vorschlag 2 — Attributions-Oszillation (Tag 11): Root Cause gefunden
+
+**Symptom:** Die Quellen-Attribution (Kanal-Zählung über die exportierte
+Watchlist) schwankte täglich um ±5–15 pro Quelle, Summe 221 → 302 → 383.
+
+**Root Cause (gemessen, nicht vermutet):** Der Aggregations-UPDATE in
+`watchlist_manager.py` schreibt `channels` nur für
+`status IN ('watching','dropped')`. **Bought-Zeilen (82 von 110 exportierten
+Zeilen = 75 %) behielten damit ihren Kanal-Stand vom KAUFDATUM.**
+
+Reconciliation gegen `watchlist_mentions` (14-Tage-Fenster, `WATCHLIST_DAYS=14`):
+
+| Status | Zeilen | Abweichung gespeichert vs. Live-Fenster |
+|---|---|---|
+| bought | 82 | **78** |
+| watching | 28 | 7 (Alias-Artefakt der Prüfung) |
+
+Beispiele: AAPL hatte 16 Kanäle gespeichert, aber nur 6 im Fenster; CRWD war
+seit 04.06. eingefroren (7 statt 3).
+
+**Wirkung:** Die Metrik mischte zwei Zeitbasen — 28 täglich aktualisierte
+`watching`-Zeilen + 82 eingefrorene `bought`-Zeilen. Dadurch sprangen die
+Tageszählungen, obwohl sich real nichts verschoben hatte. Der Report
+protokollierte das seit 11 Tagen als „Oszillation".
+
+**Fix:**
+1. `watchlist_manager.py` zieht `channels` auch für `status='bought'` nach —
+   **bewusst nur das Attributions-Feld**; Status, Entry-Daten, Conviction und
+   `last_seen` bleiben unangetastet (keine Exit-/Reaktivierungslogik kippt).
+2. `bought`-Zeilen **ohne** aktuelle Mentions bekommen `channels='[]'`
+   (sonst steht der Kaufdatum-Stand für immer in der Statistik; 32 Zeilen).
+3. `watchlist.channels`-Normalisierung nutzte `WHERE id=?` — 942 von 1781 Zeilen
+   haben `id IS NULL` (Dedup arbeitet mit `rowid`) → griff ins Leere. Jetzt `rowid`.
+4. Einmal-Backfill der 78 abweichenden bought-Zeilen.
+
+**Verifikation:** Attributionen 384 → **167**, Mismatch-Zeilen 85 → 7
+(verbleibende 7 sind `watching` und ausschließlich ein Alias-Artefakt der
+Prüfprozedur, kein Datenfehler). Die Quelle ist jetzt eine **einzige Zeitbasis**.
+
+**Sekundärbefund:** Der Sprung 221 → 302 → 383 ist teilweise auf die
+08.09.-Änderung zurückzuführen (Export zeigte vorher nur die Top-3-Kanäle pro
+Zeile via `list(set(x))[:3]`, danach die volle Liste). Zahlen vor und nach dem
+08.09. sind daher **nicht direkt vergleichbar**.
 
 ## 08.09.2026 — Sizing entkoppelt, Momentum-Faktor repariert, Schattenbücher
 

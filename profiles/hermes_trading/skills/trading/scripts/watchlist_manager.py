@@ -475,6 +475,28 @@ def main(dry_run=False):
                 ("639.F",  "SPOT", "Spotify: Frankfurter Mirror → NYSE"),
                 ("6MK.F",  "MRK",  "Merck & Co: Frankfurter Mirror → NYSE"),
                 ("ARMK",   "ARM",  "ARM Holdings: yfinance löst ARM fälschlich auf ARMK auf"),
+                ("ULVR.L", "UL",   "Unilever: London Listing → NYSE ADR"),
+                ("LLYCL.SN", "LLY", "Eli Lilly: Stockholm Listing → NYSE"),
+                # 10.09.2026 — DE-Nebenboersen-Mirror (STU/MUN/FRA) + ISIN-Symbole →
+                # Primärlisting. Ursache: technical_validator.resolve_ticker bevorzugte
+                # DE-Börsen → NetApp kam als NTA.SG rein (kein yfinance-Sektor, kein
+                # tech_score → zählte als Pseudo-Sentiment-Short).
+                ("NTA.SG",  "NTAP", "NetApp: Stuttgarter Mirror → NASDAQ"),
+                ("CHV.SG",  "CVX",  "Chevron: Stuttgarter Mirror → NYSE"),
+                ("UHRN.SG", "UHRN.SW", "Swatch Group: Stuttgarter Mirror → SIX"),
+                ("8XPA.SG", "XPEV", "XPeng ADR: Stuttgarter Mirror → NYSE"),
+                ("IE00BKVD2N49.SG", "STX", "Seagate: ISIN/SG-Mirror → NASDAQ"),
+                ("US8334451098.SG", "SNOW", "Snowflake: ISIN/SG-Mirror → NYSE"),
+                ("MIGA.MU", "MSTR", "Strategy(MicroStrategy): Münchner Mirror → NASDAQ"),
+                ("QGJ.MU",  "EVR",  "Evercore: Münchner Mirror → NYSE"),
+                ("IE00BKVD2N49", "STX", "Seagate: ISIN ohne Suffix → NASDAQ"),
+                ("US8334451098", "SNOW", "Snowflake: ISIN ohne Suffix → NYSE"),
+                ("US4330001060.SG", "HIMS", "Hims & Hers: ISIN/SG-Mirror → NYSE"),
+                ("US4330001060", "HIMS", "Hims & Hers: ISIN ohne Suffix → NYSE"),
+                ("US78446M1099.SG", "SMASM", "SMA Solar ADR"),
+                ("US87155N1090.SG", "SY1.DE", "Symrise: ISIN/SG-Mirror → XETRA"),
+                ("US7865841024.SG", "SAF.PA", "Safran: ISIN/SG-Mirror → Euronext"),
+                ("US7865841024", "SAF.PA", "Safran: ISIN ohne Suffix → Euronext"),
             ]
             con.executemany(
                 "INSERT INTO canonical_tickers (source_ticker, target_ticker, reason) VALUES (?, ?, ?)",
@@ -499,16 +521,18 @@ def main(dry_run=False):
             print(f"  ✓ Kanal-Namen normalisiert", flush=True)
     
         # Migration: auch watchlist.channels JSON normalisieren (Case-Bug in gespeicherten Channels)
+        # FIX 10.09.2026: WHERE id=? griff ins Leere — 942 von 1781 Zeilen haben
+        # id IS NULL (watchlist_dedup verwaltet via rowid). Jetzt rowid.
         import json as _json
         _dirty_channels = 0
-        for _row in con.execute("SELECT id, channels FROM watchlist WHERE channels IS NOT NULL").fetchall():
+        for _row in con.execute("SELECT rowid, channels FROM watchlist WHERE channels IS NOT NULL").fetchall():
             try:
                 _chans = _json.loads(_row["channels"])
             except Exception:
                 continue
             _norm = sorted(set(c.lower().strip() for c in _chans if c and c.strip()))
             if _norm != sorted(set(c.strip() for c in _chans if c and c.strip() if c)):
-                con.execute("UPDATE watchlist SET channels=? WHERE id=?", (_json.dumps(_norm), _row["id"]))
+                con.execute("UPDATE watchlist SET channels=? WHERE rowid=?", (_json.dumps(_norm), _row["rowid"]))
                 _dirty_channels += 1
         if _dirty_channels:
             con.commit()
@@ -894,6 +918,44 @@ def main(dry_run=False):
                   conviction_bear,
                   conviction_aged,
                   json.dumps(channels_list), ticker))
+
+            # ── ROOT-CAUSE-FIX 10.09.2026: Attribution-Oszillation ──────────────
+            # Der UPDATE oben greift NUR für status IN ('watching','dropped').
+            # Bought-Zeilen behielten damit ihren `channels`-Stand vom KAUFDATUM.
+            # Verifiziert (10.09.): AAPL hatte 16 Kanäle gespeichert, aber nur 6
+            # im aktuellen 14-Tage-Fenster; CRWD war seit 04.06. eingefroren.
+            # 78 von 82 exportierten bought-Zeilen wichen vom Live-Fenster ab.
+            #
+            # Folge: Die Quellen-Attribution (Export → vault-insights zählt die
+            # Kanalspalte über ALLE Zeilen) mischte zwei Zeitbasen — 28 täglich
+            # aktualisierte watching-Zeilen + 82 eingefrorene bought-Zeilen.
+            # Tagesscharfe Quell-Zählungen sprangen dadurch um ±5–15, obwohl
+            # sich real nichts verschoben hatte ("Oszillation seit Tag 11").
+            #
+            # Fix: `channels` wird auch für bought-Zeilen aus dem aktuellen
+            # Fenster nachgezogen. Bewusst NUR das Attributions-Feld — Status,
+            # Entry-Daten, Conviction und last_seen bleiben unangetastet, damit
+            # keine Exit-/Reaktivierungslogik für gehaltene Positionen kippt.
+            con.execute(
+                "UPDATE watchlist SET channels=? WHERE ticker=? AND status='bought'",
+                (json.dumps(channels_list), ticker))
+        con.commit()
+
+        # bought-Zeilen OHNE aktuelle Mentions: die Attribution leeren. Sonst
+        # bleibt der Kanal-Stand vom Kaufdatum für immer in der Statistik stehen
+        # (z.B. CRWD/2GB.DE) und verzerrt die Quellen-Gewichtung dauerhaft.
+        _with_mentions = set(ticker_names.keys())
+        _cleared_bought = 0
+        for _r in con.execute(
+                "SELECT rowid, ticker, channels FROM watchlist WHERE status='bought'"
+        ).fetchall():
+            if _r["ticker"] not in _with_mentions and (_r["channels"] or "[]") != "[]":
+                con.execute("UPDATE watchlist SET channels='[]' WHERE rowid=?",
+                            (_r["rowid"],))
+                _cleared_bought += 1
+        if _cleared_bought:
+            print(f"  🧹 {_cleared_bought} bought-Zeilen ohne aktuelle Mentions: "
+                  f"Attribution geleert", flush=True)
         con.commit()
 
         if dry_run:

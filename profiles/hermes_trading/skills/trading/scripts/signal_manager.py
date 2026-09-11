@@ -312,6 +312,28 @@ def init_db(con):
             ("639.F",  "SPOT", "Spotify: Frankfurter Mirror → NYSE"),
             ("6MK.F",  "MRK",  "Merck & Co: Frankfurter Mirror → NYSE"),
             ("ARMK",   "ARM",  "ARM Holdings: yfinance löst ARM fälschlich auf ARMK auf"),
+            ("ULVR.L", "UL",   "Unilever: London Listing → NYSE ADR"),
+            ("LLYCL.SN", "LLY", "Eli Lilly: Stockholm Listing → NYSE"),
+            # 10.09.2026 — DE-Nebenboersen-Mirror (STU/MUN/FRA) + ISIN-Symbole →
+            # Primärlisting. Ursache: technical_validator.resolve_ticker bevorzugte
+            # DE-Börsen → NetApp kam als NTA.SG rein (kein yfinance-Sektor, kein
+            # tech_score → zählte als Pseudo-Sentiment-Short).
+            ("NTA.SG",  "NTAP", "NetApp: Stuttgarter Mirror → NASDAQ"),
+            ("CHV.SG",  "CVX",  "Chevron: Stuttgarter Mirror → NYSE"),
+            ("UHRN.SG", "UHRN.SW", "Swatch Group: Stuttgarter Mirror → SIX"),
+            ("8XPA.SG", "XPEV", "XPeng ADR: Stuttgarter Mirror → NYSE"),
+            ("IE00BKVD2N49.SG", "STX", "Seagate: ISIN/SG-Mirror → NASDAQ"),
+            ("US8334451098.SG", "SNOW", "Snowflake: ISIN/SG-Mirror → NYSE"),
+            ("MIGA.MU", "MSTR", "Strategy(MicroStrategy): Münchner Mirror → NASDAQ"),
+            ("QGJ.MU",  "EVR",  "Evercore: Münchner Mirror → NYSE"),
+            ("IE00BKVD2N49", "STX", "Seagate: ISIN ohne Suffix → NASDAQ"),
+            ("US8334451098", "SNOW", "Snowflake: ISIN ohne Suffix → NYSE"),
+            ("US4330001060.SG", "HIMS", "Hims & Hers: ISIN/SG-Mirror → NYSE"),
+            ("US4330001060", "HIMS", "Hims & Hers: ISIN ohne Suffix → NYSE"),
+            ("US78446M1099.SG", "SMASM", "SMA Solar ADR"),
+            ("US87155N1090.SG", "SY1.DE", "Symrise: ISIN/SG-Mirror → XETRA"),
+            ("US7865841024.SG", "SAF.PA", "Safran: ISIN/SG-Mirror → Euronext"),
+            ("US7865841024", "SAF.PA", "Safran: ISIN ohne Suffix → Euronext"),
         ]
         con.executemany(
             "INSERT INTO canonical_tickers (source_ticker, target_ticker, reason) VALUES (?, ?, ?)",

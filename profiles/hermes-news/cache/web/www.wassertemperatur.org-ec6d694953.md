@@ -9,7 +9,7 @@ Navigieren Sie hier direkt mit nur einem Klick zur gewünschten Information:
 
 Der Schweriner See liegt in Westmecklenburg und ist mit seiner Fläche von 61,54 Quadratkilometern der zweitgrößte See in Norddeutschland und der viertgrößte See von Deutschland. Der Schweriner See wird durch den Paulsdamm in der Mitte in zwei Teile getrennt, wobei der Paulsdammkanal einen reibungslosen Schiffsverkehr gewährleistet. Der größere Außensee liegt im Norden, während der südlich gelegene Innensee direkt an die Stadt Schwerin grenzt. Auf Campingplätzen direkt am See kann man einen schönen Urlaub verbringen und vor allem im Hochsommer durch einen Sprung in den See eine Abkühlung holen. Auch kann man verschiedenen Wassersportarten auf dem Schweriner See nachgehen, wie Boot fahren oder surfen.
 
-## Aktuelle Wassertemperatur im Schweriner See: 22 °C
+## Aktuelle Wassertemperatur im Schweriner See: 21 °C
 
 **Weitere Wassertemperaturen:**
 
@@ -36,71 +36,71 @@ Nachfolgend finden Sie Infos zum aktuellen Wetter und eine Wettervorhersage sowi
 
 Schwerin
 
-**10°**
+**11°**
 
-Bedeckt
+Überwiegend bewölkt
 
 97% Luftfeuchtigkeit
 
-Wind: 3m/s WSW
+Wind: 2m/s N
 
-MAX C 14 • MIN C 10
+MAX C 13 • MIN C 11
 
 21°
 
-DO
-
-19°
-
 FR
 
-19°
+21°
 
 SA
-
-20°
-
-SO
-
-23°
-
-MO
-
-23°
-
-DI
-
-16°
-
-MI
-
-17°
-
-DO
 
 18°
 
-FR
-
-14°
-
-SA
-
-19°
-
 SO
 
 19°
 
 MO
 
-22°
+23°
 
 DI
 
-19°
+27°
 
 MI
+
+22°
+
+DO
+
+19°
+
+FR
+
+21°
+
+SA
+
+23°
+
+SO
+
+20°
+
+MO
+
+19°
+
+DI
+
+21°
+
+MI
+
+22°
+
+DO
 
 ### Klimatabelle Schweriner See:
 

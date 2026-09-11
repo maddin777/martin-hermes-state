@@ -1,9 +1,9 @@
 {
-  "last_report_path": "/root/.hermes/profiles/hermes_trading/logs/curator/20260903-142612",
-  "last_run_at": "2026-09-03T14:26:12.596012+00:00",
-  "last_run_duration_seconds": 379.752515,
+  "last_report_path": "/root/.hermes/profiles/hermes_trading/logs/curator/20260910-145018",
+  "last_run_at": "2026-09-10T14:50:18.678929+00:00",
+  "last_run_duration_seconds": 387.558119,
   "last_run_summary": "auto: no changes; llm: skipped (consolidation off)",
   "last_run_summary_shown_at": null,
   "paused": false,
-  "run_count": 16
+  "run_count": 17
 }

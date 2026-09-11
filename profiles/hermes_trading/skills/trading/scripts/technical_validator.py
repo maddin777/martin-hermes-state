@@ -212,34 +212,80 @@ def _strip_suffixes(name: str) -> str:
     return cur
 
 
+def _load_canonical_map():
+    """Lädt canonical_tickers (DB) — source_ticker → target_ticker."""
+    try:
+        con = db_connect()
+        m = {r[0]: r[1] for r in
+             con.execute("SELECT source_ticker, target_ticker FROM canonical_tickers")}
+        con.close()
+        return m
+    except Exception:
+        return {}
+
+
+_CANONICAL_MAP = _load_canonical_map()
+
+
+def _canonical(ticker):
+    """Wendet das DB-Kanonik-Mapping an (NTA.SG → NTAP etc.)."""
+    if not ticker:
+        return ticker
+    return _CANONICAL_MAP.get(ticker, ticker)
+
+
 def resolve_ticker(company_name):
     """Löst Unternehmensnamen zu Ticker auf.
 
     Lookup-Reihenfolge:
-    1. Voller Name in KNOWN_TICKERS  (schuetzt 'siemens energy' vor Kollision mit 'siemens')
-    2. Suffix-gestrippter Name in KNOWN_TICKERS  (faengt 'Apple Inc.' -> 'apple')
-    3. Yahoo-Suche (yf.Search), bevorzugt DE-Boersen
+    1. Voller Name in _TICKER_CACHE  (schuetzt 'siemens energy' vor Kollision mit 'siemens')
+    2. Suffix-gestrippter Name in _TICKER_CACHE  (faengt 'Apple Inc.' -> 'apple')
+    3. Yahoo-Suche (yf.Search) — **Primärlisting bevorzugt**
+
+    FIX 10.09.2026 (Root Cause der .SG-Pseudo-Shorts): Schritt 3 bevorzugte
+    früher EXPLIZIT eine DE-Börse (`exchange in ("GER","XETRA","FRA","STU","MUN")`)
+    und nahm deren Symbol. Folge: NetApp → NTA.SG (Stuttgart), Snowflake →
+    US8334451098.SG, Chevron → CHV.SG, Swatch → UHRN.SG, XPeng → 8XPA.SG,
+    Seagate → IE00BKVD2N49.SG, MicroStrategy → MIGA.MU, Evercore → QGJ.MU.
+    Diese Spiegel-Listings liefern bei yfinance KEINEN Sektor (→ 'Other' im
+    Export) und haben zu wenig Liquidität/Bars für einen tech_score → sie
+    fielen als falsche Sentiment-Shorts (Short-C > Long-C) durch und
+    verzerrten Sektor-/SHORT-Statistik.
+
+    Jetzt gilt dieselbe Priorität wie in company_validator._exchange_priority:
+    US-Primär (kein Suffix) > .DE (XETRA) > Sonstige > DE-Nebenbörsen
+    (.F/.MU/.SG/.DU/.HM/.BE). Zusätzlich wird das DB-Kanonik-Mapping
+    (canonical_tickers) auf jedes Ergebnis angewendet.
     """
     key = company_name.lower().strip()
 
     # 1. Voller Name
     if key in _TICKER_CACHE:
-        return _TICKER_CACHE[key]
+        return _canonical(_TICKER_CACHE[key])
 
     # 2. Suffix-Stripping Fallback
     stripped = _strip_suffixes(key)
     if stripped and stripped != key and stripped in _TICKER_CACHE:
-        return _TICKER_CACHE[stripped]
+        return _canonical(_TICKER_CACHE[stripped])
 
-    # 3. Yahoo-Suche
+    # 3. Yahoo-Suche — Primärlisting bevorzugt (siehe Docstring)
     try:
-        results = yf.Search(company_name, max_results=3)
-        quotes = results.quotes
+        results = yf.Search(company_name, max_results=5)
+        quotes = results.quotes or []
         if quotes:
-            for q in quotes:
-                if q.get("exchange") in ("GER", "XETRA", "FRA", "STU", "MUN"):
-                    return q.get("symbol")
-            return quotes[0].get("symbol")
+            def _prio(q):
+                sym = q.get("symbol") or ""
+                if not sym:
+                    return 9
+                if "." not in sym and "-" not in sym:
+                    return 0   # US-Primär
+                if sym.endswith(".DE"):
+                    return 1   # XETRA
+                if sym.endswith((".F", ".MU", ".SG", ".DU", ".HM", ".BE")):
+                    return 3   # DE-Nebenbörsen
+                return 2       # Sonstige (.PA, .SW, .L, .TO ...)
+            quotes = sorted(quotes, key=_prio)
+            return _canonical(quotes[0].get("symbol"))
     except Exception:
         pass
     return None
