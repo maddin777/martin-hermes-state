@@ -35,6 +35,13 @@
 }
 ```
 
+## Abhängigkeit: lxml im Trading-venv (⚠️ 11.09.2026)
+`search_news()` parst mit `BeautifulSoup(resp.text, "xml")` — das braucht den **`lxml`**-Treebuilder.
+Ohne `lxml` im venv wirft bs4 `"Couldn't find a tree builder with the features you requested: xml"` und
+`search_news()` returned für **jeden** Ticker nur ein `"Fehler: ..."`-Item → `valid=[]` → Gate ist blind
+(fail-open neutral) und `stale_refresh_queue` meldet `0 News` bei 100% der Ticker.
+**Fix:** `cd <trading> && ./venv/bin/pip install lxml`. Nach venv-Reinstall/Clone immer prüfen.
+
 ## Bekannte Grenzen
 - Google News RSS liefert nur englische Quellen
 - Keyword-basiert, kein LLM-Sentiment
