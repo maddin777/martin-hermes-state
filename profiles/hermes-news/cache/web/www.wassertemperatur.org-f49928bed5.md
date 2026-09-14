@@ -9,7 +9,7 @@ Navigieren Sie hier direkt mit nur einem Klick zur gewünschten Information:
 
 Ein **Urlaub in Lübeck** entführt in eine Stadt, die als **Inbegriff norddeutscher Historie und Kultur** gilt. Mit ihrem **Status als UNESCO-Weltkulturerbe** besticht sie durch eine **Altstadt von einnehmender Schönheit** und einem **vielseitigen Kulturprogramm**. Tatsächlich strahlen die Bürgerhäuser und das Ambiente der Stadt noch immer das Flair der hanseatischen Blütezeit aus. Auch wenn die Tage als Handelszentrum längst Geschichte sind, so hat Lübeck nichts von seiner Anziehungskraft verloren und **bietet insbesondere Kulturliebhabern unzählige Entdeckungsmöglichkeiten**. Man wandelt hier auf Pfaden, die sowohl durch die reiche Vergangenheit der Hansestadt führen als auch zu aktuellen kulturellen Ereignissen und attraktiven Freizeitangeboten leiten.
 
-## Aktuelle Wassertemperatur in der Trave vor Lübeck: 18 °C
+## Aktuelle Wassertemperatur in der Trave vor Lübeck: 17 °C
 
 Lübeck, Germany: Trave/Kanaltrave, Hafen, Altstadt - 12 HiRes Images - 8K Ultra HD - YouTube
 
@@ -101,41 +101,29 @@ Nachfolgend finden Sie Infos zum aktuellen Wetter sowie eine Übersicht über di
 
 Lübeck
 
-**12°**
+**15°**
 
 Bedeckt
 
-78% Luftfeuchtigkeit
+93% Luftfeuchtigkeit
 
-Wind: 6m/s WNW
+Wind: 5m/s SW
 
-MAX C 12 • MIN C 12
-
-20°
-
-FR
+MAX C 15 • MIN C 15
 
 20°
-
-SA
-
-19°
-
-SO
-
-18°
 
 MO
 
-22°
+23°
 
 DI
 
-24°
+19°
 
 MI
 
-21°
+17°
 
 DO
 
@@ -147,25 +135,37 @@ FR
 
 SA
 
-21°
+18°
 
 SO
 
-20°
+18°
 
 MO
 
-19°
+16°
 
 DI
 
-20°
+15°
 
 MI
 
-21°
+15°
 
 DO
+
+19°
+
+FR
+
+15°
+
+SA
+
+14°
+
+SO
 
 ### Klima in Lübeck:
 

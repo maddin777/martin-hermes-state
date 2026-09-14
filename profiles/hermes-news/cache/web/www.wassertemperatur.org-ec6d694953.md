@@ -36,71 +36,71 @@ Nachfolgend finden Sie Infos zum aktuellen Wetter und eine Wettervorhersage sowi
 
 Schwerin
 
-**11°**
+**15°**
 
-Überwiegend bewölkt
+Bedeckt
 
-97% Luftfeuchtigkeit
+98% Luftfeuchtigkeit
 
-Wind: 2m/s N
+Wind: 3m/s N
 
-MAX C 13 • MIN C 11
-
-21°
-
-FR
+MAX C 16 • MIN C 15
 
 21°
-
-SA
-
-18°
-
-SO
-
-19°
 
 MO
 
-23°
+24°
 
 DI
-
-27°
-
-MI
-
-22°
-
-DO
-
-19°
-
-FR
-
-21°
-
-SA
-
-23°
-
-SO
 
 20°
 
-MO
+MI
+
+17°
+
+DO
 
 19°
 
-DI
+FR
 
 21°
 
-MI
+SA
+
+19°
+
+SO
 
 22°
 
+MO
+
+16°
+
+DI
+
+17°
+
+MI
+
+16°
+
 DO
+
+21°
+
+FR
+
+15°
+
+SA
+
+13°
+
+SO
 
 ### Klimatabelle Schweriner See:
 

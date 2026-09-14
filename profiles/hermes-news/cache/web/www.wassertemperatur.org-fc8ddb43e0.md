@@ -9,7 +9,7 @@ Navigieren Sie hier direkt mit nur einem Klick zur gewünschten Information:
 
 Rostock ist eine bekannte Hansestadt im Landkreis Mecklenburg und liegt direkt an der Ostsee. Die Stadt hat mehr als 200.000 Einwohner und zählt zu den wirtschaftlich und kulturell bedeutendsten Städte an der südlichen Ostseeküste. Der immer noch gut erhaltene historische Stadtkern ist eine der Sehenswürdigkeiten von Rostock: hier findet man viele Gebäude im Stil der Backsteingotik und Kaufmannshäuser aus der wirtschaftlich besonders blühenden Zeit der Hanse. Das gotische Rathaus aus dem 13. Und 14. Jahrhundert und z.B. die gotischen Kaufmannshäuser „Kerkhoffhaus“ oder „Hausbaumhaus“ sind sehr schöne Beispiele für die Architektur dieser vergangenen Tage. Ebenfalls sehenswert und Zeuge der langen Rostocker Vergangenheit ist die zum Teil erhaltene Stadtmauer und vier Stadttore der ehemaligen Stadtbefestigung. Durch die Lage von Rostock direkt an der Ostsee gehören natürlich auch zahlreiche Strände zu den beliebten Ausflugszielen. Egal ob großflächiger weißer Sandstrand, barrierefreie Strandzugänge, FKK- oder Hundestrand, in Rostock gibt es für jeden den passenden Strand.
 
-## Aktuelle Wassertemperatur in Rostock: 18 °C
+## Aktuelle Wassertemperatur in Rostock: 17 °C
 
 ## Durchschnittliche Wassertemperaturen in Rostock im Jahresverlauf:
 
@@ -91,15 +91,15 @@ Nachfolgend finden Sie Infos zum aktuellen Wetter sowie eine Übersicht über di
 
 Rostock
 
-**13°**
+**16°**
 
 Bedeckt
 
-93% Luftfeuchtigkeit
+98% Luftfeuchtigkeit
 
-Wind: 4m/s WSW
+Wind: 6m/s SW
 
-MAX C 13 • MIN C 12
+MAX C 17 • MIN C 15
 
 ### Klimatabelle Rostock:
 

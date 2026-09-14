@@ -85,16 +85,19 @@ hat 150+ Likes + hitzige Diskussion ausgelöst. Warum:
 | Numbeo | Lebenshaltungskosten | Frei |
 | Tagesschau/Handelsblatt/ZEIT | News-Hooks | Frei (RSS/Web) |
 
-## Visualisierungs-Formate (optional, kein Zwang)
+## Visualisierungs-Formate
 
-Out-of-the-box Ideen erwünscht:
-- Bar Chart Race (klassisch, gut für Rankings über Zeit)
-- Animierte Karte (regionaler Vergleich)
-- Scrollytelling (längere Story)
-- Vergleichs-Animation (vorher/nachher)
-- Zeitraffer (Entwicklung über Jahre)
-- Ranking-Animation (wer steigt/fällt)
-- Single-Stat Slide (1 überraschende Zahl, 1 Bild)
+**HARD CONSTRAINT: Der Account liefert statische Charts** (1 Insight, 1 Caption, kein Voiceover, kein Video). Jede Viz-Idee MUSS als EINES statisches Bildes machbar sein. Animationsideen nur als Notiz mit explizitem Hinweis "Video-Format (später)" — nie als Hauptvorschlag.
+
+Statische Prioritäten:
+- Single-Stat Slide (1 überraschende Zahl, 1 Bild) — stark, schnell
+- Statischer Vergleichs-Chart (DE vs EU, vorher/nachher als 2 Balken)
+- Karte (farbcodiert, statisch)
+- Ranking-Chart (Top/Bottom als Stufen, statisch)
+- Sitzverteilung/Matrix (Politik)
+- Preis-Pyramide / Treppe
+
+Nur als Video-Notiz (nicht als Hauptvorschlag): Bar Chart Race, animierte Karte, Scrollytelling, Zeitraffer.
 
 ## Bekannte Pitfalls
 
