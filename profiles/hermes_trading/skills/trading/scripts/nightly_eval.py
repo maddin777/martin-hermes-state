@@ -791,6 +791,13 @@ def main():
         top_line = f"Top-Quelle: <b>{top_src['channel']}</b> (WR:{top_src['win_rate_30d']:.0%}, Q:{top_src['quality_score']:.2f})" if top_src else ""
         signals_line = build_top_signals_line(con, limit=5)
         src_win_line = build_signal_source_line(con)
+        # Pre-Delivery-Verification-Gate (14.09.2026): Signal-Outputs vor der
+        # Delivery gegen die festen Entry-Kriterien laufen lassen (proof-of-work).
+        try:
+            from scripts.pre_delivery_gate import build_gate_line
+            gate_line = build_gate_line(con, limit=5)
+        except Exception as e:
+            gate_line = f"🛡 Pre-Delivery-Gate: ❌ nicht verfügbar ({e})"
         shadow_line  = build_shadow_line(con) or ""
         bm_line = ""
         if bm:
@@ -820,6 +827,7 @@ def main():
                 f"{committee_line}\n"
                 f"{top_line}\n\n"
                 f"{signals_line}{src_win_line}"
+                f"\n{gate_line}"
                 f"{shadow_line}\n\n"
                 "🔧 Strategy Optimizer läuft um 08:00..."
             )
@@ -841,6 +849,7 @@ def main():
                 f"{committee_line}\n"
                 f"{top_line}\n\n"
                 f"{signals_line}{src_win_line}"
+                f"\n{gate_line}"
                 f"{shadow_line}"
             )
 

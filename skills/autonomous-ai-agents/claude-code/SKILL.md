@@ -1,6 +1,6 @@
 ---
 name: claude-code
-description: "Delegate coding to Claude Code CLI (features, PRs)."
+description: "Delegate coding tasks to Anthropic's Claude Code CLI (features, PRs, refactors). Use when user asks for Claude Code specifically (Anthropic auth). For OpenAI (Codex) and open-source (OpenCode) CLIs use those skills instead."
 version: 2.2.1
 author: Hermes Agent + Teknium
 license: MIT

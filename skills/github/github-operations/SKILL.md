@@ -12,6 +12,18 @@ trigger:
 
 Unified skill for all GitHub operations — authentication, pull requests, issues, repository management, and code review.
 
+## Subsections
+
+This umbrella skill consolidates the following specialized skills:
+- **Authentication** — Setup and troubleshooting for gh CLI, HTTPS tokens, and SSH keys
+- **Pull Requests** — Branch creation, commits, PR creation, CI monitoring, merging
+- **Issues** — Creating, triage, labels, assignment, bulk operations
+- **Repository Management** — Clone, create, fork, releases, secrets, Actions workflows
+- **Code Review** — Reviewing local changes and PRs, inline comments, checklists
+- **Issue → PR Workflow** — End-to-end discipline: read issue, sweep duplicates, validate premise, implement with regression tests, shepherd CI
+
+For detailed procedures, see the linked references below.
+
 ## Authentication
 
 ```bash

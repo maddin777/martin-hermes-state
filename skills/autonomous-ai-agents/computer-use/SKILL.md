@@ -1,6 +1,6 @@
 ---
 name: computer-use
-description: "Drive the desktop in the background without stealing focus."
+description: "Drive the desktop in the background without stealing focus (cross-platform: macOS, Windows, Linux). Generic driver for any non-macOS host. For macOS-specific quirks/compositional drives, load the apple/macos-computer-use skill instead; if on macOS prefer that one."
 version: 2.0.0
 author: Francesco Bonacci (f-trycua), Hermes Agent
 license: MIT

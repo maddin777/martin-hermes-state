@@ -1,6 +1,6 @@
 # Änderungshistorie — Trading Skill
 
-**Stand:** Paketen A–D + Sprints 1–7 + Bugfix-Sprint + Screener-Source + Watchlist-Performance-Fix + Rollen-Sprint R1–R4 + **Turtle-Konfluenz-Sprint** + **Phase 1+2 Fix (09.08.2026)** + **Watchlist-Cleanup-Archivierung (09.08.2026)** + **UK-Microcap-Gate (14.08.2026)** + **DQ-Isolation + Alarm-Crons (16.08.2026)** + **Drawdown-15-25-Zone auf 6 Pos (17.08.2026)** + **DQ-.L-Aufräumung im Cleanup + täglicher Cleanup (19.08.2026)** + **DQ-Deaktivierungs-Verifikation + Cleanup 1c (24.08.2026)** + **DQ-Root-Clause-Fix: keine Reaktivierung gedroppter .L + Dry-Run read-only (26.08.2026)** + **Selection Momentum-/Liquiditäts-Gate (27.08.2026)** + **Drawdown-Heilungs-Beschleunigung 15-25%: Size 65% + Conf 75% (01.09.2026)** + **Grok entfernt, twitterapi.io Standard (01.09.2026)** + **Alternative Momentum-Swing-Strategie dokumentiert (06.09.2026)** + **Volume-Backtest: NICHT übernommen (06.09.2026)** + **Sektor-abhängige Regime (07.09.2026)** + **Overlay-Bug Fix (07.09.2026)** + **Analyse-Sprint: 7 Defekte behoben (08.09.2026)** + **Messbarkeit: Gates, Quellen-Taxonomie, Beneficiary-Lifecycle, Video-Retry (08.09.2026)** + **Sizing entkoppelt, Momentum-Faktor repariert, Schattenbuecher (08.09.2026)** + **Kanonik-Mirror-Fix (.SG/.MU/ISIN) + Attributions-Oszillation Root-Cause (10.09.2026)**
+**Stand:** Paketen A–D + Sprints 1–7 + Bugfix-Sprint + Screener-Source + Watchlist-Performance-Fix + Rollen-Sprint R1–R4 + **Turtle-Konfluenz-Sprint** + **Phase 1+2 Fix (09.08.2026)** + **Watchlist-Cleanup-Archivierung (09.08.2026)** + **UK-Microcap-Gate (14.08.2026)** + **DQ-Isolation + Alarm-Crons (16.08.2026)** + **Drawdown-15-25-Zone auf 6 Pos (17.08.2026)** + **DQ-.L-Aufräumung im Cleanup + täglicher Cleanup (19.08.2026)** + **DQ-Deaktivierungs-Verifikation + Cleanup 1c (24.08.2026)** + **DQ-Root-Clause-Fix: keine Reaktivierung gedroppter .L + Dry-Run read-only (26.08.2026)** + **Selection Momentum-/Liquiditäts-Gate (27.08.2026)** + **Drawdown-Heilungs-Beschleunigung 15-25%: Size 65% + Conf 75% (01.09.2026)** + **Grok entfernt, twitterapi.io Standard (01.09.2026)** + **Alternative Momentum-Swing-Strategie dokumentiert (06.09.2026)** + **Volume-Backtest: NICHT übernommen (06.09.2026)** + **Sektor-abhängige Regime (07.09.2026)** + **Overlay-Bug Fix (07.09.2026)** + **Analyse-Sprint: 7 Defekte behoben (08.09.2026)** + **Messbarkeit: Gates, Quellen-Taxonomie, Beneficiary-Lifecycle, Video-Retry (08.09.2026)** + **Sizing entkoppelt, Momentum-Faktor repariert, Schattenbuecher (08.09.2026)** + **Kanonik-Mirror-Fix (.SG/.MU/ISIN) + Attributions-Oszillation Root-Cause (10.09.2026)** + **Pre-Delivery-Verification-Gate (14.09.2026)**
 
 ## 10.09.2026 — Kanonik-Mirror-Fix + Attributions-Oszillation (Vault-Insights-Vorschläge 1–3)
 
@@ -96,6 +96,50 @@ Prüfprozedur, kein Datenfehler). Die Quelle ist jetzt eine **einzige Zeitbasis*
 08.09.-Änderung zurückzuführen (Export zeigte vorher nur die Top-3-Kanäle pro
 Zeile via `list(set(x))[:3]`, danach die volle Liste). Zahlen vor und nach dem
 08.09. sind daher **nicht direkt vergleichbar**.
+
+## 14.09.2026 — Pre-Delivery-Verification-Gate (Vault-Insights-Vorschlag 2)
+
+Umgesetzt aus dem vault-insights-daily-Report vom 14.09.2026 (Abschnitt C,
+Punkt 2): **Signal-Outputs vor der Delivery gegen feste Kriterien laufen
+lassen** (proof-of-work statt Selbstbestätigung). Grundlage: Anthropic
+"Methode 4" — der erste Blick des Operators soll nicht der 4./5. Blick des
+Agenten sein.
+
+### Was gebaut wurde
+
+**Neues Script `scripts/pre_delivery_gate.py`:**
+- `_fetch_candidates(con, limit)` — identische Shortlist-Query wie
+  `nightly_eval.calc_top_signals` (status='watching', sortiert nach
+  conviction_score_aged DESC).
+- `verify_candidate(row, threshold)` — geprüfte Kriterien:
+  1. `conviction_score_aged >= min_confidence` (aus config, Default 0.60)
+  2. `tech_score` vorhanden (NOT NULL)
+  3. `tech_direction == 'LONG'` (Entry braucht LONG; NEUTRAL/SHORT sind
+     trotz hoher Conviction NICHT long-entry-fähig)
+  4. Kein DQ-Fall: `.L`-Microcap ohne tech_score → block
+  - Zusätzlich Warnung bei `mention_count <= 1` (Einzel-Mention-Hit fragil)
+- `build_gate_line(con, limit=5)` — kompakte HTML-Zeile: `✅` entry-fähig,
+  `⚠️` gewarnt, `🚫` blockiert, mit Schwelle im Header.
+
+**Verdrahtung in `scripts/nightly_eval.py`:**
+- `build_gate_line()` wird vor der Message-Konstruktion gerufen.
+- Die Gate-Zeile wird BOTH in Tages-Report und Wochen-Report eingefügt,
+  direkt nach dem Top-Signale-Block.
+- Fehler beim Gate → graceful Degradation: die Zeile zeigt "❌ nicht
+  verfügbar", der Report geht trotzdem raus (Gate blockiert NIE die Zustellung).
+
+### Verhalten
+- Der Report zeigt jetzt pro Top-Signal sofort, ob es das Entry-Gate besteht.
+- Beispiel-Output (14.09.2026, live): "⚠️ 3 gewarnt (Schwelle 60%)" —
+  Diageo/CAKE/BMY je nur 1 Mention → ⚠️, Allianz/Chevron → ✅.
+- Das senkt den manuellen Review-Aufwand: Der Operator sieht beim ersten
+  Blick, welche Top-Signale tatsächlich entry-fähig sind.
+
+### Verifikation
+- `python3 -c "import ast; ast.parse(...)"` → Syntax OK.
+- `PYTHONPATH=. python3 scripts/pre_delivery_gate.py` → Gate läuft live gegen DB.
+- Trockenlauf von `nightly_eval.main()` mit gemocktem `send_telegram` →
+  Message enthält die Gate-Zeile, `main()` läuft komplett durch.
 
 ## 08.09.2026 — Sizing entkoppelt, Momentum-Faktor repariert, Schattenbücher
 

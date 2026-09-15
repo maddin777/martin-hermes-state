@@ -1,9 +1,9 @@
 {
-  "last_report_path": "/root/.hermes/logs/curator/20260907-080434",
-  "last_run_at": "2026-09-07T08:04:34.921769+00:00",
-  "last_run_duration_seconds": 347.0212,
-  "last_run_summary": "auto: 2 marked stale, 8 reactivated; llm: This is actually a legitimate class-level skill about bugfix workflow, not a session artifact.\n\nBased on my comprehensive analysis, the skill collection is **already reasonably organized** with proper umbrellas in place:\n\n1. **GitHub cluste…",
+  "last_report_path": "/root/.hermes/logs/curator/20260914-080454",
+  "last_run_at": "2026-09-14T08:04:54.431755+00:00",
+  "last_run_duration_seconds": 337.285244,
+  "last_run_summary": "auto: 1 archived, 4 reactivated; llm: Now let me write the final structured summary:\n\n## Summary\n\nThis consolidation pass identified and merged the following skill clusters:\n\n**Consolidations completed:**\n1. **GitHub cluster** (6 skills → 1 umbrella): github-auth, github-code-r…\narchived 27 skill(s):\n  • arxiv → research-tools\n  • blocked-page-recovery → research-tools\n  • blogwatcher → research-tools\n  • competitor-news-monitor → research-tools\n  • email-inbox-triage → email-tools\n  • evaluating-llms-harness → mlops-tools\n  • github-auth → github-operations\n  • github-code-review → github-operations\n  • github-issue-to-pr → github-operations\n  • github-issues → github-operations\n  … and 17 more\nfull report: hermes curator status\nkeep an umbrella stable: hermes curator pin email-tools",
   "last_run_summary_shown_at": "2026-08-17T05:59:46.242059+00:00",
   "paused": false,
-  "run_count": 18
+  "run_count": 19
 }

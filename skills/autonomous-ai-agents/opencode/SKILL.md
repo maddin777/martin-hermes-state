@@ -1,6 +1,6 @@
 ---
 name: opencode
-description: "Delegate coding to OpenCode CLI (features, PR review)."
+description: "Delegate coding tasks to the OpenCode CLI (open-source, provider-agnostic: works with OpenRouter/any API key). Use when user asks for OpenCode or a vendor-neutral coding agent. For Anthropic (Claude Code) and OpenAI (Codex) CLIs use those skills instead."
 version: 1.2.0
 author: Hermes Agent
 license: MIT

@@ -1,6 +1,6 @@
 ---
 name: codex
-description: "Delegate coding to OpenAI Codex CLI (features, PRs)."
+description: "Delegate coding tasks to OpenAI's Codex CLI (features, PRs, batch fixes; needs a git repo + OpenAI auth). Use when user asks for Codex or OpenAI's coding agent. For Claude Code and OpenCode use those skills instead."
 version: 1.0.1
 author: Hermes Agent
 license: MIT
