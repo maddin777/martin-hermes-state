@@ -17,6 +17,8 @@ Tap to unmute
 
 [Lübeck, Germany: Trave/Kanaltrave, Hafen, Altstadt - 12 HiRes Images - 8K Ultra HD](https://www.youtube.com/watch?v=1eDTwcCGOJo) [Video Pictures](https://www.youtube-nocookie.com/channel/UCoonKXRMWZ3pFM4ruheQWlg)
 
+![thumbnail-image](https://yt3.ggpht.com/ytc/AIdro_lxXV-QNyJo3Li2BfCbLRfDytReUQpfYZ-cvGcYI5hbwB4=s68-c-k-c0x00ffffff-no-rj)
+
 Video Pictures169 subscribers
 
 [Watch on](https://www.youtube.com/watch?v=1eDTwcCGOJo)
@@ -101,21 +103,41 @@ Nachfolgend finden Sie Infos zum aktuellen Wetter sowie eine Übersicht über di
 
 Lübeck
 
-**15°**
+**14°**
 
-Bedeckt
+Überwiegend bewölkt
 
-93% Luftfeuchtigkeit
+84% Luftfeuchtigkeit
 
-Wind: 5m/s SW
+Wind: 4m/s S
 
-MAX C 15 • MIN C 15
+MAX C 14 • MIN C 14
 
 20°
 
+MI
+
+18°
+
+DO
+
+17°
+
+FR
+
+16°
+
+SA
+
+17°
+
+SO
+
+15°
+
 MO
 
-23°
+19°
 
 DI
 
@@ -123,49 +145,29 @@ DI
 
 MI
 
-17°
+18°
 
 DO
 
-18°
+22°
 
 FR
 
-19°
+17°
 
 SA
 
-18°
+16°
 
 SO
 
-18°
+15°
 
 MO
 
 16°
 
 DI
-
-15°
-
-MI
-
-15°
-
-DO
-
-19°
-
-FR
-
-15°
-
-SA
-
-14°
-
-SO
 
 ### Klima in Lübeck:
 

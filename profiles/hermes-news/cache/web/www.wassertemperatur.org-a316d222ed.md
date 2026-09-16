@@ -93,15 +93,15 @@ Nachfolgend finden Sie Infos zum aktuellen Wetter sowie eine Übersicht über di
 
 Wismar
 
-**16°**
+**13°**
 
-Bedeckt
+Überwiegend bewölkt
 
-92% Luftfeuchtigkeit
+89% Luftfeuchtigkeit
 
-Wind: 5m/s W
+Wind: 4m/s SSO
 
-MAX C 17 • MIN C 16
+MAX C 13 • MIN C 13
 
 ### Klimatabelle Wismar:
 
