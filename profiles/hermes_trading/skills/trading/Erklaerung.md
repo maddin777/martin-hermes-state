@@ -1508,3 +1508,51 @@ Werten (z.B. SK hynix Long-C 100% / Short-C 51%; CAT 100% / 28%; AAPL 100% / 88%
 
 **Erwartung:** vault-insights-daily kann echte Shorts jetzt direkt aus `Watchlist.md`
 zählen (`Short-C > Long-C`), keine Approximation über Bear/Bull-Mentions mehr.
+---
+
+## 2026-09-16 — Freshness-Refresh AMD/GOOGL/MSFT + active_exit_check-Verifikation
+
+**Anlass:** Proaktive Vorschläge (Freshness-Pipeline + Exit-Check-Verhalten) umgesetzt.
+
+### Punkt 1 — Freshness-Refresh AMD/GOOGL/MSFT (Datenwert-Risiko)
+
+**Problem:** AMD (last_seen 05-28), GOOGL (05-24), MSFT (05-27) waren die ältesten
+`bought`-Einträge (115–117 Tage stale, Marker `stale>60d`) — während NVDA (09-11) und
+INGA.AS (09-14) bereits gefrischt waren. Jede Entscheidung auf diesen 3 beruhte auf
+monatelten Mentions → größter Datenwert-Risikofaktor.
+
+**Nicht durchgeführt:** Watchlist ist `bought` (keine offenen Positionen — die offenen
+sind CRM/HOOD/VRSK/LULU/OKTA/COP/ING). Der 22:30-Cleanup droppt `bought` nicht, daher
+blieb `last_seen` veraltet.
+
+**Fix (gezielter Refresh, gleicher Mechanismus wie NVDA):** Tech-Scores via
+`get_technical_score` neu berechnet + `last_seen` auf heute (2026-09-16) + Google-News-RSS
+(10 Artikel je Ticker, Sentiment neutral) + `stale_refresh_log`-Eintrag. `stale>60d`-Marker
+→ `stale-refresh`.
+
+**Ergebnis (verifiziert, read-back):**
+- AMD: tech 0.7 LONG bullish, last_seen 2026-09-16
+- GOOGL: tech 0.7 LONG bullish, last_seen 2026-09-16
+- MSFT: tech 0.725 LONG bullish, last_seen 2026-09-16
+
+**Erwartung:** Analyse-Tools (vault-insights) sehen diese 3 nicht mehr als stale; die
+Tech-Richtung ist frisch und LONG-bestätigt.
+
+### Punkt 2 — active_exit_check "Trade-Trigger"-Risiko: Fehlannahme belegt
+
+**Problem (Vorschlag):** Es hieß, 13 "neu-tech-SHORT-geflagte bought-Positionen"
+(ASML/AVGO/CAT/TSLA/BCS/RKLB/LULU …) müssten gegen ungewollte Trade-Trigger im
+09:30/15:30-Check geprüft werden.
+
+**Verifikation (Code-Read `active_exit_check.py` Zeilen 141–379):**
+- Der Check iteriert NUR `positions WHERE status='open'` (aktuell 7), nicht die Watchlist.
+- Es existiert KEIN `open_new_positions`/`INSERT INTO positions` im Script → er öffnet
+  strukturell KEINE neuen Trades.
+- Er nutzt live `get_tech_status()` (intact/broken), nicht die gespeicherte
+  `tech_direction`-Spalte.
+- Die `tech_direction='SHORT'`-Flags liegen auf 44 **Watchlist**-Einträgen (nicht auf
+  offenen Positionen) — klassische Metrik-Verwechslung aus dem Skill (tech_direction ≠
+  Sentiment-Short; viele sind bought LONG mit bearish Tech-Warnung).
+
+**Ergebnis:** Kein Code-Fix nötig. Kein ungewollter Trade-Trigger möglich — der Check
+kann per Konstruktion nur Exits/SL-Nachziehen/Trailing liefern.
