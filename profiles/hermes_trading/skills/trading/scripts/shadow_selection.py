@@ -365,6 +365,29 @@ def evaluate(con, horizon=HORIZON_DAYS):
 
 # ── Bericht ─────────────────────────────────────────────────────────────────
 
+def _source_health(con, hypothesis):
+    """Sagt, ob die DATENQUELLE einer Hypothese ueberhaupt noch laeuft.
+
+    Ohne das liest sich eine tote Spur im Bericht wie eine junge: beide zeigen
+    "noch keine Daten". h1_momentum liefert seit dem 13.07.2026 dauerhaft 0
+    Kandidaten, weil factor_scores nicht mehr befuellt wird. KORREKTUR 19.09.:
+    thematic/factor_ranker.py existiert sehr wohl (und wurde am 08.09. sogar
+    ueberarbeitet) — die gesamte thematic/-Pipeline hat nur seit dem 13.07.
+    keinen Cron-Eintrag mehr und laeuft deshalb nicht. Das ist ein Betriebs-
+    defekt, kein Reifeproblem — und muss auch so dastehen.
+    """
+    if hypothesis == "h1_momentum":
+        row = con.execute("SELECT MAX(date) d FROM factor_scores").fetchone()
+        last = row["d"] if row else None
+        if not last:
+            return False, "factor_scores leer"
+        age = (datetime.now().date()
+               - datetime.strptime(last, "%Y-%m-%d").date()).days
+        if age > 7:
+            return False, f"factor_scores {age}d alt (Stand {last})"
+    return True, ""
+
+
 def report(con):
     print("\n📊 Schattenbücher — Stand", datetime.now().strftime("%Y-%m-%d"), flush=True)
     print(f"  {'Hypothese':14} {'ausgew.':>8} {'bewertet':>9} {'WR':>6} "
@@ -379,9 +402,11 @@ def report(con):
             FROM shadow_selection WHERE hypothesis=? AND eval_status='evaluated'
         """, (h,)).fetchone()
         n = r["n"] or 0
+        alive, why = _source_health(con, h)
         if not n:
+            status = "noch keine Daten" if alive else f"⛔ QUELLE TOT — {why}"
             print(f"  {h:14} {tot:>8} {0:>9} {'–':>6} {'–':>8} {'–':>8}  "
-                  f"noch keine Daten", flush=True)
+                  f"{status}", flush=True)
             continue
         wr = (r["w"] or 0) / n * 100
         avg = r["avg"] or 0
@@ -394,6 +419,14 @@ def report(con):
               f"{r['tot']:>+7.1f}%  {verdict}", flush=True)
     print("\n  Hinweis: die Bücher entscheiden nichts. Erst ab N≈30 pro Hypothese\n"
           "  ist der Vergleich mit live_baseline aussagekräftig.", flush=True)
+    dead = [h for h in HYPOTHESES if not _source_health(con, h)[0]]
+    if dead:
+        print(f"⛔ {len(dead)} Hypothese(n) ohne laufende Datenquelle: "
+              f"{', '.join(dead)}\n"
+              "   Diese Spur sammelt NICHT im Hintergrund weiter — sie ist "
+              "defekt und braucht eine\n"
+              "   Entscheidung (Quelle reparieren oder Hypothese streichen).",
+              flush=True)
 
 
 def main():

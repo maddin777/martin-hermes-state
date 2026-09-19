@@ -202,6 +202,18 @@ def main():
             else:
                 pnl_atr = (entry - current_price) / atr
 
+            # --- MFE/MAE-Instrumentierung (18.09.2026) ----------------------
+            # Beide Extremwerte bei jedem Lauf fortschreiben, richtungsunabhaengig
+            # und ohne profit_lock-Gate. Der Trailing-Zweig unten schreibt sie
+            # sonst erst ab +1 ATR und nur einseitig — die maximale Gegenbewegung
+            # (MAE) fehlte dadurch komplett. Gegenstueck in signal_manager.
+            con.execute(
+                "UPDATE positions SET highest_price=?, lowest_price=? WHERE id=?",
+                (round(max(pos["highest_price"] or entry, current_price), 4),
+                 round(min(pos["lowest_price"] or entry, current_price), 4),
+                 pos["id"])
+            )
+
             # PnL mit Exit-Slippage + Commission (#11: entry_price ist bereits
             # effektiv/slippage-behaftet – vorher wurde die Entry-Slippage hier ein
             # zweites Mal aufgeschlagen. Jetzt identisch zu signal_manager.)

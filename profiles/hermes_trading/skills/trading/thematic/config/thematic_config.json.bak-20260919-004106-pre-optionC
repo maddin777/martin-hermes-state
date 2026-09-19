@@ -42,11 +42,11 @@
     "pm_significant_move_delta_7d": 0.1
   },
   "factor_weights": {
-    "momentum": 0.6,
-    "quality": 0.0,
-    "value": 0.0,
+    "momentum": 0.3,
+    "quality": 0.25,
+    "value": 0.2,
     "revision": 0.15,
-    "lowvol": 0.25
+    "lowvol": 0.1
   },
   "conviction_weights": {
     "llm_consensus": 0.3,
@@ -60,6 +60,5 @@
     "mixed": 1.0,
     "contradicting": 0.85,
     "no_data": 1.0
-  },
-  "_factor_weights_note": "19.09.2026 Option C — quality und value auf 0. Finnhub Free liefert weder roicTTM noch freeCashFlowTTM: value war ueber das ganze Universum konstant, und quality reduzierte sich auf (1 - debt/equity), was bei jedem Titel mit debt/equity >= 1 auf exakt 0 faellt — also bei allen Banken (JPM 3.30, ING 3.68). Das haette gegen den gesamten Financial-Sektor diskriminiert statt Qualitaet zu messen. Das Ranking ist damit ein MOMENTUM-Ranking, kein Multi-Faktor-Ranking. Rueckweg: Gewichte wiederherstellen, sobald eine Quelle mit Fundamentals angebunden ist (siehe Phase-0-Entscheidungsvorlage)."
+  }
 }

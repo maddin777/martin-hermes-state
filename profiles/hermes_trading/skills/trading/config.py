@@ -8,6 +8,7 @@ Alle anderen Module importieren von hier:
 
 Pfad-Anpassung bei Server-Migration: nur hier ändern.
 """
+import math
 import os
 import sqlite3
 
@@ -187,6 +188,90 @@ _EXIT_CONFIG_MATRIX = {
 DEFAULT_EXIT_CONFIG = {"sl": 1.5, "tp": 4.5, "partial_atr": 1.5, "profit_lock_atr": 1.0, "chandelier_mult": 2.0, "step": 0.75}
 
 
+# ── Exit-Profile (18.09.2026) ─────────────────────────────────────────────────
+# Das Profil skaliert NUR den Stop-Abstand aus _EXIT_CONFIG_MATRIX. Alles andere
+# bleibt, damit der Wechsel eine einzelne, messbare Aenderung ist.
+#
+# Warum der Stop und nicht der Chandelier: Die Live-Config faehrt
+# donchian_exit_mode="primary". In diesem Modus ist der ATR-Chandelier
+# ABGESCHALTET (signal_manager: `not _donchian_primary`, active_exit_check:
+# `if not _donchian_primary`). chandelier_mult zu aendern haette null Wirkung.
+#
+# Datengrundlage: pfadgenauer Replay ueber 82 reale Trades mit echten OHLC-Bars
+# (exit_rules.replay_exit_path, Donchian-primary). Basis ist die Matrix pro
+# Asset-Typ, NICHT ein pauschaler Multiplikator — eine fruehere Rechnung mit
+# flachen 1.5x fuer alle Typen ueberschaetzte den Abstand zur Nulllinie
+# deutlich (-0.038 statt der tatsaechlichen +0.006 im IST).
+#
+# Skalierung x Time-Stop, meanR (IST = x1.00 / 7d = +0.006):
+#
+#             TimeStop 5     TimeStop 7    TimeStop 10
+#   x1.00       +0.011         +0.006        +0.012
+#   x1.15       +0.047         +0.028        +0.015
+#   x1.33       +0.033         +0.001        +0.000
+#   x1.50       +0.060         +0.044        +0.057
+#
+# Die Flaeche ist NICHT monoton (x1.33 faellt gegenueber x1.15 zurueck, x1.50
+# steigt wieder). Einzelne Zellen sind damit Rauschen, kein Signal — deshalb
+# ist "wider_stop" bewusst auf den konservativen Wert 1.15 gesetzt und nicht
+# auf die beste Zelle. Konsistent ueber die ganze Flaeche ist nur die Richtung:
+# breitere Stops heben Trefferquote und Profit Factor.
+#
+# Robustheit x1.15 / TimeStop 5 (Split-Half): 1. Haelfte +0.250 -> +0.250,
+# 2. Haelfte -0.238 -> -0.157. Keine Haelfte verschlechtert sich.
+# Bootstrap-95%-KI der Differenz schliesst die Null weiterhin ein — die
+# Aenderung ist ein Experiment mit Abbruchkriterium, keine belegte Loesung.
+#
+# Gemessene Median-MAE der geschlossenen Trades: 1.31x ATR. Bei einem Stop auf
+# 1.5x kommt der typische Trade also bis auf 0.19 ATR heran — das ist der
+# mechanische Grund fuer 70 SL_HIT unter 88 Exits.
+# Leiter statt Einzelwert: seit dem 18.09.2026 ist das Profil der EINZIGE
+# wirksame Stellhebel fuer den Stop-Abstand und damit auch das, worueber der
+# strategy_optimizer sucht. cfg["atr_sl_multiplier"] steuert NICHTS — der Wert
+# wird nur anzeigt (dashboard, backtest_gate) und in signal_manager:462 sogar
+# aus dieser Matrix ueberschrieben. Der reale Stop kommt aus get_exit_config().
+EXIT_PROFILES = {
+    "tighter":               {"sl_scale": 0.85},
+    # Stand vor dem 18.09.2026 — unveraendert der Default.
+    "current":               {"sl_scale": 1.00},
+    # Konservative Empfehlung. 1.5 -> 1.73 | 2.0 -> 2.30 | 2.5 -> 2.88
+    "wider_stop":            {"sl_scale": 1.15},
+    "wider_stop_plus":       {"sl_scale": 1.33},
+    # Beste Einzelzelle der Flaeche, entsprechend ueberanpassungsverdaechtig —
+    # nicht ohne erneute Pruefung mit verify_exit_profile.py scharfschalten.
+    "wider_stop_aggressive": {"sl_scale": 1.50},
+}
+DEFAULT_EXIT_PROFILE = "current"
+
+_PROFILE_CACHE = {"mtime": None, "name": DEFAULT_EXIT_PROFILE}
+
+
+def get_exit_profile():
+    """Aktives Exit-Profil aus strategy_config.json (Key: exit_profile).
+
+    Wird pro get_exit_config-Aufruf gebraucht, deshalb ueber mtime gecacht —
+    get_exit_config laeuft in Schleifen ueber alle offenen Positionen.
+    Unbekannter oder fehlender Wert faellt auf "current" zurueck.
+    """
+    try:
+        mtime = os.path.getmtime(STRATEGY_CONFIG_PATH)
+    except OSError:
+        return DEFAULT_EXIT_PROFILE
+    if _PROFILE_CACHE["mtime"] != mtime:
+        name = DEFAULT_EXIT_PROFILE
+        try:
+            import json as _json
+            with open(STRATEGY_CONFIG_PATH) as fh:
+                name = _json.load(fh).get("exit_profile", DEFAULT_EXIT_PROFILE)
+        except Exception:
+            pass
+        if name not in EXIT_PROFILES:
+            name = DEFAULT_EXIT_PROFILE
+        _PROFILE_CACHE["mtime"] = mtime
+        _PROFILE_CACHE["name"] = name
+    return _PROFILE_CACHE["name"]
+
+
 def get_exit_config(asset_type=None, sector=None, regime="sideways"):
     """Single Source of Truth für Exit-Parameter.
 
@@ -203,7 +288,23 @@ def get_exit_config(asset_type=None, sector=None, regime="sideways"):
     regime = (regime or "sideways").lower()
     if regime not in ("bull", "sideways", "bear"):
         regime = "sideways"
-    return dict(_EXIT_CONFIG_MATRIX.get((at, regime), DEFAULT_EXIT_CONFIG))
+    cfg = dict(_EXIT_CONFIG_MATRIX.get((at, regime), DEFAULT_EXIT_CONFIG))
+    scale = EXIT_PROFILES.get(get_exit_profile(), EXIT_PROFILES["current"])["sl_scale"]
+    if scale != 1.0:
+        # sl UND tp skalieren. Nur den Stop zu verbreitern wuerde das designte
+        # Chancen-Risiko-Verhaeltnis von mind. 3:1 aufweichen — genau das prueft
+        # tests/test_exit_asymmetry.py am effektiven Paar aus compute_sl_tp.
+        # Das TP feuert live zwar nicht (hit_tp=False), steht aber in
+        # positions.take_profit und in jedem Report; es unskaliert zu lassen
+        # hiesse, eine Asymmetrie auszuweisen, die so nicht mehr gilt.
+        ratio = cfg["tp"] / cfg["sl"]          # designiertes CRV der Matrix
+        cfg["sl"] = round(cfg["sl"] * scale, 2)
+        # TP aus dem skalierten SL ableiten und AUFrunden: getrenntes Runden
+        # liess TECH/bear auf 2.99:1 fallen (round(8.625, 2) == 8.62, Banker's
+        # Rounding). Aufrunden garantiert, dass das Verhaeltnis nie unter das
+        # der Matrix rutscht.
+        cfg["tp"] = math.ceil(cfg["sl"] * ratio * 100) / 100
+    return cfg
 
 
 # ── Slippage & Kosten ─────────────────────────────────────────────────────────

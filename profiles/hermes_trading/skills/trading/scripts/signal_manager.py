@@ -76,6 +76,7 @@ DEFAULT_CONFIG = {
     "min_conviction":         0.60,
     "min_mentions":           2,
     "min_mentions_short":     2,
+    "min_distinct_channels":  1,   # 1 = aus; 2 = unabhaengige Bestaetigung noetig
     "partial_tp_enabled":     True,
     "partial_tp_atr":         1.5,
     "partial_tp_pct":         0.50,
@@ -781,10 +782,20 @@ def check_open_positions(con, cfg):
 
         pnl_eur = pnl_pct * original_position_size - COMMISSION_EUR
 
-        # PnL in DB schreiben (Zwischenstand für offene Positionen)
+        # --- MFE/MAE-Instrumentierung (18.09.2026) ---------------------------
+        # BEIDE Extremwerte bei JEDEM Check fortschreiben, unabhaengig von
+        # Richtung und davon, ob der Trail schon scharf ist. Vorher wurden sie
+        # nur im Trailing-Zweig geschrieben (also erst ab +1 ATR) und nur das
+        # jeweils guenstige Extrem — die maximale GEGENbewegung (MAE) war damit
+        # fuer keinen einzigen der 88 geschlossenen Trades rekonstruierbar.
+        # Ohne MAE ist der Stop-Abstand nicht kalibrierbar.
+        _hi = max(pos["highest_price"] or entry, current_price)
+        _lo = min(pos["lowest_price"] or entry, current_price)
         con.execute(
-            "UPDATE positions SET pnl_eur=?, pnl_pct=? WHERE id=?",
-            (round(pnl_eur, 2), round(pnl_pct * 100, 2), pos["id"])
+            "UPDATE positions SET pnl_eur=?, pnl_pct=?, highest_price=?, lowest_price=? "
+            "WHERE id=?",
+            (round(pnl_eur, 2), round(pnl_pct * 100, 2),
+             round(_hi, 4), round(_lo, 4), pos["id"])
         )
         con.commit()
 
@@ -1499,17 +1510,38 @@ def entry_gate_reason(candidate, direction, ticker, technical,
 # 29 Trades / -1.168 EUR). Gemessen an der Live-DB: 0 -> 6 Kandidaten mit der
 # Quellenregel, 0 -> 13 bei pauschalem min_mentions=1.
 _DET_PLACEHOLDERS = ",".join("?" * len(DETERMINISTIC_CHANNELS))
+# 19.09.2026 — zweite Bedingung ergaenzt: mindestens N VERSCHIEDENE Kanaele.
+#
+# Befund: mention_count zaehlt ERWAEHNUNGEN, nicht QUELLEN. Zwei Beitraege
+# desselben Kanals an zwei Tagen erfuellen `mention_count >= 2` — das ist keine
+# unabhaengige Bestaetigung, sondern derselbe Sprecher zweimal. In der aktuellen
+# Watchlist passieren 32 von 76 Eintraegen das Gate mit EINEM einzigen Kanal.
+# Die 18 realisierten Einzelquellen-Trades brachten meanR -0.288 (WR 22%) gegen
+# +0.024 (WR 43%) bei Mehrfachbestaetigung; p=0.12, also richtungsweisend und
+# nicht bewiesen — deshalb steht der Schalter per Default AUS (Wert 1).
+#
+# Die deterministische Ausnahme bleibt bestehen: ein Screener ist keine Meinung,
+# die man bestaetigen muesste, sondern eine Regel.
 MENTIONS_CLAUSE = f"""
             AND (w.mention_count >= ?
                  OR (w.mention_count >= ?
                      AND EXISTS (SELECT 1 FROM json_each(w.channels)
                                  WHERE json_each.value IN ({_DET_PLACEHOLDERS}))))
+            AND ((SELECT COUNT(DISTINCT json_each.value)
+                  FROM json_each(w.channels)) >= ?
+                 OR EXISTS (SELECT 1 FROM json_each(w.channels)
+                            WHERE json_each.value IN ({_DET_PLACEHOLDERS})))
 """
 
 
-def _mentions_params(min_mentions):
-    """Parameter zu MENTIONS_CLAUSE, in der Reihenfolge der Platzhalter."""
-    return [min_mentions, MIN_MENTIONS_DETERMINISTIC, *DETERMINISTIC_CHANNELS]
+def _mentions_params(min_mentions, min_distinct=None):
+    """Parameter zu MENTIONS_CLAUSE, in der Reihenfolge der Platzhalter.
+
+    ``min_distinct`` = geforderte Zahl VERSCHIEDENER Kanaele (Default 1 = aus).
+    """
+    cfg_val = min_distinct if min_distinct is not None else 1
+    return [min_mentions, MIN_MENTIONS_DETERMINISTIC, *DETERMINISTIC_CHANNELS,
+            cfg_val, *DETERMINISTIC_CHANNELS]
 
 
 # Untergrenze fuer die kombinierte Groessen-Bremse.
@@ -1703,7 +1735,8 @@ def open_new_positions(con, cfg):
             AND w.ticker IS NOT NULL
         """, (
             cfg.get("min_conviction", 0.60),
-            *_mentions_params(cfg.get("min_mentions", 2)),
+            *_mentions_params(cfg.get("min_mentions", 2),
+                              cfg.get("min_distinct_channels", 1)),
             dd_min_confidence,  # Drawdown-abhängig: 0.70/0.75/0.80
         )).fetchall()
 
@@ -1720,7 +1753,8 @@ def open_new_positions(con, cfg):
             AND w.ticker IS NOT NULL
         """, (
             cfg.get("min_confidence_short", 0.65),   # BUGFIX: war 0.5, jetzt konsistent
-            *_mentions_params(cfg.get("min_mentions_short", 2)),
+            *_mentions_params(cfg.get("min_mentions_short", 2),
+                              cfg.get("min_distinct_channels", 1)),
         )).fetchall()
 
     all_candidates = []
@@ -2255,8 +2289,15 @@ def open_new_positions(con, cfg):
             round(atr, 4), cand_conviction,
             ", ".join(set(channels[:3])),
             c["notes"] or "",
-            effective_entry if direction == "LONG" else 0,
-            effective_entry if direction == "SHORT" else 0,
+            # 18.09.2026: BEIDE Extremwerte ab Entry fuehren, unabhaengig von
+            # der Richtung. Vorher stand das Gegen-Extrem auf 0 — dadurch war
+            # die MAE (maximale Gegenbewegung) fuer LONGs und die MFE fuer
+            # SHORTs nie messbar, und 0 ist als Sentinel zusaetzlich gefaehrlich
+            # (ein echter Kurs von 0 ist ununterscheidbar). Ohne MAE laesst sich
+            # der Stop-Abstand nicht kalibrieren: man sieht nie, wie knapp ein
+            # Gewinner am Stop vorbeigeschrammt ist.
+            effective_entry,   # highest_price
+            effective_entry,   # lowest_price
             asset_type,
             # Instrumentierung: Pattern-State beim Entry → Kohorten-Split später
             json.dumps(crabel) if crabel else None,

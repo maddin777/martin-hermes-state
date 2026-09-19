@@ -4,7 +4,11 @@ Backtest-Engine mit OHLC-Pfad-Simulation + Walk-Forward Optimierung.
 import sqlite3, json, os, math, yfinance as yf, pandas_ta as ta
 from datetime import datetime, timedelta
 from statistics import median
-from config import DB_PATH, BACKTEST_REPORT_PATH, db_connect
+from collections import Counter
+from config import (DB_PATH, BACKTEST_REPORT_PATH, STRATEGY_CONFIG_PATH, db_connect,
+                    get_exit_config, EXIT_PROFILES)
+from exit_rules import replay_exit_path
+from trade_paths import attach_paths
 
 
 def load_config():
@@ -114,52 +118,91 @@ def calculate_metrics(trades):
         "composite": round(composite, 4),
     }
 
-def backtest_params(trades, sl_mult, tp_mult, min_conf):
+def backtest_params(trades, profile, time_stop_bars, min_conf=None):
+    """Pfadgenaue Simulation ueber den gemeinsamen Replay aus exit_rules.
+
+    FIX 18.09.2026, drei Fehler auf einmal:
+    1. `min_conf` war ein Pflichtargument, run_grid_search rief aber nur mit
+       drei Argumenten auf -> TypeError. Der komplette Walk-Forward-Pfad ist
+       deshalb bei jedem Lauf in den except-Zweig von strategy_optimizer
+       gefallen ("Walk-Forward Fehler ... Grid Search Fallback"). Default None.
+    2. Die alte simulate_trade_with_path lud pro Trade UND pro Grid-Kombination
+       neu bei yfinance und benutzte einen festen 1.5x-ATR-Trail statt der
+       Exit-Matrix. Jetzt: Bars einmal ueber trade_paths cachen, Exit-Logik aus
+       exit_rules — dieselbe Quelle, die auch der Live-Pfad benutzt.
+    3. Gesucht wurde ueber atr_sl_multiplier — ein Wert ohne Live-Wirkung.
+       Jetzt ueber exit_profile, das den Stop auf der Exit-Matrix skaliert.
+    """
+    scale = EXIT_PROFILES.get(profile, EXIT_PROFILES["current"])["sl_scale"]
+    cfg = load_config()
+    donchian_primary = (bool(cfg.get("donchian_exit_enabled"))
+                        and cfg.get("donchian_exit_mode") == "primary")
+    partial_pct = (cfg.get("partial_tp_pct", 0.5)
+                   if cfg.get("partial_tp_enabled", True) else 0.0)
     sim = []
     for t in trades:
-        conf = t.get("confidence") or 0
-        if conf < min_conf:
+        if min_conf is not None and (t.get("confidence") or 0) < min_conf:
             continue
-        atr = t.get("atr_at_entry")
+        bars, idx, atr = t.get("_bars"), t.get("_entry_idx"), t.get("_atr")
         entry = t.get("entry_price")
-        if not atr or not entry or atr == 0:
-            sim.append({"pnl_pct": t.get("pnl_pct") or 0})
+        if not bars or idx is None or not atr or not entry:
+            continue          # ohne Pfad keine Aussage
+        ex = get_exit_config(asset_type=t.get("asset_type") or "STANDARD",
+                             regime="sideways")
+        sl_mult = round(ex["sl"] * scale, 2)
+        res = replay_exit_path(
+            bars, idx, entry, t.get("direction", "LONG"), atr,
+            sl_mult=sl_mult,
+            partial_atr=ex["partial_atr"],
+            partial_pct=partial_pct,
+            profit_lock_atr=ex["profit_lock_atr"],
+            chandelier_mult=ex["chandelier_mult"],
+            donchian_primary=donchian_primary,
+            donchian_period=cfg.get("donchian_exit_period", 10),
+            time_stop_bars=time_stop_bars,
+            tp_mult=None,
+        )
+        if res["r_multiple"] is None:
             continue
-        direction = t.get("direction", "LONG")
-        sl = (entry - sl_mult * atr) if direction == "LONG" else (entry + sl_mult * atr)
-        tp = (entry + tp_mult * atr) if direction == "LONG" else (entry - tp_mult * atr)
-        result = simulate_trade_with_path(entry, direction, sl, tp, t["ticker"], t["entry_date"], atr)
-        sim.append({"pnl_pct": result[3]})
+        sim.append({"pnl_pct": res["r_multiple"] * (sl_mult * atr / entry * 100)})
     return sim
 
+
 def run_grid_search(trades):
-    # min_confidence-Dimension am 08.09.2026 entfernt (Grid 5x kleiner) — der Key
-    # wird vom Live-Entry-Pfad nicht gelesen, siehe Kommentar in
-    # strategy_optimizer.PARAM_GRID. Der Walk-Forward-Pfad optimierte ihn sonst
-    # weiter mit und schrieb ihn in strategy_config.json zurueck.
+    # min_confidence (08.09.2026), atr_tp_multiplier und atr_sl_multiplier
+    # (beide 18.09.2026) wurden entfernt: keiner der drei Keys wird vom
+    # Live-Pfad gelesen. Gesucht wird ueber exit_profile (skaliert den Stop auf
+    # der Exit-Matrix) und time_stop_trading_days.
     best_score, best_params, results = -1, None, []
-    for sl in [1.0, 1.25, 1.5, 1.75, 2.0, 2.5]:
-        for tp in [2.0, 2.5, 3.0, 3.5, 4.0]:
-            if tp / sl < 1.5:
-                continue
-            sim = backtest_params(trades, sl, tp)
+    for prof in EXIT_PROFILES:
+        for ts in [5, 7, 10, 15]:
+            sim = backtest_params(trades, prof, ts)
             if len(sim) < 3:
                 continue
             m = calculate_metrics(sim)
             if not m:
                 continue
-            results.append({"sl": sl, "tp": tp, "composite": m["composite"],
-                            "win_rate": m["win_rate"], "p": m["profit_factor"],
-                            "sharpe": m["sharpe"], "trades": len(sim)})
+            results.append({"profile": prof, "time_stop": ts,
+                            "composite": m["composite"], "win_rate": m["win_rate"],
+                            "p": m["profit_factor"], "sharpe": m["sharpe"],
+                            "trades": len(sim)})
             if m["composite"] > best_score:
                 best_score = m["composite"]
-                best_params = {"atr_sl_multiplier": sl, "atr_tp_multiplier": tp}
+                best_params = {"exit_profile": prof, "time_stop_trading_days": ts}
     results.sort(key=lambda x: x["composite"], reverse=True)
     return best_params, results[:5]
+
 
 def walk_forward_optimize(trades, n_folds=4):
     if len(trades) < n_folds * 5:
         return None
+    # Bars EINMAL beschaffen — sonst laedt jede Fold-Kombination neu.
+    stats = attach_paths(trades)
+    if stats["coverage"] < 0.70:
+        print(f"  ⚠ Walk-Forward abgebrochen: Pfad-Abdeckung nur "
+              f"{stats['coverage']:.0%} (<70%)", flush=True)
+        return None
+    trades = [t for t in trades if t.get("_bars")]
     fold_size = len(trades) // n_folds
     oos = []
     for i in range(1, n_folds):
@@ -170,7 +213,7 @@ def walk_forward_optimize(trades, n_folds=4):
         bp, _ = run_grid_search(train)
         if not bp:
             continue
-        test_sim = backtest_params(test, bp["atr_sl_multiplier"], bp["atr_tp_multiplier"])
+        test_sim = backtest_params(test, bp["exit_profile"], bp["time_stop_trading_days"])
         tm = calculate_metrics(test_sim)
         oos.append({"fold": i, "train_size": len(train), "test_size": len(test),
                      "params": bp, "oos_metrics": tm})
@@ -178,8 +221,13 @@ def walk_forward_optimize(trades, n_folds=4):
     prof = [r for r in oos if r["oos_metrics"] and r["oos_metrics"]["total_pnl_pct"] > 0]
     if len(prof) >= len(oos) * 0.6:
         return {
-            "atr_sl_multiplier": median([r["params"]["atr_sl_multiplier"] for r in prof]),
-            "atr_tp_multiplier": median([r["params"]["atr_tp_multiplier"] for r in prof]),
+            # Profile sind ordinal, nicht metrisch -> Modus statt Median.
+            # Bei Gleichstand gewinnt das ENGERE Profil (konservativer).
+            "exit_profile": min(
+                Counter(r["params"]["exit_profile"] for r in prof).most_common(),
+                key=lambda kv: (-kv[1], EXIT_PROFILES[kv[0]]["sl_scale"]))[0],
+            "time_stop_trading_days": int(median([r["params"]["time_stop_trading_days"]
+                                                  for r in prof])),
         }
     return None
 
@@ -202,14 +250,17 @@ def main():
         print("  Walk-Forward Optimierung (4 Folds)...", flush=True)
         new_params = walk_forward_optimize(trades, n_folds=4)
         if new_params:
-            print(f"  ✅ WF-Parameter: SL={new_params['atr_sl_multiplier']}x TP={new_params['atr_tp_multiplier']}x", flush=True)
+            print(f"  ✅ WF-Parameter: Profil={new_params['exit_profile']} "
+                  f"TimeStop={new_params['time_stop_trading_days']}d", flush=True)
         else:
             print("  ⚠ WF nicht robust – Grid Search Fallback", flush=True)
-            bp, top5 = run_grid_search(trades)
+            attach_paths(trades)
+            bp, top5 = run_grid_search([t for t in trades if t.get("_bars")])
             new_params = bp
     else:
         print(f"  Grid Search ({len(trades)} Trades)...", flush=True)
-        bp, top5 = run_grid_search(trades)
+        attach_paths(trades)
+        bp, top5 = run_grid_search([t for t in trades if t.get("_bars")])
         new_params = bp
 
     report = {

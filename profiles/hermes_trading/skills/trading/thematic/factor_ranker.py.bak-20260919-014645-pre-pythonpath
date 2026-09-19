@@ -30,19 +30,8 @@ Abdeckung angebunden ist.
 import json
 import os
 import sqlite3
-import sys
 import numpy as np
 from datetime import date
-
-# Selbstversorgung (19.09.2026): Dieses Modul laeuft auch DIREKT aus dem Cron
-# (10 5 * * 1-5), nicht nur ueber thematic_pipeline.py. Das lazy
-# `from thematic.lib import finnhub_client` in den Faktor-Funktionen braucht
-# die Projektwurzel auf sys.path; fehlt sie, stirbt der Lauf erst beim ersten
-# Ticker. Die Cron-Zeile setzt PYTHONPATH zwar — aber darauf soll sich das
-# Modul nicht verlassen muessen.
-_TRADING_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-if _TRADING_ROOT not in sys.path:
-    sys.path.insert(0, _TRADING_ROOT)
 
 DB_PATH = os.path.join(
     os.path.dirname(os.path.dirname(__file__)),

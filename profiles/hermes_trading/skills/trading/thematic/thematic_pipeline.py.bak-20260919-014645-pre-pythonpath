@@ -8,33 +8,7 @@ import os
 from datetime import datetime
 
 SCRIPTS = os.path.dirname(os.path.abspath(__file__))
-# Projektwurzel = Elternverzeichnis von thematic/. Sieben der acht Schritte
-# importieren `thematic.lib`, `config` oder `env_loader` — alle drei liegen
-# relativ zu dieser Wurzel.
-TRADING_ROOT = os.path.dirname(SCRIPTS)
 PYTHON = "/usr/bin/python3"
-
-
-def child_env():
-    """Umgebung fuer die Schritte, mit garantiertem PYTHONPATH.
-
-    FIX 19.09.2026: subprocess.run erbte bisher schlicht die Umgebung des
-    Aufrufers. Interaktiv funktionierte das, weil die Login-Shell
-    PYTHONPATH=<trading-root> setzt — CRON ERBT DAS NICHT. Aus dem Cron
-    gestartet waeren sieben der acht Schritte an
-    `ModuleNotFoundError: No module named 'thematic'` gestorben, teils erst
-    zur Laufzeit: factor_ranker importiert `thematic.lib` lazy innerhalb der
-    Faktor-Funktionen, also erst beim ersten Ticker. Der Job haette sauber
-    gestartet, Kurse geladen und dann abgebrochen.
-
-    Vorhandener PYTHONPATH bleibt erhalten, die Wurzel wird vorangestellt.
-    """
-    env = os.environ.copy()
-    parts = [q for q in env.get("PYTHONPATH", "").split(os.pathsep) if q]
-    if TRADING_ROOT not in parts:
-        parts.insert(0, TRADING_ROOT)
-    env["PYTHONPATH"] = os.pathsep.join(parts)
-    return env
 
 
 def log(msg):

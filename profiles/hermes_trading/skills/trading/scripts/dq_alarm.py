@@ -32,6 +32,7 @@ import sys
 
 sys.path.insert(0, "/root/.hermes/profiles/hermes_trading/skills/trading")
 import env_loader  # noqa: F401
+from datetime import datetime
 from config import db_connect
 
 # Schwellenwert: Anzahl DQ-Microcaps (>=0.76 Conviction oder bought) bevor Alarm.
@@ -149,10 +150,87 @@ def _write_last(val: int) -> None:
         pass
 
 
+FEEDER_STATE_FILE = os.path.join(os.path.dirname(STATE_FILE), "dq_feeder_alarm_state.txt")
+FEEDER_ALERT_EVERY_DAYS = 7
+
+
+def _feeder_alert_due(signature: str) -> bool:
+    """True, wenn zu DIESEM Befund seit FEEDER_ALERT_EVERY_DAYS nichts ging.
+
+    Eine tote Tabelle bleibt tot — ohne Sperre wuerde der Alarm jeden Tag
+    erneut feuern und sich damit selbst abstumpfen. Aendert sich der Befund
+    (andere Tabelle betroffen), wird sofort wieder gemeldet.
+    """
+    try:
+        with open(FEEDER_STATE_FILE) as fh:
+            last_sig, last_day = fh.read().strip().split("|", 1)
+    except Exception:
+        last_sig, last_day = "", ""
+    if last_sig == signature and last_day:
+        try:
+            age = (datetime.now().date()
+                   - datetime.strptime(last_day, "%Y-%m-%d").date()).days
+            if age < FEEDER_ALERT_EVERY_DAYS:
+                return False
+        except Exception:
+            pass
+    try:
+        os.makedirs(os.path.dirname(FEEDER_STATE_FILE), exist_ok=True)
+        with open(FEEDER_STATE_FILE, "w") as fh:
+            fh.write(f"{signature}|{datetime.now().strftime('%Y-%m-%d')}")
+    except Exception:
+        pass
+    return True
+
+
+def stale_feeder_tables(con, max_age_days=7):
+    """Meldet Tabellen, die eine Pipeline-Stufe befuellen SOLLTE, aber nicht mehr tut.
+
+    Anlass (18.09.2026): factor_scores wurde zuletzt am 13.07.2026 beschrieben.
+    Geschrieben wird sie von thematic/factor_ranker.py — das Skript existiert,
+    aber die thematic/-Pipeline hat seit dem 13.07. keinen Cron-Eintrag mehr
+    (KORREKTUR 19.09., vorher stand hier faelschlich "existiert nicht"). Die
+    Hypothese h1_momentum in shadow_selection liefert deshalb seit ueber zwei
+    Monaten 0 Kandidaten. Im Bericht sah das aus wie "noch keine Daten", also wie
+    ein Reifeproblem statt wie ein Defekt. Ein stiller Ausfall ueber Monate ist
+    genau die Sorte Fehler, die ein Alarm abfangen muss.
+    """
+    # (Tabelle, Zeitstempel-Spalte, Label) — die Spalte heisst nicht ueberall
+    # gleich: factor_scores hat `date`, pead_cache `fetched_at`.
+    FEEDERS = (
+        ("factor_scores", "date",       "Faktor-Ranking (h1_momentum)"),
+        ("pead_cache",    "fetched_at", "PEAD-Cache (h2_pead)"),
+    )
+    stale = []
+    for table, col, label in FEEDERS:
+        try:
+            row = con.execute(f"SELECT MAX({col}) d FROM {table}").fetchone()
+        except Exception as exc:
+            # Fehlende Tabelle/Spalte ist ein Konfigurationsfehler, kein toter
+            # Feeder — laut protokollieren, aber keinen Alarm ausloesen.
+            print(f"  ⚠ dq_alarm: {table}.{col} nicht lesbar ({exc})", flush=True)
+            continue
+        last = row["d"] if row else None
+        if not last:
+            stale.append((table, label, None))
+            continue
+        try:
+            age = (datetime.now().date()
+                   - datetime.strptime(str(last)[:10], "%Y-%m-%d").date()).days
+        except Exception:
+            print(f"  ⚠ dq_alarm: {table}.{col} unlesbares Datum ({last!r})",
+                  flush=True)
+            continue
+        if age > max_age_days:
+            stale.append((table, label, (str(last)[:10], age)))
+    return stale
+
+
 def main():
     con = db_connect()
     dq = count_dq_microcaps(con)
     deact_count, deact_subj = count_deactivated_only(con)
+    stale = stale_feeder_tables(con)
     con.close()
     last = _read_last()
     _write_last(dq)
@@ -167,6 +245,26 @@ def main():
         print(f"  ↳ aus deaktivierten Quellen: {', '.join(deact_subj)}", flush=True)
 
     # Alarm bei REGRESSION auf der kombinierten Kennzahl:
+    if stale:
+        for table, label, info in stale:
+            detail = f"leer" if info is None else f"Stand {info[0]}, {info[1]}d alt"
+            print(f"⛔ Feeder-Tabelle tot: {table} ({label}) — {detail}", flush=True)
+        lines = "".join(
+            f"• <code>{t}</code> ({lbl}): "
+            f"{'leer' if i is None else f'Stand {i[0]}, {i[1]}d alt'}" + "\n"
+            for t, lbl, i in stale)
+        signature = ",".join(sorted(t for t, _, _ in stale))
+        if not _feeder_alert_due(signature):
+            print("  → Feeder-Alarm unterdrueckt (bereits gemeldet, "
+                  f"Wiederholung alle {FEEDER_ALERT_EVERY_DAYS}d)", flush=True)
+        else:
+            send_telegram_alert(
+                "⛔ <b>Feeder-Tabelle wird nicht mehr befuellt</b>" + "\n" + "\n"
+                + lines + "\n"
+                + "<i>Die daran haengende Hypothese sammelt NICHT still weiter — "
+                "sie liefert 0 Kandidaten. Quelle reparieren oder Hypothese "
+                "streichen.</i>")
+
     regression = (combined >= SCHWELLE) and (last < SCHWELLE or combined > last)
     if not regression:
         print("→ silent (keine Regression)", flush=True)
