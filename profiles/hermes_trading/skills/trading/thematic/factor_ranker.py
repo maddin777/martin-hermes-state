@@ -32,7 +32,7 @@ import os
 import sqlite3
 import sys
 import numpy as np
-from datetime import date
+from datetime import date, datetime
 
 # Selbstversorgung (19.09.2026): Dieses Modul laeuft auch DIREKT aus dem Cron
 # (10 5 * * 1-5), nicht nur ueber thematic_pipeline.py. Das lazy
@@ -320,7 +320,11 @@ def main():
 
     top5 = results[:5]
     names = ", ".join(f"{r['ticker']}({r['composite_score']:.0f})" for r in top5)
-    print(f"[Factor Ranker] DONE. Top 5: {names}", flush=True)
+    # Pipeline-Format (wie thematic_pipeline.run): "=== HH:MM:SS Label DONE ==="
+    # mit ✅ VOR "DONE", damit cron_health.py (Regex `✅\s*.*DONE`) den Lauf
+    # als Erfolg erkennt und NICHT als ⚠️/gelb meldet.
+    print(f"=== {datetime.now().strftime('%H:%M:%S')} Factor Ranking ✅ DONE === "
+          f"Top 5: {names}", flush=True)
 
 
 if __name__ == "__main__":

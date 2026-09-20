@@ -105,69 +105,69 @@ Lübeck
 
 **14°**
 
-Überwiegend bewölkt
+Bedeckt
 
-84% Luftfeuchtigkeit
+80% Luftfeuchtigkeit
 
-Wind: 4m/s S
+Wind: 6m/s SW
 
 MAX C 14 • MIN C 14
 
-20°
-
-MI
-
-18°
-
-DO
-
-17°
-
-FR
-
-16°
-
-SA
-
-17°
+19°
 
 SO
 
-15°
+17°
 
 MO
 
-19°
+17°
 
 DI
 
-19°
+18°
 
 MI
 
-18°
+16°
 
 DO
+
+16°
+
+FR
+
+18°
+
+SA
+
+19°
+
+SO
+
+18°
+
+MO
+
+21°
+
+DI
 
 22°
 
-FR
+MI
+
+23°
+
+DO
 
 17°
 
-SA
-
-16°
-
-SO
+FR
 
 15°
 
-MO
-
-16°
-
-DI
+SA
 
 ### Klima in Lübeck:
 
