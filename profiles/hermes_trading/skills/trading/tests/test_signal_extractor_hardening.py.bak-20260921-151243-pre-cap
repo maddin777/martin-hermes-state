@@ -376,32 +376,3 @@ def test_call_analyst_full_reasoning_switch_restores_old_behaviour(monkeypatch):
     captured = _stub_analyst_environment(monkeypatch, extractor.MODEL)
     extractor.call_analyst(None, _ONE_COMPANY, "kanal", "titel", "20260922")
     assert captured["primary_extra"] is None
-
-
-# ── Analyst-Grenze waechst mit der Firmenzahl, 22.09.2026 ───────────────────
-
-def test_analyst_max_tokens_keeps_floor_for_typical_videos_and_scales_for_big_ones():
-    f = extractor._analyst_max_tokens
-    assert [f(0), f(1), f(10), f(27)] == [4000, 4000, 4000, 4010]
-    assert f(20) == 4000                     # P95 der Videos: unveraendert
-    assert f(48) == 6740                     # das gemessene 48-Firmen-Video
-    assert f(52) == 7260                     # groesster Wert im Produktionslog
-    assert f(500) == 16000                   # Deckel
-    assert f(-3) == 4000                     # nie unter den Festwert
-
-
-def test_analyst_max_tokens_covers_measured_tokens_per_company_with_margin():
-    per_company_max = 101                    # gemessenes Maximum (Reasoning aus)
-    for n in (30, 44, 48, 52, 80):
-        assert extractor._analyst_max_tokens(n) >= per_company_max * n
-
-
-def test_call_analyst_passes_scaled_max_tokens_and_keeps_4000_for_small_videos(monkeypatch):
-    monkeypatch.delenv("ANALYST_REASONING", raising=False)
-    captured = _stub_analyst_environment(monkeypatch, extractor.MODEL)
-    extractor.call_analyst(None, _ONE_COMPANY, "kanal", "titel", "20260922")
-    assert captured["max_tokens"] == 4000
-    big = [{"name": "Firma %d" % i, "snippets": ["x"], "rough_sentiment": "neutral"}
-           for i in range(48)]
-    extractor.call_analyst(None, big, "kanal", "titel", "20260922")
-    assert captured["max_tokens"] == 6740

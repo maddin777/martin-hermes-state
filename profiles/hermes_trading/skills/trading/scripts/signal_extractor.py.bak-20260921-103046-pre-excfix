@@ -210,28 +210,14 @@ class _Truncated(Exception):
         self.tokens_out = tokens_out
 
 
-def _call(model, system_prompt, user_content, system_extra="", max_tokens=4000,
-          extra_body=None):
+def _call(model, system_prompt, user_content, system_extra="", max_tokens=4000):
     """
     Ein einzelner OpenRouter-Call.
 
     Returns: (text, tokens_in, tokens_out)
     Wiederholt nur transiente Netzwerk-, 429- und 5xx-Fehler.
     Raises _Truncated bei finish_reason=length — das wird NICHT wiederholt.
-
-    extra_body: zusaetzliche Payload-Felder, z.B. {"reasoning": {"effort": "low"}}.
     """
-    payload = {
-        "model": model,
-        "max_tokens": max_tokens,
-        "messages": [
-            {"role": "system", "content": system_prompt + system_extra},
-            {"role": "user",   "content": user_content}
-        ]
-    }
-    if extra_body:
-        payload.update(extra_body)
-
     def _request_once():
         try:
             r = requests.post(
@@ -240,7 +226,14 @@ def _call(model, system_prompt, user_content, system_extra="", max_tokens=4000,
                     "Authorization": f"Bearer {OPENROUTER_API_KEY}",
                     "Content-Type": "application/json"
                 },
-                json=payload,
+                json={
+                    "model": model,
+                    "max_tokens": max_tokens,
+                    "messages": [
+                        {"role": "system", "content": system_prompt + system_extra},
+                        {"role": "user",   "content": user_content}
+                    ]
+                },
                 timeout=REQUEST_TIMEOUT
             )
             if r.status_code == 429 or 500 <= r.status_code < 600:
@@ -289,21 +282,13 @@ def _call(model, system_prompt, user_content, system_extra="", max_tokens=4000,
             return _request_once()
         except (requests.Timeout, requests.ConnectionError, KeyError) as exc:
             retry_after = None
-            last_exc = exc
         except requests.HTTPError as exc:
             status = exc.response.status_code if exc.response is not None else None
             if status != 429 and (status is None or not 500 <= status < 600):
                 raise
             retry_after = getattr(exc, "retry_after", None)
-            last_exc = exc
         if attempt == REQUEST_MAX_ATTEMPTS:
-            # FIX 21.09.2026: hier stand `raise exc`. Python loescht den Namen einer
-            # `except ... as exc`-Variable am Ende des Blocks, das raise traf also
-            # auf UnboundLocalError ("cannot access local variable 'exc'") und
-            # ueberdeckte die echte Ursache (leerer content, Timeout, 429/5xx).
-            # Im cron.log steht diese Meldung 49-mal — u.a. 9-mal als
-            # "Analyst-Call fehlgeschlagen ... Fallback auf Scout-Daten".
-            raise last_exc
+            raise exc
         try:
             wait = float(retry_after) if retry_after is not None else 0
         except (TypeError, ValueError):
@@ -352,7 +337,7 @@ _STRICT_EXTRA = ("\n\nWICHTIG: Antworte AUSSCHLIESSLICH mit validem JSON. "
 
 
 def _call_cascade(system_prompt, user_content, primary_model=MODEL,
-                  default=None, max_tokens=4000, primary_extra=None):
+                  default=None, max_tokens=4000):
     """
     Die dreistufige Fallback-Kaskade des bisherigen call_api(), jetzt generisch
     für Legacy-, Scout- und Analyst-Calls:
@@ -368,10 +353,6 @@ def _call_cascade(system_prompt, user_content, primary_model=MODEL,
         status='error' + error_count+1 → es wird beim nächsten Lauf erneut
         versucht. Würde die Kaskade sie schlucken, wäre das Video 'done' mit 0
         Firmen und käme nie wieder – stiller Datenverlust.
-
-    primary_extra (22.09.2026): zusaetzliche Payload-Felder NUR fuer die beiden
-    Versuche mit dem Primaermodell, nie fuer den Fallback (gpt-4o-mini kennt kein
-    Reasoning; ein Parameter, den es nicht versteht, waere ein vermeidbares Risiko).
 
     ABSCHNEIDUNG (21.09.2026): wird eine Antwort an max_tokens abgeschnitten
     (finish_reason=length), springt die Kaskade DIREKT auf gpt-4o-mini, statt
@@ -396,10 +377,8 @@ def _call_cascade(system_prompt, user_content, primary_model=MODEL,
     while idx < len(attempts):
         model, extra, next_step = attempts[idx]
         try:
-            content, ti, to = _call(
-                model, system_prompt, user_content,
-                system_extra=extra, max_tokens=max_tokens,
-                extra_body=(primary_extra if idx < len(attempts) - 1 else None))
+            content, ti, to = _call(model, system_prompt, user_content,
+                                    system_extra=extra, max_tokens=max_tokens)
             t_in += ti
             t_out += to
             return _try_parse(content), t_in, t_out
@@ -469,99 +448,6 @@ def merge_results(results):
 
 # ══ 2-Pass-Pfad (Rollen-Sprint R3) ═══════════════════════════════════════════
 
-# ── Reasoning-Begrenzung fuer den Scout (22.09.2026) ─────────────────────────
-SCOUT_REASONING_LEVELS = ("minimal", "low", "medium", "high")
-
-
-def _scout_reasoning_extra():
-    """Zusatzfelder fuer den Scout-Call des PRIMAERmodells. Standard: effort=low.
-
-    Messung (64 echte Chunks, scripts/scout_quality_probe.py, Referenz = zwei Laeufe mit
-    vollem Reasoning, die untereinander Recall/Precision 0,89 erreichen):
-      * effort=low    Precision 0,86, Recall 0,76, vom Referenz-Rauschen nicht unterscheidbar,
-                      ~44 s je Call inkl. Fallback (vorher 65-96 s), ~20 % Fallback-Anteil
-      * Reasoning aus Recall 0,49 / Precision 0,65 -> schlechter, NICHT verwenden
-      * effort=minimal schlechter als low
-    Die Begrenzung ist kein hartes Limit: schwere Chunks laufen trotzdem in max_tokens
-    und gehen dann (siehe _Truncated) direkt an den Fallback.
-
-    Rueckweg OHNE Codeaenderung: SCOUT_REASONING_EFFORT=off (oder leer) in
-    /root/.hermes/profiles/hermes_trading/.env -> volles Reasoning wie bis 21.09.
-    """
-    effort = os.environ.get("SCOUT_REASONING_EFFORT", "low").strip().lower()
-    if effort in SCOUT_REASONING_LEVELS:
-        return {"reasoning": {"effort": effort}}
-    return None
-
-
-def _scout_reasoning_label():
-    extra = _scout_reasoning_extra()
-    return extra["reasoning"]["effort"] if extra else "voll"
-
-
-# ── Reasoning fuer den Analysten (22.09.2026) ────────────────────────────────
-def _analyst_reasoning_extra():
-    """Zusatzfelder fuer den Analyst-Call des PRIMAERmodells. Standard: Reasoning AUS.
-
-    Messung (27 Videos, 285-348 Firmen, scripts/analyst_quality_probe.py; saubere Referenz =
-    DeepSeek mit Grenze 16000, zweimal gelaufen):
-      * Produktion vorher: 56-63 % der Calls an max_tokens=4000 abgeschnitten -> nach ~105 s
-        ein gpt-4o-mini-Ergebnis. Reines Reasoning: Median 163-221 s, max 540 s.
-      * Reasoning aus: Median 32 s, nur 4 % abgeschnitten, 6,6 % der Firmen ohne Analyse
-        (Produktion ~10 %, gpt-4o-mini direkt 14 %), sentiment nicht von der Referenz
-        unterscheidbar, strength-Verteilung am naechsten an der Referenz (13 % strong wie
-        12-20 %; gpt-4o-mini und der bisherige Mix 30-41 %).
-      * effort=low bringt fuer den Analysten nichts (Zeit und Abschneidung wie zuvor).
-    Nur sentiment und strength treiben Entscheidungen; catalyst wird nirgends gelesen,
-    action_hint und Kursziele nur durchgereicht (technical_validator).
-
-    Werte fuer ANALYST_REASONING: off (Standard) | minimal/low/medium/high | full.
-    Rueckweg OHNE Codeaenderung: ANALYST_REASONING=full in
-    /root/.hermes/profiles/hermes_trading/.env -> Verhalten wie bis 22.09.
-    Unbekannte Werte fallen bewusst auf das BISHERIGE Verhalten (None) zurueck, damit ein
-    Tippfehler nie still etwas aendert.
-    """
-    mode = os.environ.get("ANALYST_REASONING", "off").strip().lower()
-    if mode in ("off", "aus", "false", "0", "disabled"):
-        return {"reasoning": {"enabled": False}}
-    if mode in SCOUT_REASONING_LEVELS:
-        return {"reasoning": {"effort": mode}}
-    return None
-
-
-def _analyst_reasoning_label():
-    extra = _analyst_reasoning_extra()
-    if not extra:
-        return "voll"
-    r = extra["reasoning"]
-    return "aus" if r.get("enabled") is False else r.get("effort", "?")
-
-
-# ── Ausgabegrenze des Analysten waechst mit der Firmenzahl (22.09.2026) ──────
-ANALYST_MAX_TOKENS_FLOOR = 4000        # bisheriger Festwert; gilt weiter fuer <= 27 Firmen
-ANALYST_MAX_TOKENS_CEILING = 16000
-ANALYST_TOKENS_BASE = 500              # JSON-Huelle + Reserve
-ANALYST_TOKENS_PER_COMPANY = 130
-
-
-def _analyst_max_tokens(n_companies):
-    """max_tokens fuer den Analyst-Call, proportional zur Firmenzahl.
-
-    Der Analyst gibt EINEN Eintrag je Firma aus. Gemessen (Reasoning aus, 19 Videos ohne
-    Abschneidung): Median 89, Maximum 101 Tokens je Firma. Der Festwert 4000 reichte damit nur
-    bis ~44 Firmen; ein 48-Firmen-Video wurde abgeschnitten (121 s verbrannt), der Fallback
-    lieferte dann nur 28 von 48 Analysen, der Rest ging auf Scout-Daten zurueck. Betroffen sind
-    ~0,6 % der Videos (>= 40 Firmen: 3 von 538), fuer die aber jede Firma verloren geht.
-
-    130 Tokens je Firma lassen ~30 % Luft ueber dem gemessenen Maximum. Untergrenze bleibt der
-    bisherige Festwert 4000, damit sich fuer Videos bis 27 Firmen (>= 99 %) nichts aendert.
-    Die Grenze gilt auch fuer den gpt-4o-mini-Fallback und ist nur eine OBERgrenze: bezahlt und
-    gewartet wird nur, was tatsaechlich erzeugt wird.
-    """
-    raw = ANALYST_TOKENS_BASE + ANALYST_TOKENS_PER_COMPANY * max(int(n_companies), 0)
-    return min(ANALYST_MAX_TOKENS_CEILING, max(ANALYST_MAX_TOKENS_FLOOR, raw))
-
-
 def call_scout(chunk, channel, title, date_str, chunk_num, total_chunks):
     """Pass A: reine Erkennung pro Chunk."""
     user_content = (
@@ -571,7 +457,6 @@ def call_scout(chunk, channel, title, date_str, chunk_num, total_chunks):
     parsed, _ti, _to = _call_cascade(
         SCOUT_PROMPT, user_content,
         default={"companies": [], "market_outlook": "neutral", "key_themes": []},
-        primary_extra=_scout_reasoning_extra(),
     )
     return parsed
 
@@ -690,11 +575,6 @@ def call_analyst(con, scout_companies, channel, title, date_str):
         + "\n".join(lines)
     )
 
-    _analyst_cap = _analyst_max_tokens(len(scout_companies))
-    if _analyst_cap > ANALYST_MAX_TOKENS_FLOOR:
-        print(f"     → Analyst: {len(scout_companies)} Firmen, max_tokens {_analyst_cap}",
-              flush=True)
-
     # Anders als Scout/Legacy darf ein Analyst-Fehler das Video NICHT auf
     # status='error' setzen: die Erkennung (Pass A) ist bereits gelaufen und
     # bezahlt. Deshalb hier abfangen und auf die Scout-Daten zurückfallen.
@@ -704,10 +584,7 @@ def call_analyst(con, scout_companies, channel, title, date_str):
             ANALYST_PROMPT, user_content,
             primary_model=analyst_model,
             default={"companies": []},
-            max_tokens=_analyst_cap,
-            # nur fuer das GEMESSENE Modell: bei einem anderen Analyst-Modell ist ein
-            # reasoning-Parameter ungeprueft und wird nicht blind mitgeschickt
-            primary_extra=(_analyst_reasoning_extra() if analyst_model == MODEL else None),
+            max_tokens=4000,
         )
     except Exception as e:
         print(f"     ⚠ Analyst-Call fehlgeschlagen ({e}) → Fallback auf Scout-Daten",
@@ -851,9 +728,7 @@ def main():
 
     _retries = sum(1 for r in pending if r["status"] == "error")
     print(f"Pending Videos: {len(pending)} "
-          f"(davon {_retries} Wiederholungen) [Modus: {EXTRACTOR_MODE}, "
-          f"Scout-Reasoning: {_scout_reasoning_label()}, "
-          f"Analyst-Reasoning: {_analyst_reasoning_label()}]", flush=True)
+          f"(davon {_retries} Wiederholungen) [Modus: {EXTRACTOR_MODE}]", flush=True)
     stats = {"done": 0, "failed": 0, "expired": 0, "retried": 0}
 
     # Signals-JSON laden (Append-only – bestehende Ergebnisse bleiben)

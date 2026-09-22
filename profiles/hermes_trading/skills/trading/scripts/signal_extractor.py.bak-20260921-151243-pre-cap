@@ -537,31 +537,6 @@ def _analyst_reasoning_label():
     return "aus" if r.get("enabled") is False else r.get("effort", "?")
 
 
-# ── Ausgabegrenze des Analysten waechst mit der Firmenzahl (22.09.2026) ──────
-ANALYST_MAX_TOKENS_FLOOR = 4000        # bisheriger Festwert; gilt weiter fuer <= 27 Firmen
-ANALYST_MAX_TOKENS_CEILING = 16000
-ANALYST_TOKENS_BASE = 500              # JSON-Huelle + Reserve
-ANALYST_TOKENS_PER_COMPANY = 130
-
-
-def _analyst_max_tokens(n_companies):
-    """max_tokens fuer den Analyst-Call, proportional zur Firmenzahl.
-
-    Der Analyst gibt EINEN Eintrag je Firma aus. Gemessen (Reasoning aus, 19 Videos ohne
-    Abschneidung): Median 89, Maximum 101 Tokens je Firma. Der Festwert 4000 reichte damit nur
-    bis ~44 Firmen; ein 48-Firmen-Video wurde abgeschnitten (121 s verbrannt), der Fallback
-    lieferte dann nur 28 von 48 Analysen, der Rest ging auf Scout-Daten zurueck. Betroffen sind
-    ~0,6 % der Videos (>= 40 Firmen: 3 von 538), fuer die aber jede Firma verloren geht.
-
-    130 Tokens je Firma lassen ~30 % Luft ueber dem gemessenen Maximum. Untergrenze bleibt der
-    bisherige Festwert 4000, damit sich fuer Videos bis 27 Firmen (>= 99 %) nichts aendert.
-    Die Grenze gilt auch fuer den gpt-4o-mini-Fallback und ist nur eine OBERgrenze: bezahlt und
-    gewartet wird nur, was tatsaechlich erzeugt wird.
-    """
-    raw = ANALYST_TOKENS_BASE + ANALYST_TOKENS_PER_COMPANY * max(int(n_companies), 0)
-    return min(ANALYST_MAX_TOKENS_CEILING, max(ANALYST_MAX_TOKENS_FLOOR, raw))
-
-
 def call_scout(chunk, channel, title, date_str, chunk_num, total_chunks):
     """Pass A: reine Erkennung pro Chunk."""
     user_content = (
@@ -690,11 +665,6 @@ def call_analyst(con, scout_companies, channel, title, date_str):
         + "\n".join(lines)
     )
 
-    _analyst_cap = _analyst_max_tokens(len(scout_companies))
-    if _analyst_cap > ANALYST_MAX_TOKENS_FLOOR:
-        print(f"     → Analyst: {len(scout_companies)} Firmen, max_tokens {_analyst_cap}",
-              flush=True)
-
     # Anders als Scout/Legacy darf ein Analyst-Fehler das Video NICHT auf
     # status='error' setzen: die Erkennung (Pass A) ist bereits gelaufen und
     # bezahlt. Deshalb hier abfangen und auf die Scout-Daten zurückfallen.
@@ -704,7 +674,7 @@ def call_analyst(con, scout_companies, channel, title, date_str):
             ANALYST_PROMPT, user_content,
             primary_model=analyst_model,
             default={"companies": []},
-            max_tokens=_analyst_cap,
+            max_tokens=4000,
             # nur fuer das GEMESSENE Modell: bei einem anderen Analyst-Modell ist ein
             # reasoning-Parameter ungeprueft und wird nicht blind mitgeschickt
             primary_extra=(_analyst_reasoning_extra() if analyst_model == MODEL else None),

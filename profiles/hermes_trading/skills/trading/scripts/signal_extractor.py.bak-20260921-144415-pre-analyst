@@ -499,69 +499,6 @@ def _scout_reasoning_label():
     return extra["reasoning"]["effort"] if extra else "voll"
 
 
-# ── Reasoning fuer den Analysten (22.09.2026) ────────────────────────────────
-def _analyst_reasoning_extra():
-    """Zusatzfelder fuer den Analyst-Call des PRIMAERmodells. Standard: Reasoning AUS.
-
-    Messung (27 Videos, 285-348 Firmen, scripts/analyst_quality_probe.py; saubere Referenz =
-    DeepSeek mit Grenze 16000, zweimal gelaufen):
-      * Produktion vorher: 56-63 % der Calls an max_tokens=4000 abgeschnitten -> nach ~105 s
-        ein gpt-4o-mini-Ergebnis. Reines Reasoning: Median 163-221 s, max 540 s.
-      * Reasoning aus: Median 32 s, nur 4 % abgeschnitten, 6,6 % der Firmen ohne Analyse
-        (Produktion ~10 %, gpt-4o-mini direkt 14 %), sentiment nicht von der Referenz
-        unterscheidbar, strength-Verteilung am naechsten an der Referenz (13 % strong wie
-        12-20 %; gpt-4o-mini und der bisherige Mix 30-41 %).
-      * effort=low bringt fuer den Analysten nichts (Zeit und Abschneidung wie zuvor).
-    Nur sentiment und strength treiben Entscheidungen; catalyst wird nirgends gelesen,
-    action_hint und Kursziele nur durchgereicht (technical_validator).
-
-    Werte fuer ANALYST_REASONING: off (Standard) | minimal/low/medium/high | full.
-    Rueckweg OHNE Codeaenderung: ANALYST_REASONING=full in
-    /root/.hermes/profiles/hermes_trading/.env -> Verhalten wie bis 22.09.
-    Unbekannte Werte fallen bewusst auf das BISHERIGE Verhalten (None) zurueck, damit ein
-    Tippfehler nie still etwas aendert.
-    """
-    mode = os.environ.get("ANALYST_REASONING", "off").strip().lower()
-    if mode in ("off", "aus", "false", "0", "disabled"):
-        return {"reasoning": {"enabled": False}}
-    if mode in SCOUT_REASONING_LEVELS:
-        return {"reasoning": {"effort": mode}}
-    return None
-
-
-def _analyst_reasoning_label():
-    extra = _analyst_reasoning_extra()
-    if not extra:
-        return "voll"
-    r = extra["reasoning"]
-    return "aus" if r.get("enabled") is False else r.get("effort", "?")
-
-
-# ── Ausgabegrenze des Analysten waechst mit der Firmenzahl (22.09.2026) ──────
-ANALYST_MAX_TOKENS_FLOOR = 4000        # bisheriger Festwert; gilt weiter fuer <= 27 Firmen
-ANALYST_MAX_TOKENS_CEILING = 16000
-ANALYST_TOKENS_BASE = 500              # JSON-Huelle + Reserve
-ANALYST_TOKENS_PER_COMPANY = 130
-
-
-def _analyst_max_tokens(n_companies):
-    """max_tokens fuer den Analyst-Call, proportional zur Firmenzahl.
-
-    Der Analyst gibt EINEN Eintrag je Firma aus. Gemessen (Reasoning aus, 19 Videos ohne
-    Abschneidung): Median 89, Maximum 101 Tokens je Firma. Der Festwert 4000 reichte damit nur
-    bis ~44 Firmen; ein 48-Firmen-Video wurde abgeschnitten (121 s verbrannt), der Fallback
-    lieferte dann nur 28 von 48 Analysen, der Rest ging auf Scout-Daten zurueck. Betroffen sind
-    ~0,6 % der Videos (>= 40 Firmen: 3 von 538), fuer die aber jede Firma verloren geht.
-
-    130 Tokens je Firma lassen ~30 % Luft ueber dem gemessenen Maximum. Untergrenze bleibt der
-    bisherige Festwert 4000, damit sich fuer Videos bis 27 Firmen (>= 99 %) nichts aendert.
-    Die Grenze gilt auch fuer den gpt-4o-mini-Fallback und ist nur eine OBERgrenze: bezahlt und
-    gewartet wird nur, was tatsaechlich erzeugt wird.
-    """
-    raw = ANALYST_TOKENS_BASE + ANALYST_TOKENS_PER_COMPANY * max(int(n_companies), 0)
-    return min(ANALYST_MAX_TOKENS_CEILING, max(ANALYST_MAX_TOKENS_FLOOR, raw))
-
-
 def call_scout(chunk, channel, title, date_str, chunk_num, total_chunks):
     """Pass A: reine Erkennung pro Chunk."""
     user_content = (
@@ -690,11 +627,6 @@ def call_analyst(con, scout_companies, channel, title, date_str):
         + "\n".join(lines)
     )
 
-    _analyst_cap = _analyst_max_tokens(len(scout_companies))
-    if _analyst_cap > ANALYST_MAX_TOKENS_FLOOR:
-        print(f"     → Analyst: {len(scout_companies)} Firmen, max_tokens {_analyst_cap}",
-              flush=True)
-
     # Anders als Scout/Legacy darf ein Analyst-Fehler das Video NICHT auf
     # status='error' setzen: die Erkennung (Pass A) ist bereits gelaufen und
     # bezahlt. Deshalb hier abfangen und auf die Scout-Daten zurückfallen.
@@ -704,10 +636,7 @@ def call_analyst(con, scout_companies, channel, title, date_str):
             ANALYST_PROMPT, user_content,
             primary_model=analyst_model,
             default={"companies": []},
-            max_tokens=_analyst_cap,
-            # nur fuer das GEMESSENE Modell: bei einem anderen Analyst-Modell ist ein
-            # reasoning-Parameter ungeprueft und wird nicht blind mitgeschickt
-            primary_extra=(_analyst_reasoning_extra() if analyst_model == MODEL else None),
+            max_tokens=4000,
         )
     except Exception as e:
         print(f"     ⚠ Analyst-Call fehlgeschlagen ({e}) → Fallback auf Scout-Daten",
@@ -852,8 +781,7 @@ def main():
     _retries = sum(1 for r in pending if r["status"] == "error")
     print(f"Pending Videos: {len(pending)} "
           f"(davon {_retries} Wiederholungen) [Modus: {EXTRACTOR_MODE}, "
-          f"Scout-Reasoning: {_scout_reasoning_label()}, "
-          f"Analyst-Reasoning: {_analyst_reasoning_label()}]", flush=True)
+          f"Scout-Reasoning: {_scout_reasoning_label()}]", flush=True)
     stats = {"done": 0, "failed": 0, "expired": 0, "retried": 0}
 
     # Signals-JSON laden (Append-only – bestehende Ergebnisse bleiben)

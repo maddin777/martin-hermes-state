@@ -56,26 +56,19 @@ def main():
         return  # kein Lauf heute (Build-Tag/Wochenende) -> silent
     ki_done = _find_time(lines, "KI Analyse DONE")
     pipe_done = _find_time(lines, "TRADING PIPELINE DONE")
-    # 21.09.2026: nur melden, wenn etwas zu melden ist — das Modul-Docstring
-    # versprach dieses Watchdog-Muster ("sonst silent"), der Code druckte aber
-    # auch im Gutfall. Ergebnis war eine taegliche Nachricht, die nichts sagt.
-    # Ausserdem stand die Schwelle als Text "(>05:00)" in der Meldung und waere
-    # nach der Anhebung auf 08:00 schlicht falsch gewesen — sie kommt jetzt
-    # aus DONE_BY selbst.
     out = []
     if ki_done:
-        if ki_done > DONE_BY:
-            out.append(f"[Pipeline-Timing] KI-Analyse DONE heute {ki_done} -> "
-                       f"⏱ ZU SPÄT (>{DONE_BY[:5]})")
-            out.append("Frist = Boersenoeffnung 09:00 CEST minus 1h Puffer.")
-            out.append("Bottleneck ist die KI-Analyse. Gemessen (21.09.): die Latenz "
-                       "folgt den erzeugten Reasoning-Tokens (~33 Tok/s, bis ~10.000 "
-                       "Tokens pro Call), NICHT einer API-Drosselung. Calls, die an "
-                       "max_tokens=4000 stossen (finish_reason=length), liefern kein "
-                       "JSON und werden mehrfach wiederholt.")
+        late = ki_done > DONE_BY
+        status = "⏱ ZU SPÄT (>05:00)" if late else "✅ rechtzeitig"
+        out.append(f"[Pipeline-Timing] KI-Analyse DONE heute {ki_done} -> {status}")
+        out.append("Frist = Boersenoeffnung 09:00 CEST minus 1h Puffer.")
+        if late:
+            out.append("Bottleneck ist die KI-Analyse (LLM-Calls): Menge x Latenz, "
+                       "plus ~25% Ausschuss durch die JSON-Retry-Kaskade. "
+                       "Mehr Parallelitaet wuerde die Drosselung verschaerfen.")
     else:
         out.append("[Pipeline-Timing] Heute KEINE 'KI Analyse DONE' — ggf. kein Pipeline-Lauf (Wochenende) oder Fehler.")
-    if out and pipe_done:
+    if pipe_done:
         out.append(f"[Pipeline-Timing] TRADING PIPELINE DONE heute {pipe_done}")
     if out:
         print("\n".join(out))

@@ -6,12 +6,10 @@ NEU: Sortino Ratio, Calmar Ratio, R-Multiple, Exposure (LONG/SHORT)
 """
 import sqlite3, json, os, requests, math
 import sys
-import time
 sys.path.insert(0, "/root/.hermes/profiles/hermes_trading/skills/trading")
 import env_loader  # noqa: F401  (side-effect: laedt .env)
 from datetime import datetime, timedelta
-from config import (DB_PATH, STRATEGY_CONFIG_PATH, SIGNALS_VALIDATED_PATH,
-                    CRON_LOG_PATH, db_connect)
+from config import DB_PATH, STRATEGY_CONFIG_PATH, SIGNALS_VALIDATED_PATH, db_connect
 
 TG_TOKEN   = os.environ.get("TELEGRAM_BOT_TOKEN")
 TG_CHAT    = os.environ.get("TELEGRAM_HOME_CHANNEL") or os.environ.get("TELEGRAM_CHAT_ID", "")
@@ -673,79 +671,8 @@ def calc_committee_shadow(con, days=14):
         return None
 
 
-
-# ── Pipeline-Kopplung (21.09.2026) ───────────────────────────────────────────
-PIPELINE_WAIT_MAX_MIN = 150   # Obergrenze; laengste beobachtete Pipeline: 226 Min
-PIPELINE_POLL_SEC     = 60
-
-
-def _today_pipeline_state():
-    """(gestartet, fertig) der heutigen trading_pipeline laut cron.log.
-
-    Beide Marker stehen in ISO-datierten Logger-Zeilen
-    ("[2026-09-21 03:30:03] INFO trading_pipeline: TRADING PIPELINE START/DONE"),
-    der reine Cron-Echo-Marker dagegen NICHT — deshalb wird auf die
-    Logger-Zeilen gefiltert, nicht auf den Echo-Marker.
-    """
-    today = datetime.now().strftime("%Y-%m-%d")
-    started = done = False
-    try:
-        with open(CRON_LOG_PATH, errors="ignore") as fh:
-            for line in fh:
-                if today not in line:
-                    continue
-                if "TRADING PIPELINE START" in line:
-                    started = True
-                elif "TRADING PIPELINE DONE" in line:
-                    done = True
-    except OSError:
-        pass
-    return started, done
-
-
-def wait_for_pipeline():
-    """Wartet, bis die heutige Pipeline durch ist. Returns Statuswort.
-
-    Hintergrund (21.09.2026): nightly_eval lief fix um 05:00, die Pipeline
-    braucht aber im Median ~140 Minuten ab 03:30 und montags bis zu 226.
-    An 9 von 12 Laeufen war die Auswertung damit FRUEHER fertig als die Daten,
-    die sie auswertet — der Signal Manager ist der vorletzte Pipeline-Schritt.
-    Die Kennzahlenreihe mass also teils einen Zustand vor den heutigen Entries,
-    ohne dass das irgendwo vermerkt war.
-
-    Statt die Uhrzeit weiter zu raten haengt der Lauf jetzt an der Pipeline.
-    Laeuft keine (Wochenende, ausgefallener Lauf), wird nicht gewartet.
-    Laeuft sie zu lange, wird trotzdem ausgewertet — aber die Zeile in
-    eval_metrics wird als unvollstaendig markiert statt still falsch zu sein.
-    """
-    if IS_SUNDAY or datetime.now().weekday() == 5:
-        return "weekend"
-
-    started, done = _today_pipeline_state()
-    if done:
-        return "done"
-    if not started:
-        print("  Pipeline heute nicht gestartet — keine Wartezeit.", flush=True)
-        return "no_run"
-
-    deadline = time.time() + PIPELINE_WAIT_MAX_MIN * 60
-    print(f"\u23f3 Pipeline laeuft noch \u2014 warte bis zu "
-          f"{PIPELINE_WAIT_MAX_MIN} Min auf ihren Abschluss...", flush=True)
-    while time.time() < deadline:
-        time.sleep(PIPELINE_POLL_SEC)
-        _, done = _today_pipeline_state()
-        if done:
-            waited = int((PIPELINE_WAIT_MAX_MIN * 60 - (deadline - time.time())) / 60)
-            print(f"  Pipeline fertig nach {waited} Min Wartezeit.", flush=True)
-            return "done"
-    print(f"  \u26a0 Pipeline nach {PIPELINE_WAIT_MAX_MIN} Min immer noch nicht "
-          f"fertig \u2014 werte trotzdem aus, Zeile wird markiert.", flush=True)
-    return "timeout"
-
-
 def main():
     print(f"📊 Nightly Eval {'(Woche)' if IS_SUNDAY else '(täglich)'} [{datetime.now().strftime('%Y-%m-%d %H:%M')}]", flush=True)
-    pipeline_state = wait_for_pipeline()
     con = db_connect()
     try:
         today = datetime.now().strftime("%Y-%m-%d")
@@ -786,13 +713,12 @@ def main():
             INSERT OR REPLACE INTO eval_metrics
             (date, metric_type, new_companies, confirmed, contradicted, avg_conviction, signals_bought,
              open_positions, win_rate_7d, win_rate_30d, profit_factor_7d, avg_holding_days,
-             exit_sl_pct, exit_tp_pct, exit_tech_pct, created_at, notes)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+             exit_sl_pct, exit_tp_pct, exit_tech_pct, created_at)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
         """, (today, metric_type, sm["new_companies"], sm["confirmed"], sm["contradicted"],
               sm["avg_conviction"], sm["signals_bought"], pm["open_positions"], pm["win_rate_7d"],
               pm["win_rate_30d"], pm["profit_factor_7d"], pm["avg_holding_days"],
-              pm["exit_sl_pct"], pm["exit_tp_pct"], pm["exit_tech_pct"], datetime.now().isoformat(),
-              None if pipeline_state in ("done", "weekend") else f"pipeline={pipeline_state}"))
+              pm["exit_sl_pct"], pm["exit_tp_pct"], pm["exit_tech_pct"], datetime.now().isoformat()))
         con.commit()
 
         # Top-Band-Validierung (Top-3/5/10 der Watchlist)

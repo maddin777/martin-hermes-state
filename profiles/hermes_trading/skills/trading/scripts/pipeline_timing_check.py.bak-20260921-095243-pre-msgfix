@@ -68,11 +68,9 @@ def main():
             out.append(f"[Pipeline-Timing] KI-Analyse DONE heute {ki_done} -> "
                        f"⏱ ZU SPÄT (>{DONE_BY[:5]})")
             out.append("Frist = Boersenoeffnung 09:00 CEST minus 1h Puffer.")
-            out.append("Bottleneck ist die KI-Analyse. Gemessen (21.09.): die Latenz "
-                       "folgt den erzeugten Reasoning-Tokens (~33 Tok/s, bis ~10.000 "
-                       "Tokens pro Call), NICHT einer API-Drosselung. Calls, die an "
-                       "max_tokens=4000 stossen (finish_reason=length), liefern kein "
-                       "JSON und werden mehrfach wiederholt.")
+            out.append("Bottleneck ist die KI-Analyse (LLM-Calls): Menge x Latenz, "
+                       "plus ~25% Ausschuss durch die JSON-Retry-Kaskade. "
+                       "Mehr Parallelitaet wuerde die Drosselung verschaerfen.")
     else:
         out.append("[Pipeline-Timing] Heute KEINE 'KI Analyse DONE' — ggf. kein Pipeline-Lauf (Wochenende) oder Fehler.")
     if out and pipe_done:

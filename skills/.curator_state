@@ -1,9 +1,9 @@
 {
-  "last_report_path": "/root/.hermes/logs/curator/20260914-080454",
-  "last_run_at": "2026-09-14T08:04:54.431755+00:00",
-  "last_run_duration_seconds": 337.285244,
-  "last_run_summary": "auto: 1 archived, 4 reactivated; llm: Now let me write the final structured summary:\n\n## Summary\n\nThis consolidation pass identified and merged the following skill clusters:\n\n**Consolidations completed:**\n1. **GitHub cluster** (6 skills → 1 umbrella): github-auth, github-code-r…\narchived 27 skill(s):\n  • arxiv → research-tools\n  • blocked-page-recovery → research-tools\n  • blogwatcher → research-tools\n  • competitor-news-monitor → research-tools\n  • email-inbox-triage → email-tools\n  • evaluating-llms-harness → mlops-tools\n  • github-auth → github-operations\n  • github-code-review → github-operations\n  • github-issue-to-pr → github-operations\n  • github-issues → github-operations\n  … and 17 more\nfull report: hermes curator status\nkeep an umbrella stable: hermes curator pin email-tools",
+  "last_report_path": "/root/.hermes/logs/curator/20260921-080534",
+  "last_run_at": "2026-09-21T08:05:34.200902+00:00",
+  "last_run_duration_seconds": 294.38107,
+  "last_run_summary": "auto: 37 archived, 2 reactivated; llm: ## Consolidation Pass Summary\n\n### Clusters Identified\n\nI analyzed the 33 curator-managed skills and identified these natural clusters:\n\n1. **Office/Document Productivity** — `box`, `docx`, `pdf`, `xlsx`, `powerpoint`, `ocr-and-documents`, …\narchived 2 skill(s):\n  • computer-use — pruned (stale)\n  • requesting-code-review — pruned (stale)\nfull report: hermes curator status",
   "last_run_summary_shown_at": "2026-08-17T05:59:46.242059+00:00",
   "paused": false,
-  "run_count": 19
+  "run_count": 20
 }
