@@ -1,6 +1,6 @@
 # Änderungshistorie — Trading Skill
 
-**Stand:** Paketen A–D + Sprints 1–7 + Bugfix-Sprint + Screener-Source + Watchlist-Performance-Fix + Rollen-Sprint R1–R4 + **Turtle-Konfluenz-Sprint** + **Phase 1+2 Fix (09.08.2026)** + **Watchlist-Cleanup-Archivierung (09.08.2026)** + **UK-Microcap-Gate (14.08.2026)** + **DQ-Isolation + Alarm-Crons (16.08.2026)** + **Drawdown-15-25-Zone auf 6 Pos (17.08.2026)** + **DQ-.L-Aufräumung im Cleanup + täglicher Cleanup (19.08.2026)** + **DQ-Deaktivierungs-Verifikation + Cleanup 1c (24.08.2026)** + **DQ-Root-Clause-Fix: keine Reaktivierung gedroppter .L + Dry-Run read-only (26.08.2026)** + **Selection Momentum-/Liquiditäts-Gate (27.08.2026)** + **Drawdown-Heilungs-Beschleunigung 15-25%: Size 65% + Conf 75% (01.09.2026)** + **Grok entfernt, twitterapi.io Standard (01.09.2026)** + **Alternative Momentum-Swing-Strategie dokumentiert (06.09.2026)** + **Volume-Backtest: NICHT übernommen (06.09.2026)** + **Sektor-abhängige Regime (07.09.2026)** + **Overlay-Bug Fix (07.09.2026)** + **Analyse-Sprint: 7 Defekte behoben (08.09.2026)** + **Messbarkeit: Gates, Quellen-Taxonomie, Beneficiary-Lifecycle, Video-Retry (08.09.2026)** + **Sizing entkoppelt, Momentum-Faktor repariert, Schattenbuecher (08.09.2026)** + **Kanonik-Mirror-Fix (.SG/.MU/ISIN) + Attributions-Oszillation Root-Cause (10.09.2026)** + **Pre-Delivery-Verification-Gate (14.09.2026)**
+**Stand:** Paketen A–D + Sprints 1–7 + Bugfix-Sprint + Screener-Source + Watchlist-Performance-Fix + Rollen-Sprint R1–R4 + **Turtle-Konfluenz-Sprint** + **Phase 1+2 Fix (09.08.2026)** + **Watchlist-Cleanup-Archivierung (09.08.2026)** + **UK-Microcap-Gate (14.08.2026)** + **DQ-Isolation + Alarm-Crons (16.08.2026)** + **Drawdown-15-25-Zone auf 6 Pos (17.08.2026)** + **DQ-.L-Aufräumung im Cleanup + täglicher Cleanup (19.08.2026)** + **DQ-Deaktivierungs-Verifikation + Cleanup 1c (24.08.2026)** + **DQ-Root-Clause-Fix: keine Reaktivierung gedroppter .L + Dry-Run read-only (26.08.2026)** + **Selection Momentum-/Liquiditäts-Gate (27.08.2026)** + **Drawdown-Heilungs-Beschleunigung 15-25%: Size 65% + Conf 75% (01.09.2026)** + **Grok entfernt, twitterapi.io Standard (01.09.2026)** + **Alternative Momentum-Swing-Strategie dokumentiert (06.09.2026)** + **Volume-Backtest: NICHT übernommen (06.09.2026)** + **Sektor-abhängige Regime (07.09.2026)** + **Overlay-Bug Fix (07.09.2026)** + **Analyse-Sprint: 7 Defekte behoben (08.09.2026)** + **Messbarkeit: Gates, Quellen-Taxonomie, Beneficiary-Lifecycle, Video-Retry (08.09.2026)** + **Sizing entkoppelt, Momentum-Faktor repariert, Schattenbuecher (08.09.2026)** + **Kanonik-Mirror-Fix (.SG/.MU/ISIN) + Attributions-Oszillation Root-Cause (10.09.2026)** + **Pre-Delivery-Verification-Gate (14.09.2026)** + **Pfadgenaue Exit-Simulation + Optimizer-Fix + Exit-Profil-Leiter (18.09.2026)** + **Mentions-Gate + Factor-Ranker US-only (19.09.2026)** + **Pipeline-Kopplung + LLM-Abschneidungs-Fix (21.09.2026)** + **Reasoning-Tuning Scout/Analyst, gemessen (22.09.2026)**
 
 ## 10.09.2026 — Kanonik-Mirror-Fix + Attributions-Oszillation (Vault-Insights-Vorschläge 1–3)
 
@@ -1556,3 +1556,344 @@ Tech-Richtung ist frisch und LONG-bestätigt.
 
 **Ergebnis:** Kein Code-Fix nötig. Kein ungewollter Trade-Trigger möglich — der Check
 kann per Konstruktion nur Exits/SL-Nachziehen/Trailing liefern.
+
+---
+
+## 18.09.2026 — Pfadgenaue Exit-Simulation, Optimizer-Fix, MFE/MAE-Tracking, Exit-Profil-Leiter
+
+**Auslöser:** Strategieprüfung nach mehreren Wochen Live-Betrieb. 88 geschlossene Trades:
+YTD -9,6% vs. SPY +12,2% (Alpha -21,9%), Erwartungswert -0,046R. Größenneutral fehlten nur
+2,6 Prozentpunkte Trefferquote bis Breakeven — der EUR-Verlust war überwiegend ein
+Sizing-Artefakt aus April–Juni (Positionsgrößen 20–30% des Depots), seit Juli bereits auf
+~7% korrigiert.
+
+### Fund 1 — `strategy_optimizer.py` bewertete nur den Exit-PREIS, nie den Pfad
+
+**Symptom:** `backtest_params()` prüfte für einen hypothetischen SL/TP nur, ob der
+realisierte Exit-Preis jenseits davon liegt — nicht, ob der Stop UNTERWEGS getroffen
+worden wäre. `data/optimization_report.json` vom 12.07. hatte deshalb SL 1.0x ATR als
+"+101% Verbesserung" empfohlen und mit `"updated": true` in `strategy_config.json`
+zurückgeschrieben.
+
+**Beleg:** Pfadgenauer Replay über die realen Trades (82 lokal verfügbare Bar-Serien,
+86 mit vollem Server-seitigen yfinance-Zugriff): SL 1.0x war in der alten Logik Platz 1
+(+0,64%), im Replay das SCHLECHTESTE (PF 0,77, Erwartungswert -0,65%/Trade). Ursache u.a.
+eine zweite, unabhängige Verzerrung in der Score-Formel: `exp_score` war bei JEDEM
+negativen Erwartungswert exakt 0 (`max(0, min(exp/2, 1))`) — SL 1,0x landete mit PF 0,77
+trotzdem auf Platz 3 von 24, weil nur noch Verhältniszahlen (Payoff, PF) übrigblieben.
+`exp_score` ist jetzt monoton über den Bereich [-2%, +2%].
+
+**Fix:**
+1. Neue Funktionen `exit_rules.replay_exit_path()` + `donchian_trail_stop()` —
+   pfadgenaues Replay über echte OHLC-Bars (Reihenfolge je Bar: Stop zuerst, dann
+   Partial-TP, dann Voll-TP, dann Trail nachziehen, dann Time-Stop).
+2. Neues Modul `scripts/trade_paths.py` — cached OHLC-Bars je Trade (übernimmt 83
+   vorhandene Bar-Serien aus `backtest_variants_result.json`, lädt den Rest per
+   yfinance nach).
+3. `scripts/strategy_optimizer.py` und `scripts/backtester.py`: `backtest_params()`
+   nutzt jetzt `replay_exit_path()`. Zusätzlich gefunden und mitbehoben:
+   - `atr_sl_multiplier`/`atr_tp_multiplier` steuern den Live-Pfad GAR NICHT: der SL
+     kommt aus `get_exit_config()` (Exit-Matrix), `signal_manager.py:462` überschreibt
+     den Konfigwert sogar aus dieser Matrix; das TP feuert nie
+     (`hit_tp = False` in `signal_manager.py` UND `active_exit_check.py:349` —
+     "TP ist Backup/Ergebnisziel, Chandelier primär"). Das Such-Grid wurde deshalb auf
+     `exit_profile` × `time_stop_trading_days` umgestellt — die beiden Parameter, die
+     tatsächlich wirken.
+   - `backtester.py`: `backtest_params()` hatte ein Pflichtargument `min_conf`, wurde
+     aber immer mit 3 Argumenten aufgerufen → `TypeError` bei JEDEM Lauf. Der komplette
+     Walk-Forward-Pfad ist seither bei jedem Aufruf in den Except-Zweig
+     ("Walk-Forward Fehler ... Grid Search Fallback") gefallen. Fehlender Import von
+     `STRATEGY_CONFIG_PATH` ebenfalls behoben.
+   - Neue Profitabilitäts-Sperre: eine Parameterkombination mit PF < 1 oder
+     Erwartungswert ≤ 0 wird nie automatisch übernommen — unabhängig davon, wie gut ihr
+     Composite relativ zur aktuellen Config aussieht.
+   - Neues Sprossen-Limit: pro Lauf höchstens eine Stufe der Exit-Profil-Leiter
+     (verhindert Überanpassung — bei ~86 Trades sonst ein Sprung auf die beste von
+     20 Zellen in einem Schritt).
+   - Neues `--dry-run`-Flag: zeigt die Entscheidung, schreibt nichts.
+4. `merge_scout_results`/Reasoning-Themen unberührt — dieser Fund betrifft nur die
+   Exit-Parameter-Suche.
+
+**Verifikation (Dry-Run auf dem Server, 88 Trades, Analysefenster 60→180 Tage,
+`MIN_TRADES` 10→30):** Walk-Forward meldet korrekt "nicht robust" (1 von 3 Folds
+profitabel) → Grid-Search-Fallback. Empfehlung `wider_stop` / TimeStop 5 — unabhängig
+von der vorherigen manuellen Analyse reproduziert.
+
+### Fund 2 — MFE/MAE: die Gegenbewegung wurde nie erfasst
+
+**Symptom:** `highest_price`/`lowest_price` wurden beim Entry nur für die GÜNSTIGE
+Richtung gesetzt (LONG: `highest_price = entry`, `lowest_price = 0`), das jeweils andere
+Feld blieb `0` — als Sentinel nicht von einem echten Kurs unterscheidbar. Die maximale
+Gegenbewegung (MAE) war damit für keinen der 88 Trades rekonstruierbar.
+
+**Fix:** `scripts/signal_manager.py` (Entry-INSERT + laufender PnL-Update-Block) und
+`scripts/active_exit_check.py` (PnL-Berechnung) führen jetzt BEIDE Extremwerte bei jedem
+Check, unabhängig von Richtung und Profit-Lock-Gate. Neues Migrationsskript
+`scripts/migrate_fix_extremes.py` (Dry-Run per Default, `--apply` schreibt) ersetzt
+0-Sentinels durch den Entry-Preis (korrekte untere Schranke zum Entry-Zeitpunkt).
+**Angewendet auf dem Server:** 96 Zeilen repariert (8 offen, 88 geschlossen), idempotent
+(2. Lauf: 0 Änderungen), P&L-Summe unverändert (-1.344,70 €). Für bereits geschlossene
+Trades ist die MAE damit NICHT rekonstruiert, nur der Sentinel entfernt — echte
+MAE-Daten entstehen ab jetzt im laufenden Betrieb.
+
+### Fund 3 — Exit-Profil-Leiter statt Einzelwert
+
+`config.py`: neue `EXIT_PROFILES`-Leiter (`tighter` ×0,85 / `current` ×1,00 /
+`wider_stop` ×1,15 / `wider_stop_plus` ×1,33 / `wider_stop_aggressive` ×1,50),
+`get_exit_profile()` liest `strategy_config.json["exit_profile"]` (mtime-gecacht,
+unbekannter/fehlender Wert → `current`). `get_exit_config()` skaliert SL **und** TP
+gemeinsam, ratio-erhaltend (`math.ceil`, nicht getrennt gerundet) — nur den Stop zu
+skalieren hätte die designte 3:1-Mindest-Asymmetrie verletzt
+(`tests/test_exit_asymmetry.py::test_every_matrix_entry_has_minimum_three_to_one_payoff`
+schlug beim ersten Versuch fehl; eine zweite Iteration behob zusätzlich ein
+Rundungsartefakt bei TECH/bear, das durch getrenntes Runden von SL und TP entstand).
+Neues Skript `scripts/verify_exit_profile.py` rechnet einen Profilwechsel vor dem
+Scharfschalten durch (Split-Half über die Zeit, Bootstrap-95%-Konfidenzintervall).
+
+**Scharfgeschaltet:** `exit_profile = "wider_stop"` in `strategy_config.json`
+(Backup `.bak-20260918-233613-pre-profile`). Effektive Matrix z. B.
+STANDARD/sideways: SL/TP 1,50/4,50 → 1,72/5,16 (weiterhin exakt 3,00:1).
+
+### Fund 4 — Time-Stop 7→5 nur bedingt, nicht rückwirkend
+
+**Problem:** `time_stop_trading_days` sofort auf 5 zu setzen hätte am nächsten
+Pipeline-Lauf 5 von 8 offenen Positionen SOFORT geschlossen (u. a. OKTA mit +48,81 €),
+weil der Backtest TS=5 AB ENTRY simuliert hatte — nie rückwirkend auf Positionen, die
+bereits unter der 7-Tage-Regel liefen.
+
+**Fix:** Neues Skript `scripts/apply_time_stop_5.py`, täglich per Cron (04:45 Mo–Fr),
+selbstdeaktivierend: prüft `blocking_positions()` (offene Positionen, die TS=5 sofort
+schließen würden); setzt `time_stop_trading_days=5` erst, wenn keine mehr betroffen
+ist, entfernt danach die eigene Crontab-Zeile.
+
+**Verifikation:** Vorab simuliert (Montag schließt CRM/VRSK regulär über TS=7, Dienstag
+keine Blocker mehr → Umschaltung). Tatsächlich gefeuert am 22.09. um 04:45
+(Backup `data/strategy_config.json.bak-20260922-044501-pre-ts5`), eigene Crontab-Zeile
+danach automatisch entfernt (bestätigt: 0 verbleibende Einträge).
+
+---
+
+## 19.09.2026 — Mentions-Gate + Factor Ranker (US-only, PYTHONPATH-Fix)
+
+### Fund — `mention_count` zählt Erwähnungen, nicht unabhängige Quellen
+
+**Symptom:** `MENTIONS_CLAUSE` ließ Kandidaten mit einem EINZIGEN Kanal durch, sofern
+dieser nur oft genug postete — 32 von 76 aktuellen Watchlist-Einträgen passierten das
+`mention_count >= 2`-Gate mit genau einem Kanal. 18 realisierte Einzelquellen-Trades:
+meanR -0,288 (WR 22%) gegen +0,024 (WR 43%) bei Mehrfachbestätigung, p=0,12
+(richtungsweisend, bei n=18 nicht signifikant). Davon 15 LONG, 3 SHORT —
+`min_mentions_short` allein hätte nur 3 Trades betroffen.
+
+**Fix:** `scripts/signal_manager.py`: `min_mentions_short` 1→2 (scharfgeschaltet).
+Zusätzliche Bedingung in `MENTIONS_CLAUSE`/`_mentions_params()`: mindestens
+`min_distinct_channels` VERSCHIEDENE Kanäle (Default 1 = aus; deterministische Quellen
+wie Screener bleiben ausgenommen — ein Screener ist eine Regel, keine Meinung, die
+bestätigt werden müsste). Gemessene Wirkung auf der aktuellen Watchlist:
+reduziert LONG-Kandidaten von 8 auf 7 — kleiner Hebel, deshalb per Default deaktiviert
+gelassen (`min_distinct_channels = 1` in `strategy_config.json`), aber verfügbar.
+
+### Fund — `thematic/`-Pipeline lief seit 13.07. ohne Cron-Eintrag
+
+**Symptom:** `factor_scores` und `fundamentals_snapshot` endeten beide exakt am
+13.07.2026, `data/thematic.log` ebenso. Eine frühere Annahme (in eigenen
+Code-Kommentaren in `shadow_selection.py`/`dq_alarm.py`), `thematic/factor_ranker.py`
+existiere nicht, war FALSCH — die Datei existiert und wurde am 08.09. sogar
+überarbeitet (Momentum-Faktor repariert); `thematic_pipeline.py` (8 Schritte, u. a.
+Factor Ranking) hatte schlicht keinen Cron-Eintrag. Die Falschaussage in beiden
+Kommentaren wurde korrigiert.
+
+### Fund — Finnhub-Free-Tier liefert kein `roicTTM`/`freeCashFlowTTM` → Quality-Faktor hätte Banken systematisch benachteiligt
+
+**Symptom:** `quality_score = roic + (1 - min(debt/equity, 1))`; mit `roic = None → 0`
+bleibt nur der Verschuldungsterm, der bei JEDEM Titel mit debt/equity ≥ 1 auf exakt 0
+fällt (JPM 3,30, ING 3,68 im Test) — 56% (223/397) der Test-Ticker hängen im selben
+Perzentil-Block. Mit Gewicht 0,25 hätte das ein Viertel des Composite auf einen nicht
+unterscheidenden, sektorverzerrenden Wert gelegt. `value_score` war über das gesamte
+Universum konstant (FCF fehlt durchgängig) — harmlos, weil der Code konstante Faktoren
+erkennt und neutral auf 0,5 setzt, aber wirkungslos. Zusätzlich liefert Finnhub für
+NICHT-US-gelistete Ticker weder Fundamentals noch Recommendations (HTTP 403) —
+quality/revision wären dort strukturell 0 gewesen: eine eingebaute Bevorzugung von
+US-Titeln.
+
+**Fix (Option C — kostenlos, sofort umsetzbar, da der Ranker aktuell nur ein
+Schattenbuch speist, kein Live-Entry):**
+1. `thematic/config/universe.json`: 136 → 85 Ticker (51 Nicht-US entfernt, u. a.
+   SIE.DE/DTE.DE/ALV.DE/BAS.DE/DBK.DE).
+2. `thematic/config/thematic_config.json` `factor_weights`: momentum 0,30→0,60,
+   quality 0,25→0, value 0,20→0, revision 0,15 (unverändert), lowvol 0,10→0,25.
+   Quality/Value werden weiterhin BERECHNET und in `factor_scores` gespeichert
+   (Diagnose), fließen aber mit Gewicht 0 nicht in den Composite ein.
+3. `thematic/factor_ranker.py`-Docstring korrigiert: das Modul ist damit aktuell ein
+   Momentum-Ranking, kein Multi-Faktor-Ranking (Rückweg dokumentiert, sobald eine
+   Fundamentalquelle mit Nicht-US-Abdeckung angebunden ist).
+4. `data/us_universe.csv`: Tippfehler `HEIA` (bei yfinance nicht auffindbar) →
+   `HEI-A` (HEICO Class A, NYSE) korrigiert.
+
+**Verifikation (voller Lauf, 400 Ticker, 1.406 s):** `momentum_score`/`lowvol_score`/
+`revision_score` streuen (sd 0,27–0,29), `rank_in_universe` lückenlos 1..397. Top 10 =
+BNY/CPAY/NTRS/UNH/CNC/BAC/MPC/PSX/RVMD/VLO (Financials/Healthcare/Energy statt der
+zuvor benachteiligten Sektoren).
+
+### Fund — PYTHONPATH-Falle: Cron erbt nicht dieselbe Umgebung wie die interaktive Session
+
+**Symptom:** `factor_ranker.py` macht ein LAZY `from thematic.lib import
+finnhub_client` innerhalb der Faktor-Funktionen (pro Ticker). Die interaktive
+SSH-Session hatte `PYTHONPATH=<trading-root>` gesetzt — Cron erbt das NICHT. Ohne
+PYTHONPATH wäre der Job sauber gestartet, hätte Kurse geladen und wäre beim ERSTEN
+Ticker mit `ModuleNotFoundError` abgestürzt (verifiziert mit `env -i`, bevor der
+Cron-Eintrag gesetzt wurde).
+
+**Fix:**
+1. `thematic/factor_ranker.py`: `sys.path`-Bootstrap am Modulkopf (Selbstversorgung,
+   unabhängig vom Aufrufer).
+2. `thematic/thematic_pipeline.py`: neue `child_env()` — reicht `TRADING_ROOT` an ALLE
+   8 `subprocess.run()`-Schritte weiter, nicht nur an factor_ranker (betroffen wären
+   7 von 8 Schritten gewesen). Die Startzeile protokolliert den verwendeten
+   PYTHONPATH.
+
+**Neuer Cron-Eintrag:** `factor_ranker.py`, 05:10 Mo–Fr (Slot bewusst fern von
+`fundamental_data`/`social_scanner`, die dieselbe Finnhub-API belasten). Laufzeit real
+gemessen: 23,4 Minuten.
+
+---
+
+## 21.09.2026 — Pipeline-Kopplung (nightly_eval) + Watchdog-Korrektur + LLM-Abschneidungs-Kaskade
+
+### Fund — `nightly_eval` feuerte fix um 05:00, unabhängig vom Pipeline-Fortschritt
+
+**Symptom:** Die Pipeline braucht im Median ~140 Minuten ab 03:30 (montags bis 226) —
+an 9 von 12 beobachteten Läufen war `nightly_eval` damit FRÜHER fertig als die Daten,
+die es auswertet (der Signal Manager ist der vorletzte Pipeline-Schritt). Belegt am
+21.09.: `open_positions` stand um 05:00 auf 8, nach Pipelineende auf 6 (CRM/VRSK per
+TIME_STOP geschlossen).
+
+**Fix:** `scripts/nightly_eval.py`: neue `wait_for_pipeline()` — wartet auf den
+ISO-datierten DONE-Marker der heutigen `trading_pipeline` im `cron.log` (Poll alle 60 s,
+Obergrenze 150 Min). Kein Lauf heute/Wochenende → keine Wartezeit. Timeout → trotzdem
+auswerten, die Zeile wird in `eval_metrics.notes` als `pipeline=timeout`/`no_run`
+markiert statt still falsch zu sein. Erkennung ausschließlich über die ISO-datierten
+Logger-Zeilen — der reine Cron-Echo-Marker enthält kein Datum.
+
+**Cron:** Pipeline-Start für Montag auf 02:30 vorgezogen (nicht 02:00 — kollidiert mit
+`social_scanner`), Di–Fr bleibt 03:30.
+
+**Folgekorrektur — `scripts/pipeline_timing_check.py`:** `DONE_BY` stand auf "05:00:00",
+begründet mit "nightly_eval feuert um 05:00" — diese Kopplung existiert nicht mehr.
+Neue Schwelle 08:00 (Börsenöffnung 09:00 minus 1 h Puffer). Zusätzlich gefunden: der
+Watchdog druckte ENTGEGEN seinem eigenen Docstring ("silent, sonst") auch im Gutfall
+("✅ rechtzeitig") — wäre ab sofort täglich eine Nachricht ohne Aussagewert gewesen.
+Meldet jetzt wirklich nur bei Überschreitung; die Schwelle im Text kommt aus `DONE_BY`
+statt aus dem hartkodierten "(>05:00)".
+
+### Fund — `signal_extractor`: Reasoning-Modell läuft häufig in die Ausgabegrenze, alte Kaskade wiederholt identisch
+
+**Symptom:** `deepseek-v4-flash` (Scout und Analyst) ist ein Reasoning-Modell; bei
+`max_tokens=4000` läuft das Reasoning in ~36% der Scout-Calls (56–63% der
+Analyst-Calls) an die Grenze (`finish_reason=length`) → kein `content`. `_call()`
+wertete das bislang als "Leeres content-Feld" (KeyError) und wiederholte MIT DERSELBEN
+GRENZE — im Schnitt nur 26% Erfolgsquote beim zweiten Versuch, sonst nochmal ~2 Minuten
+verbrannt vor dem `gpt-4o-mini`-Fallback.
+
+**Nebenfund:** `raise exc` am Ende der Retry-Schleife in `_call()` griff auf eine
+`except ... as exc`-Variable zu, die Python am Blockende löscht → `UnboundLocalError`
+überdeckte 49× im Log die eigentliche Ursache (9× als "Analyst-Call fehlgeschlagen →
+Fallback auf Scout-Daten", d. h. die gesamte Analyse-Stufe fiel dort komplett aus).
+Fix: separate `last_exc`-Variable.
+
+**Fix:** Neue `_Truncated`-Exception (bewusst KEINE Unterklasse von KeyError/
+JSONDecodeError) — `_call()` prüft `finish_reason` VOR dem Content-Zugriff und trägt
+die verbrauchten Tokens für die Budget-Buchung nach; `_call_cascade()` eskaliert bei
+Abschneidung SOFORT auf `gpt-4o-mini`, statt denselben Call mit gleicher Grenze zu
+wiederholen. `_try_parse()` konnte eine abgeschnittene Teilantwort zudem als "Erfolg"
+fehlinterpretieren (der Rettungspfad "erstes dekodierbares JSON-Objekt" lieferte dann
+ein einzelnes Firmenobjekt OHNE `companies`-Schlüssel → eine stille leere Firmenliste
+ohne jeden Fehler) — durch die `finish_reason`-Prüfung vor dem Parsen jetzt
+ausgeschlossen.
+
+Tests: `tests/test_signal_extractor_hardening.py` um 6 Fälle erweitert (Abschneidung
+wird nicht identisch wiederholt, Kaskade eskaliert korrekt auf den Fallback, normale
+JSON-Fehler behalten die dreistufige Eskalation, Regressionstest für den
+`UnboundLocalError`).
+
+---
+
+## 22.09.2026 — Reasoning-Tuning für Scout und Analyst (gemessen, nicht geraten)
+
+**Vorgehen:** Vor jeder Parameteränderung ein Mess-Skript gegen die ECHTE
+`_call_cascade`/`call_scout`/`call_analyst`-Funktion (kein Duplikat der Logik).
+Referenz = zwei Läufe mit vollem Reasoning derselben Konfiguration (liefert die
+Rauschgrenze zwischen zwei identischen Läufen); jede Variante wird gegen dieses
+Rauschen bewertet (Bootstrap-Konfidenzintervall über die Chunks/Videos), nicht gegen
+einen einzelnen Referenzwert. Neue Skripte `scripts/scout_quality_probe.py`
+(64 Chunks, 9 Konfigurationen inkl. 4 alternativer Modelle) und
+`scripts/analyst_quality_probe.py` (27 Videos, 285–348 Firmen, inkl. einer "sauberen"
+Referenz mit Grenze 16.000 statt 4.000). Kein Schreibzugriff auf `trading.db` oder
+`llm_budget_log` während der Messungen.
+
+### Fund — Scout: `effort=low` vom Rauschen nicht unterscheidbar, schneller als jede Abschneide-Strategie
+
+Ergebnis (Recall/Precision gegen einzelne Referenzläufe; Referenz-Rauschen 0,89/0,89):
+Reasoning AUS schneidet klar schlechter ab (Recall 0,49 / Precision 0,65) — verworfen.
+Vier alternative günstige Modelle (qwen3-235b-a22b, mistral-small-3.2-24b,
+gemini-2.5-flash-lite, llama-3.3-70b) liegen alle unter dem bisherigen Fallback
+`gpt-4o-mini` (Precision 0,42–0,66) — nicht gewechselt; der Preis war ohnehin
+irrelevant (das Primärmodell ist bereits 4× günstiger als der Fallback).
+`reasoning.effort=low` (Precision 0,86, Recall 0,76) ist vom Rauschen NICHT
+unterscheidbar, ~44 s/Call inkl. Fallback-Anteil (vorher 65–96 s), Abschneide-Anteil
+~20%.
+
+**Fix:** `signal_extractor.py`: neue `_scout_reasoning_extra()` — Standard `effort=low`,
+nur an das Primärmodell (nie an den Fallback), Env-Override `SCOUT_REASONING_EFFORT`
+(unbekannte Werte fallen bewusst auf "voll" zurück — ein Tippfehler ändert nie still
+etwas).
+
+### Fund — Analyst: Reasoning AUS liegt am nächsten an der Referenz, senkt die Ausfallrate deutlich
+
+Nur `sentiment` und `strength` treiben nachgelagerte Entscheidungen (Conviction-
+Gewichtung `strong=1.0/moderate=0.6/weak=0.3` in `watchlist_manager.py`); `catalyst`
+wird nirgends gelesen, `action_hint`/Kursziele nur durchgereicht
+(`technical_validator.py:406f`). `sentiment` ist über alle Varianten praktisch
+identisch (Flip-Rate 0,4–0,7%). Bei `strength` bewertet `gpt-4o-mini` systematisch
+härter (41% "strong" gegen 12–20% bei vollem DeepSeek-Reasoning, mittleres Gewicht 0,59
+gegen 0,45–0,50) — der Produktions-Mix (56–63% Fallback-Anteil VOR dem 21.09.-Fix)
+übernahm diese Verzerrung teilweise. Reasoning AUS liegt der Referenz am nächsten
+(Gewicht 0,486, 13/33/55% statt 30–41% "strong"), Median 32 s statt 99–221 s, nur 6,6%
+Firmen ohne Analyse (Produktion vorher ~10%, `gpt-4o-mini` direkt 14,4%).
+
+**Fix:** neue `_analyst_reasoning_extra()` — Standard "aus" (`reasoning.enabled=False`),
+nur wenn `analyst_model == MODEL` (das gemessene Modell; ein anderweitig konfiguriertes
+Analyst-Modell bekommt den Parameter NICHT ungeprüft mitgeschickt), Env-Override
+`ANALYST_REASONING` mit gleichem Rückfall-Prinzip.
+
+### Fund — große Videos: `max_tokens=4000` reicht bei vielen Firmen nicht fürs JSON allein
+
+**Symptom:** Bei Reasoning AUS produziert der Analyst ~89 Tokens/Firma (Median, Maximum
+101) — die feste Grenze 4000 reicht damit nur bis ~44 Firmen. Ein 48-Firmen-Video
+(0,6% der Videos im Log, ≥40 Firmen: 3 von 538) wurde abgeschnitten (121 s verbrannt),
+der `gpt-4o-mini`-Fallback lieferte nur 28 von 48 Analysen, 20 Firmen fielen auf grobe
+Scout-Daten zurück.
+
+**Fix:** `_analyst_max_tokens(n) = clamp(500 + 130·n, 4000, 16000)` — 130 Tokens/Firma
+mit ~30% Puffer über dem gemessenen Maximum, Untergrenze 4000 (unverändert für ≤27
+Firmen, ≥99% der Videos), gilt auch für den Fallback.
+
+**Verifikation (End-to-End gegen die echte API, dasselbe 48-Firmen-Video):** Grenze
+4000 → abgeschnitten nach 121 s, 20/48 Firmen ohne Analyse. Berechnete Grenze 6740 →
+`finish=stop` nach 119 s, 4.057 Tokens gebraucht, 0/48 Firmen ohne Analyse.
+
+### Verifikation im echten Pipeline-Lauf (22.09., 03:30–04:41)
+
+Alle drei Änderungen gemeinsam aktiv (Log: `[Modus: two_pass, Scout-Reasoning: low,
+Analyst-Reasoning: aus]`). KI-Analyse-Dauer 34 Minuten (Vortag/Montag: 158 Minuten),
+Gesamtpipeline 71 Minuten (Montag: 226 Minuten). `llm_budget_log` für
+`extractor_analyst`: 955 Tokens/Call im Schnitt (Montag: 4.387). 0 Analyst-Ausfälle,
+0 `max_tokens`-Erhöhungen nötig (größtes Video an dem Tag: 23 Firmen). 7
+Scout-Abschneidungen bei 25 Chunks (~28%, im erwarteten Rahmen), alle direkt zu
+`gpt-4o-mini` eskaliert statt identisch wiederholt.
+
+Die Stichprobe ist mit einem Tag klein, und Montag war ohnehin der ungünstigste
+Vergleichstag — die Größenordnung der Verbesserung (v. a. beim Analysten: 955 statt
+4.387 Tokens, 0 statt ~10% Ausfälle) deckt sich aber zu genau mit der vorherigen
+Messung, um Zufall zu sein. Wird über die nächsten Tage weiterbeobachtet, insbesondere
+an einem Montag mit vollem Wochenend-Rückstau.
+

@@ -61,30 +61,148 @@ angerechnet → PnL ist immer **netto** (spread-bereinigt).
    Außerhalb: nur offene Positionen verwalten (Trailing/SL), keine neuen Entries.
 
 Die exakten Schwellen (ema_fast, ema_slow, momentum_lookback, sl/tp-mult) werden
-durch die **Walk-Forward-Optimierung** pro Paar kalibriert.
+durch die **Walk-Forward-Optimierung** kalibriert — seit 22.09. als EIN robuster Satz
+für alle Paare, nicht mehr pro Paar einzeln (siehe Changelog unten für die Begründung).
 
 ## Walk-Forward-Optimierung
 
-Läuft **sonntags 22:30** (`forex-walk-forward-weekly`). Für jedes Paar:
-- Lookback 8 Wochen 15m-Daten
-- Grid-Search über 108 Param-Kombinationen (ema_fast, ema_slow, momentum_lookback, sl_mult, tp_mult)
-- Bewertung: kombinierter Score = PF×0.5 + WR×0.2 + Sharpe×0.3 (PF dominiert)
-- Beste Paramgruppe → `params_snapshots`-Tabelle
+Läuft **sonntags 22:30** (`forex-walk-forward-weekly`, Skript `backtest.py`):
+- Lookback `walk_forward.lookback_weeks` (980 Tage) auf `cfg.timeframe` (1D)
+- Grid-Search über 108 Param-Kombinationen (ema_fast, ema_slow, momentum_lookback,
+  sl_atr_mult, tp_atr_mult), simuliert je Kombi auf **allen** konfigurierten Paaren
+  gemeinsam — inkl. Trend-Gate, ATR-SL/TP, täglich nachgezogenem Trailing-Stop und
+  Holding-Cap (dieselbe Logik wie `trade.py` live fährt)
+- Ranking: robust (netto Pips positiv in JEDEM Paar, ≥10 Trades gesamt) vor
+  nicht-robust; unter den robusten die höchste Pips-Summe gewinnt
+- Der Gewinner wird identisch für jedes Paar in `params_snapshots` gespeichert
+- Bricht mit Exit-Code 1 ab (keine neuen Snapshots), wenn für kein Paar Daten da sind
 
-`trade.py` lädt die **letzte** Paramgruppe je Paar; ohne Snapshot → Fallback auf config.json-Signal.
+`trade.py` lädt die **letzte** Paramgruppe je Paar — verwirft sie aber, wenn deren
+Backtest-Score unter `walk_forward.min_snapshot_score` liegt (Default 1.0), und nutzt
+dann den robusten globalen Default aus `config.json` (`signal` + `sl_tp` gemerged).
 
 ## Paper-Positions-Management (trade.py)
 
-Läuft alle 15 min Mo–Fr 09:00–21:45 (`forex-trade-check`):
+Läuft **1×/Tag 17:45 Mo–Fr** (`forex-trade-check`, 1D-Timeline):
 1. Session-Status prüfen (außerhalb → nur Positionen verwalten)
 2. Drawdown-Gate: `drawdown_pct >= max_drawdown_pct` (50%) → keine neuen Entries
-3. Signale prüfen → Paper-Trade eröffnen (SL/TP aus ATR, Position Sizing aus 2% Risk)
-4. Offene Positionen: Trailing-Stop nachziehen, SL/TP prüfen, Exit verbuchen
+3. Signale prüfen → Cooldown-Check + Korrelations-Cap-Check → Paper-Trade eröffnen
+   (SL/TP aus **echtem ATR(14)**, Position Sizing aus 2% Risk)
+4. Offene Positionen: Trailing-Stop (ATR-basiert) nachziehen, SL/TP/Holding-Cap prüfen,
+   Exit **zum SL/TP-Preis** verbuchen
 
 PnL-Berechnung beim Exit:
-- gross = Preisbewegung × size_units (LONG: (exit-entry)/entry; SHORT invertiert)
+- gross = Preisdelta × size_units (LONG: (exit-entry)×units; SHORT invertiert — **keine**
+  Division durch entry_price, siehe Fix vom 22.09.)
 - **netto = gross − spread_cost** (spread auf Entry+Exit)
 - Portfolio: cash += pnl_net, equity_peak-Update, realized_pnl
+
+### 22.09.2026: Fixes nach Strategie-Review (siehe `backups/*.pre-fix.20260922_085959`)
+
+Review der ersten 22 Live-Trades (20.08.–21.09.) zeigte: Portfolio +464€ bei **−232 Pips
+netto** — der Gewinn kam nur daher, dass das schlechteste Paar (USD/JPY, −346 Pips) durch
+einen Sizing-Bug faktisch mit ~1,50€ statt 200€ Risiko lief, während AUD/USD mit ~560€
+(2,8× Soll) lief. Root Causes und Fixes:
+
+1. **PnL-Formel korrigiert** ([trade.py](scripts/trade.py)): `pnl_gross` wurde fälschlich
+   durch `entry_price` geteilt → Risiko pro Trade variierte um Faktor ~360 zwischen
+   Paaren statt einheitlich 2% (200€). Jetzt: `(exit-entry) × size_units`, verifiziert
+   (alle 5 Paare risk_check = 200,00€ exakt).
+2. **Echtes ATR(14)** statt fixem `price*0.005`-Puffer für SL/TP/Trailing/Sizing
+   (`atr_series()`/`current_atr()` in trade.py, gleiche Formel wie in
+   `search_grid_1d.py`). Fallback auf den alten 0,5%-Puffer nur noch bei zu kurzer
+   Historie, mit Log-Warnung statt still.
+3. **backtest.py auf `cfg.timeframe` umgestellt** (lief hardcodiert auf `"15m"` —
+   yfinance liefert dafür nur 60 Tage Historie, das konfigurierte Lookback von 980
+   Tagen (1D-Setup) lief seit dem 1D-Umstieg am 29.08. für **jedes** Paar auf
+   „keine Daten", meldete aber trotzdem `✅ Walk-Forward abgeschlossen` (Exit 0).
+   Trade.py hat daraufhin bis zum 22.09. den letzten 15m-Ära-Snapshot vom 23.08.
+   gehandelt — **nie** die validierten 1D-Parameter aus config.json. Jetzt: nutzt
+   `cfg.timeframe`, simuliert die tatsächliche Live-Signal-Logik (Trend-Gate +
+   ATR-SL/TP + Holding-Cap), und bricht mit Exit-Code 1 ab statt ✅ zu melden, wenn
+   für kein Paar ein Ergebnis zustande kommt.
+4. **Snapshots neu geseeded**: manueller `backtest.py`-Lauf am 22.09. hat für alle
+   5 Paare frische, 1D-konsistente Snapshots geschrieben (überschreiben die
+   23.08.-Snapshots automatisch, da `trade.py` immer den `MAX(created_at)` je Paar
+   lädt — keine Löschung der Historie nötig).
+5. **Exit zum SL/TP-Preis verbucht**, nicht zum 1×/Tag-Polling-Preis — live beobachtete
+   Slippage über den Stop hinaus lag bei bis zu 85 Pips (Median ~10), reines Artefakt
+   des täglichen statt kontinuierlichen Pollings.
+6. **Cooldown, Holding-Cap, Korrelations-Cap nachgerüstet:**
+   - `cooldown_days_after_loss` (config, Default 3): kein neuer Entry auf einem Paar
+     innerhalb N Tagen nach dessen letztem SL-Exit (gegen Whipsaw-Churn, z.B.
+     AUD/USD 24.–28.08.: SHORT→LONG→SHORT, alle drei gestoppt, −91 Pips in 4 Tagen).
+   - `walk_forward.holding_days_cap` (20, existierte in config, war nie implementiert):
+     Position wird nach N Tagen zum Marktpreis geschlossen (Exit-Reason `CAP`).
+   - `max_correlated_positions` (config, Default 2): begrenzt gleichzeitig offene
+     Positionen mit derselben Netto-USD-Richtung (z.B. 5 gleichzeitige USD-Shorts
+     waren am 20.08. faktisch eine einzige gehebelte Wette, keine Diversifikation).
+
+Alle Fixes unit-getestet gegen eine DB-Kopie (Cooldown-Erkennung, Korrelations-Zählung,
+SL-Preis-Kapselung, Holding-Cap-Bedingung) und live gegen `--test`/`--dry-run` verifiziert,
+bevor sie live geschaltet wurden. DB-Backup vor dem Eingriff: `backups/forex.db.pre-fix.20260922_085959`.
+
+### 22.09.2026 (Nachtrag): Qualitäts-Floor für Walk-Forward-Snapshots
+
+Der erste echte `backtest.py`-Lauf nach obigem Fix hat pro Paar **einzeln** optimiert
+(breites Grid, 108 Kombis je Paar) — und für GBP/USD einen Parametersatz gefunden, der
+im eigenen Backtest **PF=0.967 (netto-negativ)** ergab. `trade.py` hätte den trotzdem
+live gehandelt, weil es blind den neuesten Snapshot je Paar nimmt, ohne Qualitätsprüfung.
+
+Das steht im Widerspruch zur oben dokumentierten "ZENTRALEN ERKENNTNIS" (28.08.): die
+tatsächlich Out-of-Sample validierte Basis ist ein **einziger robuster Parametersatz**
+(EMA13/150) für **alle** Paare gemeinsam — Pro-Paar-Fitting neigt zu Overfitting und
+häufigerem Handel (mehr Spread-Friktion).
+
+Fix in `trade.py`:
+- **`load_params_by_pair()`**: verwirft einen Snapshot, dessen `metric_value` (combined
+  score) unter `walk_forward.min_snapshot_score` (config, Default `1.0`) liegt, und
+  nutzt stattdessen den robusten globalen Default. Log-Zeile bei Verwerfung:
+  `⏸ <Paar>: Walk-Forward-Snapshot verworfen (Score X < min_snapshot_score) — nutze
+  robusten Default statt Verlust-Setup`.
+- **`robust_default_params()`**: der Fallback war zuvor `dict(c["signal"])` — enthält
+  KEIN `sl_atr_mult`/`tp_atr_mult` (die stehen in `sl_tp`, nicht in `signal`), lieferte
+  also lautlos den hartcodierten Notfall-Default `1.5` statt des validierten `1.0`.
+  Jetzt: merged `signal` + `sl_tp` korrekt.
+- Verifiziert: GBP/USD läuft jetzt mit `{ema_fast:13, ema_slow:150, ..., sl_atr_mult:1.0,
+  tp_atr_mult:2.5}` (robuster Default), EUR/USD weiter mit seinem guten Snapshot
+  (PF 1.56) — beide korrekt unterschieden per `load_params_by_pair()`-Test.
+
+### 22.09.2026 (2. Nachtrag): backtest.py auf EINEN robusten Satz für alle Paare umgestellt
+
+Der Qualitäts-Floor (oben) filtert einzelne schlechte Pro-Paar-Snapshots aus — löst aber
+nicht das Grundproblem, dass `backtest.py` architektonisch PRO PAAR optimierte. Das
+widerspricht der tatsächlich validierten Methodik (`search_grid_robust.py`, 28.08.):
+ein **einziger** Parametersatz für **alle** Paare, ausgewählt nach Robustheit (positiv
+in JEDEM Paar), nicht nach bestem Fit je Paar. Auf Wunsch umgestellt:
+
+- **`find_robust_params()`** (ersetzt `optimize_pair()`): testet jede der 108
+  Grid-Kombinationen auf ALLEN konfigurierten Paaren gemeinsam. Ranking:
+  1. Hart: netto Pips (spread-bereinigt, pip-normalisiert — sonst dominiert USD/JPY
+     durch seine andere Preisgrößenordnung die Summe) positiv in JEDEM Paar, UND
+     Gesamt-Trades ≥ 10.
+  2. Tiebreak unter den robusten Kandidaten: höchste Pips-Summe über alle Paare.
+  3. Kein robuster Kandidat im Grid gefunden → Fallback auf "meiste positive Paare,
+     dann höchste Summe", explizit als ⚠️ NICHT robust geloggt.
+  Der Gewinner wird identisch in die `params_snapshots`-Zeile jedes Paares geschrieben
+  (Schema/Ladelogik in trade.py bleibt unverändert — die Werte sind nur jetzt für alle
+  Paare gleich statt individuell gefittet).
+- **Wichtiger Nebenfund dabei**: `simulate()` bildete den festen SL/TP bei Entry ab,
+  aber NICHT das tägliche Trailing-Stop-Nachziehen, das `trade.py._update_trailing()`
+  live tatsächlich macht (SL wandert täglich in Gewinnrichtung nach, TP bleibt fix).
+  Ohne dieses Nachziehen fand sich **kein einziger** in allen 5 Paaren robuster
+  Kandidat (0/108). Mit dem nachgezogenen Trailing-Stop (identisch zu trade.py,
+  `trailing_mult` kommt aus `config.sl_tp`, ist NICHT Teil des Grids): **47/108
+  Kombinationen robust**, Top-Ergebnis EMA20/100, mom_lb=3, sl=1.5×ATR, tp=2.5×ATR,
+  +4128 Pips netto über alle 5 Paare (960 Tage), PF je Paar 1.12–1.95, alle positiv
+  (inkl. USD/JPY — die ursprüngliche 28.08.-Validierung schloss USD/JPY noch bewusst
+  aus wegen Konzentrationsrisiko; mit korrektem Trailing ist es jetzt auch robust
+  mit dabei).
+- Live geschaltet: alle 5 Paare laufen jetzt nachweislich mit demselben Parametersatz
+  (verifiziert: `load_params_by_pair()` liefert für alle 5 Paare identische Werte).
+- `config.json`'s statischer `signal`/`sl_tp`-Fallback (EMA13/150) bleibt bewusst
+  unverändert — das ist der Notfall-Default für den Fall, dass der Walk-Forward-Lauf
+  für ein Paar mal keine Daten bekommt, nicht der aktuell gehandelte Satz.
 
 ## Tagesend-Auswertung (daily_report.py)
 

@@ -2,6 +2,8 @@
   "capital": 10000.0,
   "risk_per_trade_pct": 0.02,
   "max_drawdown_pct": 0.50,
+  "cooldown_days_after_loss": 3,
+  "max_correlated_positions": 2,
   "session_start_hour": 9,
   "session_end_hour": 22,
   "session_timezone": "Europe/Berlin",
@@ -17,7 +19,8 @@
   "walk_forward": {
     "optimize_day": 6,
     "lookback_weeks": 140,
-    "holding_days_cap": 20
+    "holding_days_cap": 20,
+    "min_snapshot_score": 1.0
   },
   "sl_tp": {
     "sl_atr_mult": 1.0,

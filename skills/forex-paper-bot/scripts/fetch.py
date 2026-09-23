@@ -4,7 +4,13 @@ fetch.py — holt 15m-Candles für alle konfigurierten Forex-Paare via yfinance.
 Nutzung:
   python3 fetch.py --test          # Test: prüft alle Paare, keine DB-Writer
   python3 fetch.py --pair EURUSD=X # einzelnes Paar, latest Close zurückgeben
-  python3 fetch.py --cache-days N  # wie viele Tage 15m-Daten (Default 5)
+  python3 fetch.py --cache-days N  # wie viele Tage Historie (Default 200)
+
+Hinweis (22.09.2026): Default war 5 (aus der 15m-Ära, wo 5 Tage hunderte Bars
+ergaben). Seit dem Umstieg auf 1D (29.08.) lieferten 5 Tage zu wenig Zeilen für
+die interne >=50-Prüfung in --test → fälschlich "zu wenig Daten" trotz
+funktionierendem Fetch. Auf 200 erhöht (bei cfg.timeframe="1d" ~198 Handelstage,
+genug für ATR(14)/EMA-Aufwärmphase).
 """
 import argparse
 import sys
@@ -69,7 +75,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--test", action="store_true", help="Prüft alle Paare")
     ap.add_argument("--pair", help="Nur dieses Paar (z.B. EURUSD=X)")
-    ap.add_argument("--cache-days", type=int, default=5)
+    ap.add_argument("--cache-days", type=int, default=200)
     args = ap.parse_args()
 
     c = cfg.CONFIG
