@@ -3,7 +3,7 @@
   "last_run_at": "2026-09-21T08:05:34.200902+00:00",
   "last_run_duration_seconds": 294.38107,
   "last_run_summary": "auto: 37 archived, 2 reactivated; llm: ## Consolidation Pass Summary\n\n### Clusters Identified\n\nI analyzed the 33 curator-managed skills and identified these natural clusters:\n\n1. **Office/Document Productivity** — `box`, `docx`, `pdf`, `xlsx`, `powerpoint`, `ocr-and-documents`, …\narchived 2 skill(s):\n  • computer-use — pruned (stale)\n  • requesting-code-review — pruned (stale)\nfull report: hermes curator status",
-  "last_run_summary_shown_at": "2026-08-17T05:59:46.242059+00:00",
+  "last_run_summary_shown_at": "2026-09-21T08:05:34.200902+00:00",
   "paused": false,
   "run_count": 20
 }

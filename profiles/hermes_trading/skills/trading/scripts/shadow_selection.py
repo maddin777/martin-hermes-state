@@ -36,6 +36,10 @@ Hypothesen
   h3_crowding    Sentiment INVERTIERT: unter den preisbestätigten Kandidaten
                  die mit der NIEDRIGSTEN Conviction. Die einzige Lesart, die die
                  84 Trades direkt stützen (Band 1.00 = −1.168 €).
+  h_jev          Jev (TypeSafe) schaetzt fuer JEDEN preisbestaetigten Kandidaten die
+                 Wahrscheinlichkeit, dass das Take-Profit vor dem Stop-Loss erreicht wird.
+                 Grundmenge = ganzer Topf, nicht Top-N (der Rangvergleich braucht ihn).
+                 Nur aktiv mit JEV_SHADOW=on (Default aus), keinerlei Einfluss auf den Handel.
 
 Aufruf
 ------
@@ -43,10 +47,13 @@ Aufruf
     python3 shadow_selection.py --select    # nur auswählen
     python3 shadow_selection.py --evaluate  # nur bewerten
     python3 shadow_selection.py --report    # nur Bericht
+    python3 shadow_selection.py --jev-dry-run  # h_jev: Zustaende + Kosten zeigen, nichts schreiben
 """
 import argparse
+import json
 import os
 import sys
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta
 
 _TRADING_ROOT = "/root/.hermes/profiles/hermes_trading/skills/trading"
@@ -69,7 +76,7 @@ TOP_N = 5
 # Horizont der Vorwärtsbepreisung, konsistent zu crabel_shadow_eval.
 HORIZON_DAYS = 21
 
-HYPOTHESES = ("live_baseline", "h1_momentum", "h2_pead", "h3_crowding")
+HYPOTHESES = ("live_baseline", "h1_momentum", "h2_pead", "h3_crowding", "h_jev")
 
 
 # ── Schema ──────────────────────────────────────────────────────────────────
@@ -293,6 +300,188 @@ def select_h3_crowding(con):
             for r in rows]
 
 
+# ── h_jev: Jev-Wahrscheinlichkeit als Kandidaten-Score (23.09.2026) ───────────
+# Frage: ordnet P(Take-Profit vor Stop-Loss) von Jev die spaeteren simulierten
+# Ergebnisse besser als conviction_score und tech_score? Grundmenge ist der GANZE
+# Topf preisbestaetigter LONG-Kandidaten, weil Kennzahl A (Rangkorrelation) die
+# Scores der nicht ausgewaehlten Kandidaten braucht. rank_in_set = Rang nach Jev,
+# die Jev-Top-5 sind also rank_in_set <= 5.
+JEV_POOL_MIN_TECH = 0.70
+JEV_MAX_CANDIDATES = 150     # Kostenbremse, falls der Topf unerwartet waechst
+JEV_WORKERS = 8
+JEV_LOOKBACK_DAYS = 30
+JEV_MAX_REASONS = 3
+JEV_BUDGET_ROLE = "jev_shadow"
+JEV_MODEL_LABEL = "~typesafe/jev-latest"
+JEV_TASK = (
+    "A stock is a candidate for a long swing trade of about 3 weeks. It is described as of today: "
+    "how often and how positively the company was mentioned by German finance YouTube channels "
+    "or automated stock screeners (the channel names are listed), a technical score, the weekly "
+    "trend, the sector regime and the distance of stop-loss and take-profit measured in ATR "
+    "(average daily range). Repeated hits from one screener are not independent opinions. "
+    "Judge only from this description.")
+JEV_QUESTIONS = {
+    "tp_first": {"type": "noul",
+                 "instructions": "The take-profit level is reached before the stop-loss level within about 3 weeks"},
+}
+
+
+def _jev_enabled():
+    return os.environ.get("JEV_SHADOW", "").strip().lower() == "on"
+
+
+def _tier(x, lo, hi):
+    x = x or 0.0
+    return "low" if x < lo else ("medium" if x < hi else "high")
+
+
+def _mention_names(con, ticker, name):
+    names = {str(ticker).lower(), (name or "").lower()}
+    try:
+        for r in con.execute("SELECT alias FROM company_aliases WHERE ticker=?", (ticker,)):
+            names.add((r["alias"] or "").lower())
+    except Exception:
+        pass
+    names.discard("")
+    return sorted(names)
+
+
+def _regime_label(con, sector):
+    try:
+        return get_sector_regime(sector_regime_key(sector, None), con) or "unknown"
+    except Exception:
+        return "unknown"
+
+
+def build_jev_state(con, cand, lv, sector, as_of):
+    """Zustand in Worten und Stufen, ohne rohe Kurse. Nur Nennungen bis einschliesslich as_of."""
+    names = _mention_names(con, cand["ticker"], cand["name"])
+    q = ",".join("?" * len(names))
+    rows = con.execute(f"""
+        SELECT channel, sentiment, reason, mention_date FROM watchlist_mentions
+        WHERE lower(name) IN ({q}) AND mention_date <= ?
+          AND mention_date >= date(?, '-{JEV_LOOKBACK_DAYS} days')
+        ORDER BY mention_date DESC, id DESC
+    """, (*names, as_of, as_of)).fetchall()
+    ref = datetime.strptime(as_of, "%Y-%m-%d").date()
+    reasons, seen = [], set()
+    for r in rows:
+        note = (r["reason"] or "")[:200]
+        if note and note not in seen and len(reasons) < JEV_MAX_REASONS:
+            seen.add(note)      # Screener wiederholen denselben Text taeglich
+            days = (ref - datetime.strptime(r["mention_date"][:10], "%Y-%m-%d").date()).days
+            reasons.append({"days_ago": days, "channel_sentiment": r["sentiment"],
+                            "analyst_note": note})
+    sent = [r["sentiment"] for r in rows]
+    atr = lv["atr"]
+    return {
+        "task": JEV_TASK, "company": cand["name"], "direction": "LONG",
+        "mentions_last_30d": len(rows),
+        "distinct_channels": len({r["channel"] for r in rows}),
+        "channels": sorted({r["channel"] for r in rows if r["channel"]})[:5],
+        "bullish_mentions": sent.count("bullish"), "bearish_mentions": sent.count("bearish"),
+        "neutral_mentions": sent.count("neutral"),
+        "conviction": _tier(cand["conv"], 0.4, 0.6), "technical_score": _tier(cand["ts"], 0.8, 0.9),
+        "weekly_trend": cand["wt"] or "unknown", "sector_regime": _regime_label(con, sector),
+        "daily_volatility": _tier(atr / lv["price"], 0.015, 0.03).replace("medium", "normal"),
+        "stop_distance_atr": round((lv["entry"] - lv["sl"]) / atr, 1),
+        "target_distance_atr": round((lv["tp"] - lv["entry"]) / atr, 1),
+        "latest_analyst_notes": reasons,
+    }
+
+
+def jev_states(con, as_of=None):
+    """Baut fuer den ganzen Topf den Jev-Zustand (Haupt-Thread, DB-Zugriff). Kandidaten ohne Kursdaten entfallen."""
+    as_of = as_of or datetime.now().strftime("%Y-%m-%d")
+    pool = con.execute("""
+        SELECT ticker, name, conviction_score conv, tech_score ts, weekly_trend wt
+        FROM watchlist
+        WHERE status='watching' AND ticker IS NOT NULL AND tech_direction='LONG'
+          AND tech_score >= ?
+        ORDER BY tech_score DESC, conviction_score DESC LIMIT ?
+    """, (JEV_POOL_MIN_TECH, JEV_MAX_CANDIDATES)).fetchall()
+    cands = [dict(r) for r in pool]
+    if cands:
+        try:
+            prefetch_prices([c["ticker"] for c in cands])
+        except Exception as e:
+            log.warning("prefetch fehlgeschlagen: %s", e)
+    items = []
+    for c in cands:
+        sector = _sector_of(con, c["ticker"])
+        lv = _levels(con, c["ticker"], "LONG", sector)
+        if not lv:
+            continue
+        items.append({**c, "state": build_jev_state(con, c, lv, sector, as_of)})
+    return items
+
+
+def _ask_jev(items):
+    """Parallele HTTP-Aufrufe (kein DB-Zugriff in den Threads). -> Liste (p, usage) oder None je Kandidat."""
+    from thematic.lib import jev_client as jc
+
+    def one(item):
+        resp = jc.decide(item["state"], JEV_QUESTIONS, timeout=60)
+        if not resp:
+            return None
+        p = jc.noul_of(resp, "tp_first")
+        return None if p is None else (p, jc.usage_of(resp))
+
+    with ThreadPoolExecutor(max_workers=JEV_WORKERS, thread_name_prefix="jev-shadow") as pool:
+        return list(pool.map(one, items))
+
+
+def select_h_jev(con, as_of=None):
+    """Jev-Score fuer den ganzen Topf, absteigend sortiert. Ohne JEV_SHADOW=on: [] und kein Aufruf."""
+    if not _jev_enabled():
+        return []
+    items = jev_states(con, as_of)
+    if not items:
+        return []
+    answers = _ask_jev(items)
+    ok = [(it, a) for it, a in zip(items, answers) if a]
+    failed = len(items) - len(ok)
+    t_in = sum(a[1][0] for _it, a in ok)
+    t_out = sum(a[1][1] for _it, a in ok)
+    cost = sum(a[1][2] for _it, a in ok)
+    print(f"  h_jev          {len(ok)}/{len(items)} Jev-Antworten"
+          + (f", {failed} fehlgeschlagen" if failed else "")
+          + f", {t_in} Tokens, ${cost:.4f}", flush=True)
+    if t_in or t_out:
+        try:
+            from roles import budget as _role_budget
+            _role_budget.record_spend(con, JEV_BUDGET_ROLE, datetime.now().strftime("%Y-%m-%d"),
+                                      t_in, t_out, JEV_MODEL_LABEL)
+        except Exception as e:
+            print(f"  ⚠ Budget-Buchung ({JEV_BUDGET_ROLE}) fehlgeschlagen: {e}", flush=True)
+    picks = [{"ticker": it["ticker"], "name": it["name"], "direction": "LONG",
+              "score": round(a[0], 4),
+              "rationale": (f"jev={a[0]:.2f} conv={it['conv']:.2f} tech={it['ts']:.2f} "
+                            f"mentions30={it['state']['mentions_last_30d']}")}
+             for it, a in ok]
+    picks.sort(key=lambda p: -p["score"])
+    return picks
+
+
+def jev_dry_run(con, sample=3):
+    """Zeigt Zustaende und Kosten, ruft Jev nur fuer wenige Beispiele auf, schreibt und bucht NICHTS."""
+    items = jev_states(con)
+    if not items:
+        print("  h_jev: kein Kandidat im Topf")
+        return
+    q_tok = len(json.dumps(JEV_QUESTIONS, ensure_ascii=False)) // 3
+    tok = sum(len(json.dumps(it["state"], ensure_ascii=False)) // 3 + q_tok for it in items)
+    print(f"h_jev Trockenlauf: {len(items)} Kandidaten im Topf (tech >= {JEV_POOL_MIN_TECH}, LONG, watching)")
+    print(f"  geschaetzte Eingabetokens/Tag ~{tok} -> ~${tok * 0.042 / 1e6:.4f}/Tag "
+          f"(~${tok * 0.042 / 1e6 * 22:.3f}/Monat bei 22 Laeufen)")
+    for it in items[:2]:
+        print(f"\n  Beispielzustand {it['ticker']}:\n" + json.dumps(it["state"], ensure_ascii=False, indent=2))
+    print(f"\n  Jev-Antworten fuer {min(sample, len(items))} Beispiele (nichts wird geschrieben):")
+    for it, a in zip(items[:sample], _ask_jev(items[:sample])):
+        print(f"    {it['ticker']:10} conv={it['conv']:.2f} tech={it['ts']:.2f} -> P(TP zuerst) = "
+              + (f"{a[0]:.2f}" if a else "keine Antwort"))
+
+
 # ── Bewertung ───────────────────────────────────────────────────────────────
 
 def evaluate(con, horizon=HORIZON_DAYS):
@@ -396,6 +585,8 @@ def report(con):
     for h in HYPOTHESES:
         tot = con.execute("SELECT COUNT(*) FROM shadow_selection WHERE hypothesis=?",
                           (h,)).fetchone()[0]
+        if h == "h_jev" and not tot and not _jev_enabled():
+            continue     # bewusst aus, keine tote Spur
         r = con.execute("""
             SELECT COUNT(*) n, SUM(pnl_pct_sim > 0) w,
                    AVG(pnl_pct_sim) avg, SUM(pnl_pct_sim) tot
@@ -435,6 +626,8 @@ def main():
     ap.add_argument("--select", action="store_true", help="nur auswählen")
     ap.add_argument("--evaluate", action="store_true", help="nur bewerten")
     ap.add_argument("--report", action="store_true", help="nur Bericht")
+    ap.add_argument("--jev-dry-run", action="store_true",
+                    help="h_jev: Zustaende und Kosten zeigen, nichts schreiben")
     args = ap.parse_args()
     do_all = not (args.select or args.evaluate or args.report)
 
@@ -442,6 +635,9 @@ def main():
     try:
         ensure_schema(con)
         today = datetime.now().strftime("%Y-%m-%d")
+        if args.jev_dry_run:
+            jev_dry_run(con)
+            return
 
         if do_all or args.select:
             import json
@@ -455,6 +651,8 @@ def main():
             record(con, "h1_momentum",   today, select_h1_momentum(con))
             record(con, "h2_pead",       today, select_h2_pead(con))
             record(con, "h3_crowding",   today, select_h3_crowding(con))
+            if _jev_enabled():
+                record(con, "h_jev",     today, select_h_jev(con))
 
         if do_all or args.evaluate:
             print(f"\n🔍 Vorwärtsbepreisung (Horizont {HORIZON_DAYS} Tage)", flush=True)

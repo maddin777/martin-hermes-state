@@ -396,8 +396,8 @@ curator:
   enabled: true
   interval_hours: 168
   min_idle_hours: 2
-  stale_after_days: 30
-  archive_after_days: 90
+  stale_after_days: 14
+  archive_after_days: 30
   consolidate: true
   prune_builtins: true
   backup:
@@ -524,7 +524,6 @@ logging:
 model_catalog:
   enabled: true
   url: https://hermes-agent.nousresearch.com/docs/api/model-catalog.json
-  ttl_hours: 1
 network:
   force_ipv4: false
 gateway:
@@ -573,7 +572,7 @@ secrets:
 paste_collapse_threshold: 5
 paste_collapse_threshold_fallback: 0
 paste_collapse_char_threshold: 2000
-_config_version: 38
+_config_version: 46
 group_sessions_per_user: true
 platform_toolsets:
   cli:

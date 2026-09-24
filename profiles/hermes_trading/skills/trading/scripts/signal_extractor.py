@@ -568,12 +568,11 @@ def call_scout(chunk, channel, title, date_str, chunk_num, total_chunks):
         f"Kanal: {channel}\nTitel: {title}\nDatum: {date_str}\n"
         f"Transkript-Abschnitt {chunk_num}/{total_chunks}:\n\n{chunk}"
     )
-    parsed, _ti, _to = _call_cascade(
+    return _call_cascade(
         SCOUT_PROMPT, user_content,
         default={"companies": [], "market_outlook": "neutral", "key_themes": []},
         primary_extra=_scout_reasoning_extra(),
     )
-    return parsed
 
 
 def merge_scout_results(results):
@@ -783,7 +782,7 @@ def _chunk_transcript(transcript):
     return chunks
 
 
-def _run_scout_chunks(chunks, channel, title, date_str, max_workers=None):
+def _run_scout_chunks(chunks, channel, title, date_str, con=None, max_workers=None):
     """Run Scout calls concurrently, bounded and returned in chunk order."""
     total = len(chunks)
     workers = min(max_workers or SCOUT_MAX_WORKERS, total) if total else 1
@@ -795,7 +794,26 @@ def _run_scout_chunks(chunks, channel, title, date_str, max_workers=None):
 
     with ThreadPoolExecutor(max_workers=workers,
                             thread_name_prefix="extractor-scout") as pool:
-        return list(pool.map(run, enumerate(chunks, 1)))
+        results = list(pool.map(run, enumerate(chunks, 1)))
+
+    # Buchung ERST hier (Haupt-Thread, nach dem Pool): con ist keine
+    # thread-sichere Connection (db_connect() setzt check_same_thread nicht auf
+    # False) -- ein Worker-Thread darf sie nicht anfassen. Eine Summe ueber
+    # alle Chunks statt einer Buchung je Chunk vermeidet ausserdem N kleine
+    # Schreibzugriffe pro Video.
+    if con is not None:
+        t_in = sum(r[1] for r in results)
+        t_out = sum(r[2] for r in results)
+        if t_in or t_out:
+            try:
+                from roles import budget as _role_budget
+                _role_budget.record_spend(con, "extractor_scout",
+                                          date.today().isoformat(),
+                                          t_in, t_out, MODEL)
+            except Exception as e:
+                print(f"     ⚠ Budget-Buchung (extractor_scout) fehlgeschlagen: {e}",
+                      flush=True)
+    return [r[0] for r in results]
 
 
 def analyze(transcript, channel, title, date_str, con=None):
@@ -813,7 +831,7 @@ def analyze(transcript, channel, title, date_str, con=None):
         return merge_results(results)
 
     # ── Pass A: Scout ────────────────────────────────────────────────────
-    scout_results = _run_scout_chunks(chunks, channel, title, date_str)
+    scout_results = _run_scout_chunks(chunks, channel, title, date_str, con=con)
     merged = merge_scout_results(scout_results)
 
     # ── Pass B: Analyst (ein Call für das ganze Video) ───────────────────

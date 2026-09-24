@@ -89,7 +89,7 @@ def test_scout_chunks_run_in_parallel_with_worker_cap_and_stable_order(monkeypat
         time.sleep(0.03)
         with lock:
             active -= 1
-        return {"companies": [{"name": chunk, "context_snippet": chunk}], "market_outlook": "neutral", "key_themes": []}
+        return {"companies": [{"name": chunk, "context_snippet": chunk}], "market_outlook": "neutral", "key_themes": []}, 0, 0
 
     monkeypatch.setattr(extractor, "call_scout", fake_scout)
     chunks = [f"chunk-{i}" for i in range(6)]
@@ -111,7 +111,7 @@ def test_analyze_keeps_output_contract_and_waits_for_scouts_before_analyst(monke
             if scout_count == 3:
                 scout_done.set()
         name = f"company-{chunk_num}"
-        return {"companies": [{"name": name, "context_snippet": chunk}], "market_outlook": "neutral", "key_themes": ["theme"]}
+        return {"companies": [{"name": name, "context_snippet": chunk}], "market_outlook": "neutral", "key_themes": ["theme"]}, 0, 0
 
     def fake_analyst(_con, companies, *_args):
         assert scout_done.is_set()
@@ -133,7 +133,7 @@ def test_analyze_keeps_output_contract_and_waits_for_scouts_before_analyst(monke
 def test_parallel_snapshot_is_measurably_faster_than_serial(monkeypatch):
     def fake_scout(chunk, *_args):
         time.sleep(0.04)
-        return {"companies": [{"name": chunk}], "market_outlook": "neutral", "key_themes": []}
+        return {"companies": [{"name": chunk}], "market_outlook": "neutral", "key_themes": []}, 0, 0
 
     monkeypatch.setattr(extractor, "call_scout", fake_scout)
     chunks = [str(i) for i in range(6)]
@@ -405,3 +405,55 @@ def test_call_analyst_passes_scaled_max_tokens_and_keeps_4000_for_small_videos(m
            for i in range(48)]
     extractor.call_analyst(None, big, "kanal", "titel", "20260922")
     assert captured["max_tokens"] == 6740
+
+
+# ── Scout-Buchung ins llm_budget_log, 23.09.2026 ────────────────────────────
+# call_scout() gibt wie call_analyst()/_call_cascade() jetzt (parsed, t_in, t_out)
+# zurueck. Gebucht wird NICHT in call_scout() selbst (laeuft im Worker-Thread des
+# ThreadPoolExecutor -- db_connect() ist nicht thread-sicher), sondern gesammelt
+# in _run_scout_chunks() NACH pool.map() (Haupt-Thread), als EINE Buchung je Video.
+
+def test_call_scout_returns_token_counts_from_cascade(monkeypatch):
+    monkeypatch.setattr(extractor, "_call_cascade",
+                        lambda *a, **k: ({"companies": []}, 11, 22))
+    parsed, t_in, t_out = extractor.call_scout("text", "kanal", "titel",
+                                               "20260922", 1, 1)
+    assert (parsed, t_in, t_out) == ({"companies": []}, 11, 22)
+
+
+def test_run_scout_chunks_books_summed_tokens_once_after_pool(monkeypatch):
+    import roles.budget as budget
+    # Fake-Antwort haengt am chunk_num-Argument, nicht an der Aufrufreihenfolge:
+    # die Chunks laufen parallel, eine gemeinsame pop-Liste waere ein Race.
+    responses = {
+        1: ({"companies": [{"name": "A"}]}, 10, 20),
+        2: ({"companies": [{"name": "B"}]}, 5, 7),
+    }
+
+    def fake_scout(chunk, channel, title, date_str, chunk_num, total_chunks):
+        return responses[chunk_num]
+
+    monkeypatch.setattr(extractor, "call_scout", fake_scout)
+    booked = {}
+
+    def fake_record_spend(con, role, today, t_in, t_out, model):
+        booked.update(con=con, role=role, t_in=t_in, t_out=t_out, model=model)
+
+    monkeypatch.setattr(budget, "record_spend", fake_record_spend)
+    fake_con = object()
+    results = extractor._run_scout_chunks(["c1", "c2"], "kanal", "titel",
+                                          "20260922", con=fake_con)
+    assert results == [{"companies": [{"name": "A"}]},
+                       {"companies": [{"name": "B"}]}]
+    assert booked == {"con": fake_con, "role": "extractor_scout",
+                      "t_in": 15, "t_out": 27, "model": extractor.MODEL}
+
+
+def test_run_scout_chunks_without_con_books_nothing(monkeypatch):
+    import roles.budget as budget
+    monkeypatch.setattr(extractor, "call_scout",
+                        lambda *a, **k: ({"companies": []}, 10, 20))
+    booked = []
+    monkeypatch.setattr(budget, "record_spend", lambda *a, **k: booked.append(1))
+    extractor._run_scout_chunks(["c1"], "kanal", "titel", "20260922")
+    assert booked == []

@@ -1897,3 +1897,123 @@ Vergleichstag — die Größenordnung der Verbesserung (v. a. beim Analysten: 95
 Messung, um Zufall zu sein. Wird über die nächsten Tage weiterbeobachtet, insbesondere
 an einem Montag mit vollem Wochenend-Rückstau.
 
+---
+
+## 23.09.2026 — Jev-Probe (TypeSafe „System One“) und Scout-Buchung im Budget-Log
+
+### Änderung — Scout wird ins `llm_budget_log` gebucht
+`call_scout()` gibt jetzt `(parsed, tokens_in, tokens_out)` zurück; `_run_scout_chunks()` bucht die Summe je Video
+einmal unter der Rolle `extractor_scout`, **nach** dem `ThreadPoolExecutor` im Haupt-Thread (die sqlite-Connection
+aus `db_connect()` ist nicht thread-sicher). Drei bestehende Tests, die `call_scout` faken, wurden an den neuen
+Rückgabewert angepasst, drei neue Tests ergänzt. Ab der Nachtpipeline vom 24.09. taucht die Rolle im Log auf.
+Backups: `scripts/signal_extractor.py.bak-20260923-082910-pre-scout-budget`.
+
+### Fund — Verifikation der Reasoning-Änderungen in der echten Nacht (22./23.09.)
+Analyst-Ausgabe je Call: 4.387 Tokens (21.09.) → 956 (22.09.) → 874 (23.09.). KI-Analyse 23 Minuten, gesamte
+Pipeline 38 Minuten (fertig 04:36). Keine „Analyst-Call fehlgeschlagen“-Meldung und kein `gpt-4o-mini`-Fallback
+seit 22.09.
+
+### Fund — Jev ist für die Analyst-Klassifikation nicht geeignet (Probe, NO-GO)
+**Frage:** Kann Jev (TypeSafe, Decisions-API über OpenRouter, `~typesafe/jev-latest` → `jev-1.13-20260917`) die vier
+Auswahlfelder des Analysten (sentiment, strength, action_hint, catalyst) so übereinstimmend befüllen wie ein zweiter
+DeepSeek-Lauf?
+
+**Aufbau:** neu `thematic/lib/jev_client.py` (fail-open, gibt bei jedem Fehler `None`, Tests in
+`tests/test_jev_client.py`), neu `scripts/jev_analyst_probe.py` (nur lesend, Ergebnisse in `data/jev_probe.jsonl`).
+27 Videos, 325 Firmen, je zweimal gefragt (650 Anfragen, 100 % erfolgreich), gegen die sauberen Referenzläufe
+REFHI1/REFHI2 (Grenze 16000, kein Fallback). Rauschgrenze = REFHI1↔REFHI2. Kosten 0,025 $, Latenz Median 0,43 s.
+
+**Ergebnis (Übereinstimmung; d = Jev − Rauschgrenze, Bootstrap-95-%-KI über Videos):**
+
+| Feld | Rauschen | Basis | Jev | d [95 %-KI] |
+|---|---|---|---|---|
+| sentiment | 0,886 | 0,609 | 0,823 | −0,063 [−0,132; +0,006] |
+| strength | 0,785 | 0,646 | 0,659 | −0,126 [−0,204; −0,050] |
+| action_hint | 0,743 | 0,563 | 0,644 | −0,099 [−0,186; −0,011] |
+| catalyst | 0,863 | 0,851 | 0,750 | −0,114 [−0,194; −0,034] |
+
+Go/No-Go (vorab festgelegt): für sentiment und action_hint muss die untere KI-Grenze von d ≥ −0,03 sein **und**
+im Konfidenz-Bucket > 0,9 die Übereinstimmung ≥ 95 %. Ergebnis: sentiment (a) verfehlt (−0,132), (b) erfüllt
+(97,6 % bei n=165); action_hint (a) verfehlt (−0,186), (b) verfehlt (86,0 % bei n=50). **→ NO-GO.**
+
+**Einordnung:**
+- Die Konfidenzwerte sind kalibriert: die Trefferquote steigt in allen vier Feldern monoton mit der Konfidenz
+  (sentiment 52,6 → 75,0 → 89,8 → 97,6 %). Das ist die Eigenschaft, die Jev verspricht, und sie stimmt.
+- Jev ist stabil (gleiche Antwort bei wiederholter Anfrage in 96,9–98,8 % der Fälle), aber im Mittel schlechter
+  als ein zweiter DeepSeek-Lauf. Bei action_hint liegt Jev nur 8 Punkte über dem Raten der häufigsten Klasse.
+- Grenzen der Aussage: Referenz ist DeepSeek, keine Wahrheit; die Beschreibungen der Labels in den Jev-Fragen
+  (v. a. action_hint) habe ich selbst formuliert, der Produktionsprompt definiert sie nicht. Das kann die
+  Übereinstimmung drücken. Die Schwellen wurden nicht nachträglich angepasst.
+- Nicht ausgeführt: Stufe 2 (Shadow-Logging, `jev_shadow`, `JEV_ANALYST_MODE`). `jev_client.py` bleibt ungenutzt im Baum.
+- Forex Paper Bot: keine Änderung, enthält keinen LLM-Schritt.
+
+Test-Stand: 66 Tests grün (vorher 53).
+
+### Änderung — Shadow-Hypothese `h_jev` (Jev als Kandidaten-Score), 23.09.2026
+**Frage:** Ordnet die Jev-Wahrscheinlichkeit „Take-Profit vor Stop-Loss in etwa 3 Wochen“ die späteren simulierten
+Ergebnisse besser als `conviction_score` und `tech_score`? Das deckt beide Ideen ab (Jev als Vorfilter vor dem Committee,
+Jev als Signalwert). Es gibt kein Ensemble aus Grok, Claude und DeepSeek: das Pre-Entry-Gate ist das Committee
+(DeepSeek-v4-pro / gpt-5.4-nano / Gemini-flash-lite), das im Modus `shadow` läuft und ein paar tausend Tokens am Tag
+kostet. Ein Vorfilter würde also keine Kosten sparen; getestet wird nur die Informationsgüte.
+
+**Aufbau (`scripts/shadow_selection.py`):**
+- Neue Hypothese `h_jev` in `HYPOTHESES`, Auswahl über `select_h_jev()`. Grundmenge ist der GANZE Topf
+  (`watchlist`: Status `watching`, LONG, `tech_score >= 0.70`, aktuell 60 Kandidaten, Deckel 150), nicht Top-5, damit die
+  Rangkorrelation die Scores der nicht ausgewählten Kandidaten hat. `rank_in_set` = Rang nach Jev (Top-5 = Rang 1 bis 5),
+  `score` = P(TP zuerst), `rationale` = `jev=… conv=… tech=… mentions30=…`.
+- Zustand in Worten/Stufen ohne rohe Kurse: Nennungen der letzten 30 Tage (Anzahl, Kanalnamen, bullish/bearish/neutral),
+  Conviction und Tech-Score als Stufen, Wochentrend, Sektor-Regime, Volatilität, Stop-/Ziel-Abstand in ATR und bis zu 3
+  verschiedene frühere Notizen. Es fließen nur Nennungen bis zum Auswahltag ein (Test).
+- Schalter `JEV_SHADOW=on` (alles andere = aus), gesetzt in `/root/.hermes/profiles/hermes_trading/.env`
+  (Backup `.env.bak-…-pre-jev-shadow`). Fail-open: fällt Jev aus, entfallen nur die betroffenen Kandidaten. Buchung als Rolle
+  `jev_shadow` in `llm_budget_log` einmal je Lauf im Haupt-Thread (die sqlite-Connection ist nicht thread-sicher; die
+  Jev-Aufrufe laufen parallel ohne DB-Zugriff). Der Bericht blendet `h_jev` aus, solange der Schalter aus ist und keine
+  Zeilen existieren.
+- `--jev-dry-run` zeigt Zustände, Kostenschätzung und drei echte Jev-Antworten, ohne zu schreiben oder zu buchen.
+- Auswertung: der vorhandene `evaluate()` (21 Tage Horizont, `crabel_shadow_eval.simulate_forward`), unverändert.
+  Kosten rund 26.000 Eingabetokens am Tag, etwa 0,001 $ pro Tag.
+
+**Fund im Trockenlauf:** Viele Kandidaten haben keine YouTube-Nennungen, sondern tägliche Treffer eines automatischen
+Screeners (z. B. 10 „Nennungen“ mit 1 Kanal und wortgleicher Notiz „Tech LONG conf=0.95; 0% unter 52W-Hoch; rel +35 vs SPY“).
+Der erste Zustand behauptete „YouTube-Kanäle“. Korrigiert: Prompt nennt Kanäle **oder** Screener und weist darauf hin, dass
+wiederholte Treffer eines Screeners keine unabhängigen Meinungen sind; die Kanalnamen stehen im Zustand, gleiche Notizen werden
+zusammengefasst. Für die Auswertung heißt das: `mentions30` ist bei Screener-Kandidaten ein Wiederholungszähler.
+
+**Erster Lauf (manuell, 23.09.):** 60/60 Antworten, 38.403 Eingabetokens, 0,0016 $. Jev-Werte der 60 Kandidaten: Spanne 0,17 bis 0,48, Streuung 0,069
+(KORREKTUR: die zuerst genannten „0,35 bis 0,50“ waren nur die Werte der Top-5). Rang 1 bis 5: QCOM 0,48, TMO 0,47,
+QLYS 0,43, RYCEY 0,41, ALAB 0,40.
+
+**Tests:** 14 neue in `tests/test_shadow_selection_jev.py`; Suite 80 Tests grün (vorher 66).
+Backups: `scripts/shadow_selection.py.bak-20260923-223400-pre-h-jev` und `…-223511-pre-h-jev-v2`.
+
+**Wie es weitergeht (noch NICHT umgesetzt):** AC-6, Auswertungsskript `scripts/jev_shadow_eval.py`. Vorab festgelegt:
+frühestens ab 150 ausgewerteten Zeilen **und** mindestens 40 verschiedenen Tickern (dieselben Ticker kehren täglich wieder,
+die effektive Stichprobe ist kleiner als die Zeilenzahl; Bootstrap nach Ticker und Woche). Kennzahl A: Spearman von `score`
+mit `pnl_pct_sim` gegen dieselbe Korrelation für `conviction_score` und `tech_score`; Kennzahl B: oberstes minus unterstes
+Jev-Drittel; Kennzahl C: Trefferquote je Score-Bucket. GO nur, wenn die untere KI-Grenze von (Jev − bester vorhandener Score)
+bei A über 0 liegt und B eine untere KI-Grenze über 0 hat, sonst `h_jev` abschalten. Erste Zeilen werden am 14.10. reif
+(21 Tage Horizont), eine belastbare Antwort ist realistisch nach etwa 6 Wochen zu erwarten. Ausschalten: `JEV_SHADOW` im `.env`
+entfernen oder auf `off` setzen.
+
+### Änderung — Auswertung `jev_shadow_eval.py` (AC-6) und automatischer Cron-Job, 23.09.2026
+**Skript** `scripts/jev_shadow_eval.py` (nur lesend; schreibt `data/jev_shadow_eval_<datum>.txt`). Regeln vorab festgelegt und im
+Kopf des Skripts dokumentiert:
+- Stichprobe: mindestens 150 ausgewertete `h_jev`-Zeilen **und** 40 verschiedene Ticker. Darunter gibt das Skript nur den Stand
+  aus („NICHT AUSSAGEKRAEFTIG“), ausdrücklich ohne Kennzahlen.
+- Kennzahl A: je Auswahltag (mind. 8 ausgewertete Zeilen) Spearman-Korrelation von Score und `pnl_pct_sim`, gemittelt
+  (querschnittlich, damit die Marktbewegung des Tages rausfällt), verglichen mit derselben Kennzahl für `conviction` und `tech`
+  (aus der Begründung der Zeile). dA = Jev − max(conviction, tech).
+- Kennzahl B: mittleres pnl des obersten minus des untersten Jev-Drittels je Tag. Kennzahl C (nur berichtet): TP-Trefferquote je Score-Bucket.
+- Unsicherheit: zwei Bootstraps (Blöcke = Kalenderwochen, Cluster = Ticker); es zählt die kleinere untere 95-%-Grenze.
+- **GO nur, wenn untere Grenze von dA > 0 und untere Grenze von B > 0**, sonst NO-GO.
+- Tests `tests/test_jev_shadow_eval.py` (14): Stichprobengrenzen, eingepflanztes Signal → GO, reines Rauschen → NO-GO, Berichtstexte,
+  Cron-Logik (Senden, Selbstabschaltung, Telegram-Fehler, Fehlerfall). Suite jetzt 94 Tests.
+
+**Cron-Job** (Crontab des Servers, Backup `/root/crontab_backup_20260923_pre_jev_eval.txt`), Donnerstags 07:35, nach dem Nachtlauf:
+15.10., 29.10., 12.11. und 26.11.2026, Aufruf `venv/bin/python scripts/jev_shadow_eval.py --cron`, Ausgabe in `data/cron.log`.
+Jeder Termin sendet den Bericht per Telegram (Bot-Token und Chat aus dem `.env`, wie `weekly_exit_review.py`). Der Job entfernt seine
+Cron-Zeilen selbst, sobald ein Urteil (GO oder NO-GO) gesendet wurde oder am 26.11. (dann mit Hinweis „Stichprobe reicht nicht“).
+Schlägt das Senden fehl, bleibt der Job aktiv. Ein Fehler in der Auswertung selbst wird ebenfalls per Telegram gemeldet und lässt den
+Job aktiv. Geprüft: Lauf unter minimaler Cron-Umgebung (`env -i`), echte Telegram-Testnachricht (HTTP 200, der aktuelle
+„nicht aussagekräftig“-Stand), Selbstabschaltung gegen eine Attrappe des `crontab`-Befehls (2 Zeilen entfernt, Rest unverändert).
+Das Skript entscheidet nichts am Handel: bei NO-GO ist `JEV_SHADOW` im `.env` von Hand zu entfernen.

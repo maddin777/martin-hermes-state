@@ -52,6 +52,26 @@ Nach der Entscheidung:
 2. Route C-Einträge → Memory-Batch (konsolidieren, damit Store <Limit bleibt)
 3. Wenn Memory über ~90% → **prompt entfernen/verkuerzen** statt mehr Platz zu fordern
 
+## Runtime: Memory-Konsolidierungs-Routine (bei >90% oder Add-Fehler)
+Wenn ein Memory-Add am Limit scheitert ("over the limit") oder der Store >~90% läuft
+(memory tool meldet usage), sofort konsolidieren statt mehr Platz einzufordern.
+Größte Hebel zuerst, in dieser Reihenfolge:
+
+1. **Datierte Einmal-Fixes entfernen** — Einträge mit fixem Verfallsdatum
+   ("Fix 23.09.", "Rebuild 29.08.", Backup-Pfad, PR-ID) = Route B (Session-Historie),
+   stale nach 1 Woche → `memory action='remove'`.
+2. **Detailverweise auf Skills kürzen** — lange Trading/Projekt-Konfigs, deren Details
+   schon in den Fach-Skills liegen (trading-pipeline, forex-paper-bot, …): auf
+   Kernfakt kürzen (Quelle + 1-2 entscheidende Werte) + Hinweis "Details im <Skill>"
+   als `replace`. Redundanz zum Skill doppelt = Bloat.
+3. **Einträge verschlanken**, die nur Name/Standort/Zeit sind (Config-Version, Char-Limit,
+   rein zeitgebundene Notizen) → `remove`.
+4. **Immer als EINEN Batch** (operations-Array, atomar) — das Resultat wird nur gegen das
+   Finale geprüft, so kann ein remove Platz für ein add schaffen. Ziel: unter ~85%.
+
+Pushback-Grenze: Nicht Dauer-Fakten löschen (n8n-Container-Warnung, Trading-Chat-ID,
+Dashboard-Bind, Watchdog — pro Session relevant). Nur zeitgebundene/duplizierte raus.
+
 ## Warum selektiv
 Vollständig automatisches "alles in Skills" erzeugt Skill-Bloat (heute 65 stale von 91).
 Nur wiederverwendbare Prozeduren in Skills + Einmal-Ergebnisse in Session-Historie
