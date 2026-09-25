@@ -35,4 +35,20 @@ Roster-Profile ohne laufenden Gateway NICHT anfassen.
 
 Siehe vollständige Prozedur in `references/duplicate-token-triage.md`.
 
+## Cron Job Prompt Editing
+
+Ein Cron-Job's `prompt` IST seine Skill-Definition (neben optionalen `--skill`-Verknüpfungen). Um zu ändern, was ein Cron tut / worauf er achtet, editiere den Prompt — es gibt oft kein separates Skill-File (z.B. vault-insights-daily existiert nur als Cron-Prompt, obwohl Memory von einem „Skill" spricht).
+
+**Prozedur:**
+1. Aktuellen Prompt aus `/root/<profil>/.hermes/cron/jobs.json` extrahieren: Python-laden, verschachtelte Dicts gehen, das Dict mit `id == <job_id>` finden, `job['prompt']` in eine Datei schreiben.
+2. Die Text-Änderung mit `open(..., encoding='utf-8')` lesen + gezieltem replace. Den Replace-Anker auf den EXAKTEN on-disk-Text stützen (vorher die tatsächlichen Bytes lesen) — nie Umlaute/Wörter aus dem Kopf nachtippen; ein transliterierter Match (`geaenderte` vs `geänderte`) lässt den Assert stillschweigend fehlschlagen.
+3. Anwenden: `hermes cron edit <job_id> --prompt "$(cat /tmp/newprompt.txt)"`.
+4. Verifizieren: jobs.json neu laden und per Count/`in` prüfen, dass das Alte weg / das Neue drin ist — nicht nur dem „Updated job" des CLIs trauen.
+
+## Change-Detection Baseline Markers (find -newer / Sync-Scans)
+
+Jeder Cron, der „Dateien seit letztem Lauf neu/geändert" scannt (vault insights, Watchlist-Diff, Sync-Checks), steht und fällt mit seiner Baseline-Markierdatei. Zwei Regeln:
+- **Marker persistieren, nie in /tmp.** `/tmp` ist ephemär; ein verlorener Marker wird beim Scan neu erzeugt und markiert alles als „alt“ → ein ganzes Intervall an Änderungen geht stillschweigend verloren. Persistenter Pfad wie `~/.hermes/cache/<marker>` + `mkdir -p` + Bootstrap.
+- **Mit dem BESTEHENDEN Marker ZUERST finden, DANN touchen.** `touch`-dann-`find -newer` setzt die Baseline auf „jetzt“ und findet nichts. Richtige Reihenfolge: `find ... -newer <persistierter-marker>` zuerst, danach `touch`, um die Baseline für den nächsten Lauf vorzurollen. Beim Erstlauf mit `-mtime -N` statt `-newer` bootstrappen, damit nicht alles als neu eingepaukt wird.
+
 See archived devops/ skills for detailed procedures.

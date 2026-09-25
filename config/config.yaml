@@ -455,21 +455,23 @@ approvals:
   mcp_reload_confirm: true
   destructive_slash_confirm: false
 command_allowlist:
-  - stop/restart hermes gateway (kills running agents)
   - SQL DROP
   - command parser limit or malformed executable payload
+  - copy/move file into system config path
   - delete in root path
-  - in-place edit of system config
-  - script execution via heredoc
+  - execute_code
   - in-place edit of Hermes config/env
-  - overwrite project env/config via redirection
-  - overwrite system file via redirection
-  - shell command via -c/-lc flag
-  - pipe remote content to shell
-  - script execution via -e/-c flag
+  - in-place edit of system config
   - kill hermes/gateway process (self-termination)
-  - recursive chown to root
+  - overwrite project env/config via redirection
   - overwrite system config
+  - overwrite system file via redirection
+  - pipe remote content to shell
+  - recursive chown to root
+  - script execution via -e/-c flag
+  - script execution via heredoc
+  - shell command via -c/-lc flag
+  - stop/restart hermes gateway (kills running agents)
   - stop/restart system service
 hooks_auto_accept: false
 security:

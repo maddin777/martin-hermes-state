@@ -34,6 +34,9 @@
     "h1_ema": 20,
     "min_trend_strength": 0.002
   },
+  "entries_paused": false,
+  "data_source": "dukascopy",
+  "data_cache_dir": "data/dukascopy",
   "db_path": "data/forex.db",
   "reports_dir": "reports"
 }

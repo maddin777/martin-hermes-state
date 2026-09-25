@@ -309,3 +309,45 @@ versteckt ein einzelner Paar-Trend das fehlende echte Edge.
 Siehe Spec `wiki/tasks/forex-bot-paper.md`. Kern-Gates: Daten-OK (5 Paare), Signal-Logik,
 PnL netto (Spread abgezogen, E2E getestet: +0.1% LONG → gross 34.25€, Spread 2.74€, netto 31.51€),
 Walk-Forward (Snapshots je Paar), Tagesreport (Markdown + Telegram).
+
+## Datenquelle (24.09.2026)
+
+**Seit 24.09.2026 kommen alle Kerzen von Dukascopy statt von yfinance** (`config.json` → `data_source`, Modul `scripts/dukascopy_data.py`,
+`fetch.py` leitet um). Grund: yfinance liefert für Forex-Tageskerzen einen unbrauchbaren Close (Open-Close-Abstand im Median 0,6 Pips
+gegenüber 21–43 Pips in echten Daten; der Close entspricht praktisch dem Open). Die Grid-Suche vom August, der Walk-Forward und die
+Signale liefen darauf; dieselbe EMA-Regel liefert auf sauberen Daten 2012–2026 −2.900 Pips statt +9.000 (siehe
+`/root/obsidian-vault/wiki/tasks/forex-pruefungen-2026-09-24.md`).
+
+- Preise sind Mittelkurse aus Dukascopy-Stundenkerzen (Bid/Ask); der aktuelle Preis kommt aus Minutenkerzen (~1 Minute Verzug).
+- Handelstag ab ~22 Uhr UTC, Wochenkerzen mit **Freitag** als Index (im Backtest erst ab Freitag sichtbar; frühere yfinance-Wochenkerzen
+  mit Montag-Index ließen den Backtest den Wochenschluss schon am Montag sehen).
+- Lokaler Cache `data/dukascopy/<PAAR>_H1.csv` (ab 2006-05, wird inkrementell aktualisiert). Ist Dukascopy nicht erreichbar und der
+  Cache älter als 4 Tage, liefern die Fetch-Funktionen `None` (Bot: „keine Daten“), nie beschädigte Daten.
+- Zurück auf yfinance: `data_source` in `config.json` entfernen oder auf `yfinance` setzen (nur für Vergleiche sinnvoll).
+- Die Parameter (EMA 13/150, SL/TP/Trailing) stammen aus Suchläufen auf den alten Daten und sind auf den neuen Daten NICHT bestätigt.
+- Tests: `venv/bin/python -m pytest tests -q`.
+
+## Pause (24.09.2026)
+
+**Neue Einstiege sind pausiert** (`config.json` → `entries_paused: true`). Offene Trades laufen normal aus. Grund: auf sauberen
+Dukascopy-Daten ist weder die aktuelle Strategie noch eine der 648 getesteten Varianten (EMA-Längen, Momentum, SL/TP, Trailing, Gate)
+im Zeitraum 2023–2026 profitabel; Tages-Trendfolge auf diesen Paaren trägt seit etwa 2019 nicht mehr (Details im Vault:
+`wiki/tasks/forex-pruefungen-2026-09-24.md`). Wieder aktivieren: `entries_paused` auf `false`.
+
+## Projekt beendet (24.09.2026)
+
+Letzte Position geschlossen (Grund PROJEKTENDE), Endstand 24 Trades, netto +1.070,19 € (Stichprobe zu klein für eine Aussage).
+Hermes-Jobs `forex-trade-check`, `forex-walk-forward-weekly`, `forex-daily-report` sind pausiert, nicht gelöscht
+(`hermes cron resume <id>`). Keine der geprüften Forex-Strategien trägt auf sauberen Daten nach Kosten
+(`/root/obsidian-vault/wiki/tasks/forex-pruefungen-2026-09-24.md`).
+
+## Beobachtungsphase (ab 24.09.2026, ~19 Uhr)
+
+Auf Wunsch des Nutzers wieder eingeschaltet, um einige Monate zu beobachten.
+- Strategie eingefroren: Parametersatz vom 22.09.2026 (EMA 20/100, Momentum 3, min_strength 0,002, SL 1,5 ATR, TP 2,5 ATR, Trailing 0,5 ATR,
+  Weekly-EMA-20-Gate, Cooldown 3 Tage, Cap 20 Tage), für alle 5 Paare. Der Walk-Forward-Job bleibt pausiert, damit sich die Parameter nicht ändern.
+- Daten: Dukascopy (`data_source`), nicht mehr yfinance. `entries_paused: false`. Jobs forex-trade-check und forex-daily-report laufen wieder.
+- Startwerte: Cash 11.070,19 € (Start 10.000 €), 24 geschlossene Trades, keine offene Position.
+- Erwartung laut Rückrechnung (Prüfung 4, Variante ohne Trailing): 2023–2026 −3.485 Pips über 5 Paare. Bei etwa 1 Trade pro Paar und Woche
+  ergeben 3 Monate grob 50–70 Trades; das reicht für einen Eindruck, nicht für einen statistischen Nachweis.
+- Wieder pausieren: `entries_paused: true` in config.json oder `hermes cron pause 866647ef510c`.

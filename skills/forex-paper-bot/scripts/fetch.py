@@ -33,6 +33,10 @@ def _scalar(v):
 
 def fetch_pair(pair, period_days=5, interval="15m"):
     """Liefert DataFrame mit 15m-Candles oder None."""
+    if cfg.CONFIG.get("data_source", "yfinance") == "dukascopy":
+        # 24.09.2026: yfinance-Tageskerzen fuer Forex haben einen unbrauchbaren Close (Close ~ Open). Siehe dukascopy_data.py.
+        import dukascopy_data
+        return dukascopy_data.fetch_pair(pair, period_days, interval)
     period = f"{period_days}d"
     try:
         df = yf.download(pair, period=period, interval=interval,
@@ -56,6 +60,9 @@ def fetch_pair(pair, period_days=5, interval="15m"):
 
 def fetch_trend_timeframe(pair, period_days=30, interval="1h"):
     """Holt 1h-Candles für den H1-Trendfilter."""
+    if cfg.CONFIG.get("data_source", "yfinance") == "dukascopy":
+        import dukascopy_data
+        return dukascopy_data.fetch_trend_timeframe(pair, period_days, interval)
     period = f"{period_days}d"
     try:
         df = yf.download(pair, period=period, interval=interval,

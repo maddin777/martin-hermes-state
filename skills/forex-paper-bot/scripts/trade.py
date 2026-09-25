@@ -392,15 +392,19 @@ def main():
         in_sess = True
     dd = cfg.drawdown_pct(con)
     dd_blocked = dd >= c["max_drawdown_pct"]
+    # 24.09.2026: auf sauberen Dukascopy-Daten ist die Strategie nicht profitabel -> neue Einstiege pausiert,
+    # offene Trades laufen mit SL/TP/Trailing normal aus. Wieder aktivieren: entries_paused in config.json auf false.
+    paused = bool(c.get("entries_paused", False))
 
     print(f"=== Forex Trade-Check ({datetime.now().strftime('%Y-%m-%d %H:%M')}) ===")
     print(f"Session-Gate: {'✅ aktiv' if gate_session else '⏸ aus (1D-Timeline)'} | Drawdown: {dd:.1%} "
-          f"({'🚫 BLOCKED' if dd_blocked else '✅ ok'})")
+          f"({'🚫 BLOCKED' if dd_blocked else '✅ ok'})"
+          + (" | ⏸ NEUE EINSTIEGE PAUSIERT (config.json entries_paused)" if paused else ""))
 
     max_corr = c.get("max_correlated_positions", 99)
 
     # 1. Neue Entries nur wenn (Session-Gate an AND in_session) + nicht drawdown-blocked
-    entry_ok = (not gate_session or in_sess) and not dd_blocked
+    entry_ok = (not gate_session or in_sess) and not dd_blocked and not paused
     if entry_ok and not args.test:
         for pair, pair_cfg in c["pairs"].items():
             params = params_by_pair.get(pair, default_params)
