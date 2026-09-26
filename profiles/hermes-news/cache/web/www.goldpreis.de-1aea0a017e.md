@@ -1,20 +1,20 @@
 # Aktueller Goldpreis
 
-24.09.2026 \| 06:01 Uhr
+24.09.2026 \| 19:58 Uhr
 
-3.766,30 EUR
+3.749,65 EUR
 
-0,70 EUR
+-15,95 EUR
 
-0,02 %
+-0,42 %
 
-4.285,41 USD
+4.262,18 USD
 
--2,02 USD
+-25,25 USD
 
--0,05 %
+-0,59 %
 
-1,1378
+1,1367
 
 Wechselkurs
 
@@ -22,9 +22,9 @@ Wechselkurs
 
 | Gewicht | Preis Dollar | Preis Euro |
 | --- | --- | --- |
-| 1 Gramm Gold | 137,71 USD | 121,05 EUR |
-| 1 Unze Gold | 4.283,39 USD | 3.764,95 EUR |
-| 1 Kilogramm Gold | 137.714,19 USD | 121.045,95 EUR |
+| 1 Gramm Gold | 137,13 USD | 120,63 EUR |
+| 1 Unze Gold | 4.265,17 USD | 3.752,10 EUR |
+| 1 Kilogramm Gold | 137.128,40 USD | 120.632,82 EUR |
 
 - Heute
 - Woche
@@ -37,35 +37,35 @@ EuroDollar
 
 Gramm - 1gFeinunze - 31,10 gKilogramm - 1kg
 
-![Goldpreis aktuell](https://www.goldpreis.de/charts/goldpreis-euro-aktuell-feinunze.jpg?1790222513)
+![Goldpreis aktuell](https://www.goldpreis.de/charts/goldpreis-euro-aktuell-feinunze.jpg?1790272906)
 
 [Goldkurs für Ihre Webseite](https://www.goldpreis.de/widgets/)
 
-[Gold / Silber Ratio: 66.82](https://www.goldpreis.de/gold-silber-ratio/)
+[Gold / Silber Ratio: 67.05](https://www.goldpreis.de/gold-silber-ratio/)
 
 [Silberpreis](https://www.goldpreis.de/silberpreis/)
 
-56,35 EUR
- -0,46 %
+55,97 EUR
+ -1,13 %
 
 [Platinpreis](https://www.goldpreis.de/platinpreis/)
 
-1.543,91 EUR
-+0,58 %
+1.538,98 EUR
++0,26 %
 
 [Palladiumpreis](https://www.goldpreis.de/palladiumpreis/)
 
-1.115,42 EUR
-+0,58 %
+1.118,94 EUR
++0,89 %
 
 ### Goldpreis Heute
 
 | Zeitraum | in US-Dollar | in Euro |
 | --- | --- | --- |
 | Vortag (23.09.2026) | 4.287,43 USD | 3.765,60 EUR |
-| Veränderung | -4,04 USD | -0,65 EUR |
-| Heute (24.09.2026) | 4.283,39 USD | 3.764,95 EUR |
-| Tagestief | 4.276,50 USD | 3.760,90 EUR |
+| Veränderung | -22,26 USD | -13,50 EUR |
+| Heute (24.09.2026) | 4.265,17 USD | 3.752,10 EUR |
+| Tagestief | 4.245,01 USD | 3.735,10 EUR |
 | Tageshoch | 4.302,19 USD | 3.780,60 EUR |
 | Allzeithoch (Intraday) | 5.594,70 USD | 4.668,04 EUR |
 | Allzeithoch (Schlusskurs) | 5.417,60 USD | 4.553,24 EUR |
@@ -74,28 +74,64 @@ Gramm - 1gFeinunze - 31,10 gKilogramm - 1kg
 
 | Feinheit (Karat) | 1 Gramm Dollar | 1 Gramm Euro |
 | --- | --- | --- |
-| 333er Gold | 45,88 USD | 40,32 EUR |
-| 585er Gold | 80,59 USD | 70,84 EUR |
-| 750er Gold | 103,33 USD | 90,82 EUR |
-| 833er Gold | 114,76 USD | 100,87 EUR |
-| 900er Gold | 123,99 USD | 108,98 EUR |
-| 916er Gold | 126,20 USD | 110,92 EUR |
-| 999er Gold | 137,77 USD | 121,09 EUR |
+| 333er Gold | 45,63 USD | 40,14 EUR |
+| 585er Gold | 80,16 USD | 70,52 EUR |
+| 750er Gold | 102,77 USD | 90,42 EUR |
+| 833er Gold | 114,15 USD | 100,42 EUR |
+| 900er Gold | 123,33 USD | 108,50 EUR |
+| 916er Gold | 125,52 USD | 110,43 EUR |
+| 999er Gold | 137,03 USD | 120,55 EUR |
 
 ### Goldpreisentwicklung
 
 | Zeitraum | Wert USD | % USD | Wert EUR | % EUR |
 | --- | --- | --- | --- | --- |
-| seit 01.01.2026 | -53,77 USD | -1,24 % | +72,75 EUR | +1,97 % |
-| 30 Tage | -366,69 USD | -7,88 % | -222,50 EUR | -5,58 % |
-| 6 Monate | -195,52 USD | -4,36 % | -91,20 EUR | -2,36 % |
-| 1 Jahr | +520,97 USD | +13,84 % | +580,45 EUR | +18,22 % |
-| 5 Jahre | +2.541,43 USD | +145,75 % | +2.281,25 EUR | +153,61 % |
-| 10 Jahre | +2.947,46 USD | +220,35 % | +2.575,04 EUR | +216,16 % |
+| seit 01.01.2026 | -73,36 USD | -1,69 % | +58,55 EUR | +1,59 % |
+| 30 Tage | -386,28 USD | -8,30 % | -236,70 EUR | -5,93 % |
+| 6 Monate | -215,11 USD | -4,80 % | -105,40 EUR | -2,73 % |
+| 1 Jahr | +501,38 USD | +13,32 % | +566,25 EUR | +17,77 % |
+| 5 Jahre | +2.521,84 USD | +144,63 % | +2.267,05 EUR | +152,66 % |
+| 10 Jahre | +2.927,87 USD | +218,89 % | +2.560,84 EUR | +214,97 % |
 
 ![Goldpreis in Euro Entwicklung](https://www.goldpreis.de/images/goldpreis-euro-entwicklung.png?t=7)
 
-23.09.2026 Goldpreis Nachrichten
+24.09.2026 Goldpreis Nachrichten
+
+19:30 \| www.wallstreet-online.de:
+[Goldpreis unter Druck: Das neue Marktregime zwingt Anleger zum Umdenken](https://www.wallstreet-online.de/nachricht/21425109-goldpreis-druck-marktregime-zwingt-anleger-umdenken)
+
+Goldpreis unter Druck – Anleger müssen sich auf neues Marktregime einstellen\*\* Der Goldpreis ist am Mittwoch deutlich gefallen. Eine Feinunze wurde am Nachmittag in London mit rund 4.281 US-Dollar gehandelt – etwa 79 Dollar oder knapp zwei Prozent ...
+
+17:00 \| www.morgenpost.de:
+[Goldpreis-Prognose 2026: Profi sicher – „das ehrlichste Signal überhaupt“](https://www.morgenpost.de/ratgeber-wissen/finanzen/article410606607/goldpreis-prognose-2026-experten-bei-diesem-punkt-einig.html)
+
+Wie entwickelt sich der Goldpreis bis zum Jahresende? Experten geben ihre Prognose für Gold 2026. Was dabei für Unsicherheit sorgt, lesen Sie hier.
+
+15:00 \| www.berliner-zeitung.de:
+[Goldpreis-Absturz: Warum deutsche Anleger trotzdem im Plus liegen können](https://www.berliner-zeitung.de/article/goldpreis-absturz-warum-deutsche-anleger-trotzdem-im-plus-liegen-koennen-10423508)
+
+Goldpreis in Euro: Trotz Absturz seit dem Allzeithoch im Januar liegt Gold 2026 in Euro leicht im Plus. Was das für Anleger in Deutschland heißt.
+
+14:30 \| YouTube \| Kitco Mining:
+[Gold’s Bull Market Is Intact, But the Next High May Take Time \| Florian Grummes](https://www.youtube.com/watch?v=wNfPE19PSzw)
+
+Ich bin damit einverstanden, dass mir externe Inhalte angezeigt werden. Damit können personenbezogene Daten an Drittplattformen übermittelt werden.
+
+Video abspielen
+
+Florian Grummes, Managing Director of Midas Touch Consulting, joins Kitco Mining’s Paul Harris at the 2026 Precious Metals Summit in Beaver Creek to discuss gold’s secular bull market, silver’s long-term technical setup, and why the next major move may take longer than many investors expect.
+
+13:00 \| www.reuters.com:
+[Gold slips on Fed policy tightening bets](https://www.reuters.com/world/india/gold-muted-fed-policy-tightening-prospects-weigh-2026-09-24/)
+
+Gold prices drifted ​lower on Thursday as expectations that the US Federal Reserve could ‌tighten policy further weighed on the non-yielding metal.
+
+11:00 \| www.gold.de:
+[China kauft Rekordmengen Gold – über 1.140 Tonnen in 8 Monaten](https://www.gold.de/artikel/gold-china-kauft-auf-rekordniveau/)
+
+China importiert 2026 so viel Gold wie nie zuvor. Mehr als 1.140 Tonnen in acht Monaten zeigen, wie stark Nachfrage und strategische Diversifizierung wachsen.
+
+23.09.2026
 
 19:30 \| www.swr.de:
 [Falsche Anzeigen und ein Ladengeschäft: Trickbetrüger bringen Gold-Verkäufer um ihr Geld](https://www.swr.de/swraktuell/baden-wuerttemberg/stuttgart/gold-betrueger-laden-100.html)
@@ -106,38 +142,6 @@ Erst schalteten sie Anzeigen, dann eröffneten sie ein Ladengeschäft: In Rutesh
 [Wheaton Precious Metals Aktie: Neuer Silber-Stream für Cozamin](https://www.boerse-express.com/news/articles/wheaton-precious-metals-aktie-neuer-silber-stream-fuer-cozamin-948424)
 
 Wheaton finanziert Lucas Cozamin-Kauf mit einem Silber-Stream über 25 Millionen US-Dollar; der Abschluss ist für das vierte Quartal 2026 geplant.
-
-17:00 \| www.resource-capital.ch:
-[Osisko Gold gibt Konditionen für auf 600 Millionen US-Dollar aufgestockte Emission vorrangig besicherter Schuldverschreibungen bekannt](https://www.resource-capital.ch/de/news/ansicht/osisko-gold-gibt-konditionen-fuer-auf-600-millionen-us-dollar-aufgestockte-emission-vorrangig-besicherter-schuldverschreibungen-bekannt/)
-
-Osisko Gold Group hat eine auf 600 Millionen US-Dollar aufgestockte Emission vorrangig besicherter Schuldverschreibungen mit einem Zinssatz von 9,25 % und einer Laufzeit bis 2031 bekannt gegeben. Die Erlöse sollen unter anderem zur Rückzahlung der Appian-Kreditfazilität, zur Finanzierung einer Zinsreserve sowie zur weiteren Entwicklung des Cariboo-Goldprojekts in British Columbia verwendet werden.
-
-15:00 \| www.boerse-express.com:
-[Gold: Zentralbanken kaufen 62 Prozent mehr](https://www.boerse-express.com/news/articles/gold-zentralbanken-kaufen-62-prozent-mehr-948437)
-
-Nach der Fed-Anhebung bleibt Gold gefragt: ETF-Zuflüsse, Zentralbankkäufe und spekulative Positionen stützen den Markt trotz höherer Zinsen.
-
-13:00 \| www.boerse-global.de:
-[Gold: Diplomatie bremst Rally](https://www.boerse-global.de/gold-diplomatie-bremst-rally/828474)
-
-Fortschritte zwischen Washington und Teheran dämpfen die Ölrisikoprämie und bremsen Gold kurzfristig, während UBS langfristige Treiber sieht.
-
-11:00 \| www.morgenpost.de:
-[Goldpreis aktuell in Euro: Wende beim Kurs – das kostet ein Gramm heute](https://www.morgenpost.de/ratgeber-wissen/finanzen/article409580553/goldpreis-aktuell-euro-wende-kurs-2209.html)
-
-Wie hoch ist der aktuelle Goldpreis in Euro? Der Kurs gibt heute weiter nach. Wie viel ein Gramm Gold derzeit kostet und welche Faktoren die weitere Entwicklung des Edelmetallpreises beeinflussen können, erfahren Sie hier.
-
-22.09.2026
-
-19:30 \| www.tz.de:
-[Russisches Gold in Hongkong: So umgeht Moskau die Sanktionen des Westens](https://www.tz.de/wirtschaft/trump-usa-russland-putin-ukraine-krieg-sanktionen-gold-hongkong-venezuela-zr-94502931.html)
-
-Russisches Gold strömt nach Hongkong und Venezuelas Goldschatz wandert von London in die USA. Beide Fälle zeigen, wie Politik über Goldreserven entscheidet.
-
-17:00 \| de.investing.com:
-[Gold an der Entscheidungsmarke - 4.412 Dollar geben jetzt die Richtung vor](https://de.investing.com/analysis/gold-an-der-entscheidungsmarke--4412-dollar-geben-jetzt-die-richtung-vor-200512976)
-
-Gold schloss nahe 4.413 Dollar und damit fast exakt am täglichen VC-PMI-Mittelwert von 4.412 Dollar, nachdem es sich vom Tief bei 4.273,3 Dollar erholt und 4.439,8 Dollar erreicht hatte.
 
 #### Goldpreis Rechner
 
@@ -171,66 +175,66 @@ Goldpreis abrufen
 
 |     |     |
 | --- | --- |
-| [Krügerrand 1 oz](https://www.goldpreis.de/goldmuenzen/kruegerrand/) | 3.777,63 EUR |
-| [Maple Leaf 1 oz](https://www.goldpreis.de/goldmuenzen/maple-leaf/) | 3.780,61 EUR |
-| [Lunar Serie III 1 oz](https://www.goldpreis.de/goldmuenzen/lunar-serie-iii/) | 3.864,87 EUR |
-| [Goldeuro 1/2 oz](https://www.goldpreis.de/goldmuenzen/goldeuro/) | 1.902,44 EUR |
-| [Deutsches Kaiserreich 7,17 g](https://www.goldpreis.de/goldmuenzen/deutsches-kaiserreich/) | 877,64 EUR |
-| [Känguru 1 oz](https://www.goldpreis.de/goldmuenzen/australian-kangaroo-nugget/) | 3.771,01 EUR |
-| [Wiener Philharmoniker 1 oz](https://www.goldpreis.de/goldmuenzen/wiener-philharmoniker/) | 3.789,83 EUR |
-| [Sovereign 7,32 g](https://www.goldpreis.de/goldmuenzen/sovereign/) | 897,84 EUR |
-| [Vreneli 5,81 g](https://www.goldpreis.de/goldmuenzen/vreneli/) | 720,23 EUR |
-| [Britannia 1 oz](https://www.goldpreis.de/goldmuenzen/britannia/) | 3.817,22 EUR |
-| [Kronen 3,05 g](https://www.goldpreis.de/goldmuenzen/kronen-oesterreich/) | 375,13 EUR |
-| [American Eagle 1 oz](https://www.goldpreis.de/goldmuenzen/american-eaglemuenze/) | 3.804,83 EUR |
-| [Lunar Serie II 1 oz](https://www.goldpreis.de/goldmuenzen/lunar-serie-ii/) | 3.808,65 EUR |
-| [Dukaten 3,44 g](https://www.goldpreis.de/goldmuenzen/dukaten/) | 424,39 EUR |
-| [China Panda 30 g](https://www.goldpreis.de/goldmuenzen/china-panda/) | 3.710,00 EUR |
+| [Krügerrand 1 oz](https://www.goldpreis.de/goldmuenzen/kruegerrand/) | 3.761,80 EUR |
+| [Maple Leaf 1 oz](https://www.goldpreis.de/goldmuenzen/maple-leaf/) | 3.755,44 EUR |
+| [Lunar Serie III 1 oz](https://www.goldpreis.de/goldmuenzen/lunar-serie-iii/) | 3.846,62 EUR |
+| [Goldeuro 1/2 oz](https://www.goldpreis.de/goldmuenzen/goldeuro/) | 1.893,31 EUR |
+| [Deutsches Kaiserreich 7,17 g](https://www.goldpreis.de/goldmuenzen/deutsches-kaiserreich/) | 873,43 EUR |
+| [Känguru 1 oz](https://www.goldpreis.de/goldmuenzen/australian-kangaroo-nugget/) | 3.772,00 EUR |
+| [Wiener Philharmoniker 1 oz](https://www.goldpreis.de/goldmuenzen/wiener-philharmoniker/) | 3.773,00 EUR |
+| [Sovereign 7,32 g](https://www.goldpreis.de/goldmuenzen/sovereign/) | 892,10 EUR |
+| [Vreneli 5,81 g](https://www.goldpreis.de/goldmuenzen/vreneli/) | 713,56 EUR |
+| [Britannia 1 oz](https://www.goldpreis.de/goldmuenzen/britannia/) | 3.800,96 EUR |
+| [Kronen 3,05 g](https://www.goldpreis.de/goldmuenzen/kronen-oesterreich/) | 378,92 EUR |
+| [American Eagle 1 oz](https://www.goldpreis.de/goldmuenzen/american-eaglemuenze/) | 3.788,00 EUR |
+| [Lunar Serie II 1 oz](https://www.goldpreis.de/goldmuenzen/lunar-serie-ii/) | 3.796,57 EUR |
+| [Dukaten 3,44 g](https://www.goldpreis.de/goldmuenzen/dukaten/) | 427,68 EUR |
+| [China Panda 30 g](https://www.goldpreis.de/goldmuenzen/china-panda/) | 3.696,00 EUR |
 
 ##### Goldbarren Preise
 
 |     |     |
 | --- | --- |
-| 10 g | 1.219,88 EUR |
-| 1 oz | 3.782,30 EUR |
-| 1 g | 125,55 EUR |
-| 100 g | 12.152,98 EUR |
-| 5 g | 618,00 EUR |
-| 20 g | 2.442,00 EUR |
-| 1 kg | 121.451,00 EUR |
-| 250 g | 30.071,00 EUR |
+| 10 g | 1.217,54 EUR |
+| 1 oz | 3.765,50 EUR |
+| 1 g | 125,04 EUR |
+| 100 g | 12.101,20 EUR |
+| 5 g | 612,50 EUR |
+| 20 g | 2.433,00 EUR |
+| 1 kg | 120.989,00 EUR |
+| 250 g | 30.238,80 EUR |
 
 [Alle Goldbarren anzeigen](https://www.goldpreis.de/goldbarren/)
 
 ##### Informationen
 
-[![Warum in Gold investieren? – Geschichte, Eigenschaften & Vorteile | GOLDPREIS.de](https://www.goldpreis.de/images/infoseiten/warum-in-gold-investieren_-_gold-und-silber.jpg)](https://www.goldpreis.de/warum-in-gold-investieren/)
-
-[Warum in Gold investieren? – Geschichte, Eigenschaften & Vorteile \| GOLDPREIS.de](https://www.goldpreis.de/warum-in-gold-investieren/)
-
-[![Edelmetalle: Eigenschaften, Geschichte und Anwendungen von Gold, Silber, Platin & Palladium](https://www.goldpreis.de/images/infoseiten/edelmetalle_-_gold-und-silber.jpg)](https://www.goldpreis.de/edelmetalle/)
-
-[Edelmetalle: Eigenschaften, Geschichte und Anwendungen von Gold, Silber, Platin & Palladium](https://www.goldpreis.de/edelmetalle/)
-
-[![Gold sicher lagern – Zuhause, Bankschließfach oder Zollfreilager](https://www.goldpreis.de/images/infoseiten/gold-lagern_-_gold-und-silber.jpg)](https://www.goldpreis.de/gold-lagern/)
-
-[Gold sicher lagern – Zuhause, Bankschließfach oder Zollfreilager](https://www.goldpreis.de/gold-lagern/)
-
-[![Feinunze und Feingewicht – Gewichtseinheiten bei Edelmetallen](https://www.goldpreis.de/images/infoseiten/gewichtseinheiten-bei-edelmetallen_-_gold-und-silber.jpg)](https://www.goldpreis.de/gewichtseinheiten-bei-edelmetallen/)
-
-[Feinunze und Feingewicht – Gewichtseinheiten bei Edelmetallen](https://www.goldpreis.de/gewichtseinheiten-bei-edelmetallen/)
-
 [![Goldminenaktien: Chancen, Risiken & Top-Unternehmen](https://www.goldpreis.de/images/infoseiten/gold-verkaufen_-_gold-und-silber.jpg)](https://www.goldpreis.de/goldminenaktien/)
 
 [Goldminenaktien: Chancen, Risiken & Top-Unternehmen](https://www.goldpreis.de/goldminenaktien/)
+
+[![Warum in Silber investieren? Vorteile, Verwendung & Marktpotenzial von Silber](https://www.goldpreis.de/images/infoseiten/warum-in-silber-investieren_-_gold-und-silber.jpg)](https://www.goldpreis.de/warum-in-silber-investieren/)
+
+[Warum in Silber investieren? Vorteile, Verwendung & Marktpotenzial von Silber](https://www.goldpreis.de/warum-in-silber-investieren/)
+
+[![Gold auf Echtheit prüfen – Methoden & Fälschungserkennung](https://www.goldpreis.de/images/infoseiten/gold-pruefen_-_gold-und-silber.jpg)](https://www.goldpreis.de/gold-pruefen/)
+
+[Gold auf Echtheit prüfen – Methoden & Fälschungserkennung](https://www.goldpreis.de/gold-pruefen/)
 
 [![Silber kaufen – Informationen & Tipps für Anleger](https://www.goldpreis.de/images/infoseiten/silber-kaufen_-_gold-und-silber.jpg)](https://www.goldpreis.de/silber-kaufen/)
 
 [Silber kaufen – Informationen & Tipps für Anleger](https://www.goldpreis.de/silber-kaufen/)
 
-[![Gold kaufen – Sicher investieren in Goldbarren & Münzen | GOLDPREIS.de](https://www.goldpreis.de/images/infoseiten/gold-kaufen_-_gold-und-silber.jpg)](https://www.goldpreis.de/gold-kaufen/)
+[![Feinunze und Feingewicht – Gewichtseinheiten bei Edelmetallen](https://www.goldpreis.de/images/infoseiten/gewichtseinheiten-bei-edelmetallen_-_gold-und-silber.jpg)](https://www.goldpreis.de/gewichtseinheiten-bei-edelmetallen/)
 
-[Gold kaufen – Sicher investieren in Goldbarren & Münzen \| GOLDPREIS.de](https://www.goldpreis.de/gold-kaufen/)
+[Feinunze und Feingewicht – Gewichtseinheiten bei Edelmetallen](https://www.goldpreis.de/gewichtseinheiten-bei-edelmetallen/)
+
+[![Platin – Preisvergleich, Geschichte & Eigenschaften | GOLDPREIS.de](https://www.goldpreis.de/images/infoseiten/platin_-_gold-und-silber.jpg)](https://www.goldpreis.de/platin/)
+
+[Platin – Preisvergleich, Geschichte & Eigenschaften \| GOLDPREIS.de](https://www.goldpreis.de/platin/)
+
+[![Zahngold verkaufen – Wert ermitteln & seriöse Ankäufer finden | GOLDPREIS.de](https://www.goldpreis.de/images/infoseiten/gold-verkaufen_-_gold-und-silber.jpg)](https://www.goldpreis.de/zahngold/)
+
+[Zahngold verkaufen – Wert ermitteln & seriöse Ankäufer finden \| GOLDPREIS.de](https://www.goldpreis.de/zahngold/)
 
 [Weitere Artikel & Informationen](https://www.goldpreis.de/infos/)
 

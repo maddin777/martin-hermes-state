@@ -144,3 +144,25 @@ def test_plain_run_without_flags_sends_nothing(monkeypatch):
     rec = Recorder(monkeypatch, make_con(n_days=2, per_day=10))
     assert ev.main([], today=date(2026, 10, 15)) == 0
     assert rec.sent == [] and rec.disabled == []
+
+
+# jev-pin-20260925
+def test_report_lists_model_versions_and_warns_on_mix():
+    con = make_con(n_days=2, per_day=10)
+    con.execute("UPDATE shadow_selection SET rationale = rationale || ' model=typesafe/jev-1.13-20260917' "
+                "WHERE id <= 5")
+    r = ev.analyze(ev.load_rows(con))
+    assert r["models"] == {"typesafe/jev-1.13-20260917": 5, ev.NO_MODEL: 15}
+    text = ev.format_report(r, date(2026, 10, 15))
+    assert "Modellversion(en): ohne Angabe 15, typesafe/jev-1.13-20260917 5" in text
+    assert "ACHTUNG" not in text                           # "ohne Angabe" zaehlt nicht als zweite Version
+    con.execute("UPDATE shadow_selection SET rationale = rationale || ' model=typesafe/jev-1.14-20261001' "
+                "WHERE id > 15")
+    assert "ACHTUNG" in ev.format_report(ev.analyze(ev.load_rows(con)), date(2026, 10, 15))
+
+
+def test_model_tag_does_not_break_conv_tech_parsing():
+    con = make_con(n_days=2, per_day=10)
+    con.execute("UPDATE shadow_selection SET rationale = rationale || ' model=typesafe/jev-1.13-20260917'")
+    e = ev.evaluated(ev.load_rows(con))
+    assert len(e) == 20 and e.conv.notna().all() and e.tech.notna().all()

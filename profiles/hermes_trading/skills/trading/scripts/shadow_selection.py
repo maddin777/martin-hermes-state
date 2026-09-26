@@ -312,7 +312,6 @@ JEV_WORKERS = 8
 JEV_LOOKBACK_DAYS = 30
 JEV_MAX_REASONS = 3
 JEV_BUDGET_ROLE = "jev_shadow"
-JEV_MODEL_LABEL = "~typesafe/jev-latest"
 JEV_TASK = (
     "A stock is a candidate for a long swing trade of about 3 weeks. It is described as of today: "
     "how often and how positively the company was mentioned by German finance YouTube channels "
@@ -417,7 +416,7 @@ def jev_states(con, as_of=None):
 
 
 def _ask_jev(items):
-    """Parallele HTTP-Aufrufe (kein DB-Zugriff in den Threads). -> Liste (p, usage) oder None je Kandidat."""
+    """Parallele HTTP-Aufrufe (kein DB-Zugriff in den Threads). -> Liste (p, usage, model) oder None je Kandidat."""
     from thematic.lib import jev_client as jc
 
     def one(item):
@@ -425,7 +424,7 @@ def _ask_jev(items):
         if not resp:
             return None
         p = jc.noul_of(resp, "tp_first")
-        return None if p is None else (p, jc.usage_of(resp))
+        return None if p is None else (p, jc.usage_of(resp), jc.model_of(resp) or "?")
 
     with ThreadPoolExecutor(max_workers=JEV_WORKERS, thread_name_prefix="jev-shadow") as pool:
         return list(pool.map(one, items))
@@ -438,8 +437,13 @@ def select_h_jev(con, as_of=None):
     items = jev_states(con, as_of)
     if not items:
         return []
+    from thematic.lib import jev_client as jc
     answers = _ask_jev(items)
     ok = [(it, a) for it, a in zip(items, answers) if a]
+    # jev-pin-20260925: Version je Antwort mitloggen; Abweichung vom festgeschriebenen Modell laut melden
+    models = sorted({a[2] for _it, a in ok})
+    if ok and models != [jc.JEV_MODEL]:
+        print(f"  ⚠ h_jev: Antwortmodell(e) {models} statt festgeschrieben {jc.JEV_MODEL}", flush=True)
     failed = len(items) - len(ok)
     t_in = sum(a[1][0] for _it, a in ok)
     t_out = sum(a[1][1] for _it, a in ok)
@@ -451,13 +455,13 @@ def select_h_jev(con, as_of=None):
         try:
             from roles import budget as _role_budget
             _role_budget.record_spend(con, JEV_BUDGET_ROLE, datetime.now().strftime("%Y-%m-%d"),
-                                      t_in, t_out, JEV_MODEL_LABEL)
+                                      t_in, t_out, models[0] if len(models) == 1 else jc.JEV_MODEL)
         except Exception as e:
             print(f"  ⚠ Budget-Buchung ({JEV_BUDGET_ROLE}) fehlgeschlagen: {e}", flush=True)
     picks = [{"ticker": it["ticker"], "name": it["name"], "direction": "LONG",
               "score": round(a[0], 4),
               "rationale": (f"jev={a[0]:.2f} conv={it['conv']:.2f} tech={it['ts']:.2f} "
-                            f"mentions30={it['state']['mentions_last_30d']}")}
+                            f"mentions30={it['state']['mentions_last_30d']} model={a[2]}")}
              for it, a in ok]
     picks.sort(key=lambda p: -p["score"])
     return picks

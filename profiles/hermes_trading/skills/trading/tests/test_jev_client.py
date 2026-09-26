@@ -57,7 +57,7 @@ def test_decide_returns_parsed_answer_and_sends_expected_payload(monkeypatch):
     out = jev_client.decide({"company": "Tesla"}, {"sent": {"type": "choice"}})
     assert out == REAL
     assert seen[0]["url"] == "https://openrouter.ai/api/alpha/decisions"
-    assert seen[0]["json"]["model"] == "~typesafe/jev-latest"
+    assert seen[0]["json"]["model"] == "typesafe/jev-1.13-20260917"   # festgeschrieben, nicht der Alias
     assert seen[0]["json"]["state"] == {"company": "Tesla"}
 
 
@@ -117,3 +117,15 @@ def test_noul_of_parses_probability_and_rejects_out_of_range():
     assert jev_client.noul_of(REAL, "bearish") == 0.97
     assert jev_client.noul_of(REAL, "sent") is None
     assert jev_client.noul_of({"answers": {"x": {"noul": 1.4}}}, "x") is None
+
+
+# jev-pin-20260925
+def test_model_is_pinned_not_the_latest_alias():
+    assert jev_client.JEV_MODEL == "typesafe/jev-1.13-20260917"
+    assert "latest" not in jev_client.JEV_MODEL
+
+
+def test_model_of():
+    assert jev_client.model_of(REAL) == "typesafe/jev-1.13-20260917"
+    assert jev_client.model_of({"answers": {}}) == ""
+    assert jev_client.model_of(None) == ""

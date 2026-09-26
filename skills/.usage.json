@@ -288,14 +288,14 @@
     "created_by": "agent",
     "last_patched_at": "2026-07-02T05:25:47.300146+00:00",
     "last_reused_patch_generation": 0,
-    "last_used_at": "2026-09-07T08:05:35.068104+00:00",
-    "last_viewed_at": "2026-09-07T08:05:35.058942+00:00",
+    "last_used_at": "2026-09-25T05:47:01.636337+00:00",
+    "last_viewed_at": "2026-09-25T05:47:01.629495+00:00",
     "patch_count": 23,
     "patch_generation": 0,
     "pinned": false,
     "state": "active",
-    "use_count": 41,
-    "view_count": 28
+    "use_count": 42,
+    "view_count": 29
   },
   "dataviz-story-scout": {
     "archived_at": null,
@@ -1199,13 +1199,13 @@
     "created_by": null,
     "last_patched_at": "2026-07-11T01:10:31.710850+00:00",
     "last_reused_patch_generation": 0,
-    "last_used_at": "2026-09-24T14:00:17.655038+00:00",
+    "last_used_at": "2026-09-25T14:00:17.645805+00:00",
     "last_viewed_at": "2026-09-19T01:00:19.104947+00:00",
     "patch_count": 11,
     "patch_generation": 0,
     "pinned": false,
     "state": "active",
-    "use_count": 109,
+    "use_count": 110,
     "view_count": 35
   },
   "ocr-and-documents": {

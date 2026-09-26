@@ -2017,3 +2017,57 @@ Schlägt das Senden fehl, bleibt der Job aktiv. Ein Fehler in der Auswertung sel
 Job aktiv. Geprüft: Lauf unter minimaler Cron-Umgebung (`env -i`), echte Telegram-Testnachricht (HTTP 200, der aktuelle
 „nicht aussagekräftig“-Stand), Selbstabschaltung gegen eine Attrappe des `crontab`-Befehls (2 Zeilen entfernt, Rest unverändert).
 Das Skript entscheidet nichts am Handel: bei NO-GO ist `JEV_SHADOW` im `.env` von Hand zu entfernen.
+
+### Änderung — Jev-Modellversion festgeschrieben und je Zeile mitgeloggt, 25.09.2026
+<!-- jev-pin-20260925 -->
+**Warum:** Der Client rief den Alias `~typesafe/jev-latest` auf. Der Shadow-Test `h_jev` sammelt bis Ende November; bringt TypeSafe in
+der Zeit eine neue Version heraus, hätte der Alias lautlos gewechselt und die Stichprobe zwei Modelle gemischt, ohne dass es
+irgendwo stand (gespeichert wurde nur `jev=… conv=… tech=…`).
+- `thematic/lib/jev_client.py`: `JEV_MODEL = "typesafe/jev-1.13-20260917"` statt des Alias (live geprüft: wird akzeptiert, der Alias
+  zeigt am 25.09. auf dieselbe Version). Neu `model_of(resp)` liefert die Version, die tatsächlich geantwortet hat.
+- `scripts/shadow_selection.py` (`h_jev`): jede Zeile bekommt `model=<Version>` ans Ende von `rationale` (`model=?`, falls die Antwort
+  kein Feld hat). Weicht eine Antwort von der festgeschriebenen Version ab, steht `⚠ h_jev: Antwortmodell(e) … statt festgeschrieben …`
+  im Log. Die Budget-Buchung nennt die antwortende Version statt des Alias.
+- `scripts/jev_shadow_eval.py`: der Bericht zeigt die Zeile „Modellversion(en)“ mit Anzahl je Version und warnt mit „ACHTUNG“, wenn
+  mehr als eine bekannte Version in der Stichprobe steckt. **Die Entscheidungsregel (AC-6) ist unverändert.**
+- Die 174 Zeilen vom 23.–25.09. haben keine Angabe („ohne Angabe“). Der Alias zeigte am 23.09. (Probe) und am 25.09. auf
+  `jev-1.13-20260917`; sie stammen also sehr wahrscheinlich von derselben Version. Belegt ist das nicht, deshalb nicht nachgetragen.
+- Tests: 6 neue (Festschreibung, `model_of`, Version in `rationale`, Abweichungswarnung, fehlendes Feld, Berichtszeile mit
+  Mischwarnung, `conv`/`tech`-Auswertung trotz Versionsangabe). Suite jetzt 100 Tests grün. Live geprüft mit zwei echten Kandidaten,
+  ohne zu schreiben.
+- Wechsel auf eine neue Jev-Version nur bewusst: `JEV_MODEL` ändern und die laufende Auswertung neu beginnen.
+Backups: `*.bak-20260925-121737-pre-jev-pin`.
+
+## 25.09.2026 — Probe: Kommen die Kanal-Nennungen vor oder nach der Kursbewegung? (NO-GO)
+<!-- mention-runup-probe-20260925 -->
+**Anlass:** Artikel @leopardracer (21.09.2026): Nennungen, die erst nach einem Anstieg kommen, seien ein negatives Signal;
+Gewichte gehoeren aus Daten geschaetzt statt von Hand gesetzt. Beides passt auf uns: `calculate_conviction()` hat Handgewichte,
+und hohe Conviction schnitt bisher schlechter ab (`h3_crowding`).
+
+**Skript** `scripts/mention_runup_probe.py` (nur lesend; Ausgaben in `data/mention_runup_probe/`: `prices.pkl`, `events.csv`,
+`report_<datum>.txt`). Entscheidungsregeln vorab im Kopf des Skripts festgelegt. Tests `tests/test_mention_runup_probe.py` (13):
+Ereignisfindung (30-Tage-Luecke, Screener zaehlt nicht, erste 30 Tage der Datenreihe entfallen), keine Nennung nach dem
+Ereignistag im Zustand, Anstieg endet am Vortag der Nennung, Einstieg am Folgetag, Marktbereinigung je Woche, Entscheidungsregel
+gegen eingepflanzte Effekte (negativ / positiv / keiner), Logit-Schaetzer, Stichprobengrenzen.
+
+**Aufbau:** Ereignis = erste bullishe Meinungs-Nennung eines Tickers nach 30 Tagen ohne solche. Zustand nur aus Daten bis zum
+Ereignistag. Hauptergebnis = 5-Tage-Rendite ab Schlusskurs des Folgetags (Live-Time-Stop an Tag 7), minus Mittel aller Ereignisse
+derselben Woche. Nebenbei: 21 Tage und die Live-Exitlogik (`simulate_forward`, Regime aus `regime_history`).
+
+**Ergebnis (743 Ereignisse, 616 Ticker, 18 Wochen, Nennungen 19.05.–23.09.2026):**
+- **P2 Hinterherlaufen: KEIN BELEGBARER EFFEKT.** Wochenweise Rangkorrelation Anstieg (20 Tage, z) ~ 5-Tage-Ergebnis −0,013,
+  95-%-KI [−0,10; +0,09], Haelften −0,08 / +0,06. Unteres minus oberes Anstiegs-Drittel +0,47 %, KI [−1,15 %; +1,99 %].
+  Quintile ohne Muster (Q1 +1,04 %, Q3 −1,26 %, Q5 +0,01 %). Auch 5-Tage-Anstieg, 21-Tage-Horizont und Live-Simulation zeigen nichts.
+  Ein Effekt staerker als etwa |0,1| Rangkorrelation ist damit unwahrscheinlich; schwaechere kann die Stichprobe nicht aufloesen.
+- **P1 Gewichte aus Daten: NICHT BESSER.** Kein Koeffizient mit KI ohne Null. Ausserhalb der Stichprobe (8 Wochen, n=244)
+  Daten-Score −0,037 gegen Handscore +0,052 (Differenz −0,089, untere Grenze −0,21). Der Handscore selbst hat auf der ganzen
+  Stichprobe eine Rangkorrelation von +0,004 mit dem 5-Tage-Ergebnis: **fuer frische Nennungen sagt die Conviction nichts voraus,
+  weder positiv noch umgekehrt.** (Gilt fuer diese Grundmenge, nicht fuer die live gefilterte Auswahl mit Tech-Gate.)
+- **P3 Put/Call-Ratio: NICHT AUSSAGEKRAEFTIG.** Nur 1 von 780 Ereignissen hat eine PCR-Messung in den 3 Tagen davor, weil
+  `fetch_pcr()` nur die Top-15 nach Conviction abfragt. **Insider-Daten: unbrauchbar.** `fetch_insider_trades()` sucht den Ticker
+  als Freitext in Form-4-Meldungen und speichert nur den Einreicher; Kauf/Verkauf, Stueckzahl und Datum fehlen in allen 2.653 Zeilen,
+  das Signal ist fest `neutral`. Keine der beiden Tabellen wird ausserhalb von `fundamental_data.py` gelesen.
+
+**Konsequenz:** Kein Anstiegs-Gate, keine neue Shadow-Hypothese, keine Gewichtsaenderung. Offene Entscheidung fuer den Nutzer:
+Insider- und PCR-Abfrage in `fundamental_data.py` entweder richtig bauen oder abschalten (bisher ohne Wirkung).
+Kurs-Ausfaelle beim Aufbau: 25 ohne Kurse, 17 zu kurze Historie, 10 ohne Handel (von 832 Ereignissen).

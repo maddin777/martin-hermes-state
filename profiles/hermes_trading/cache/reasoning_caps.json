@@ -1,6 +1,6 @@
 {
 "https://openrouter.ai/api/v1/models":{
-"ts":1790230439.2883422,
+"ts":1790316839.5544775,
 "caps":{
 "fireworks/ember-1":{
 "supports_reasoning":true,
@@ -2149,6 +2149,9 @@
 ],
 "mandatory":false
 },
+"mistralai/devstral-2512":{
+"supports_reasoning":false
+},
 "relace/relace-search":{
 "supports_reasoning":false
 },
@@ -2185,6 +2188,9 @@
 "supports_reasoning":false
 },
 "mistralai/ministral-3b-2512":{
+"supports_reasoning":false
+},
+"mistralai/mistral-large-2512":{
 "supports_reasoning":false
 },
 "mistralai/mistral-large-2512:batch":{

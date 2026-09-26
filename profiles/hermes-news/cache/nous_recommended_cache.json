@@ -20,7 +20,7 @@
           "position": 0,
           "isVisionModel": false,
           "isCompactionModel": false,
-          "updatedAt": "2026-09-21T17:06:33.075Z"
+          "updatedAt": "2026-09-25T01:08:10.475Z"
         },
         {
           "modelName": "z-ai/glm-5.3:US",
@@ -34,7 +34,7 @@
           "position": 1,
           "isVisionModel": false,
           "isCompactionModel": false,
-          "updatedAt": "2026-09-21T17:06:33.075Z"
+          "updatedAt": "2026-09-25T01:08:10.475Z"
         },
         {
           "modelName": "z-ai/glm-5.3-flash:US",
@@ -48,7 +48,7 @@
           "position": 2,
           "isVisionModel": false,
           "isCompactionModel": false,
-          "updatedAt": "2026-09-21T17:06:33.075Z"
+          "updatedAt": "2026-09-25T01:08:10.475Z"
         },
         {
           "modelName": "openai/gpt-6-astra",
@@ -68,7 +68,7 @@
           "position": 3,
           "isVisionModel": false,
           "isCompactionModel": false,
-          "updatedAt": "2026-09-21T17:06:33.075Z"
+          "updatedAt": "2026-09-25T01:08:10.475Z"
         },
         {
           "modelName": "openai/gpt-6-astra-fast",
@@ -88,7 +88,7 @@
           "position": 4,
           "isVisionModel": false,
           "isCompactionModel": false,
-          "updatedAt": "2026-09-21T17:06:33.075Z"
+          "updatedAt": "2026-09-25T01:08:10.475Z"
         },
         {
           "modelName": "openai/gpt-6-astra-flex",
@@ -108,7 +108,7 @@
           "position": 5,
           "isVisionModel": false,
           "isCompactionModel": false,
-          "updatedAt": "2026-09-21T17:06:33.075Z"
+          "updatedAt": "2026-09-25T01:08:10.475Z"
         },
         {
           "modelName": "openai/gpt-6-astra-pro",
@@ -128,7 +128,7 @@
           "position": 6,
           "isVisionModel": false,
           "isCompactionModel": false,
-          "updatedAt": "2026-09-21T17:06:33.075Z"
+          "updatedAt": "2026-09-25T01:08:10.475Z"
         },
         {
           "modelName": "openai/gpt-6-astra-pro-fast",
@@ -148,7 +148,7 @@
           "position": 7,
           "isVisionModel": false,
           "isCompactionModel": false,
-          "updatedAt": "2026-09-21T17:06:33.075Z"
+          "updatedAt": "2026-09-25T01:08:10.475Z"
         },
         {
           "modelName": "openai/gpt-6-astra-pro-flex",
@@ -168,7 +168,7 @@
           "position": 8,
           "isVisionModel": false,
           "isCompactionModel": false,
-          "updatedAt": "2026-09-21T17:06:33.075Z"
+          "updatedAt": "2026-09-25T01:08:10.475Z"
         },
         {
           "modelName": "upstage/solar-pro4:free",
@@ -182,21 +182,7 @@
           "position": 9,
           "isVisionModel": false,
           "isCompactionModel": false,
-          "updatedAt": "2026-09-21T17:06:33.075Z"
-        },
-        {
-          "modelName": "meituan/longcat-2.0:free",
-          "displayName": "meituan/longcat-2.0:free",
-          "source": "local",
-          "href": null,
-          "tokenPrice": "$0.00/1M",
-          "contextLength": null,
-          "inputModalities": [],
-          "outputModalities": [],
-          "position": 10,
-          "isVisionModel": false,
-          "isCompactionModel": false,
-          "updatedAt": "2026-09-21T17:06:33.075Z"
+          "updatedAt": "2026-09-25T01:08:10.475Z"
         },
         {
           "modelName": "inclusionai/ling-3.0-flash-sante:free",
@@ -211,10 +197,10 @@
           "outputModalities": [
             "text"
           ],
-          "position": 11,
+          "position": 10,
           "isVisionModel": false,
           "isCompactionModel": false,
-          "updatedAt": "2026-09-21T17:06:33.075Z"
+          "updatedAt": "2026-09-25T01:08:10.475Z"
         },
         {
           "modelName": "inclusionai/ling-3.0-flash-fin:free",
@@ -229,10 +215,30 @@
           "outputModalities": [
             "text"
           ],
+          "position": 11,
+          "isVisionModel": false,
+          "isCompactionModel": false,
+          "updatedAt": "2026-09-25T01:08:10.475Z"
+        },
+        {
+          "modelName": "stealth/space-bunny-alpha",
+          "displayName": "Space Bunny Alpha",
+          "source": "openrouter",
+          "href": "https://openrouter.ai/stealth/space-bunny-alpha",
+          "tokenPrice": "$0.00/1M",
+          "contextLength": 1000000,
+          "inputModalities": [
+            "text",
+            "image",
+            "video"
+          ],
+          "outputModalities": [
+            "text"
+          ],
           "position": 12,
           "isVisionModel": false,
           "isCompactionModel": false,
-          "updatedAt": "2026-09-21T17:06:33.075Z"
+          "updatedAt": "2026-09-25T01:08:10.475Z"
         },
         {
           "modelName": "poolside/laguna-s-2.1:free",
@@ -250,7 +256,7 @@
           "position": 13,
           "isVisionModel": false,
           "isCompactionModel": false,
-          "updatedAt": "2026-09-21T17:06:33.075Z"
+          "updatedAt": "2026-09-25T01:08:10.475Z"
         },
         {
           "modelName": "stepfun/step-3.7-flash:free",
@@ -264,7 +270,7 @@
           "position": 14,
           "isVisionModel": false,
           "isCompactionModel": false,
-          "updatedAt": "2026-09-21T17:06:33.075Z"
+          "updatedAt": "2026-09-25T01:08:10.475Z"
         },
         {
           "modelName": "poolside/laguna-xs-2.1:free",
@@ -282,7 +288,7 @@
           "position": 15,
           "isVisionModel": false,
           "isCompactionModel": false,
-          "updatedAt": "2026-09-21T17:06:33.075Z"
+          "updatedAt": "2026-09-25T01:08:10.475Z"
         }
       ],
       "freeRecommendedModels": [
@@ -298,21 +304,7 @@
           "position": 0,
           "isVisionModel": false,
           "isCompactionModel": false,
-          "updatedAt": "2026-09-21T17:06:33.075Z"
-        },
-        {
-          "modelName": "meituan/longcat-2.0:free",
-          "displayName": "meituan/longcat-2.0:free",
-          "source": "local",
-          "href": null,
-          "tokenPrice": "$0.00/1M",
-          "contextLength": null,
-          "inputModalities": [],
-          "outputModalities": [],
-          "position": 1,
-          "isVisionModel": false,
-          "isCompactionModel": false,
-          "updatedAt": "2026-09-21T17:06:33.075Z"
+          "updatedAt": "2026-09-25T01:08:10.475Z"
         },
         {
           "modelName": "inclusionai/ling-3.0-flash-sante:free",
@@ -327,10 +319,10 @@
           "outputModalities": [
             "text"
           ],
-          "position": 2,
+          "position": 1,
           "isVisionModel": false,
           "isCompactionModel": false,
-          "updatedAt": "2026-09-21T17:06:33.075Z"
+          "updatedAt": "2026-09-25T01:08:10.475Z"
         },
         {
           "modelName": "inclusionai/ling-3.0-flash-fin:free",
@@ -345,42 +337,30 @@
           "outputModalities": [
             "text"
           ],
-          "position": 3,
+          "position": 2,
           "isVisionModel": false,
           "isCompactionModel": false,
-          "updatedAt": "2026-09-21T17:06:33.075Z"
+          "updatedAt": "2026-09-25T01:08:10.475Z"
         },
         {
-          "modelName": "poolside/laguna-s-2.1:free",
-          "displayName": "Poolside: Laguna S 2.1 (free)",
+          "modelName": "stealth/space-bunny-alpha",
+          "displayName": "Space Bunny Alpha",
           "source": "openrouter",
-          "href": "https://openrouter.ai/poolside/laguna-s-2.1-20260720",
+          "href": "https://openrouter.ai/stealth/space-bunny-alpha",
           "tokenPrice": "$0.00/1M",
-          "contextLength": 262144,
+          "contextLength": 1000000,
           "inputModalities": [
-            "text"
+            "text",
+            "image",
+            "video"
           ],
           "outputModalities": [
             "text"
           ],
-          "position": 4,
+          "position": 3,
           "isVisionModel": false,
           "isCompactionModel": false,
-          "updatedAt": "2026-09-21T17:06:33.075Z"
-        },
-        {
-          "modelName": "stepfun/step-3.7-flash:free",
-          "displayName": "stepfun/step-3.7-flash:free",
-          "source": "local",
-          "href": null,
-          "tokenPrice": "$0.00/1M",
-          "contextLength": null,
-          "inputModalities": [],
-          "outputModalities": [],
-          "position": 5,
-          "isVisionModel": true,
-          "isCompactionModel": true,
-          "updatedAt": "2026-09-21T17:06:33.075Z"
+          "updatedAt": "2026-09-25T01:08:10.475Z"
         },
         {
           "modelName": "poolside/laguna-xs-2.1:free",
@@ -395,10 +375,42 @@
           "outputModalities": [
             "text"
           ],
-          "position": 6,
+          "position": 4,
           "isVisionModel": false,
           "isCompactionModel": false,
-          "updatedAt": "2026-09-21T17:06:33.075Z"
+          "updatedAt": "2026-09-25T01:08:10.475Z"
+        },
+        {
+          "modelName": "poolside/laguna-s-2.1:free",
+          "displayName": "Poolside: Laguna S 2.1 (free)",
+          "source": "openrouter",
+          "href": "https://openrouter.ai/poolside/laguna-s-2.1-20260720",
+          "tokenPrice": "$0.00/1M",
+          "contextLength": 262144,
+          "inputModalities": [
+            "text"
+          ],
+          "outputModalities": [
+            "text"
+          ],
+          "position": 5,
+          "isVisionModel": false,
+          "isCompactionModel": false,
+          "updatedAt": "2026-09-25T01:08:10.475Z"
+        },
+        {
+          "modelName": "stepfun/step-3.7-flash:free",
+          "displayName": "stepfun/step-3.7-flash:free",
+          "source": "local",
+          "href": null,
+          "tokenPrice": "$0.00/1M",
+          "contextLength": null,
+          "inputModalities": [],
+          "outputModalities": [],
+          "position": 6,
+          "isVisionModel": true,
+          "isCompactionModel": true,
+          "updatedAt": "2026-09-25T01:08:10.475Z"
         }
       ],
       "paidRecommendedVisionModel": null,
@@ -412,10 +424,10 @@
         "contextLength": null,
         "inputModalities": [],
         "outputModalities": [],
-        "position": 5,
+        "position": 6,
         "isVisionModel": true,
         "isCompactionModel": true,
-        "updatedAt": "2026-09-21T17:06:33.075Z"
+        "updatedAt": "2026-09-25T01:08:10.475Z"
       },
       "freeRecommendedCompactionModel": {
         "modelName": "stepfun/step-3.7-flash:free",
@@ -426,12 +438,12 @@
         "contextLength": null,
         "inputModalities": [],
         "outputModalities": [],
-        "position": 5,
+        "position": 6,
         "isVisionModel": true,
         "isCompactionModel": true,
-        "updatedAt": "2026-09-21T17:06:33.075Z"
+        "updatedAt": "2026-09-25T01:08:10.475Z"
       }
     },
-    "ts": 1790230437.4370785
+    "ts": 1790316837.7099228
   }
 }

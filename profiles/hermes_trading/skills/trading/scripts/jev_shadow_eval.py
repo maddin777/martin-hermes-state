@@ -54,6 +54,8 @@ LAST_RUN_DATE = date(2026, 11, 26)  # letzter geplanter Termin, danach beendet s
 CRON_MARKER = "jev_shadow_eval.py"
 BUCKETS = ((0.0, 0.3), (0.3, 0.5), (0.5, 0.7), (0.7, 1.01))
 _RAT = re.compile(r"conv=([0-9.]+)\s+tech=([0-9.]+)")
+_MODEL = re.compile(r"model=(\S+)")   # jev-pin-20260925; Zeilen vor dem 25.09. haben keine Angabe
+NO_MODEL = "ohne Angabe"
 
 
 # ─────────────────────────────────────────────────────────────── Daten
@@ -69,6 +71,7 @@ def load_rows(con):
     df["conv"] = pd.to_numeric(m[0], errors="coerce")
     df["tech"] = pd.to_numeric(m[1], errors="coerce")
     df["pnl"] = pd.to_numeric(df["pnl_pct_sim"], errors="coerce")
+    df["model"] = df["rationale"].fillna("").str.extract(_MODEL)[0].fillna(NO_MODEL)
     return df
 
 
@@ -152,6 +155,7 @@ def analyze(df, today=None):
     if not df.empty:
         res["score_min"], res["score_max"] = float(df.score.min()), float(df.score.max())
         res["score_std"] = float(df.score.std())
+        res["models"] = {str(k): int(v) for k, v in df["model"].value_counts().items()}
         res["first_select"] = df.select_date.min()
         res["first_mature"] = (datetime.strptime(df.select_date.min(), "%Y-%m-%d").date()
                                + timedelta(days=HORIZON_DAYS)).isoformat()
@@ -190,6 +194,11 @@ def format_report(r, today=None):
     if "score_std" in r:
         L.append("Jev-Score: Spanne %.2f bis %.2f, Streuung %.3f | erste Auswahl %s, erste Zeilen reif ab %s"
                  % (r["score_min"], r["score_max"], r["score_std"], r["first_select"], r["first_mature"]))
+    if r.get("models"):
+        L.append("Modellversion(en): " + ", ".join("%s %d" % (k, v) for k, v in sorted(r["models"].items())))
+        known = [k for k in r["models"] if k != NO_MODEL]
+        if len(known) > 1:
+            L.append("ACHTUNG: Die Stichprobe mischt Modellversionen, das Urteil gilt fuer keine einzelne davon.")
     if r["verdict"] == "PENDING":
         L += ["", "NICHT AUSSAGEKRAEFTIG: Stichprobe zu klein." + (" " + r["why"] if r.get("why") else ""),
               "Es werden bewusst keine Kennzahlen bewertet (vorab festgelegt)."]

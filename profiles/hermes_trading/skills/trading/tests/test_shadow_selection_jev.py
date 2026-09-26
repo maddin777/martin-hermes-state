@@ -125,7 +125,7 @@ def _fake_decide_by_company(probs):
         p = probs.get(state["company"])
         if p is None:
             return None
-        return {"answers": {"tp_first": {"type": "noul", "noul": p}},
+        return {"model": "typesafe/jev-1.13-20260917", "answers": {"tp_first": {"type": "noul", "noul": p}},
                 "usage": {"input_tokens": 100, "output_tokens": 10, "cost": 0.000005}}
     return fake
 
@@ -143,10 +143,11 @@ def test_select_scores_whole_pool_sorted_desc_skips_failures_and_books_once(con,
     assert [p["ticker"] for p in picks] == ["BBB", "DDD", "AAA"]        # Gamma ohne Antwort entfaellt
     assert [p["score"] for p in picks] == [0.80, 0.55, 0.30]
     assert "jev=0.80" in picks[0]["rationale"] and "conv=0.40" in picks[0]["rationale"]
+    assert picks[0]["rationale"].endswith(" model=typesafe/jev-1.13-20260917")
     assert all(p["direction"] == "LONG" for p in picks)
     assert len(booked) == 1
     role, _today, t_in, t_out, model = booked[0]
-    assert (role, t_in, t_out, model) == ("jev_shadow", 300, 30, "~typesafe/jev-latest")
+    assert (role, t_in, t_out, model) == ("jev_shadow", 300, 30, "typesafe/jev-1.13-20260917")
 
 
 def test_select_is_fail_open_when_jev_is_down(con, monkeypatch):
@@ -204,3 +205,37 @@ def test_state_dedupes_repeated_notes_and_lists_channel_names(con):
     assert st["mentions_last_30d"] == 4 and st["channels"] == ["screener_x", "tipp checker"]
     assert "screener" in ss.JEV_TASK and "not independent" in ss.JEV_TASK
 
+
+
+# jev-pin-20260925
+def test_model_mismatch_is_logged_and_kept_per_row(con, monkeypatch, capsys):
+    import roles.budget as budget
+    import thematic.lib.jev_client as jc
+    monkeypatch.setenv("JEV_SHADOW", "on")
+    add_wl(con, "AAA", "Alpha")
+    add_wl(con, "BBB", "Beta")
+    other = {"Alpha": "typesafe/jev-1.14-20261001"}
+
+    def fake(state, questions, timeout=60):
+        return {"model": other.get(state["company"], jc.JEV_MODEL),
+                "answers": {"tp_first": {"type": "noul", "noul": 0.4}},
+                "usage": {"input_tokens": 100, "output_tokens": 10, "cost": 0.000005}}
+    monkeypatch.setattr(jc, "decide", fake)
+    booked = []
+    monkeypatch.setattr(budget, "record_spend", lambda *a, **k: booked.append(a[1:]))
+    picks = {p["ticker"]: p for p in ss.select_h_jev(con, AS_OF)}
+    assert picks["AAA"]["rationale"].endswith(" model=typesafe/jev-1.14-20261001")
+    assert picks["BBB"]["rationale"].endswith(" model=" + jc.JEV_MODEL)
+    assert "statt festgeschrieben" in capsys.readouterr().out
+    assert booked[0][-1] == jc.JEV_MODEL                   # gemischt -> Buchung auf das festgeschriebene Modell
+
+
+def test_missing_model_field_is_logged_as_question_mark(con, monkeypatch):
+    import roles.budget as budget
+    import thematic.lib.jev_client as jc
+    monkeypatch.setenv("JEV_SHADOW", "on")
+    add_wl(con, "AAA", "Alpha")
+    monkeypatch.setattr(jc, "decide", lambda *a, **k: {"answers": {"tp_first": {"type": "noul", "noul": 0.4}},
+                                                        "usage": {}})
+    monkeypatch.setattr(budget, "record_spend", lambda *a, **k: None)
+    assert ss.select_h_jev(con, AS_OF)[0]["rationale"].endswith(" model=?")

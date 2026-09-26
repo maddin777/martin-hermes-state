@@ -29,7 +29,10 @@ sys.path.insert(0, "/root/.hermes/profiles/hermes_trading/skills/trading")
 import env_loader  # noqa: F401  (side-effect: laedt .env)
 
 DECISIONS_URL = "https://openrouter.ai/api/alpha/decisions"
-JEV_MODEL = "~typesafe/jev-latest"
+# Festgeschrieben (25.09.2026, jev-pin-20260925): Schwellen und Shadow-Auswertungen gelten fuer EINE Version.
+# Der Alias "~typesafe/jev-latest" wuerde bei einem neuen Release lautlos wechseln und Stichproben mischen.
+# Neue Version nur bewusst eintragen und die laufende Auswertung dann neu beginnen.
+JEV_MODEL = "typesafe/jev-1.13-20260917"
 MAX_RETRIES = 2                      # zusaetzlich zum ersten Versuch
 _RETRY_STATUS = (429, 500, 502, 503, 504)
 
@@ -69,6 +72,12 @@ def decide(state, questions, timeout=60, model=JEV_MODEL):
             return None
         return data
     return None
+
+
+def model_of(resp):
+    """Modellversion, die tatsaechlich geantwortet hat (Feld "model"), sonst ""."""
+    m = (resp or {}).get("model") if isinstance(resp, dict) else None
+    return str(m) if m else ""
 
 
 def usage_of(resp):

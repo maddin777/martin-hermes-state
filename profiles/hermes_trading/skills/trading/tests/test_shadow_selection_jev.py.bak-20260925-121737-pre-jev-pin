@@ -1,0 +1,206 @@
+import sqlite3
+from datetime import datetime
+
+import pytest
+
+from scripts import shadow_selection as ss
+
+AS_OF = "2026-09-23"
+
+
+@pytest.fixture
+def con():
+    c = sqlite3.connect(":memory:")
+    c.row_factory = sqlite3.Row
+    c.executescript("""
+        CREATE TABLE watchlist (ticker TEXT, name TEXT, status TEXT, tech_direction TEXT,
+            tech_score REAL, conviction_score REAL, weekly_trend TEXT);
+        CREATE TABLE watchlist_mentions (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, channel TEXT,
+            video_id TEXT, sentiment TEXT, reason TEXT, mention_date TEXT);
+        CREATE TABLE company_aliases (alias TEXT, ticker TEXT);
+        CREATE TABLE companies (ticker TEXT, sector TEXT);
+        CREATE TABLE sector_regimes (id INTEGER PRIMARY KEY AUTOINCREMENT, sector TEXT, regime TEXT, date TEXT);
+    """)
+    return c
+
+
+def add_wl(c, ticker, name, ts=0.8, conv=0.5, status="watching", direction="LONG", wt="bullish"):
+    c.execute("INSERT INTO watchlist VALUES (?,?,?,?,?,?,?)", (ticker, name, status, direction, ts, conv, wt))
+
+
+def add_m(c, name, day, channel="kanal a", sentiment="bullish", reason="grund"):
+    c.execute("INSERT INTO watchlist_mentions (name, channel, video_id, sentiment, reason, mention_date) "
+              "VALUES (?,?,?,?,?,?)", (name, channel, "v", sentiment, reason, day))
+
+
+LV = {"price": 100.0, "atr": 2.0, "entry": 100.0, "sl": 96.0, "tp": 110.0, "asset_type": "STANDARD"}
+
+
+@pytest.fixture(autouse=True)
+def _stubs(monkeypatch):
+    monkeypatch.setattr(ss, "prefetch_prices", lambda tickers: None)
+    monkeypatch.setattr(ss, "_levels", lambda con, t, d, sector: dict(LV))
+    monkeypatch.delenv("JEV_SHADOW", raising=False)
+
+
+def test_switch_defaults_to_off_and_unknown_values_mean_off(monkeypatch):
+    assert ss._jev_enabled() is False
+    for v in ("on", " ON ", "On"):
+        monkeypatch.setenv("JEV_SHADOW", v)
+        assert ss._jev_enabled() is True
+    for v in ("", "1", "true", "yes", "an", "quatsch"):
+        monkeypatch.setenv("JEV_SHADOW", v)
+        assert ss._jev_enabled() is False
+
+
+def test_h_jev_is_registered_as_hypothesis():
+    assert "h_jev" in ss.HYPOTHESES
+
+
+def test_state_uses_only_mentions_up_to_as_of_and_last_30_days(con):
+    add_wl(con, "AAA", "Alpha Corp")
+    add_m(con, "Alpha Corp", "2026-09-22", reason="frisch")
+    add_m(con, "Alpha Corp", "2026-09-23", reason="heute")
+    add_m(con, "Alpha Corp", "2026-09-24", reason="ZUKUNFT")      # nach as_of: darf nie einfliessen
+    add_m(con, "Alpha Corp", "2026-08-01", reason="zu alt")        # ausserhalb 30 Tage
+    cand = dict(ticker="AAA", name="Alpha Corp", conv=0.5, ts=0.8, wt="bullish")
+    st = ss.build_jev_state(con, cand, LV, "Technology", AS_OF)
+    assert st["mentions_last_30d"] == 2
+    notes = [n["analyst_note"] for n in st["latest_analyst_notes"]]
+    assert notes == ["heute", "frisch"]
+    assert "ZUKUNFT" not in str(st) and "zu alt" not in str(st)
+
+
+def test_state_limits_notes_counts_channels_and_matches_aliases(con):
+    add_wl(con, "AAA", "Alpha Corp")
+    con.execute("INSERT INTO company_aliases VALUES ('alpha', 'AAA')")
+    for i, ch in enumerate(["k1", "k1", "k2", "k3", "k3"]):
+        add_m(con, "alpha" if i % 2 else "Alpha Corp", "2026-09-2%d" % (i % 3), channel=ch,
+              sentiment="bearish" if i == 0 else "bullish", reason="grund %d" % i)
+    cand = dict(ticker="AAA", name="Alpha Corp", conv=0.7, ts=0.95, wt="bullish")
+    st = ss.build_jev_state(con, cand, LV, "Technology", AS_OF)
+    assert st["mentions_last_30d"] == 5 and st["distinct_channels"] == 3
+    assert st["bearish_mentions"] == 1 and st["bullish_mentions"] == 4
+    assert len(st["latest_analyst_notes"]) == ss.JEV_MAX_REASONS
+    assert st["conviction"] == "high" and st["technical_score"] == "high"
+    assert st["stop_distance_atr"] == 2.0 and st["target_distance_atr"] == 5.0
+    assert st["daily_volatility"] == "normal"
+
+
+def test_state_contains_no_raw_price_fields(con):
+    add_wl(con, "AAA", "Alpha Corp")
+    cand = dict(ticker="AAA", name="Alpha Corp", conv=0.5, ts=0.8, wt="bullish")
+    st = ss.build_jev_state(con, cand, LV, "Technology", AS_OF)
+    flat = str(st)
+    for forbidden in ("price", "entry", "100.0", "96.0", "110.0"):
+        assert forbidden not in flat.replace("daily_volatility", "")
+
+
+def test_pool_is_whole_watching_long_pool_with_tech_gate(con):
+    add_wl(con, "AAA", "Alpha", ts=0.90)
+    add_wl(con, "BBB", "Beta", ts=0.70)
+    add_wl(con, "CCC", "Gamma", ts=0.69)                 # unter der Tech-Grenze
+    add_wl(con, "DDD", "Delta", direction="SHORT")
+    add_wl(con, "EEE", "Eps", status="dropped")
+    items = ss.jev_states(con, AS_OF)
+    assert [i["ticker"] for i in items] == ["AAA", "BBB"]
+
+
+def test_candidates_without_price_data_are_dropped(con, monkeypatch):
+    add_wl(con, "AAA", "Alpha")
+    add_wl(con, "BBB", "Beta")
+    monkeypatch.setattr(ss, "_levels", lambda c, t, d, sector: None if t == "BBB" else dict(LV))
+    assert [i["ticker"] for i in ss.jev_states(con, AS_OF)] == ["AAA"]
+
+
+def test_select_is_noop_and_makes_no_call_when_switched_off(con, monkeypatch):
+    import thematic.lib.jev_client as jc
+    add_wl(con, "AAA", "Alpha")
+    monkeypatch.setattr(jc, "decide", lambda *a, **k: pytest.fail("Jev darf nicht aufgerufen werden"))
+    assert ss.select_h_jev(con, AS_OF) == []
+
+
+def _fake_decide_by_company(probs):
+    def fake(state, questions, timeout=60):
+        p = probs.get(state["company"])
+        if p is None:
+            return None
+        return {"answers": {"tp_first": {"type": "noul", "noul": p}},
+                "usage": {"input_tokens": 100, "output_tokens": 10, "cost": 0.000005}}
+    return fake
+
+
+def test_select_scores_whole_pool_sorted_desc_skips_failures_and_books_once(con, monkeypatch):
+    import roles.budget as budget
+    import thematic.lib.jev_client as jc
+    monkeypatch.setenv("JEV_SHADOW", "on")
+    for t, n in (("AAA", "Alpha"), ("BBB", "Beta"), ("CCC", "Gamma"), ("DDD", "Delta")):
+        add_wl(con, t, n, conv=0.4)
+    monkeypatch.setattr(jc, "decide", _fake_decide_by_company({"Alpha": 0.30, "Beta": 0.80, "Gamma": None, "Delta": 0.55}))
+    booked = []
+    monkeypatch.setattr(budget, "record_spend", lambda *a, **k: booked.append(a[1:]))
+    picks = ss.select_h_jev(con, AS_OF)
+    assert [p["ticker"] for p in picks] == ["BBB", "DDD", "AAA"]        # Gamma ohne Antwort entfaellt
+    assert [p["score"] for p in picks] == [0.80, 0.55, 0.30]
+    assert "jev=0.80" in picks[0]["rationale"] and "conv=0.40" in picks[0]["rationale"]
+    assert all(p["direction"] == "LONG" for p in picks)
+    assert len(booked) == 1
+    role, _today, t_in, t_out, model = booked[0]
+    assert (role, t_in, t_out, model) == ("jev_shadow", 300, 30, "~typesafe/jev-latest")
+
+
+def test_select_is_fail_open_when_jev_is_down(con, monkeypatch):
+    import roles.budget as budget
+    import thematic.lib.jev_client as jc
+    monkeypatch.setenv("JEV_SHADOW", "on")
+    add_wl(con, "AAA", "Alpha")
+    monkeypatch.setattr(jc, "decide", lambda *a, **k: None)
+    monkeypatch.setattr(budget, "record_spend", lambda *a, **k: pytest.fail("nichts zu buchen"))
+    assert ss.select_h_jev(con, AS_OF) == []
+
+
+def test_budget_booking_failure_does_not_lose_the_picks(con, monkeypatch):
+    import roles.budget as budget
+    import thematic.lib.jev_client as jc
+    monkeypatch.setenv("JEV_SHADOW", "on")
+    add_wl(con, "AAA", "Alpha")
+    monkeypatch.setattr(jc, "decide", _fake_decide_by_company({"Alpha": 0.6}))
+
+    def boom(*a, **k):
+        raise RuntimeError("db locked")
+    monkeypatch.setattr(budget, "record_spend", boom)
+    assert [p["ticker"] for p in ss.select_h_jev(con, AS_OF)] == ["AAA"]
+
+
+def test_candidate_cap_limits_pool(con, monkeypatch):
+    monkeypatch.setattr(ss, "JEV_MAX_CANDIDATES", 2)
+    for i, t in enumerate(("AAA", "BBB", "CCC")):
+        add_wl(con, t, t, ts=0.95 - i * 0.05)
+    assert [i["ticker"] for i in ss.jev_states(con, AS_OF)] == ["AAA", "BBB"]
+
+
+def test_report_hides_h_jev_when_off_and_empty_but_shows_it_when_on(con, monkeypatch, capsys):
+    con.executescript("""
+        CREATE TABLE shadow_selection (id INTEGER PRIMARY KEY, hypothesis TEXT, eval_status TEXT, pnl_pct_sim REAL);
+        CREATE TABLE factor_scores (date TEXT);
+    """)
+    con.execute("INSERT INTO factor_scores VALUES (?)", (datetime.now().strftime("%Y-%m-%d"),))
+    ss.report(con)
+    assert "h_jev" not in capsys.readouterr().out
+    monkeypatch.setenv("JEV_SHADOW", "on")
+    ss.report(con)
+    assert "h_jev" in capsys.readouterr().out
+
+
+def test_state_dedupes_repeated_notes_and_lists_channel_names(con):
+    add_wl(con, "AAA", "Alpha Corp")
+    for day in ("2026-09-23", "2026-09-22", "2026-09-21"):
+        add_m(con, "Alpha Corp", day, channel="screener_x", reason="Tech LONG conf=0.95")
+    add_m(con, "Alpha Corp", "2026-09-20", channel="tipp checker", reason="anderer Text")
+    cand = dict(ticker="AAA", name="Alpha Corp", conv=0.5, ts=0.8, wt="bullish")
+    st = ss.build_jev_state(con, cand, LV, "Technology", AS_OF)
+    assert [n["analyst_note"] for n in st["latest_analyst_notes"]] == ["Tech LONG conf=0.95", "anderer Text"]
+    assert st["latest_analyst_notes"][0]["days_ago"] == 0            # jeweils die juengste Fundstelle
+    assert st["mentions_last_30d"] == 4 and st["channels"] == ["screener_x", "tipp checker"]
+    assert "screener" in ss.JEV_TASK and "not independent" in ss.JEV_TASK
+
