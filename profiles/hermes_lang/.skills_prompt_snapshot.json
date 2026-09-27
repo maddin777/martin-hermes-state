@@ -1,577 +1,869 @@
 {
-  "version": 2,
+  "version": 3,
   "manifest": {
     "gifs/DESCRIPTION.md": [
       1776790840380150785,
-      109
+      109,
+      30576,
+      1776976254004200053
+    ],
+    "web/DESCRIPTION.md": [
+      1790147632774547558,
+      137,
+      7664,
+      1790148443589849267
+    ],
+    "web/blocked-page-recovery/SKILL.md": [
+      1790147632776119805,
+      5175,
+      6479,
+      1790148443094830496
     ],
     "apple/DESCRIPTION.md": [
       1776790840350616759,
-      152
+      152,
+      30577,
+      1776976254005021037
     ],
     "apple/apple-notes/SKILL.md": [
       1787248006320729445,
-      2394
+      2394,
+      919149,
+      1787248218325385049
     ],
     "apple/findmy/SKILL.md": [
-      1777842368037550079,
-      3709
+      1790147632761547409,
+      3823,
+      6484,
+      1790148443098994041
     ],
     "apple/macos-computer-use/SKILL.md": [
       1778496350689585615,
-      7309
+      7309,
+      299185,
+      1778496427974531753
     ],
     "apple/imessage/SKILL.md": [
       1776790840350750715,
-      2442
+      2442,
+      11437,
+      1776976253740814370
     ],
     "apple/apple-reminders/SKILL.md": [
       1780077158732319095,
-      3606
+      3606,
+      937153,
+      1780077233492575778
     ],
     "social-media/DESCRIPTION.md": [
       1776790840446688202,
-      151
+      151,
+      30578,
+      1776976254006979721
     ],
     "social-media/xurl/SKILL.md": [
       1784875040891345567,
-      16345
+      16345,
+      919118,
+      1784876912280762177
     ],
     "yuanbao/SKILL.md": [
       1778496350709585843,
-      3795
+      3795,
+      299177,
+      1778496427968065817
     ],
     "gaming/DESCRIPTION.md": [
       1776790840379798919,
-      129
+      129,
+      30579,
+      1776976254008021067
     ],
     "gaming/minecraft-modpack-server/SKILL.md": [
       1778496350697585706,
-      6559
+      6559,
+      299187,
+      1778496427977963503
     ],
     "gaming/pokemon-player/SKILL.md": [
       1778496350697585706,
-      8709
+      8709,
+      299189,
+      1778496427979312877
     ],
     "smart-home/DESCRIPTION.md": [
       1776790840446210263,
-      123
+      123,
+      30580,
+      1776976254009021077
     ],
     "smart-home/openhue/SKILL.md": [
       1787248006347729751,
-      2843
+      2843,
+      919151,
+      1787248218329577013
     ],
     "domain/DESCRIPTION.md": [
       1776790840378958017,
-      1142
+      1142,
+      30582,
+      1776976254010021087
     ],
     "language-learning/language-learning-disss/SKILL.md": [
       1783554210873787476,
-      2423
-    ],
-    "language-learning/automated-language-lesson-generator/SKILL.md": [
-      1786043521703419849,
-      2098
+      2423,
+      393488,
+      1783554210873787476
     ],
     "mlops/DESCRIPTION.md": [
       1776790840386407056,
-      162
+      162,
+      30583,
+      1776976254011021097
     ],
     "mlops/training/DESCRIPTION.md": [
       1776790840394480535,
-      150
+      150,
+      30600,
+      1776976254026021248
     ],
     "mlops/training/unsloth/SKILL.md": [
       1777842368058550308,
-      2272
+      2272,
+      301017,
+      1777842429160594791
     ],
     "mlops/training/trl-fine-tuning/SKILL.md": [
       1777842368058550308,
-      11971
+      11971,
+      301026,
+      1777842429168995997
     ],
     "mlops/training/axolotl/SKILL.md": [
       1777842368058550308,
-      4895
+      4895,
+      301034,
+      1777842429175730793
     ],
     "mlops/huggingface-hub/SKILL.md": [
       1787248006332614470,
-      3715
+      3715,
+      919153,
+      1787248218331732224
     ],
     "mlops/evaluation/DESCRIPTION.md": [
       1776790840386848910,
-      126
+      126,
+      30601,
+      1776976254028197323
     ],
     "mlops/evaluation/weights-and-biases/SKILL.md": [
       1787248006332614470,
-      12676
+      12676,
+      919455,
+      1787248218335691914
     ],
     "mlops/evaluation/evaluating-llms-harness/SKILL.md": [
       1787248006330729558,
-      12204
+      12204,
+      919461,
+      1787248218396884147
     ],
     "mlops/inference/DESCRIPTION.md": [
       1776790840388324450,
-      161
+      161,
+      30602,
+      1776976254029021278
     ],
     "mlops/inference/llama-cpp/SKILL.md": [
       1778496350701585752,
-      8880
+      8880,
+      299208,
+      1778496427995911619
     ],
     "mlops/inference/serving-llms-vllm/SKILL.md": [
       1787248006332729581,
-      9335
+      9335,
+      919468,
+      1787248218405945836
     ],
     "mlops/inference/obliteratus/SKILL.md": [
       1778496350701585752,
-      15464
+      15464,
+      299228,
+      1778496428007977891
     ],
     "mlops/inference/outlines/SKILL.md": [
       1777842368057550297,
-      15803
+      15803,
+      301070,
+      1777842429204413937
     ],
     "mlops/vector-databases/DESCRIPTION.md": [
       1776790840414712767,
-      125
+      125,
+      30604,
+      1776976254031003766
     ],
     "mlops/models/DESCRIPTION.md": [
       1776790840392032205,
-      253
+      253,
+      31122,
+      1776976254032021308
     ],
     "mlops/models/segment-anything/SKILL.md": [
       1778496350702585763,
-      13372
+      13372,
+      299233,
+      1778496428011783542
     ],
     "mlops/models/audiocraft/SKILL.md": [
       1778496350701585752,
-      16189
+      16189,
+      299238,
+      1778496428015499831
     ],
     "mlops/research/DESCRIPTION.md": [
       1776790840393688882,
-      113
+      113,
+      31123,
+      1776976254033021318
     ],
     "mlops/research/dspy/SKILL.md": [
       1778496350702585763,
-      15220
+      15220,
+      299243,
+      1778496428019815428
     ],
     "email/DESCRIPTION.md": [
       1776790840378958017,
-      101
+      101,
+      30584,
+      1776976254012197126
     ],
     "email/email-inbox-triage/SKILL.md": [
-      1787248006329978866,
-      4057
+      1790147632764547444,
+      5447,
+      6486,
+      1790148443103632656
     ],
     "email/himalaya/SKILL.md": [
       1783544892077458337,
-      7272
+      7272,
+      919155,
+      1783544984780491528
     ],
     "data-science/DESCRIPTION.md": [
       1776790840376712396,
-      137
+      137,
+      30585,
+      1776976254013091992
     ],
     "data-science/jupyter-live-kernel/SKILL.md": [
       1778496350695585684,
-      5285
+      5285,
+      299254,
+      1778496428026255292
     ],
     "note-taking/DESCRIPTION.md": [
       1776790840414712767,
-      146
+      146,
+      30586,
+      1776976254014235363
     ],
     "note-taking/obsidian/SKILL.md": [
       1787248006333891903,
-      3092
+      3092,
+      919477,
+      1787248218411289597
     ],
     "red-teaming/godmode/SKILL.md": [
       1778496350705585797,
-      20059
+      20059,
+      299261,
+      1778496428034472466
     ],
     "autonomous-ai-agents/DESCRIPTION.md": [
       1776790840350750715,
-      211
+      211,
+      30587,
+      1776976254015059854
     ],
     "autonomous-ai-agents/hermes-agent/SKILL.md": [
       1787248006321729456,
-      13183
+      13183,
+      6492,
+      1790148443133532470
     ],
     "autonomous-ai-agents/opencode/SKILL.md": [
-      1778496350690585627,
-      7259
+      1790147632764547444,
+      7297,
+      7493,
+      1790148443144333174
     ],
     "autonomous-ai-agents/computer-use/SKILL.md": [
-      1787248006321729456,
-      18603
+      1790147632762547421,
+      18054,
+      7495,
+      1790148443146809520
     ],
     "autonomous-ai-agents/merge-reconciler/SKILL.md": [
       1787248006323729479,
-      7606
+      7606,
+      919506,
+      1787248218433470810
     ],
     "autonomous-ai-agents/kanban-codex-lane/SKILL.md": [
       1779355855359986863,
-      12774
+      12774,
+      424154,
+      1779356017290162341
     ],
     "autonomous-ai-agents/claude-code/SKILL.md": [
-      1787248006321729456,
-      34281
+      1790147632761547409,
+      35175,
+      7500,
+      1790148443149387817
     ],
     "autonomous-ai-agents/codex/SKILL.md": [
-      1787248006321729456,
-      5738
+      1790147632761547409,
+      5852,
+      7503,
+      1790148443151797816
     ],
     "productivity/DESCRIPTION.md": [
       1776790840415712776,
-      114
+      114,
+      30588,
+      1776976254016044982
     ],
     "productivity/ocr-and-documents/SKILL.md": [
       1787248006338729649,
-      5784
+      5784,
+      919518,
+      1787248218440376030
     ],
     "productivity/ocr-and-documents/DESCRIPTION.md": [
       1776790840418818894,
-      147
+      147,
+      924821,
+      1787248218440652913
     ],
     "productivity/notion/SKILL.md": [
-      1781964097550895591,
-      14629
+      1790147632767547478,
+      14621,
+      7505,
+      1790148443156433542
     ],
     "productivity/google-workspace/SKILL.md": [
-      1787248006337005461,
-      13670
+      1790147632765547455,
+      13926,
+      7509,
+      1790148443183819855
     ],
     "productivity/document-to-action-items/SKILL.md": [
-      1787248006335071613,
-      3966
+      1790147632765547455,
+      3910,
+      7520,
+      1790148443214820209
     ],
     "productivity/meeting-action-items/SKILL.md": [
       1787248006338729649,
-      3808
+      3808,
+      924864,
+      1787248218451979557
     ],
     "productivity/box/SKILL.md": [
       1787248006333891903,
-      11697
+      11697,
+      924868,
+      1787248218455117191
     ],
     "productivity/petdex/SKILL.md": [
       1783544892078458348,
-      3534
+      3534,
+      919165,
+      1783544984798238121
     ],
     "productivity/session-librarian/SKILL.md": [
       1787248006342295404,
-      4827
+      4827,
+      925028,
+      1787248218458529380
     ],
     "productivity/pdf/SKILL.md": [
-      1787248006338729649,
-      12244
+      1790147632767547478,
+      12489,
+      7526,
+      1790148443302469538
     ],
     "productivity/maps/SKILL.md": [
       1787248006337729638,
-      6705
+      6705,
+      919524,
+      1787248218473170051
     ],
     "productivity/nano-pdf/SKILL.md": [
       1784875040885879018,
-      1605
+      1605,
+      940793,
+      1784876912334263725
     ],
     "productivity/linear/SKILL.md": [
       1778496350704585786,
-      14782
+      14782,
+      299304,
+      1778496428064142200
     ],
     "productivity/powerpoint/SKILL.md": [
       1787248006340729672,
-      10781
+      10781,
+      919531,
+      1787248218495646873
     ],
     "productivity/docx/SKILL.md": [
       1787248006335729615,
-      10395
+      10395,
+      925270,
+      1787248218523441902
     ],
     "productivity/teams-meeting-pipeline/SKILL.md": [
-      1787248006342729694,
-      6953
+      1790147632768547489,
+      7206,
+      7571,
+      1790148443359752873
     ],
     "productivity/airtable/SKILL.md": [
       1787248006333891903,
-      11314
+      11314,
+      925293,
+      1787248218533365654
     ],
     "productivity/weekly-review-planning/SKILL.md": [
       1787248006342729694,
-      3975
+      3975,
+      919535,
+      1787248218534936003
     ],
     "productivity/xlsx/SKILL.md": [
       1787248006342729694,
-      9655
+      9655,
+      925313,
+      1787248218540478338
     ],
     "productivity/product-price-monitor/SKILL.md": [
       1787248006342295404,
-      4400
+      4400,
+      919533,
+      1787248218544604001
     ],
     "inference-sh/DESCRIPTION.md": [
       1776790840383712464,
-      706
+      706,
+      30590,
+      1776976254017356003
     ],
     "diagramming/DESCRIPTION.md": [
       1776790840378407892,
-      159
+      159,
+      30592,
+      1776976254018021167
     ],
     "devops/sdlc-review/SKILL.md": [
       1787248006329978866,
-      9073
+      9073,
+      925335,
+      1787248218546151911
     ],
     "devops/webhook-subscriptions/SKILL.md": [
       1778496350696585695,
-      6836
+      6836,
+      299356,
+      1778496428118364802
     ],
     "devops/kanban-worker/SKILL.md": [
       1781964097547895554,
-      10979
+      10979,
+      919537,
+      1781966430983625220
     ],
     "devops/kanban-orchestrator/SKILL.md": [
       1781964097547853516,
-      15831
+      15831,
+      919539,
+      1781966430985478671
     ],
     "mcp/DESCRIPTION.md": [
       1776790840383712464,
-      216
+      216,
+      30593,
+      1776976254019341366
     ],
     "mcp/native-mcp/SKILL.md": [
       1778496350699585729,
-      12365
+      12365,
+      299362,
+      1778496428122773322
     ],
     "creative/DESCRIPTION.md": [
       1776790840351712152,
-      116
+      116,
+      30594,
+      1776976254020292269
     ],
     "creative/sketch/SKILL.md": [
       1787248006327729524,
-      9788
+      9788,
+      925337,
+      1787248218547471969
     ],
     "creative/architecture-diagram/SKILL.md": [
       1778496350691585638,
-      5830
+      5830,
+      299368,
+      1778496428127105467
     ],
     "creative/design-md/SKILL.md": [
       1787248006326729513,
-      8477
+      8477,
+      925341,
+      1787248218551252103
     ],
     "creative/popular-web-designs/SKILL.md": [
       1778496350694585672,
-      9722
+      9722,
+      299429,
+      1778496428171803626
     ],
     "creative/manim-video/SKILL.md": [
       1787248006327729524,
-      12150
+      12150,
+      925343,
+      1787248218573110087
     ],
     "creative/pretext/SKILL.md": [
       1787248006327729524,
-      13959
+      13959,
+      925374,
+      1787248218582843108
     ],
     "creative/touchdesigner-mcp/SKILL.md": [
       1787248006328729536,
-      15269
+      15269,
+      925378,
+      1787248218595755485
     ],
     "creative/baoyu-comic/SKILL.md": [
       1778496350691585638,
-      14621
+      14621,
+      299484,
+      1778496428229199321
     ],
     "creative/pixel-art/SKILL.md": [
       1778496350694585672,
-      7581
+      7581,
+      299563,
+      1778496428244791853
     ],
     "creative/ascii-video/SKILL.md": [
       1787248006323729479,
-      15011
+      15011,
+      925572,
+      1787248218609998621
     ],
     "creative/excalidraw/SKILL.md": [
       1787248006326729513,
-      7297
+      7297,
+      925599,
+      1787248218617163632
     ],
     "creative/ascii-art/SKILL.md": [
       1787248006323729479,
-      10552
+      10552,
+      925640,
+      1787248218620753638
     ],
     "creative/baoyu-infographic/SKILL.md": [
       1778496350692585649,
-      10434
+      10434,
+      299594,
+      1778496428284573243
     ],
     "creative/baoyu-article-illustrator/SKILL.md": [
       1779355855360944674,
-      10131
+      10131,
+      424185,
+      1779356017453076323
     ],
     "creative/claude-design/SKILL.md": [
       1783544892077458337,
-      25117
+      25117,
+      919167,
+      1783544984915171070
     ],
     "creative/songwriting-and-ai-music/SKILL.md": [
       1787248006328729536,
-      10963
+      10963,
+      925643,
+      1787248218633444595
     ],
     "creative/humanizer/SKILL.md": [
       1784875040870982004,
-      34463
+      34463,
+      940978,
+      1784876912522150138
     ],
     "creative/comfyui/SKILL.md": [
       1787248006323729479,
-      24075
+      24075,
+      925689,
+      1787248218655317279
     ],
     "creative/creative-ideation/SKILL.md": [
       1778496350692585649,
-      6318
+      6318,
+      299748,
+      1778496428320558305
     ],
     "creative/p5js/SKILL.md": [
       1787248006327729524,
-      27534
+      27534,
+      925750,
+      1787248218670808276
     ],
     "feeds/DESCRIPTION.md": [
       1776790840379798919,
-      115
+      115,
+      30596,
+      1776976254021413878
     ],
     "software-development/debugging-hermes-tui-commands/SKILL.md": [
       1778496350707585820,
-      7910
+      7910,
+      299779,
+      1778496428337006151
     ],
     "software-development/python-debugpy/SKILL.md": [
-      1787248006348729762,
-      13347
+      1790147632773547547,
+      13366,
+      7573,
+      1790148443522511529
     ],
     "software-development/hermes-s6-container-supervision/SKILL.md": [
       1779727937246966125,
-      11474
+      11474,
+      294551,
+      1779728036139626522
     ],
     "software-development/spike/SKILL.md": [
-      1787248006348729762,
-      8729
+      1790147632774547558,
+      8723,
+      7581,
+      1790148443525394302
     ],
     "software-development/simplify-code/SKILL.md": [
-      1784875040892257392,
-      14702
+      1790147632773547547,
+      14696,
+      7583,
+      1790148443528277262
+    ],
+    "software-development/codebase-inspection/SKILL.md": [
+      1790147632769547501,
+      3612,
+      7585,
+      1790148443532891173
     ],
     "software-development/writing-plans/SKILL.md": [
       1778496350709585843,
-      7229
+      7229,
+      299785,
+      1778496428341215467
     ],
     "software-development/test-driven-development/SKILL.md": [
-      1783544892080458371,
-      10306
+      1790147632774547558,
+      10300,
+      7587,
+      1790148443535761986
     ],
     "software-development/hermes-agent-skill-authoring/SKILL.md": [
-      1787248006347729751,
-      14438
+      1790147632773235234,
+      14504,
+      7589,
+      1790148443538654586
     ],
     "software-development/requesting-code-review/SKILL.md": [
-      1781964097551895604,
-      8465
+      1790147632773547547,
+      8781,
+      7591,
+      1790148443541433942
     ],
     "software-development/plan/SKILL.md": [
       1784875040892257392,
-      8903
+      8903,
+      919171,
+      1784876912565330007
     ],
     "software-development/inspecting-hermes-desktop-dom/SKILL.md": [
-      1787248006347729751,
-      6204
+      1790147632773235234,
+      6250,
+      7593,
+      1790148443544582389
     ],
     "software-development/subagent-driven-development/SKILL.md": [
       1778496350708585832,
-      10742
+      10742,
+      299795,
+      1778496428349263035
     ],
     "software-development/dogfood/SKILL.md": [
       1787248006347729751,
-      6324
+      6324,
+      925822,
+      1787248218689203847
     ],
     "software-development/systematic-debugging/SKILL.md": [
-      1783544892080458371,
-      14065
+      1790147632774547558,
+      14059,
+      7595,
+      1790148443549610816
+    ],
+    "software-development/github/SKILL.md": [
+      1790147632770547512,
+      2446,
+      7609,
+      1790148443559799227
     ],
     "software-development/node-inspect-debugger/SKILL.md": [
-      1787248006348729762,
-      10894
+      1790147632773235234,
+      11065,
+      7629,
+      1790148443566983959
     ],
     "github/DESCRIPTION.md": [
       1776790840380150785,
-      167
+      167,
+      30597,
+      1776976254022128121
     ],
     "github/github-pr-workflow/SKILL.md": [
       1787248006330729558,
-      10034
+      10034,
+      925843,
+      1787248218697006405
     ],
     "github/github-issues/SKILL.md": [
       1787248006329978866,
-      9312
+      9312,
+      925853,
+      1787248218701935808
     ],
     "github/github-auth/SKILL.md": [
       1787248006329978866,
-      11949
-    ],
-    "github/codebase-inspection/SKILL.md": [
-      1778496350697585706,
-      3628
+      11949,
+      925863,
+      1787248218705246389
     ],
     "github/github-code-review/SKILL.md": [
       1787248006329978866,
-      13614
+      13614,
+      925872,
+      1787248218709337359
     ],
     "github/github-issue-to-pr/SKILL.md": [
       1787248006329978866,
-      6058
+      6058,
+      925879,
+      1787248218711562362
     ],
     "github/github-repo-management/SKILL.md": [
       1787248006330729558,
-      13727
+      13727,
+      925884,
+      1787248218713681507
     ],
     "research/DESCRIPTION.md": [
       1776790840430366533,
-      179
+      179,
+      30598,
+      1776976254023232472
     ],
     "research/arxiv/SKILL.md": [
-      1787248006344729717,
-      10075
+      1790147632769547501,
+      10061,
+      7631,
+      1790148443571479646
     ],
     "research/blogwatcher/SKILL.md": [
       1778496350706585809,
-      5111
-    ],
-    "research/blocked-page-recovery/SKILL.md": [
-      1787248006344729717,
-      5152
+      5111,
+      299835,
+      1778496428374656538
     ],
     "research/llm-wiki/SKILL.md": [
       1787248006346945885,
-      20121
+      20121,
+      926452,
+      1787248218722133837
     ],
     "research/polymarket/SKILL.md": [
       1778496350706585809,
-      2985
+      2985,
+      424265,
+      1779356017525970606
     ],
     "research/grounded-citations/SKILL.md": [
-      1787248006345948835,
-      11231
+      1790147632769547501,
+      12652,
+      7635,
+      1790148443579665214
     ],
     "research/competitor-news-monitor/SKILL.md": [
-      1787248006345948835,
-      4501
+      1790147632769547501,
+      4619,
+      7662,
+      1790148443584518572
     ],
     "research/research-paper-writing/SKILL.md": [
       1787248006346945885,
-      72170
+      72170,
+      926577,
+      1787248218773051917
     ],
     "media/DESCRIPTION.md": [
       1776790840385407586,
-      139
+      139,
+      30599,
+      1776976254024021228
     ],
     "media/spotify/SKILL.md": [
       1778496350699585729,
-      6319
+      6319,
+      299845,
+      1778496428412278165
     ],
     "media/songsee/SKILL.md": [
       1778496350699585729,
-      2336
+      2336,
+      299847,
+      1778496428413710540
     ],
     "media/heartmula/SKILL.md": [
       1778496350699585729,
-      6412
+      6412,
+      299849,
+      1778496428415038688
     ],
     "media/youtube-content/SKILL.md": [
       1787248006330729558,
-      3538
+      3538,
+      919175,
+      1787248218783046084
     ],
     "media/gif-search/SKILL.md": [
       1781964097548895567,
-      2720
+      2720,
+      815370,
+      1781966431191304203
     ]
   },
   "skills": [
@@ -579,7 +871,7 @@
       "skill_name": "apple-notes",
       "category": "apple",
       "frontmatter_name": "apple-notes",
-      "description": "",
+      "description": "Manage Apple Notes via memo CLI: create, search, edit.",
       "platforms": [
         "macos"
       ],
@@ -587,14 +879,16 @@
         "fallback_for_toolsets": [],
         "requires_toolsets": [],
         "fallback_for_tools": [],
-        "requires_tools": []
-      }
+        "requires_tools": [],
+        "session_platforms": []
+      },
+      "requires_apps": []
     },
     {
       "skill_name": "apple-reminders",
       "category": "apple",
       "frontmatter_name": "apple-reminders",
-      "description": "",
+      "description": "Apple Reminders via remindctl: add, list, complete.",
       "platforms": [
         "macos"
       ],
@@ -602,14 +896,16 @@
         "fallback_for_toolsets": [],
         "requires_toolsets": [],
         "fallback_for_tools": [],
-        "requires_tools": []
-      }
+        "requires_tools": [],
+        "session_platforms": []
+      },
+      "requires_apps": []
     },
     {
       "skill_name": "findmy",
       "category": "apple",
       "frontmatter_name": "findmy",
-      "description": "",
+      "description": "Track Apple devices/AirTags via FindMy.app on macOS.",
       "platforms": [
         "macos"
       ],
@@ -617,14 +913,16 @@
         "fallback_for_toolsets": [],
         "requires_toolsets": [],
         "fallback_for_tools": [],
-        "requires_tools": []
-      }
+        "requires_tools": [],
+        "session_platforms": []
+      },
+      "requires_apps": []
     },
     {
       "skill_name": "imessage",
       "category": "apple",
       "frontmatter_name": "imessage",
-      "description": "",
+      "description": "Send and receive iMessages/SMS via the imsg CLI on macOS.",
       "platforms": [
         "macos"
       ],
@@ -632,14 +930,16 @@
         "fallback_for_toolsets": [],
         "requires_toolsets": [],
         "fallback_for_tools": [],
-        "requires_tools": []
-      }
+        "requires_tools": [],
+        "session_platforms": []
+      },
+      "requires_apps": []
     },
     {
       "skill_name": "macos-computer-use",
       "category": "apple",
       "frontmatter_name": "macos-computer-use",
-      "description": "",
+      "description": "Drive the macOS desktop in the background — screenshots, ...",
       "platforms": [
         "macos"
       ],
@@ -647,8 +947,10 @@
         "fallback_for_toolsets": [],
         "requires_toolsets": [],
         "fallback_for_tools": [],
-        "requires_tools": []
-      }
+        "requires_tools": [],
+        "session_platforms": []
+      },
+      "requires_apps": []
     },
     {
       "skill_name": "claude-code",
@@ -664,8 +966,10 @@
         "fallback_for_toolsets": [],
         "requires_toolsets": [],
         "fallback_for_tools": [],
-        "requires_tools": []
-      }
+        "requires_tools": [],
+        "session_platforms": []
+      },
+      "requires_apps": []
     },
     {
       "skill_name": "codex",
@@ -681,14 +985,16 @@
         "fallback_for_toolsets": [],
         "requires_toolsets": [],
         "fallback_for_tools": [],
-        "requires_tools": []
-      }
+        "requires_tools": [],
+        "session_platforms": []
+      },
+      "requires_apps": []
     },
     {
       "skill_name": "computer-use",
       "category": "autonomous-ai-agents",
       "frontmatter_name": "computer-use",
-      "description": "Drive the desktop in the background without stealing focus.",
+      "description": "Drive the desktop background-first; escalate on signal.",
       "platforms": [
         "macos",
         "windows",
@@ -698,8 +1004,10 @@
         "fallback_for_toolsets": [],
         "requires_toolsets": [],
         "fallback_for_tools": [],
-        "requires_tools": []
-      }
+        "requires_tools": [],
+        "session_platforms": []
+      },
+      "requires_apps": []
     },
     {
       "skill_name": "hermes-agent",
@@ -715,8 +1023,10 @@
         "fallback_for_toolsets": [],
         "requires_toolsets": [],
         "fallback_for_tools": [],
-        "requires_tools": []
-      }
+        "requires_tools": [],
+        "session_platforms": []
+      },
+      "requires_apps": []
     },
     {
       "skill_name": "kanban-codex-lane",
@@ -728,8 +1038,10 @@
         "fallback_for_toolsets": [],
         "requires_toolsets": [],
         "fallback_for_tools": [],
-        "requires_tools": []
-      }
+        "requires_tools": [],
+        "session_platforms": []
+      },
+      "requires_apps": []
     },
     {
       "skill_name": "merge-reconciler",
@@ -745,8 +1057,10 @@
         "fallback_for_toolsets": [],
         "requires_toolsets": [],
         "fallback_for_tools": [],
-        "requires_tools": []
-      }
+        "requires_tools": [],
+        "session_platforms": []
+      },
+      "requires_apps": []
     },
     {
       "skill_name": "opencode",
@@ -762,8 +1076,10 @@
         "fallback_for_toolsets": [],
         "requires_toolsets": [],
         "fallback_for_tools": [],
-        "requires_tools": []
-      }
+        "requires_tools": [],
+        "session_platforms": []
+      },
+      "requires_apps": []
     },
     {
       "skill_name": "architecture-diagram",
@@ -779,8 +1095,10 @@
         "fallback_for_toolsets": [],
         "requires_toolsets": [],
         "fallback_for_tools": [],
-        "requires_tools": []
-      }
+        "requires_tools": [],
+        "session_platforms": []
+      },
+      "requires_apps": []
     },
     {
       "skill_name": "ascii-art",
@@ -796,8 +1114,10 @@
         "fallback_for_toolsets": [],
         "requires_toolsets": [],
         "fallback_for_tools": [],
-        "requires_tools": []
-      }
+        "requires_tools": [],
+        "session_platforms": []
+      },
+      "requires_apps": []
     },
     {
       "skill_name": "ascii-video",
@@ -813,8 +1133,10 @@
         "fallback_for_toolsets": [],
         "requires_toolsets": [],
         "fallback_for_tools": [],
-        "requires_tools": []
-      }
+        "requires_tools": [],
+        "session_platforms": []
+      },
+      "requires_apps": []
     },
     {
       "skill_name": "baoyu-article-illustrator",
@@ -830,8 +1152,10 @@
         "fallback_for_toolsets": [],
         "requires_toolsets": [],
         "fallback_for_tools": [],
-        "requires_tools": []
-      }
+        "requires_tools": [],
+        "session_platforms": []
+      },
+      "requires_apps": []
     },
     {
       "skill_name": "baoyu-comic",
@@ -847,8 +1171,10 @@
         "fallback_for_toolsets": [],
         "requires_toolsets": [],
         "fallback_for_tools": [],
-        "requires_tools": []
-      }
+        "requires_tools": [],
+        "session_platforms": []
+      },
+      "requires_apps": []
     },
     {
       "skill_name": "baoyu-infographic",
@@ -864,8 +1190,10 @@
         "fallback_for_toolsets": [],
         "requires_toolsets": [],
         "fallback_for_tools": [],
-        "requires_tools": []
-      }
+        "requires_tools": [],
+        "session_platforms": []
+      },
+      "requires_apps": []
     },
     {
       "skill_name": "claude-design",
@@ -881,8 +1209,10 @@
         "fallback_for_toolsets": [],
         "requires_toolsets": [],
         "fallback_for_tools": [],
-        "requires_tools": []
-      }
+        "requires_tools": [],
+        "session_platforms": []
+      },
+      "requires_apps": []
     },
     {
       "skill_name": "comfyui",
@@ -898,8 +1228,10 @@
         "fallback_for_toolsets": [],
         "requires_toolsets": [],
         "fallback_for_tools": [],
-        "requires_tools": []
-      }
+        "requires_tools": [],
+        "session_platforms": []
+      },
+      "requires_apps": []
     },
     {
       "skill_name": "creative-ideation",
@@ -915,8 +1247,10 @@
         "fallback_for_toolsets": [],
         "requires_toolsets": [],
         "fallback_for_tools": [],
-        "requires_tools": []
-      }
+        "requires_tools": [],
+        "session_platforms": []
+      },
+      "requires_apps": []
     },
     {
       "skill_name": "design-md",
@@ -932,8 +1266,10 @@
         "fallback_for_toolsets": [],
         "requires_toolsets": [],
         "fallback_for_tools": [],
-        "requires_tools": []
-      }
+        "requires_tools": [],
+        "session_platforms": []
+      },
+      "requires_apps": []
     },
     {
       "skill_name": "excalidraw",
@@ -949,8 +1285,10 @@
         "fallback_for_toolsets": [],
         "requires_toolsets": [],
         "fallback_for_tools": [],
-        "requires_tools": []
-      }
+        "requires_tools": [],
+        "session_platforms": []
+      },
+      "requires_apps": []
     },
     {
       "skill_name": "humanizer",
@@ -966,8 +1304,10 @@
         "fallback_for_toolsets": [],
         "requires_toolsets": [],
         "fallback_for_tools": [],
-        "requires_tools": []
-      }
+        "requires_tools": [],
+        "session_platforms": []
+      },
+      "requires_apps": []
     },
     {
       "skill_name": "manim-video",
@@ -983,8 +1323,10 @@
         "fallback_for_toolsets": [],
         "requires_toolsets": [],
         "fallback_for_tools": [],
-        "requires_tools": []
-      }
+        "requires_tools": [],
+        "session_platforms": []
+      },
+      "requires_apps": []
     },
     {
       "skill_name": "p5js",
@@ -1000,8 +1342,10 @@
         "fallback_for_toolsets": [],
         "requires_toolsets": [],
         "fallback_for_tools": [],
-        "requires_tools": []
-      }
+        "requires_tools": [],
+        "session_platforms": []
+      },
+      "requires_apps": []
     },
     {
       "skill_name": "pixel-art",
@@ -1017,8 +1361,10 @@
         "fallback_for_toolsets": [],
         "requires_toolsets": [],
         "fallback_for_tools": [],
-        "requires_tools": []
-      }
+        "requires_tools": [],
+        "session_platforms": []
+      },
+      "requires_apps": []
     },
     {
       "skill_name": "popular-web-designs",
@@ -1034,8 +1380,10 @@
         "fallback_for_toolsets": [],
         "requires_toolsets": [],
         "fallback_for_tools": [],
-        "requires_tools": []
-      }
+        "requires_tools": [],
+        "session_platforms": []
+      },
+      "requires_apps": []
     },
     {
       "skill_name": "pretext",
@@ -1051,8 +1399,10 @@
         "fallback_for_toolsets": [],
         "requires_toolsets": [],
         "fallback_for_tools": [],
-        "requires_tools": []
-      }
+        "requires_tools": [],
+        "session_platforms": []
+      },
+      "requires_apps": []
     },
     {
       "skill_name": "sketch",
@@ -1068,8 +1418,10 @@
         "fallback_for_toolsets": [],
         "requires_toolsets": [],
         "fallback_for_tools": [],
-        "requires_tools": []
-      }
+        "requires_tools": [],
+        "session_platforms": []
+      },
+      "requires_apps": []
     },
     {
       "skill_name": "songwriting-and-ai-music",
@@ -1085,8 +1437,10 @@
         "fallback_for_toolsets": [],
         "requires_toolsets": [],
         "fallback_for_tools": [],
-        "requires_tools": []
-      }
+        "requires_tools": [],
+        "session_platforms": []
+      },
+      "requires_apps": []
     },
     {
       "skill_name": "touchdesigner-mcp",
@@ -1102,8 +1456,10 @@
         "fallback_for_toolsets": [],
         "requires_toolsets": [],
         "fallback_for_tools": [],
-        "requires_tools": []
-      }
+        "requires_tools": [],
+        "session_platforms": []
+      },
+      "requires_apps": []
     },
     {
       "skill_name": "jupyter-live-kernel",
@@ -1119,14 +1475,16 @@
         "fallback_for_toolsets": [],
         "requires_toolsets": [],
         "fallback_for_tools": [],
-        "requires_tools": []
-      }
+        "requires_tools": [],
+        "session_platforms": []
+      },
+      "requires_apps": []
     },
     {
       "skill_name": "kanban-orchestrator",
       "category": "devops",
       "frontmatter_name": "kanban-orchestrator",
-      "description": "",
+      "description": "Decomposition playbook + anti-temptation rules for an orc...",
       "platforms": [
         "linux",
         "macos",
@@ -1136,14 +1494,16 @@
         "fallback_for_toolsets": [],
         "requires_toolsets": [],
         "fallback_for_tools": [],
-        "requires_tools": []
-      }
+        "requires_tools": [],
+        "session_platforms": []
+      },
+      "requires_apps": []
     },
     {
       "skill_name": "kanban-worker",
       "category": "devops",
       "frontmatter_name": "kanban-worker",
-      "description": "",
+      "description": "Pitfalls, examples, and edge cases for Hermes Kanban work...",
       "platforms": [
         "linux",
         "macos",
@@ -1153,14 +1513,16 @@
         "fallback_for_toolsets": [],
         "requires_toolsets": [],
         "fallback_for_tools": [],
-        "requires_tools": []
-      }
+        "requires_tools": [],
+        "session_platforms": []
+      },
+      "requires_apps": []
     },
     {
       "skill_name": "sdlc-review",
       "category": "devops",
       "frontmatter_name": "sdlc-review",
-      "description": "",
+      "description": "Review Kanban handoffs and route verified outcomes.",
       "platforms": [
         "linux",
         "macos",
@@ -1172,8 +1534,10 @@
           "kanban"
         ],
         "fallback_for_tools": [],
-        "requires_tools": []
-      }
+        "requires_tools": [],
+        "session_platforms": []
+      },
+      "requires_apps": []
     },
     {
       "skill_name": "webhook-subscriptions",
@@ -1189,8 +1553,10 @@
         "fallback_for_toolsets": [],
         "requires_toolsets": [],
         "fallback_for_tools": [],
-        "requires_tools": []
-      }
+        "requires_tools": [],
+        "session_platforms": []
+      },
+      "requires_apps": []
     },
     {
       "skill_name": "email-inbox-triage",
@@ -1206,8 +1572,10 @@
         "fallback_for_toolsets": [],
         "requires_toolsets": [],
         "fallback_for_tools": [],
-        "requires_tools": []
-      }
+        "requires_tools": [],
+        "session_platforms": []
+      },
+      "requires_apps": []
     },
     {
       "skill_name": "himalaya",
@@ -1223,8 +1591,10 @@
         "fallback_for_toolsets": [],
         "requires_toolsets": [],
         "fallback_for_tools": [],
-        "requires_tools": []
-      }
+        "requires_tools": [],
+        "session_platforms": []
+      },
+      "requires_apps": []
     },
     {
       "skill_name": "minecraft-modpack-server",
@@ -1239,8 +1609,10 @@
         "fallback_for_toolsets": [],
         "requires_toolsets": [],
         "fallback_for_tools": [],
-        "requires_tools": []
-      }
+        "requires_tools": [],
+        "session_platforms": []
+      },
+      "requires_apps": []
     },
     {
       "skill_name": "pokemon-player",
@@ -1256,25 +1628,10 @@
         "fallback_for_toolsets": [],
         "requires_toolsets": [],
         "fallback_for_tools": [],
-        "requires_tools": []
-      }
-    },
-    {
-      "skill_name": "codebase-inspection",
-      "category": "github",
-      "frontmatter_name": "codebase-inspection",
-      "description": "Inspect codebases w/ pygount: LOC, languages, ratios.",
-      "platforms": [
-        "linux",
-        "macos",
-        "windows"
-      ],
-      "conditions": {
-        "fallback_for_toolsets": [],
-        "requires_toolsets": [],
-        "fallback_for_tools": [],
-        "requires_tools": []
-      }
+        "requires_tools": [],
+        "session_platforms": []
+      },
+      "requires_apps": []
     },
     {
       "skill_name": "github-auth",
@@ -1290,8 +1647,10 @@
         "fallback_for_toolsets": [],
         "requires_toolsets": [],
         "fallback_for_tools": [],
-        "requires_tools": []
-      }
+        "requires_tools": [],
+        "session_platforms": []
+      },
+      "requires_apps": []
     },
     {
       "skill_name": "github-code-review",
@@ -1307,8 +1666,10 @@
         "fallback_for_toolsets": [],
         "requires_toolsets": [],
         "fallback_for_tools": [],
-        "requires_tools": []
-      }
+        "requires_tools": [],
+        "session_platforms": []
+      },
+      "requires_apps": []
     },
     {
       "skill_name": "github-issue-to-pr",
@@ -1324,8 +1685,10 @@
         "fallback_for_toolsets": [],
         "requires_toolsets": [],
         "fallback_for_tools": [],
-        "requires_tools": []
-      }
+        "requires_tools": [],
+        "session_platforms": []
+      },
+      "requires_apps": []
     },
     {
       "skill_name": "github-issues",
@@ -1341,8 +1704,10 @@
         "fallback_for_toolsets": [],
         "requires_toolsets": [],
         "fallback_for_tools": [],
-        "requires_tools": []
-      }
+        "requires_tools": [],
+        "session_platforms": []
+      },
+      "requires_apps": []
     },
     {
       "skill_name": "github-pr-workflow",
@@ -1358,8 +1723,10 @@
         "fallback_for_toolsets": [],
         "requires_toolsets": [],
         "fallback_for_tools": [],
-        "requires_tools": []
-      }
+        "requires_tools": [],
+        "session_platforms": []
+      },
+      "requires_apps": []
     },
     {
       "skill_name": "github-repo-management",
@@ -1375,21 +1742,10 @@
         "fallback_for_toolsets": [],
         "requires_toolsets": [],
         "fallback_for_tools": [],
-        "requires_tools": []
-      }
-    },
-    {
-      "skill_name": "automated-language-lesson-generator",
-      "category": "language-learning",
-      "frontmatter_name": "automated-language-lesson-generator",
-      "description": "Automates the generation of language lessons using the Di...",
-      "platforms": [],
-      "conditions": {
-        "fallback_for_toolsets": [],
-        "requires_toolsets": [],
-        "fallback_for_tools": [],
-        "requires_tools": []
-      }
+        "requires_tools": [],
+        "session_platforms": []
+      },
+      "requires_apps": []
     },
     {
       "skill_name": "language-learning-disss",
@@ -1401,8 +1757,10 @@
         "fallback_for_toolsets": [],
         "requires_toolsets": [],
         "fallback_for_tools": [],
-        "requires_tools": []
-      }
+        "requires_tools": [],
+        "session_platforms": []
+      },
+      "requires_apps": []
     },
     {
       "skill_name": "native-mcp",
@@ -1418,8 +1776,10 @@
         "fallback_for_toolsets": [],
         "requires_toolsets": [],
         "fallback_for_tools": [],
-        "requires_tools": []
-      }
+        "requires_tools": [],
+        "session_platforms": []
+      },
+      "requires_apps": []
     },
     {
       "skill_name": "gif-search",
@@ -1435,8 +1795,10 @@
         "fallback_for_toolsets": [],
         "requires_toolsets": [],
         "fallback_for_tools": [],
-        "requires_tools": []
-      }
+        "requires_tools": [],
+        "session_platforms": []
+      },
+      "requires_apps": []
     },
     {
       "skill_name": "heartmula",
@@ -1452,8 +1814,10 @@
         "fallback_for_toolsets": [],
         "requires_toolsets": [],
         "fallback_for_tools": [],
-        "requires_tools": []
-      }
+        "requires_tools": [],
+        "session_platforms": []
+      },
+      "requires_apps": []
     },
     {
       "skill_name": "songsee",
@@ -1469,8 +1833,10 @@
         "fallback_for_toolsets": [],
         "requires_toolsets": [],
         "fallback_for_tools": [],
-        "requires_tools": []
-      }
+        "requires_tools": [],
+        "session_platforms": []
+      },
+      "requires_apps": []
     },
     {
       "skill_name": "spotify",
@@ -1486,8 +1852,10 @@
         "fallback_for_toolsets": [],
         "requires_toolsets": [],
         "fallback_for_tools": [],
-        "requires_tools": []
-      }
+        "requires_tools": [],
+        "session_platforms": []
+      },
+      "requires_apps": []
     },
     {
       "skill_name": "youtube-content",
@@ -1503,8 +1871,10 @@
         "fallback_for_toolsets": [],
         "requires_toolsets": [],
         "fallback_for_tools": [],
-        "requires_tools": []
-      }
+        "requires_tools": [],
+        "session_platforms": []
+      },
+      "requires_apps": []
     },
     {
       "skill_name": "evaluating-llms-harness",
@@ -1519,8 +1889,10 @@
         "fallback_for_toolsets": [],
         "requires_toolsets": [],
         "fallback_for_tools": [],
-        "requires_tools": []
-      }
+        "requires_tools": [],
+        "session_platforms": []
+      },
+      "requires_apps": []
     },
     {
       "skill_name": "weights-and-biases",
@@ -1536,8 +1908,10 @@
         "fallback_for_toolsets": [],
         "requires_toolsets": [],
         "fallback_for_tools": [],
-        "requires_tools": []
-      }
+        "requires_tools": [],
+        "session_platforms": []
+      },
+      "requires_apps": []
     },
     {
       "skill_name": "huggingface-hub",
@@ -1553,8 +1927,10 @@
         "fallback_for_toolsets": [],
         "requires_toolsets": [],
         "fallback_for_tools": [],
-        "requires_tools": []
-      }
+        "requires_tools": [],
+        "session_platforms": []
+      },
+      "requires_apps": []
     },
     {
       "skill_name": "llama-cpp",
@@ -1570,8 +1946,10 @@
         "fallback_for_toolsets": [],
         "requires_toolsets": [],
         "fallback_for_tools": [],
-        "requires_tools": []
-      }
+        "requires_tools": [],
+        "session_platforms": []
+      },
+      "requires_apps": []
     },
     {
       "skill_name": "obliteratus",
@@ -1586,8 +1964,10 @@
         "fallback_for_toolsets": [],
         "requires_toolsets": [],
         "fallback_for_tools": [],
-        "requires_tools": []
-      }
+        "requires_tools": [],
+        "session_platforms": []
+      },
+      "requires_apps": []
     },
     {
       "skill_name": "outlines",
@@ -1599,8 +1979,10 @@
         "fallback_for_toolsets": [],
         "requires_toolsets": [],
         "fallback_for_tools": [],
-        "requires_tools": []
-      }
+        "requires_tools": [],
+        "session_platforms": []
+      },
+      "requires_apps": []
     },
     {
       "skill_name": "serving-llms-vllm",
@@ -1615,8 +1997,10 @@
         "fallback_for_toolsets": [],
         "requires_toolsets": [],
         "fallback_for_tools": [],
-        "requires_tools": []
-      }
+        "requires_tools": [],
+        "session_platforms": []
+      },
+      "requires_apps": []
     },
     {
       "skill_name": "audiocraft",
@@ -1631,8 +2015,10 @@
         "fallback_for_toolsets": [],
         "requires_toolsets": [],
         "fallback_for_tools": [],
-        "requires_tools": []
-      }
+        "requires_tools": [],
+        "session_platforms": []
+      },
+      "requires_apps": []
     },
     {
       "skill_name": "segment-anything",
@@ -1648,8 +2034,10 @@
         "fallback_for_toolsets": [],
         "requires_toolsets": [],
         "fallback_for_tools": [],
-        "requires_tools": []
-      }
+        "requires_tools": [],
+        "session_platforms": []
+      },
+      "requires_apps": []
     },
     {
       "skill_name": "dspy",
@@ -1665,8 +2053,10 @@
         "fallback_for_toolsets": [],
         "requires_toolsets": [],
         "fallback_for_tools": [],
-        "requires_tools": []
-      }
+        "requires_tools": [],
+        "session_platforms": []
+      },
+      "requires_apps": []
     },
     {
       "skill_name": "axolotl",
@@ -1678,8 +2068,10 @@
         "fallback_for_toolsets": [],
         "requires_toolsets": [],
         "fallback_for_tools": [],
-        "requires_tools": []
-      }
+        "requires_tools": [],
+        "session_platforms": []
+      },
+      "requires_apps": []
     },
     {
       "skill_name": "trl-fine-tuning",
@@ -1691,8 +2083,10 @@
         "fallback_for_toolsets": [],
         "requires_toolsets": [],
         "fallback_for_tools": [],
-        "requires_tools": []
-      }
+        "requires_tools": [],
+        "session_platforms": []
+      },
+      "requires_apps": []
     },
     {
       "skill_name": "unsloth",
@@ -1704,8 +2098,10 @@
         "fallback_for_toolsets": [],
         "requires_toolsets": [],
         "fallback_for_tools": [],
-        "requires_tools": []
-      }
+        "requires_tools": [],
+        "session_platforms": []
+      },
+      "requires_apps": []
     },
     {
       "skill_name": "obsidian",
@@ -1721,8 +2117,10 @@
         "fallback_for_toolsets": [],
         "requires_toolsets": [],
         "fallback_for_tools": [],
-        "requires_tools": []
-      }
+        "requires_tools": [],
+        "session_platforms": []
+      },
+      "requires_apps": []
     },
     {
       "skill_name": "airtable",
@@ -1738,8 +2136,10 @@
         "fallback_for_toolsets": [],
         "requires_toolsets": [],
         "fallback_for_tools": [],
-        "requires_tools": []
-      }
+        "requires_tools": [],
+        "session_platforms": []
+      },
+      "requires_apps": []
     },
     {
       "skill_name": "box",
@@ -1755,8 +2155,10 @@
         "fallback_for_toolsets": [],
         "requires_toolsets": [],
         "fallback_for_tools": [],
-        "requires_tools": []
-      }
+        "requires_tools": [],
+        "session_platforms": []
+      },
+      "requires_apps": []
     },
     {
       "skill_name": "document-to-action-items",
@@ -1772,8 +2174,10 @@
         "fallback_for_toolsets": [],
         "requires_toolsets": [],
         "fallback_for_tools": [],
-        "requires_tools": []
-      }
+        "requires_tools": [],
+        "session_platforms": []
+      },
+      "requires_apps": []
     },
     {
       "skill_name": "docx",
@@ -1789,8 +2193,10 @@
         "fallback_for_toolsets": [],
         "requires_toolsets": [],
         "fallback_for_tools": [],
-        "requires_tools": []
-      }
+        "requires_tools": [],
+        "session_platforms": []
+      },
+      "requires_apps": []
     },
     {
       "skill_name": "google-workspace",
@@ -1806,8 +2212,10 @@
         "fallback_for_toolsets": [],
         "requires_toolsets": [],
         "fallback_for_tools": [],
-        "requires_tools": []
-      }
+        "requires_tools": [],
+        "session_platforms": []
+      },
+      "requires_apps": []
     },
     {
       "skill_name": "linear",
@@ -1823,8 +2231,10 @@
         "fallback_for_toolsets": [],
         "requires_toolsets": [],
         "fallback_for_tools": [],
-        "requires_tools": []
-      }
+        "requires_tools": [],
+        "session_platforms": []
+      },
+      "requires_apps": []
     },
     {
       "skill_name": "maps",
@@ -1842,8 +2252,10 @@
           "terminal"
         ],
         "fallback_for_tools": [],
-        "requires_tools": []
-      }
+        "requires_tools": [],
+        "session_platforms": []
+      },
+      "requires_apps": []
     },
     {
       "skill_name": "meeting-action-items",
@@ -1859,8 +2271,10 @@
         "fallback_for_toolsets": [],
         "requires_toolsets": [],
         "fallback_for_tools": [],
-        "requires_tools": []
-      }
+        "requires_tools": [],
+        "session_platforms": []
+      },
+      "requires_apps": []
     },
     {
       "skill_name": "nano-pdf",
@@ -1876,8 +2290,10 @@
         "fallback_for_toolsets": [],
         "requires_toolsets": [],
         "fallback_for_tools": [],
-        "requires_tools": []
-      }
+        "requires_tools": [],
+        "session_platforms": []
+      },
+      "requires_apps": []
     },
     {
       "skill_name": "notion",
@@ -1893,8 +2309,10 @@
         "fallback_for_toolsets": [],
         "requires_toolsets": [],
         "fallback_for_tools": [],
-        "requires_tools": []
-      }
+        "requires_tools": [],
+        "session_platforms": []
+      },
+      "requires_apps": []
     },
     {
       "skill_name": "ocr-and-documents",
@@ -1910,14 +2328,16 @@
         "fallback_for_toolsets": [],
         "requires_toolsets": [],
         "fallback_for_tools": [],
-        "requires_tools": []
-      }
+        "requires_tools": [],
+        "session_platforms": []
+      },
+      "requires_apps": []
     },
     {
       "skill_name": "pdf",
       "category": "productivity",
       "frontmatter_name": "pdf",
-      "description": "Create, read, merge, fill, and secure PDF files.",
+      "description": "PDF files: create, read, merge, fill, OCR, edit text.",
       "platforms": [
         "linux",
         "macos",
@@ -1927,8 +2347,10 @@
         "fallback_for_toolsets": [],
         "requires_toolsets": [],
         "fallback_for_tools": [],
-        "requires_tools": []
-      }
+        "requires_tools": [],
+        "session_platforms": []
+      },
+      "requires_apps": []
     },
     {
       "skill_name": "petdex",
@@ -1944,8 +2366,10 @@
         "fallback_for_toolsets": [],
         "requires_toolsets": [],
         "fallback_for_tools": [],
-        "requires_tools": []
-      }
+        "requires_tools": [],
+        "session_platforms": []
+      },
+      "requires_apps": []
     },
     {
       "skill_name": "powerpoint",
@@ -1961,8 +2385,10 @@
         "fallback_for_toolsets": [],
         "requires_toolsets": [],
         "fallback_for_tools": [],
-        "requires_tools": []
-      }
+        "requires_tools": [],
+        "session_platforms": []
+      },
+      "requires_apps": []
     },
     {
       "skill_name": "product-price-monitor",
@@ -1978,8 +2404,10 @@
         "fallback_for_toolsets": [],
         "requires_toolsets": [],
         "fallback_for_tools": [],
-        "requires_tools": []
-      }
+        "requires_tools": [],
+        "session_platforms": []
+      },
+      "requires_apps": []
     },
     {
       "skill_name": "session-librarian",
@@ -1995,8 +2423,10 @@
         "fallback_for_toolsets": [],
         "requires_toolsets": [],
         "fallback_for_tools": [],
-        "requires_tools": []
-      }
+        "requires_tools": [],
+        "session_platforms": []
+      },
+      "requires_apps": []
     },
     {
       "skill_name": "teams-meeting-pipeline",
@@ -2012,8 +2442,13 @@
         "fallback_for_toolsets": [],
         "requires_toolsets": [],
         "fallback_for_tools": [],
-        "requires_tools": []
-      }
+        "requires_tools": [],
+        "session_platforms": [
+          "teams",
+          "cron"
+        ]
+      },
+      "requires_apps": []
     },
     {
       "skill_name": "weekly-review-planning",
@@ -2029,8 +2464,10 @@
         "fallback_for_toolsets": [],
         "requires_toolsets": [],
         "fallback_for_tools": [],
-        "requires_tools": []
-      }
+        "requires_tools": [],
+        "session_platforms": []
+      },
+      "requires_apps": []
     },
     {
       "skill_name": "xlsx",
@@ -2046,8 +2483,10 @@
         "fallback_for_toolsets": [],
         "requires_toolsets": [],
         "fallback_for_tools": [],
-        "requires_tools": []
-      }
+        "requires_tools": [],
+        "session_platforms": []
+      },
+      "requires_apps": []
     },
     {
       "skill_name": "godmode",
@@ -2063,8 +2502,10 @@
         "fallback_for_toolsets": [],
         "requires_toolsets": [],
         "fallback_for_tools": [],
-        "requires_tools": []
-      }
+        "requires_tools": [],
+        "session_platforms": []
+      },
+      "requires_apps": []
     },
     {
       "skill_name": "arxiv",
@@ -2080,25 +2521,10 @@
         "fallback_for_toolsets": [],
         "requires_toolsets": [],
         "fallback_for_tools": [],
-        "requires_tools": []
-      }
-    },
-    {
-      "skill_name": "blocked-page-recovery",
-      "category": "research",
-      "frontmatter_name": "blocked-page-recovery",
-      "description": "Recover blocked/paywalled/WAF'd pages via fallbacks.",
-      "platforms": [
-        "linux",
-        "macos",
-        "windows"
-      ],
-      "conditions": {
-        "fallback_for_toolsets": [],
-        "requires_toolsets": [],
-        "fallback_for_tools": [],
-        "requires_tools": []
-      }
+        "requires_tools": [],
+        "session_platforms": []
+      },
+      "requires_apps": []
     },
     {
       "skill_name": "blogwatcher",
@@ -2114,8 +2540,10 @@
         "fallback_for_toolsets": [],
         "requires_toolsets": [],
         "fallback_for_tools": [],
-        "requires_tools": []
-      }
+        "requires_tools": [],
+        "session_platforms": []
+      },
+      "requires_apps": []
     },
     {
       "skill_name": "competitor-news-monitor",
@@ -2131,8 +2559,10 @@
         "fallback_for_toolsets": [],
         "requires_toolsets": [],
         "fallback_for_tools": [],
-        "requires_tools": []
-      }
+        "requires_tools": [],
+        "session_platforms": []
+      },
+      "requires_apps": []
     },
     {
       "skill_name": "grounded-citations",
@@ -2148,8 +2578,10 @@
         "fallback_for_toolsets": [],
         "requires_toolsets": [],
         "fallback_for_tools": [],
-        "requires_tools": []
-      }
+        "requires_tools": [],
+        "session_platforms": []
+      },
+      "requires_apps": []
     },
     {
       "skill_name": "llm-wiki",
@@ -2165,8 +2597,10 @@
         "fallback_for_toolsets": [],
         "requires_toolsets": [],
         "fallback_for_tools": [],
-        "requires_tools": []
-      }
+        "requires_tools": [],
+        "session_platforms": []
+      },
+      "requires_apps": []
     },
     {
       "skill_name": "polymarket",
@@ -2182,8 +2616,10 @@
         "fallback_for_toolsets": [],
         "requires_toolsets": [],
         "fallback_for_tools": [],
-        "requires_tools": []
-      }
+        "requires_tools": [],
+        "session_platforms": []
+      },
+      "requires_apps": []
     },
     {
       "skill_name": "research-paper-writing",
@@ -2201,8 +2637,10 @@
           "files"
         ],
         "fallback_for_tools": [],
-        "requires_tools": []
-      }
+        "requires_tools": [],
+        "session_platforms": []
+      },
+      "requires_apps": []
     },
     {
       "skill_name": "openhue",
@@ -2218,8 +2656,10 @@
         "fallback_for_toolsets": [],
         "requires_toolsets": [],
         "fallback_for_tools": [],
-        "requires_tools": []
-      }
+        "requires_tools": [],
+        "session_platforms": []
+      },
+      "requires_apps": []
     },
     {
       "skill_name": "xurl",
@@ -2234,8 +2674,29 @@
         "fallback_for_toolsets": [],
         "requires_toolsets": [],
         "fallback_for_tools": [],
-        "requires_tools": []
-      }
+        "requires_tools": [],
+        "session_platforms": []
+      },
+      "requires_apps": []
+    },
+    {
+      "skill_name": "codebase-inspection",
+      "category": "software-development",
+      "frontmatter_name": "codebase-inspection",
+      "description": "Inspect codebases w/ pygount: LOC, languages, ratios.",
+      "platforms": [
+        "linux",
+        "macos",
+        "windows"
+      ],
+      "conditions": {
+        "fallback_for_toolsets": [],
+        "requires_toolsets": [],
+        "fallback_for_tools": [],
+        "requires_tools": [],
+        "session_platforms": []
+      },
+      "requires_apps": []
     },
     {
       "skill_name": "debugging-hermes-tui-commands",
@@ -2251,8 +2712,10 @@
         "fallback_for_toolsets": [],
         "requires_toolsets": [],
         "fallback_for_tools": [],
-        "requires_tools": []
-      }
+        "requires_tools": [],
+        "session_platforms": []
+      },
+      "requires_apps": []
     },
     {
       "skill_name": "dogfood",
@@ -2268,8 +2731,29 @@
         "fallback_for_toolsets": [],
         "requires_toolsets": [],
         "fallback_for_tools": [],
-        "requires_tools": []
-      }
+        "requires_tools": [],
+        "session_platforms": []
+      },
+      "requires_apps": []
+    },
+    {
+      "skill_name": "github",
+      "category": "software-development",
+      "frontmatter_name": "github",
+      "description": "GitHub via gh CLI: PRs, issues, reviews, repos, auth.",
+      "platforms": [
+        "linux",
+        "macos",
+        "windows"
+      ],
+      "conditions": {
+        "fallback_for_toolsets": [],
+        "requires_toolsets": [],
+        "fallback_for_tools": [],
+        "requires_tools": [],
+        "session_platforms": []
+      },
+      "requires_apps": []
     },
     {
       "skill_name": "hermes-agent-skill-authoring",
@@ -2285,8 +2769,10 @@
         "fallback_for_toolsets": [],
         "requires_toolsets": [],
         "fallback_for_tools": [],
-        "requires_tools": []
-      }
+        "requires_tools": [],
+        "session_platforms": []
+      },
+      "requires_apps": []
     },
     {
       "skill_name": "hermes-s6-container-supervision",
@@ -2298,8 +2784,10 @@
         "fallback_for_toolsets": [],
         "requires_toolsets": [],
         "fallback_for_tools": [],
-        "requires_tools": []
-      }
+        "requires_tools": [],
+        "session_platforms": []
+      },
+      "requires_apps": []
     },
     {
       "skill_name": "inspecting-hermes-desktop-dom",
@@ -2315,8 +2803,10 @@
         "fallback_for_toolsets": [],
         "requires_toolsets": [],
         "fallback_for_tools": [],
-        "requires_tools": []
-      }
+        "requires_tools": [],
+        "session_platforms": []
+      },
+      "requires_apps": []
     },
     {
       "skill_name": "node-inspect-debugger",
@@ -2332,8 +2822,10 @@
         "fallback_for_toolsets": [],
         "requires_toolsets": [],
         "fallback_for_tools": [],
-        "requires_tools": []
-      }
+        "requires_tools": [],
+        "session_platforms": []
+      },
+      "requires_apps": []
     },
     {
       "skill_name": "plan",
@@ -2349,8 +2841,10 @@
         "fallback_for_toolsets": [],
         "requires_toolsets": [],
         "fallback_for_tools": [],
-        "requires_tools": []
-      }
+        "requires_tools": [],
+        "session_platforms": []
+      },
+      "requires_apps": []
     },
     {
       "skill_name": "python-debugpy",
@@ -2365,8 +2859,10 @@
         "fallback_for_toolsets": [],
         "requires_toolsets": [],
         "fallback_for_tools": [],
-        "requires_tools": []
-      }
+        "requires_tools": [],
+        "session_platforms": []
+      },
+      "requires_apps": []
     },
     {
       "skill_name": "requesting-code-review",
@@ -2382,8 +2878,10 @@
         "fallback_for_toolsets": [],
         "requires_toolsets": [],
         "fallback_for_tools": [],
-        "requires_tools": []
-      }
+        "requires_tools": [],
+        "session_platforms": []
+      },
+      "requires_apps": []
     },
     {
       "skill_name": "simplify-code",
@@ -2399,8 +2897,10 @@
         "fallback_for_toolsets": [],
         "requires_toolsets": [],
         "fallback_for_tools": [],
-        "requires_tools": []
-      }
+        "requires_tools": [],
+        "session_platforms": []
+      },
+      "requires_apps": []
     },
     {
       "skill_name": "spike",
@@ -2416,8 +2916,10 @@
         "fallback_for_toolsets": [],
         "requires_toolsets": [],
         "fallback_for_tools": [],
-        "requires_tools": []
-      }
+        "requires_tools": [],
+        "session_platforms": []
+      },
+      "requires_apps": []
     },
     {
       "skill_name": "subagent-driven-development",
@@ -2433,8 +2935,10 @@
         "fallback_for_toolsets": [],
         "requires_toolsets": [],
         "fallback_for_tools": [],
-        "requires_tools": []
-      }
+        "requires_tools": [],
+        "session_platforms": []
+      },
+      "requires_apps": []
     },
     {
       "skill_name": "systematic-debugging",
@@ -2450,8 +2954,10 @@
         "fallback_for_toolsets": [],
         "requires_toolsets": [],
         "fallback_for_tools": [],
-        "requires_tools": []
-      }
+        "requires_tools": [],
+        "session_platforms": []
+      },
+      "requires_apps": []
     },
     {
       "skill_name": "test-driven-development",
@@ -2467,8 +2973,10 @@
         "fallback_for_toolsets": [],
         "requires_toolsets": [],
         "fallback_for_tools": [],
-        "requires_tools": []
-      }
+        "requires_tools": [],
+        "session_platforms": []
+      },
+      "requires_apps": []
     },
     {
       "skill_name": "writing-plans",
@@ -2484,8 +2992,29 @@
         "fallback_for_toolsets": [],
         "requires_toolsets": [],
         "fallback_for_tools": [],
-        "requires_tools": []
-      }
+        "requires_tools": [],
+        "session_platforms": []
+      },
+      "requires_apps": []
+    },
+    {
+      "skill_name": "blocked-page-recovery",
+      "category": "web",
+      "frontmatter_name": "blocked-page-recovery",
+      "description": "Use when a fetch fails: 403/429, paywall, WAF, bot wall.",
+      "platforms": [
+        "linux",
+        "macos",
+        "windows"
+      ],
+      "conditions": {
+        "fallback_for_toolsets": [],
+        "requires_toolsets": [],
+        "fallback_for_tools": [],
+        "requires_tools": [],
+        "session_platforms": []
+      },
+      "requires_apps": []
     },
     {
       "skill_name": "yuanbao",
@@ -2501,8 +3030,10 @@
         "fallback_for_toolsets": [],
         "requires_toolsets": [],
         "fallback_for_tools": [],
-        "requires_tools": []
-      }
+        "requires_tools": [],
+        "session_platforms": []
+      },
+      "requires_apps": []
     }
   ],
   "category_descriptions": {
@@ -2531,6 +3062,7 @@
     "productivity/ocr-and-documents": "Skills for extracting text from PDFs, scanned documents, images, and other file formats using OCR and document parsing tools.",
     "research": "Skills for academic research, paper discovery, literature review, domain reconnaissance, market data, content monitoring, and scientific knowledge retrieval.",
     "smart-home": "Skills for controlling smart home devices — lights, switches, sensors, and home automation systems.",
-    "social-media": "Skills for interacting with social platforms and social-media workflows — posting, reading, monitoring, and account operations."
+    "social-media": "Skills for interacting with social platforms and social-media workflows — posting, reading, monitoring, and account operations.",
+    "web": "Skills for reaching web content when direct access fails — blocked, paywalled, rate-limited, or bot-walled pages."
   }
 }

@@ -3,7 +3,7 @@
     {
       "id": "46acda532f8",
       "name": "daily-news-briefing",
-      "prompt": "Erstelle das tägliche Morgen-Briefing (06:00) — folge dem daily-news-briefing Skill exakt. 5 Sektionen: Politik & Internationales, Finanzen & Wirtschaft, IT & KI, Deutschland & Nordeuropa, Wetter & Wassertemperaturen. Nutze Google News RSS per curl, Open-Meteo für Wetter, Browser für Wassertemperaturen (Firecrawl-Credits sind leer). KEINE leeren Sektionen. Max 3000 Zeichen pro Nachricht, aufteilen auf bis zu 5 Nachrichten. Alle Quellen angeben. Übersetzte internationale Quellen auf Deutsch.\n\n🔴 FRISCHE-REGEL (wichtig!): NUR Artikel der letzten 2 Tage. Jeden RSS-Item am <pubDate> prüfen. Alles älter als 2 Tage komplett weglassen — auch wenn es interessant ist. Lieber 2 aktuelle Artikel pro Sektion als 5 mit veraltetem Zeug. Keine Ausnahmen.",
+      "prompt": "Erstelle das tägliche Morgen-Briefing (06:00) — folge dem daily-news-briefing Skill exakt. 5 Sektionen: Politik & Internationales, Finanzen & Wirtschaft, IT & KI, Deutschland & Nordeuropa, Wetter & Wassertemperaturen. KEINE leeren Sektionen. Max 3000 Zeichen pro Nachricht, aufteilen auf bis zu 5 Nachrichten. Alle Quellen angeben. Übersetzte internationale Quellen auf Deutsch.\n\n📦 ROHDATEN: Die aktuellen Rohdaten (Nachrichten, Wetter, Wassertemperatur) sind oben im Prompt von einem Pre-Run-Script frisch abgerufen worden (Abschnitt \"DATENSTAND\"). Verwende NUR diese Daten — der 2-Tage-Filter und der Datenstand gelten dort bereits.\n- Feeds ohne frische Artikel (z.B. \"keine Artikel der letzten 2 Tage\") einfach auslassen, nicht erfinden.\n- Wetter/Wassertemperatur direkt übernehmen.\n\n🚫 KEINE Terminal-Befehle: Führe KEINE Shell-Befehle, curl, python -c oder heredocs aus — die sind in Cron ohne User blockiert und führen zu einem LEEREN Briefing. Alle Daten sind bereits vorhanden, du formatierst nur noch.\n\n🚫 Sende NICHT selbst per Telegram/send_message: Deine finale Antwort wird automatisch vom Gateway in den News-Channel zugestellt. Kein send_message, kein curl an Telegram.\n\n🔴 FRISCHE-REGEL (wichtig!): NUR Artikel der letzten 2 Tage verwenden. Jeden Artikel am Datum prüfen. Alles älter als 2 Tage komplett weglassen — auch wenn es interessant ist. Lieber 2 aktuelle Artikel pro Sektion als 5 mit veraltetem Zeug. Keine Ausnahmen.",
       "skills": [
         "daily-news-briefing"
       ],
@@ -11,7 +11,7 @@
       "model": "deepseek/deepseek-v4-flash",
       "provider": "openrouter",
       "base_url": null,
-      "script": null,
+      "script": "gather_briefing_data.py",
       "no_agent": false,
       "context_from": null,
       "schedule": {
@@ -22,17 +22,17 @@
       "schedule_display": "0 6 * * *",
       "repeat": {
         "times": null,
-        "completed": 94
+        "completed": 96
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-06-22T07:17:50.376210+02:00",
-      "next_run_at": "2026-09-26T06:00:00+02:00",
-      "last_run_at": "2026-09-25T06:04:46.862579+02:00",
-      "last_status": "error",
-      "last_error": "RuntimeError: Upstream error from Alibaba: Output data may contain inappropriate content.",
+      "next_run_at": "2026-09-27T06:00:00+02:00",
+      "last_run_at": "2026-09-26T08:12:09.980669+02:00",
+      "last_status": "ok",
+      "last_error": null,
       "last_delivery_error": null,
       "deliver": "telegram",
       "origin": null,
@@ -44,18 +44,15 @@
       ],
       "workdir": null,
       "profile": null,
-      "fire_claim": {
-        "at": "2026-09-25T07:43:32.057459+02:00",
-        "by": "hermes2nd:1499794:003b54fae27e4dcc9c3bc6ee1c30db7c"
-      },
-      "failure_streak": 1,
+      "fire_claim": null,
+      "failure_streak": 0,
       "last_dispatch": {
-        "scheduled_at": "2026-09-25T06:00:00+02:00",
-        "dispatched_at": "2026-09-25T06:00:27.565939+02:00",
+        "scheduled_at": "2026-09-26T06:00:00+02:00",
+        "dispatched_at": "2026-09-26T06:00:27.569976+02:00",
         "lateness_seconds": 27.6,
         "kind": "on_time"
       }
     }
   ],
-  "updated_at": "2026-09-25T07:43:32.059391+02:00"
+  "updated_at": "2026-09-26T08:14:57.122324+02:00"
 }
