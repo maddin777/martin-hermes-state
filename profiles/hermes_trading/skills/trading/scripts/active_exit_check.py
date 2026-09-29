@@ -25,6 +25,7 @@ from utils import (
 )
 from config import DB_PATH, STRATEGY_CONFIG_PATH, db_connect, get_exit_config
 from exit_rules import initial_stop, peak_chandelier_stop, protected_time_stop_price, time_stop_due
+from exit_rules import YT_FADE_MODE, fade_exit_decision
 
 log = get_logger("active_exit_check")
 
@@ -213,6 +214,27 @@ def main():
                  round(min(pos["lowest_price"] or entry, current_price), 4),
                  pos["id"])
             )
+
+            # --- YT-Fade (28.09.2026): nur Notfallstop oder Haltedauer ---
+            # Vor allem KEIN Tech-Exit: fuer einen SHORT feuert TECH_BROKEN bei
+            # bullisher Technik — und genau die haben diese Kandidaten, sie
+            # wurden als LONG ausgewaehlt. Ohne diesen Zweig wuerde jeder
+            # Fade-Short beim ersten Check geschlossen.
+            if (pos["exit_mode"] if "exit_mode" in pos.keys() else None) == YT_FADE_MODE:
+                fade_reason, fade_px = fade_exit_decision(
+                    pos, current_price, cfg.get("yt_fade_hold_days", 40))
+                if fade_reason:
+                    f_eur, f_frac = realized_pnl_from_effective_entry(
+                        entry, fade_px, pos["position_size"], direction)
+                    _close_position(con, pos, fade_px, f_eur, f_frac * 100, fade_reason)
+                    con.commit()
+                    actions.append(
+                        f"{'✅' if f_eur > 0 else '❌'} <b>YT-Fade {fade_reason}: "
+                        f"{pos['name']}</b>\nTicker: {ticker} | SHORT\n"
+                        f"Entry: {entry:.2f} → Exit: {fade_px:.2f}\n"
+                        f"P&L: {f_eur:+.2f}€ ({f_frac*100:+.1f}%)"
+                    )
+                continue
 
             # PnL mit Exit-Slippage + Commission (#11: entry_price ist bereits
             # effektiv/slippage-behaftet – vorher wurde die Entry-Slippage hier ein

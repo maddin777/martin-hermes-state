@@ -83,6 +83,12 @@ def main():
         ("watchlist_manager.py",   "Watchlist Update"),
         ("watchlist_dedup.py",     "Watchlist Dedup"),
         ("technical_validator.py", "Technical Analysis"),  # NACH watchlist_manager!
+        # 28.09.2026 wieder aktiv: muss ZWISCHEN watchlist_manager und
+        # signal_manager laufen — der Watchlist Manager setzt conviction_score
+        # jede Nacht auf den Rohwert zurueck, ein eigener Cron-Termin nach der
+        # Pipeline waere bis zum naechsten Entry ueberschrieben. NACH dem
+        # technical_validator, weil der Validator tech_score >= 0.50 filtert.
+        ("llm_validator.py",       "LLM Validator"),
         ("signal_manager.py",      "Signal Manager", "full"),
         # NACH dem Signal Manager: das Baseline-Buch soll denselben Watchlist-
         # Zustand sehen, den der Live-Entry gesehen hat. Rein messend — der

@@ -1,6 +1,6 @@
 # Änderungshistorie — Trading Skill
 
-**Stand:** Paketen A–D + Sprints 1–7 + Bugfix-Sprint + Screener-Source + Watchlist-Performance-Fix + Rollen-Sprint R1–R4 + **Turtle-Konfluenz-Sprint** + **Phase 1+2 Fix (09.08.2026)** + **Watchlist-Cleanup-Archivierung (09.08.2026)** + **UK-Microcap-Gate (14.08.2026)** + **DQ-Isolation + Alarm-Crons (16.08.2026)** + **Drawdown-15-25-Zone auf 6 Pos (17.08.2026)** + **DQ-.L-Aufräumung im Cleanup + täglicher Cleanup (19.08.2026)** + **DQ-Deaktivierungs-Verifikation + Cleanup 1c (24.08.2026)** + **DQ-Root-Clause-Fix: keine Reaktivierung gedroppter .L + Dry-Run read-only (26.08.2026)** + **Selection Momentum-/Liquiditäts-Gate (27.08.2026)** + **Drawdown-Heilungs-Beschleunigung 15-25%: Size 65% + Conf 75% (01.09.2026)** + **Grok entfernt, twitterapi.io Standard (01.09.2026)** + **Alternative Momentum-Swing-Strategie dokumentiert (06.09.2026)** + **Volume-Backtest: NICHT übernommen (06.09.2026)** + **Sektor-abhängige Regime (07.09.2026)** + **Overlay-Bug Fix (07.09.2026)** + **Analyse-Sprint: 7 Defekte behoben (08.09.2026)** + **Messbarkeit: Gates, Quellen-Taxonomie, Beneficiary-Lifecycle, Video-Retry (08.09.2026)** + **Sizing entkoppelt, Momentum-Faktor repariert, Schattenbuecher (08.09.2026)** + **Kanonik-Mirror-Fix (.SG/.MU/ISIN) + Attributions-Oszillation Root-Cause (10.09.2026)** + **Pre-Delivery-Verification-Gate (14.09.2026)** + **Pfadgenaue Exit-Simulation + Optimizer-Fix + Exit-Profil-Leiter (18.09.2026)** + **Mentions-Gate + Factor-Ranker US-only (19.09.2026)** + **Pipeline-Kopplung + LLM-Abschneidungs-Fix (21.09.2026)** + **Reasoning-Tuning Scout/Analyst, gemessen (22.09.2026)**
+**Stand:** Paketen A–D + Sprints 1–7 + Bugfix-Sprint + Screener-Source + Watchlist-Performance-Fix + Rollen-Sprint R1–R4 + **Turtle-Konfluenz-Sprint** + **Phase 1+2 Fix (09.08.2026)** + **Watchlist-Cleanup-Archivierung (09.08.2026)** + **UK-Microcap-Gate (14.08.2026)** + **DQ-Isolation + Alarm-Crons (16.08.2026)** + **Drawdown-15-25-Zone auf 6 Pos (17.08.2026)** + **DQ-.L-Aufräumung im Cleanup + täglicher Cleanup (19.08.2026)** + **DQ-Deaktivierungs-Verifikation + Cleanup 1c (24.08.2026)** + **DQ-Root-Clause-Fix: keine Reaktivierung gedroppter .L + Dry-Run read-only (26.08.2026)** + **Selection Momentum-/Liquiditäts-Gate (27.08.2026)** + **Drawdown-Heilungs-Beschleunigung 15-25%: Size 65% + Conf 75% (01.09.2026)** + **Grok entfernt, twitterapi.io Standard (01.09.2026)** + **Alternative Momentum-Swing-Strategie dokumentiert (06.09.2026)** + **Volume-Backtest: NICHT übernommen (06.09.2026)** + **Sektor-abhängige Regime (07.09.2026)** + **Overlay-Bug Fix (07.09.2026)** + **Analyse-Sprint: 7 Defekte behoben (08.09.2026)** + **Messbarkeit: Gates, Quellen-Taxonomie, Beneficiary-Lifecycle, Video-Retry (08.09.2026)** + **Sizing entkoppelt, Momentum-Faktor repariert, Schattenbuecher (08.09.2026)** + **Kanonik-Mirror-Fix (.SG/.MU/ISIN) + Attributions-Oszillation Root-Cause (10.09.2026)** + **Pre-Delivery-Verification-Gate (14.09.2026)** + **Pfadgenaue Exit-Simulation + Optimizer-Fix + Exit-Profil-Leiter (18.09.2026)** + **Mentions-Gate + Factor-Ranker US-only (19.09.2026)** + **Pipeline-Kopplung + LLM-Abschneidungs-Fix (21.09.2026)** + **Reasoning-Tuning Scout/Analyst, gemessen (22.09.2026)** + **Robustheits-Gate, Vorab-Kriterien Schattenbuch, YT-Fade (28.09.2026)** + **Jobs wieder eingeplant + LLM-/Polymarket-Reparaturen (28.09.2026)**
 
 ## 10.09.2026 — Kanonik-Mirror-Fix + Attributions-Oszillation (Vault-Insights-Vorschläge 1–3)
 
@@ -2071,3 +2071,189 @@ derselben Woche. Nebenbei: 21 Tage und die Live-Exitlogik (`simulate_forward`, R
 **Konsequenz:** Kein Anstiegs-Gate, keine neue Shadow-Hypothese, keine Gewichtsaenderung. Offene Entscheidung fuer den Nutzer:
 Insider- und PCR-Abfrage in `fundamental_data.py` entweder richtig bauen oder abschalten (bisher ohne Wirkung).
 Kurs-Ausfaelle beim Aufbau: 25 ohne Kurse, 17 zu kurze Historie, 10 ohne Handel (von 832 Ereignissen).
+
+---
+
+## 28.09.2026 — Robustheits-Gate im Optimizer, Vorab-Kriterien im Schattenbuch, YT-Fade (YouTube-Longs werden geshortet)
+<!-- robust-gate-yt-fade-20260928 -->
+**Anlass:** Artikel @sairahul1 (28.09.2026, gesponsert von Minara): „Claude baut Strategie mit 53 % Rendite“. Inhaltlich
+wertlos (Universum im Nachhinein gewählt, 6 Versionen auf denselben Daten, kein Hold-out), aber drei Prüfungen daraus sind
+brauchbar: Abnahmekriterien VOR der Optimierung festlegen, Kosten verdoppeln, Ergebnis ohne die besten Trades prüfen.
+Diese drei wurden übernommen; die Anwendung auf die eigenen Daten führte zum YT-Fade.
+
+### 1. Optimizer: Kosten im Replay + Robustheits-Gate (`strategy_optimizer.py`, `backtester.py`, `utils.py`)
+
+**Fund:** `replay_exit_path` rechnet brutto; live kostet ein Trade im Mittel ~0,33 % (Slippage 0,1 % je Seite + 1 € auf die
+Positionsgröße). Die beste Grid-Zelle (`wider_stop_plus`/10d) lag brutto bei +0,67 %/Trade, netto +0,34 %, mit doppelten
+Kosten +0,01 % — und ohne ihre besten 3 Trades (ARM, SNDK, F) bei −0,24 %. Die Profitabilitäts-Sperre prüfte gegen Bruttowerte.
+
+**Fix:**
+- `utils.roundtrip_cost_pct(position_size, cost_mult)` (neu); `backtest_params(..., cost_mult=1.0)` in BEIDEN Dateien zieht die
+  Kosten ab — alle Replays sind jetzt netto.
+- `strategy_optimizer.robustness_gate()`: Übernahme nur, wenn (a) Kosten ×2 noch Exp > 0 und PF ≥ 1 und (b) PF ≥ 1 ohne den
+  besten Trade. Gilt für Grid- UND Walk-Forward-Pfad.
+- **Walk-Forward „nicht robust“ → Grid Search nur noch als Bericht** (`main(report_only=True)`). Vorher schaltete der
+  Grid-Fallback seinen In-Sample-Sieger trotzdem scharf. Dry-Run 28.09.: WF-Folds OOS PF 0,73 / 0,21 / 1,30, der Fallback hätte
+  auf `wider_stop_plus`/10d umgestellt (+87 % Composite). Wirft der WF eine Exception, darf die Grid Search weiter schreiben
+  (hinter dem Gate).
+- WF-Pfad schreibt jetzt `optimization_report.json` (`method: walk_forward_v2`, mit Gate-Ergebnis); der Report war seit
+  18.09. nicht mehr aktualisiert worden.
+- `backtester.calculate_metrics`: Composite-Fix vom 18.09. (`exp_score` monoton, Sharpe-Term bis −1) war hier nie
+  nachgezogen — der WF-Pfad (ab 30 Trades der Hauptpfad) rankte bis heute mit der alten, bei Verlust flachen Formel.
+- `--dry-run` schreibt jetzt wirklich nichts: vorher wurden `sources.json`, der Report und Telegram trotzdem geschrieben/gesendet
+  (`_DRY_RUN`-Flag, `send_telegram` und `adjust_source_weights` beachten es).
+
+**Stand 28.09.:** Live-Config `wider_stop`/5d fällt im Replay durch das Gate (netto −0,60 %/Trade, Kosten ×2 −0,93 %).
+Exit-Tuning ist nicht der Hebel; das Problem liegt bei den Entries.
+
+### 2. Schattenbuch: Vorab-Kriterien + Live-Exit vs. Signal-Horizont (`shadow_selection.py`)
+
+**Fund 1:** Die Alt-Simulation (`simulate_forward` aus `crabel_shadow_eval`) schließt jeden Kandidaten spätestens an Tag 7,
+mit Chandelier-Trail und brutto — sie bildet weder den Live-Exit (Donchian, 5d, `wider_stop`) noch den Horizont eines
+Momentum-/PEAD-Signals ab. **Fund 2:** h1 wählt täglich dieselben Top-Titel (28.09.: 25 Zeilen, 6 Titel) — „N ≥ 30“ wäre nach
+einer Woche erreicht gewesen, ohne dass etwas bewiesen ist.
+
+**Neu:**
+- **Vorab-Kriterien** (Konstanten, `CRITERIA_FIXED_ON = 2026-09-28`, festgelegt vor der ersten Bewertung): ≥ 30 unabhängige
+  Trades (ein Titel max. 1× je 28 Tage), Ø besser als die Live-Referenz im selben Zeitraum, Ø > 0 bei Kosten ×2, Summe > 0 ohne
+  die besten 3 Trades — alles mit Live-Exit, netto. Nicht nachträglich lockern; Änderung nur mit neuem Datum + Neustart der Zählung.
+- `evaluate_exits()`: jeder reife Kandidat bekommt `pnl_live_net` (exakt `strategy_optimizer.backtest_params`) und
+  `pnl_hold_net` (nur Anfangs-Stop, 20 Handelstage halten), `cost_pct`, `exit_eval_date`. Liegt „halten“ klar über „live“,
+  würgt der Exit das Signal ab. Erste Bewertungen ab ~08.10.
+- `criteria_report()` im Bericht; die alte Tabelle ist als Alt-Simulation markiert. Guard für Tabellen ohne die neuen Spalten
+  (Test-Fixture `test_report_hides_h_jev…` schlug sonst fehl).
+
+### 3. Quellen-Attribution nachgetragen
+
+`positions.signal_source` war nur bei den 81 Trades vor dem 10.08. leer (seitdem wird es korrekt geschrieben). Aus
+`source_channel` mit exakt `signal_manager._derive_signal_source` nachgetragen (youtube 64, rss 12, screener 5); Rollback-IDs in
+`backups/entry_selection_20260928/backfill_signal_source_ids.json`. Nur Berichte lesen das Feld.
+
+**Ergebnis (alle geschlossenen Trades):** YouTube-LONG 61 Trades, −0,73 %/Trade, PF 0,78, −1.368 € — praktisch der gesamte
+Verlust. YouTube-SHORT 10 Trades, PF 0,21. RSS-LONG +4,88 % hängt allein an IONQ + ARM (21.05.), ohne sie leicht negativ.
+
+### 4. Probe: Rettet ein anderer Exit die YouTube-Longs? — Nein
+
+59 YT-Long-Trades, 43 Exit-Varianten (alle Profile, TS 5–40, Chandelier statt Donchian, ohne Partial, andere Profit-Locks,
+reines Halten mit/ohne Stop), netto. **Keine Variante besteht alle Tests** (Kosten ×2, ohne Top-3, beide Zeithälften); die
+beste (`wider_stop_plus`/TS10, +0,43 %) kippt ohne Top-3 und in der 2. Hälfte. **Gegen den Markt (SPY/DAX):** Überrendite nach
+10 Tagen +0,8 %, nach 20 Tagen −3,4 %, nach 40 Tagen −9,2 % (nur 24 % schlagen den Markt). Hype-Umkehr: die Nennung kommt, wenn
+die Bewegung gelaufen ist. 40 der 59 Entries stammen aus Mai/Juni.
+
+**Gespiegelt als SHORT** (49 Trades mit 40 Bars): nur „kein Stop, 40 Tage halten“ besteht alle Tests (Ø +5,4 %, Median +6,4 %,
+PF 2,39); jede ATR-Stop-Variante verliert, weil die Titel vor dem Abverkauf erst noch 10–25 % steigen (Median max. Anstieg
++10 %, 90 % ≤ +30 %, Max PLTR +51 %).
+
+### 5. YT-Fade im Papier-Depot (`signal_manager.py`, `active_exit_check.py`, `exit_rules.py`, `breaking_news_monitor.py`)
+
+Nutzer-Entscheidung 28.09.: YouTube-Long-Kandidaten werden geshortet (System ist `paper_experiment`, keine Broker-Anbindung).
+
+- **Entry:** LONG-Kandidaten mit `_derive_signal_source(channels) == "youtube"` durchlaufen ALLE LONG-Gates unverändert (= genau
+  die untersuchte Menge) und werden erst vor dem Eröffnen zum SHORT: `positions.exit_mode = 'yt_fade_40d'`, Entry mit
+  Short-Slippage, `stop_loss = entry × 1,40`, `take_profit = entry × 0,5` (nur Anzeige). Telegram kennzeichnet „YT-Fade“.
+- **Notfallstop +40 %** (Nutzerwahl statt anfänglich KO +100 %): geprüft auf dem Kurs zum Check-Zeitpunkt (so arbeitet der
+  Live-Check; Intraday-Hoch-Stops unter ~+25 % zerstören den Effekt). Fill zum aktuellen Kurs, gedeckelt bei Totalverlust
+  (`FADE_MAX_LOSS_MULT = 2`). Probe: Ø +4,1 %, PF 1,86, 2 von 49 gestoppt; ohne Stop Ø +5,4 %. **Grenze:** Kurslücken begrenzt der
+  Stop nicht — PLTR sprang zwischen zwei Checks über +40 % und hätte −44 % gebracht, so viel wie ohne Stop.
+- **Exit:** nur `exit_rules.fade_exit_decision()` → `FADE_STOP` oder `FADE_TIME_EXIT` nach 40 Handelstagen, in BEIDEN
+  Exit-Engines. Tech-Exit, Trail, Partial, 5d-Time-Stop und Thesis-SL werden übersprungen — ohne den Zweig in
+  `active_exit_check` hätte `TECH_BROKEN` jeden Fade-Short beim ersten Check geschlossen (bullishe Technik = SHORT-Abbruch).
+  `breaking_news_monitor` zieht bei Positionen mit `exit_mode` keinen Stop nach. Die Drawdown-Notbremse schließt sie weiterhin mit.
+- **Budget:** eigene Slots/Allokation (`yt_fade_max_open` 6, `yt_fade_max_allocation` 0,5); zählen nicht gegen die regulären
+  SHORT-Slots/`max_short_allocation`. Ablehnung: `blocked_entries.gate = 'allocation-yt-fade'`.
+- **Schema:** `positions.exit_mode TEXT` (NULL = Standard-Exit-Matrix), Migration in `init_db`.
+- **Optimizer/Backtester** schließen `exit_mode IS NOT NULL` aus (ihr Exit hängt nicht am Exit-Profil).
+- **Config** (`data/strategy_config.json`): `yt_fade_enabled` true, `yt_fade_hold_days` 40, `yt_fade_stop_pct` 0,4,
+  `yt_fade_max_open` 6, `yt_fade_max_allocation` 0,5. **Abschalten:** `yt_fade_enabled: false`.
+
+**Schattenbuch:** `live_baseline` bildet den Fade ab Auswahltag 29.09. ab (`FADE_SINCE`; Spalte `shadow_selection.exit_mode`,
+Bewertung über `exit_rules.simulate_fade_close` auf Schlusskursen). Die 57 Zeilen davor heißen `live_baseline_v1` (alte Logik,
+alles LONG). Referenz für die Vorab-Kriterien = beide Baselines, jeweils die Live-Logik am Auswahltag.
+
+### Verifikation
+- Optimizer `--dry-run` nach jedem Schritt: läuft durch, Prüfsummen von `strategy_config.json`, `sources.json`,
+  `optimization_report.json` unverändert.
+- Alle Tests in `test_shadow_selection_jev.py` + `test_jev_shadow_eval.py`: 32 passed.
+- Auf DB-Kopien (Telegram und `save_config` gemockt): Fade-Position > 40 HT → `FADE_TIME_EXIT`, über Stop → `FADE_STOP`,
+  frische bleibt in `check_open_positions` UND `active_exit_check` offen; Grenzfälle Stop/Lücke/Deckel bei −100 %;
+  `open_new_positions` eröffnet SAP.DE (YouTube) als SHORT mit Stop +40 %, Screener-Longs und regulärer SHORT unverändert;
+  Budget-Grenze greift bei 6 offenen Fades; Schattenbuch-Fade-Bewertung stimmt mit unabhängiger Rechnung exakt überein.
+
+### Backups
+`backups/robust_gate_20260928/`, `backups/entry_selection_20260928/`, `backups/yt_fade_20260928/` (inkl. `trading.db`),
+`backups/yt_fade_stop40_20260928/`.
+
+**Obsidian-Systemdoku** (`/root/obsidian-vault/Trading/Erklaerung.md`, sonst Juli-Stand) um die Änderungen ergänzt: Abschnitt 3 (Step 6 Entry/Exit YT-Fade), 9 (Tabellen), 12 (Einschränkungen), neuer Abschnitt 17 (Optimizer-Gate, Schattenbuch-Kriterien). Backup: `backups/yt_fade_stop40_20260928/Obsidian-Erklaerung.md.bak`.
+
+### Betriebsbefund: mehrere Jobs seit Mitte Juli nicht eingeplant
+<!-- betriebsbefund-cron-20260928 -->
+Bei der Überarbeitung der Obsidian-Systemdoku (s. u.) aufgefallen: `active_exit_check.py` (09:30/15:30),
+`signal_manager.py check_only` (stündlich), `strategy_optimizer.py` (sonntags), `breaking_news_monitor.py`,
+`llm_validator.py`, `thesis_monitor.py`, `drawdown_monitor.py`, `thematic_pipeline.py`,
+`prediction_market_scanner.py` und das DB-Backup nach `obsidian-vault/Projekte/` stehen weder in der
+System-Crontab noch im Hermes-Cron (`/root/.hermes/cron/jobs.json`). Im aktuellen `cron.log` (ab 27.07.) gibt
+es keinen einzigen Lauf; letzter `TECH_BROKEN`-Exit im Juli, letztes DB-Backup 12.07., letzter Optimizer-Report
+18.09. (manueller Lauf). Die Crontab-Sicherung vom 18.09. (`/tmp/crontab.bak-20260918-234155`) enthält sie
+bereits nicht mehr; die vom 26.04. enthielt u. a. `check_only` stündlich und den Optimizer sonntags.
+
+**Folgen:** Offene Positionen werden nur einmal pro Nacht geprüft (`signal_manager full` in der Pipeline) — das
+gilt auch für YT-Fade-Stops. Das Robustheits-Gate aus Punkt 1 kommt erst zum Tragen, wenn der Optimizer wieder
+eingeplant ist. Code unverändert intakt; **nichts neu eingeplant** — Entscheidung beim Nutzer.
+*Nachtrag: am selben Abend teilweise wieder eingeplant, siehe folgender Abschnitt.*
+
+### Offen
+- `adjust_from_eval_metrics` kann das Exit-Profil weiterhin ohne Gate eine Stufe weiter stellen (SL-Hits > 60 %).
+- Erster Live-Lauf des YT-Fade: 29.09. (Prüfung 10:00 eingeplant). Geschlossene Fade-Trades frühestens ~Ende November.
+- ~~Fehlende Cron-Einträge wiederherstellen~~ → teilweise erledigt (folgender Abschnitt); offen: `active_exit_check`, DB-Backup, thematische Pipeline.
+- Obsidian-Systemdoku am 28.09. komplett auf den Code-Stand gebracht (18 Abschnitte); Backups `Obsidian-Erklaerung.md.bak` (Juli) und `…zwischenstand-28-09.bak`.
+- Die Fade-Analyse ist in-sample und stark von Mai/Juni geprägt; Bewertung über `live_baseline` gegen die Vorab-Kriterien.
+
+---
+
+## 28.09.2026 (2) — Jobs wieder eingeplant + drei Reparaturen
+<!-- cron-reaktivierung-20260928 -->
+**Nutzer-Entscheidung:** `breaking_news_monitor`, `llm_validator`, `thesis_monitor`, `drawdown_monitor`,
+`signal_manager check_only` und `strategy_optimizer` wieder einplanen. **Nicht** eingeplant (bewusst):
+`active_exit_check` (Tech-Exit, Thesis-SL), DB-Backup, thematische Pipeline, Prediction-Market-Scanner.
+
+### Neue Einträge (System-Crontab, Block „Wieder eingeplant 28.09.2026")
+| Zeit | Job | Hinweis |
+|---|---|---|
+| stündl. 09–20 Mo–Fr | `signal_manager.py check_only` | nur Exits (Stops, Time-Stop, YT-Fade), keine Entries |
+| 10:05 Mo–Fr | `thematic/drawdown_monitor.py` | Log + Telegram, blockiert nichts |
+| stündl. 10:15–17:15 Mo–Fr | `breaking_news_monitor.py` | Viertelstunde versetzt zu check_only (gemeinsames Depot-Lock) |
+| 15:30 Mo–Fr | `scripts/thesis_monitor.py` | Version mit Devil's Advocate (nicht `thematic/`) |
+| So 08:00 | `strategy_optimizer.py` | mit Robustheits-Gate (Abschnitt oben) |
+| Pipeline-Schritt | `llm_validator.py` („LLM Validator") | zwischen `technical_validator` und `signal_manager` — der Watchlist Manager setzt `conviction_score` jede Nacht zurück, ein eigener Cron-Termin nach der Pipeline wäre wirkungslos |
+
+Alle Zeilen im Format der übrigen Jobs (`=== … START ===` / `✅ … DONE`) für `cron_health`, `/usr/bin/python3`,
+`PYTHONPATH` gesetzt. Crontab vorher/nachher: `backups/cron_reactivate_20260928/crontab_{vorher,nachher}.txt`.
+
+### Reparaturen (gefunden beim Testlauf gegen eine DB-Kopie)
+- **`llm_validator.py` und `breaking_news_monitor.py`:** riefen das Reasoning-Modell `deepseek-v4-flash` mit
+  `max_tokens=200` auf — das Reasoning verbrauchte das Limit, `content` blieb leer oder brach ab. Testlauf: Validator
+  10/10 `UNCERTAIN` (davon 3 durch leere/kaputte Antworten), Breaking News 3/3 Positionen exakt 0,50 (stiller
+  Fallback). Fix: `"reasoning": {"enabled": false}`, `max_tokens=400` — wie beim Analysten im Signal Extractor
+  (gemessen 22.09.). Danach: Breaking News liefert echte Scores mit Begründung; Validator-Urteile sind begründet
+  (heutige Kandidaten meist 1 Nennung ohne Begründung → zu Recht `UNCERTAIN`).
+- **`thematic/lib/polymarket_client.py`:** Pfad zur Polymarket-Bibliothek zeigte in den hermes-agent-Ordner, der
+  nach einem Agent-Update nicht mehr existiert → `ModuleNotFoundError: polymarket`, `thesis_monitor` (und der
+  Prediction-Market-Scanner) starteten nicht. Jetzt erster vorhandener Pfad aus einer Kandidatenliste
+  (Profil-Skill zuerst).
+- **`thematic/drawdown_monitor.py`:** zählte offene Gewinne doppelt (`cash + Marktwert + open_pnl`, der Marktwert
+  enthält den PnL bereits) → jetzt `cash + Marktwert` wie `signal_manager.check_drawdown`. Die Telegram-Texte
+  behaupteten „Alle neuen Käufe blockiert" bzw. „Briefings pausiert" — `system_paused` liest aber nur
+  `dashboard_thematic`; wirksam ist allein `config.drawdown_params`. Texte entsprechend korrigiert.
+  **Hinweis:** Bei ≥ 15 % Drawdown kommt die Meldung täglich (aktuell −19,4 %).
+
+### Verifikation
+Jeder Job einmal mit `/usr/bin/python3` gegen eine DB-Kopie, Telegram global abgefangen: check_only, llm_validator,
+breaking_news, thesis_monitor (setzt die 3 offenen Positionen korrekt auf `no_thesis` — ohne laufende thematische
+Pipeline hat keine Position eine These), drawdown_monitor (9.035 €, −19,4 %, „hard"), strategy_optimizer
+`--dry-run` (nur Bericht, Prüfsummen unverändert). Echte DB und `strategy_config.json` unverändert. Alle neuen
+Cron-Zeilen per `sh -n` syntaxgeprüft. Backups der geänderten Dateien: `backups/cron_reactivate_20260928/`.
+
+### Wirkung auf den YT-Fade
+Der Notfallstop wird jetzt stündlich 09–20 Uhr geprüft statt nur nachts — näher am Intraday-Verlauf. Laut Probe ist
+das etwas ungünstiger (Stop +40 % auf Intraday-Hoch: Ø +3,4 %/Trade, auf Schlusskurs: Ø +4,1 %); stündliche
+Stichproben liegen dazwischen.

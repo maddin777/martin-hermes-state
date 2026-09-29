@@ -78,6 +78,18 @@ SLIPPAGE_PCT   = 0.001   # 0,1% pro Seite (konservativ für liquide Titel)
 COMMISSION_EUR = 1.0     # Trade Republic: 1€ pro Trade
 
 
+def roundtrip_cost_pct(position_size, cost_mult=1.0):
+    """Roundtrip-Kosten eines Trades in % der Positionsgroesse.
+
+    Fuer die Exit-Replays (strategy_optimizer / backtester): replay_exit_path
+    rechnet brutto, der Live-Pfad zahlt Slippage auf beiden Seiten plus
+    Kommission. Partial-Exits kosten live eine zweite Kommission — die ist hier
+    bewusst nicht modelliert; der Stresstest mit cost_mult=2 deckt sie ab.
+    """
+    comm = (COMMISSION_EUR / position_size * 100) if position_size and position_size > 0 else 0.0
+    return cost_mult * (2 * SLIPPAGE_PCT * 100 + comm)
+
+
 # ── FX-Umrechnung ─────────────────────────────────────────────────────────────
 _fx_cache: dict = {}
 _fx_cache_date = None

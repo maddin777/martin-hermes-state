@@ -47,7 +47,12 @@ Antworte NUR mit einem JSON-Objekt:
             json={
                 "model": VALIDATION_MODEL,
                 "messages": [{"role": "user", "content": prompt}],
-                "max_tokens": 200,
+                # FIX 28.09.2026: deepseek-v4-flash ist ein Reasoning-Modell; bei
+                # max_tokens=200 verbrauchte das Reasoning das Limit -> leeres oder
+                # abgeschnittenes content, Testlauf: 10/10 UNCERTAIN. Reasoning aus
+                # wie beim Analysten im signal_extractor (gemessen 22.09.).
+                "max_tokens": 400,
+                "reasoning": {"enabled": False},
                 "temperature": 0.1,
             },
             timeout=30,

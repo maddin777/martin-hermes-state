@@ -1,0 +1,3 @@
+e1710b388a78953f3f7814641465ce75  /root/.hermes/profiles/hermes_trading/skills/trading/data/strategy_config.json
+59eb7b2bdf516baa96e87c8093029504  /root/.hermes/profiles/hermes_trading/skills/trading/config/sources.json
+336a04faa8577f7190c4cbf893fd0f7a  /root/.hermes/profiles/hermes_trading/skills/trading/data/optimization_report.json

@@ -9,6 +9,7 @@ from config import (DB_PATH, BACKTEST_REPORT_PATH, STRATEGY_CONFIG_PATH, db_conn
                     get_exit_config, EXIT_PROFILES)
 from exit_rules import replay_exit_path
 from trade_paths import attach_paths
+from utils import roundtrip_cost_pct
 
 
 def load_config():
@@ -102,11 +103,14 @@ def calculate_metrics(trades):
     #   Expectancy 35% | Payoff 20% | Profit Factor 20% | Sharpe 15% | -MaxDD 10%
     pf_score     = min(pf, 5) / 5
     dd_score     = max(0, 1 - max_dd / 50)
-    exp_score    = max(0.0, min(expectancy / 2.0, 1.0))
+    # FIX 28.09.2026: den exp_score-Fix aus strategy_optimizer (18.09.) hier
+    # nachgezogen. Die alte Formel war fuer jeden negativen Erwartungswert 0 —
+    # und der WF-Pfad ist ab 30 Trades der Hauptpfad.
+    exp_score    = max(0.0, min((expectancy + 2.0) / 4.0, 1.0))
     payoff_score = 1.0 if payoff_ratio == float('inf') \
                    else max(0.0, min(payoff_ratio / 4.0, 1.0))
     composite = (exp_score * 0.35 + payoff_score * 0.20 + pf_score * 0.20
-                 + min(max(sharpe, 0), 3) / 3 * 0.15 + dd_score * 0.10)
+                 + (min(max(sharpe, -1), 3) + 1) / 4 * 0.15 + dd_score * 0.10)
     return {
         "total_trades": len(trades), "win_rate": round(wr * 100, 1),
         "avg_win": round(avg_win, 2), "avg_loss": round(avg_loss, 2),
@@ -118,7 +122,7 @@ def calculate_metrics(trades):
         "composite": round(composite, 4),
     }
 
-def backtest_params(trades, profile, time_stop_bars, min_conf=None):
+def backtest_params(trades, profile, time_stop_bars, min_conf=None, cost_mult=1.0):
     """Pfadgenaue Simulation ueber den gemeinsamen Replay aus exit_rules.
 
     FIX 18.09.2026, drei Fehler auf einmal:
@@ -164,7 +168,9 @@ def backtest_params(trades, profile, time_stop_bars, min_conf=None):
         )
         if res["r_multiple"] is None:
             continue
-        sim.append({"pnl_pct": res["r_multiple"] * (sl_mult * atr / entry * 100)})
+        # 28.09.2026: netto — Roundtrip-Kosten abziehen (siehe utils.roundtrip_cost_pct)
+        gross = res["r_multiple"] * (sl_mult * atr / entry * 100)
+        sim.append({"pnl_pct": gross - roundtrip_cost_pct(t.get("position_size"), cost_mult)})
     return sim
 
 
@@ -235,7 +241,8 @@ def main():
     print("🔬 Backtester gestartet", flush=True)
     con = db_connect()
     trades = [dict(t) for t in con.execute(
-        "SELECT * FROM positions WHERE status='closed' ORDER BY entry_date ASC"
+        "SELECT * FROM positions WHERE status='closed' AND exit_mode IS NULL "
+        "ORDER BY entry_date ASC"
     ).fetchall()]
     con.close()
     print(f"  Trades: {len(trades)}", flush=True)

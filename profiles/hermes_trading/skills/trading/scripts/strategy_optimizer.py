@@ -19,6 +19,7 @@ from config import (DB_PATH, SIGNALS_PATH, STRATEGY_CONFIG_PATH, OPTIMIZATION_RE
                     SOURCES_CONFIG_PATH, db_connect, get_exit_config, EXIT_PROFILES)
 from exit_rules import replay_exit_path
 from trade_paths import attach_paths
+from utils import roundtrip_cost_pct
 
 
 TELEGRAM_TOKEN   = os.environ.get("TELEGRAM_BOT_TOKEN")
@@ -34,6 +35,15 @@ MIN_TRADES       = 30      # Mindestanzahl Trades für Optimierung
 ANALYSIS_WINDOW_DAYS = 180 # Analysefenster (vorher 60)
 MIN_PATH_COVERAGE = 0.70   # min. Anteil Trades mit echtem OHLC-Pfad
 IMPROVEMENT_THRESHOLD = 0.10  # 10% Verbesserung nötig
+
+# Robustheits-Gate (28.09.2026). Eine Konfiguration wird nur uebernommen, wenn
+# sie (a) auch bei DOPPELTEN Kosten noch Geld verdient und (b) ohne ihren
+# besten Einzeltrade nicht ins Minus kippt. Probe vom 28.09. auf 94 Trades:
+# die beste Zelle lag brutto bei +0,67%/Trade, netto bei +0,34%, mit doppelten
+# Kosten bei +0,01% — und ohne ihre besten 3 Trades (ARM, SNDK, F) bei -0,24%.
+# Ohne dieses Gate entscheidet ein einzelner Ausreisser ueber Echtgeld-Stops.
+ROBUST_COST_MULT = 2.0
+_DRY_RUN = False   # von main() gesetzt; unterdrueckt Telegram + Dateischreiben
 
 # Parameter-Grid für Optimierung
 #
@@ -67,6 +77,9 @@ PARAM_GRID = {
 }
 
 def send_telegram(message):
+    if _DRY_RUN:
+        print(f"  [DRY-RUN] Telegram NICHT gesendet:\n{message}", flush=True)
+        return
     if not TELEGRAM_TOKEN or not TELEGRAM_HOME_CHANNEL:
         print(message)
         return
@@ -175,9 +188,15 @@ def calculate_metrics(trades):
         "total_pnl":      round(sum(pnls), 2),
     }
 
-def backtest_params(trades, profile, time_stop_bars, min_conf=None):
+def backtest_params(trades, profile, time_stop_bars, min_conf=None, cost_mult=1.0):
     """Pfadgenaue Simulation: wie haetten die Trades mit anderen Exit-Parametern
     ausgesehen?
+
+    FIX 28.09.2026 — Ergebnisse sind jetzt NETTO: pro Trade werden die
+    Roundtrip-Kosten (Slippage beidseitig + Kommission, ~0,33% im Mittel)
+    abgezogen, `cost_mult` skaliert sie fuer den Stresstest. Vorher lief die
+    Profitabilitaets-Sperre gegen Bruttowerte und liess Zellen durch, die nach
+    Kosten bei null lagen.
 
     FIX 18.09.2026 (a) — vorher wurde nur der realisierte Exit-PREIS gegen den
     hypothetischen SL/TP gehalten. Ob der Stop UNTERWEGS getroffen worden waere,
@@ -237,9 +256,44 @@ def backtest_params(trades, profile, time_stop_bars, min_conf=None):
         if res["r_multiple"] is None:
             continue
         # calculate_metrics rechnet in Prozent; R in %-Risiko zurueckrechnen
-        simulated.append({"pnl_pct": res["r_multiple"] * (sl_mult * atr / entry * 100)})
+        gross = res["r_multiple"] * (sl_mult * atr / entry * 100)
+        cost = roundtrip_cost_pct(trade.get("position_size"), cost_mult)
+        simulated.append({"pnl_pct": gross - cost})
 
     return simulated
+
+
+def robustness_gate(trades, profile, time_stop):
+    """Prueft eine Kandidaten-Konfiguration vor dem Zurueckschreiben.
+
+    Returns (ok, reasons, details). Gilt fuer BEIDE Schreibpfade (Grid Search
+    und Walk-Forward), siehe ROBUST_COST_MULT.
+    """
+    reasons = []
+    stress = calculate_metrics(
+        backtest_params(trades, profile, time_stop, cost_mult=ROBUST_COST_MULT))
+    base = backtest_params(trades, profile, time_stop)
+    pnls = sorted((t["pnl_pct"] for t in base), reverse=True)
+    no_top = calculate_metrics([{"pnl_pct": p} for p in pnls[1:]])
+
+    if not stress or stress["expectancy"] <= 0 or stress["profit_factor"] < 1.0:
+        reasons.append(
+            f"Kosten x{ROBUST_COST_MULT:g}: Exp {stress['expectancy']:+.3f}%/Trade, "
+            f"PF {stress['profit_factor']:.2f}" if stress else "Kosten-Stresstest ohne Trades")
+    if not no_top or no_top["profit_factor"] < 1.0:
+        reasons.append(
+            f"ohne besten Trade ({pnls[0]:+.1f}%): PF {no_top['profit_factor']:.2f}"
+            if no_top else "zu wenige Trades fuer Ausreisser-Test")
+
+    details = {
+        "cost_stress": {"mult": ROBUST_COST_MULT,
+                        "expectancy": stress and stress["expectancy"],
+                        "profit_factor": stress and stress["profit_factor"]},
+        "without_best_trade": {"best_trade_pct": round(pnls[0], 2) if pnls else None,
+                               "expectancy": no_top and no_top["expectancy"],
+                               "profit_factor": no_top and no_top["profit_factor"]},
+    }
+    return (not reasons), reasons, details
 
 
 def run_grid_search(trades, current_config):
@@ -308,7 +362,10 @@ def run_grid_search(trades, current_config):
     return best_params, results[:5], best_metrics
 
 
-def main(dry_run=False):
+def main(dry_run=False, report_only=False):
+    """Grid-Search-Pfad. report_only=True: bewerten und berichten, aber nie
+    zurueckschreiben — gesetzt, wenn der Walk-Forward gelaufen ist und sein
+    Out-of-Sample-Urteil 'nicht robust' lautet (siehe v2-main)."""
     print("🔬 Strategy Optimizer gestartet"
           + ("  [DRY-RUN — schreibt nichts]" if dry_run else ""), flush=True)
     con = db_connect()
@@ -317,6 +374,7 @@ def main(dry_run=False):
     trades = con.execute("""
         SELECT * FROM positions
         WHERE status='closed'
+        AND exit_mode IS NULL   -- 28.09.: YT-Fade haengt nicht am Exit-Profil
         AND exit_date >= ?
         ORDER BY exit_date DESC
     """, (cutoff,)).fetchall()
@@ -403,8 +461,9 @@ def main(dry_run=False):
         "updated":          improvement >= IMPROVEMENT_THRESHOLD,
     }
 
-    with open(OPTIMIZATION_REPORT_PATH, "w") as f:
-        json.dump(report, f, indent=2, ensure_ascii=False)
+    if not dry_run:
+        with open(OPTIMIZATION_REPORT_PATH, "w") as f:
+            json.dump(report, f, indent=2, ensure_ascii=False)
 
     # Profitabilitaets-Sperre (18.09.2026): Eine Konfiguration, die im Replay
     # Geld verliert, darf NIE automatisch scharfgeschaltet werden — egal wie gut
@@ -421,8 +480,9 @@ def main(dry_run=False):
               f"Exp {best_metrics['expectancy']:+.3f}%/Trade)", flush=True)
         report["updated"] = False
         report["blocked_reason"] = "best_config_not_profitable"
-        with open(OPTIMIZATION_REPORT_PATH, "w") as f:
-            json.dump(report, f, indent=2, ensure_ascii=False)
+        if not dry_run:
+            with open(OPTIMIZATION_REPORT_PATH, "w") as f:
+                json.dump(report, f, indent=2, ensure_ascii=False)
         send_telegram(
             "⛔ <b>Strategy Optimizer: Uebernahme gesperrt</b>" + "\n" + "\n"
             + f"Beste Kombination: Profil {best_params['exit_profile']}, "
@@ -435,6 +495,56 @@ def main(dry_run=False):
               "das Problem liegt dann bei den Entries, nicht bei den Exits.</i>")
         print("\n✅ Optimizer abgeschlossen (ohne Aenderung).", flush=True)
         return
+
+    ok, reasons, gate = robustness_gate(
+        trades, best_params["exit_profile"], best_params["time_stop_trading_days"])
+    report["robustness_gate"] = {"passed": ok, "reasons": reasons, **gate}
+    print(f"  Robustheits-Gate: {'bestanden' if ok else 'NICHT bestanden'}"
+          + ("" if ok else " — " + "; ".join(reasons)), flush=True)
+    if improvement >= IMPROVEMENT_THRESHOLD and not ok:
+        report["updated"] = False
+        report["blocked_reason"] = "robustness_gate"
+        if not dry_run:
+            with open(OPTIMIZATION_REPORT_PATH, "w") as f:
+                json.dump(report, f, indent=2, ensure_ascii=False)
+        send_telegram(
+            "⛔ <b>Strategy Optimizer: Uebernahme gesperrt (Robustheit)</b>\n\n"
+            f"Kandidat: Profil {best_params['exit_profile']}, "
+            f"TimeStop {best_params['time_stop_trading_days']}d\n"
+            + "\n".join(f"• {r}" for r in reasons)
+            + "\n\n<i>Parameter bleiben unveraendert.</i>")
+        print("\n✅ Optimizer abgeschlossen (ohne Aenderung).", flush=True)
+        return
+
+    # 28.09.2026: Hat der Walk-Forward 'nicht robust' gemeldet, darf der
+    # In-Sample-Sieger der Grid Search nicht trotzdem scharfgeschaltet werden.
+    # Dry-Run am 28.09.: WF-Folds OOS PF 0.73 / 0.21 / 1.30, der Grid-Fallback
+    # haette danach auf wider_stop_plus/10d umgestellt — auf Basis genau der
+    # Daten, auf denen er optimiert hat.
+    if report_only:
+        report["updated"] = False
+        if improvement >= IMPROVEMENT_THRESHOLD:
+            report["blocked_reason"] = "walk_forward_not_robust"
+        if not dry_run:
+            with open(OPTIMIZATION_REPORT_PATH, "w") as f:
+                json.dump(report, f, indent=2, ensure_ascii=False)
+        print(f"  ⏸ Nur Bericht (WF nicht robust): Grid-Kandidat "
+              f"{best_params['exit_profile']}/{best_params['time_stop_trading_days']}d "
+              f"({improvement*100:+.1f}%) wird NICHT uebernommen.", flush=True)
+        if improvement >= IMPROVEMENT_THRESHOLD:
+            send_telegram(
+                "⏸ <b>Strategy Optimizer: keine Uebernahme</b>\n\n"
+                "Walk-Forward out-of-sample nicht robust. Der In-Sample-Sieger "
+                f"der Grid Search (Profil {best_params['exit_profile']}, "
+                f"TimeStop {best_params['time_stop_trading_days']}d, "
+                f"{improvement*100:+.1f}%) wird nur berichtet.\n\n"
+                "<i>Parameter bleiben unveraendert.</i>")
+        print("\n✅ Optimizer abgeschlossen (nur Bericht).", flush=True)
+        return
+
+    if not dry_run:
+        with open(OPTIMIZATION_REPORT_PATH, "w") as f:
+            json.dump(report, f, indent=2, ensure_ascii=False)
 
     if dry_run:
         print(f"  [DRY-RUN] Wuerde {'UEBERNEHMEN' if improvement >= IMPROVEMENT_THRESHOLD else 'NICHTS aendern'}: "
@@ -530,8 +640,11 @@ def adjust_source_weights(con):
             feed["enabled"] = False
             changes.append(f"🚫 {name} deaktiviert (WR:{q['win_rate']:.0%} bei {q['bought']} Trades)")
 
-    with open(SOURCES_PATH, "w") as f:
-        _json.dump(sources, f, indent=2, ensure_ascii=False)
+    if _DRY_RUN:
+        print("  [DRY-RUN] sources.json NICHT geschrieben", flush=True)
+    else:
+        with open(SOURCES_PATH, "w") as f:
+            _json.dump(sources, f, indent=2, ensure_ascii=False)
 
     return changes
 
@@ -624,6 +737,8 @@ def clamp_profile_step(current_profile, proposed_profile):
 _original_main = main
 
 def main(dry_run=False):
+    global _DRY_RUN
+    _DRY_RUN = dry_run
     print("🔧 Strategy Optimizer v2 (mit eval_metrics + Source Weights)"
           + ("  [DRY-RUN — schreibt nichts]" if dry_run else ""), flush=True)
 
@@ -668,30 +783,63 @@ def main(dry_run=False):
         try:
             from backtester import walk_forward_optimize
             trades = [dict(t) for t in con.execute(
-                "SELECT * FROM positions WHERE status='closed' ORDER BY entry_date ASC"
+                "SELECT * FROM positions WHERE status='closed' AND exit_mode IS NULL "
+                "ORDER BY entry_date ASC"
             ).fetchall()]
             new_params = walk_forward_optimize(trades, n_folds=4)
             if new_params:
                 # Weder atr_sl_multiplier noch atr_tp_multiplier werden
                 # uebernommen — beides Parameter ohne Live-Wirkung, siehe
                 # PARAM_GRID-Kommentar oben. Wirksam ist allein das Exit-Profil.
+                cand_prof = cfg.get("exit_profile", "current")
                 if "exit_profile" in new_params:
-                    stepped, note = clamp_profile_step(
-                        cfg.get("exit_profile", "current"), new_params["exit_profile"])
+                    cand_prof, note = clamp_profile_step(
+                        cand_prof, new_params["exit_profile"])
                     if note:
                         print(f"  ⚠ {note}", flush=True)
-                    cfg["exit_profile"] = stepped
-                if "time_stop_trading_days" in new_params:
-                    cfg["time_stop_trading_days"] = new_params["time_stop_trading_days"]
-                # #4: WF-Parameter wurden vorher NUR im Speicher gesetzt und nie
-                # geschrieben – Telegram meldete "übernommen", auf Platte No-Op.
-                _save(cfg)
-                print(f"  ✅ WF-Parameter übernommen: "
-                      f"Profil={new_params.get('exit_profile', '-')} "
-                      f"TimeStop={new_params.get('time_stop_trading_days', '-')}d")
+                cand_ts = new_params.get("time_stop_trading_days",
+                                         cfg.get("time_stop_trading_days", 7))
+                # 28.09.2026: Robustheits-Gate auch fuer den WF-Pfad. Vorher
+                # reichte hier "60% der Folds im Plus" — ohne Kosten, ohne
+                # Profitabilitaets-Sperre, ohne Ausreisser-Test.
+                wf_trades = [t for t in trades if t.get("_bars")]
+                ok, reasons, gate = robustness_gate(wf_trades, cand_prof, cand_ts)
+                print(f"  Robustheits-Gate ({cand_prof}, {cand_ts}d, "
+                      f"{len(wf_trades)} Trades): "
+                      + ("bestanden" if ok else "NICHT bestanden — " + "; ".join(reasons)),
+                      flush=True)
+                wf_report = {
+                    "timestamp": datetime.now().isoformat(),
+                    "method": "walk_forward_v2",
+                    "trades_analyzed": len(wf_trades),
+                    "current_params": {
+                        "exit_profile": cfg.get("exit_profile", "current"),
+                        "time_stop_trading_days": cfg.get("time_stop_trading_days", 7)},
+                    "wf_params": new_params,
+                    "candidate_params": {"exit_profile": cand_prof,
+                                         "time_stop_trading_days": cand_ts},
+                    "robustness_gate": {"passed": ok, "reasons": reasons, **gate},
+                    "updated": ok,
+                }
+                if not dry_run:
+                    with open(OPTIMIZATION_REPORT_PATH, "w") as f:
+                        json.dump(wf_report, f, indent=2, ensure_ascii=False)
+                if ok:
+                    cfg["exit_profile"] = cand_prof
+                    cfg["time_stop_trading_days"] = cand_ts
+                    # #4: WF-Parameter wurden vorher NUR im Speicher gesetzt und nie
+                    # geschrieben – Telegram meldete "übernommen", auf Platte No-Op.
+                    _save(cfg)
+                    print(f"  ✅ WF-Parameter übernommen: "
+                          f"Profil={cand_prof} TimeStop={cand_ts}d")
+                else:
+                    all_changes.append(
+                        f"⛔ WF-Kandidat {cand_prof}/{cand_ts}d gesperrt: "
+                        + "; ".join(reasons))
             else:
-                print("  ⚠ WF nicht robust – Grid Search Fallback")
-                _original_main(dry_run=dry_run)
+                print("  ⚠ WF nicht robust – Grid Search nur als Bericht", flush=True)
+                all_changes.append("⏸ Walk-Forward nicht robust — keine Parameteraenderung")
+                _original_main(dry_run=dry_run, report_only=True)
         except Exception as e:
             print(f"  ⚠ Walk-Forward Fehler: {e} – Grid Search Fallback")
             _original_main(dry_run=dry_run)
@@ -719,16 +867,7 @@ def main(dry_run=False):
             f"TP: {cfg.get('atr_tp_multiplier',3.0)}x"
         )
 
-    import requests as _req
-    try:
-        _req.post(
-            f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage",
-            json={"chat_id": TELEGRAM_HOME_CHANNEL,
-                  "text": msg, "parse_mode": "HTML"},
-            timeout=10
-        )
-    except Exception:
-        pass
+    send_telegram(msg)
 
     # #4: Finaler Safety-Dump – stellt sicher, dass cfg (inkl. aller
     # in-memory-Anpassungen) in jedem Pfad auf Platte landet.

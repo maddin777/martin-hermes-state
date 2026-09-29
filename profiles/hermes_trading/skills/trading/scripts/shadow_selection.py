@@ -65,6 +65,7 @@ import env_loader  # noqa: F401  (side-effect: laedt .env)
 
 from config import db_connect, get_asset_type, get_exit_config, get_sector_regime, sector_regime_key
 from utils import get_logger, get_price_data_cached, prefetch_prices
+from exit_rules import YT_FADE_MODE, simulate_fade_close
 
 log = get_logger("shadow_selection")
 
@@ -76,7 +77,40 @@ TOP_N = 5
 # Horizont der Vorwärtsbepreisung, konsistent zu crabel_shadow_eval.
 HORIZON_DAYS = 21
 
-HYPOTHESES = ("live_baseline", "h1_momentum", "h2_pead", "h3_crowding", "h_jev")
+HYPOTHESES = ("live_baseline", "live_baseline_v1", "h1_momentum", "h2_pead",
+              "h3_crowding", "h_jev")
+
+# Ab diesem Auswahldatum shortet der Live-Entry YouTube-LONG-Kandidaten
+# (YT-Fade, exit_mode yt_fade_40d). live_baseline bildet das ab; die Zeilen
+# davor wurden unter der alten Live-Logik (alles LONG) ausgewaehlt und heissen
+# jetzt live_baseline_v1. Als Referenz fuer die Vorab-Kriterien zaehlen BEIDE —
+# jeweils die Live-Logik, die am Auswahltag galt.
+FADE_SINCE = "2026-09-29"
+BASELINES = ("live_baseline", "live_baseline_v1")
+
+# ── Vorab festgelegte Erfolgskriterien ──────────────────────────────────────
+# Festgelegt am 28.09.2026, BEVOR der erste Eintrag bewertet war (erste Reife
+# 29.09.). Wer die Latte erst nach den Zahlen legt, sucht sich den Gewinner
+# aus. Aenderungen nur mit neuem Datum hier UND Neustart der Zaehlung.
+# Eine Hypothese gilt erst als Live-Kandidat, wenn ALLE Punkte erfuellt sind —
+# gemessen mit dem Live-Exit, netto:
+#   1. mindestens MIN_INDEPENDENT unabhaengige Trades
+#   2. Ø besser als live_baseline im selben Zeitraum
+#   3. auch mit COST_STRESS_MULT-fachen Kosten Ø > 0
+#   4. ohne die DROP_TOP_K besten Trades Summe > 0
+CRITERIA_FIXED_ON = "2026-09-28"
+MIN_INDEPENDENT = 30
+COST_STRESS_MULT = 2.0
+DROP_TOP_K = 3
+# Ein Titel zaehlt pro Hypothese hoechstens einmal je INDEPENDENCE_DAYS. h1
+# waehlt taeglich dieselben Top-Titel (28.09.: 25 Zeilen, 6 Titel) — ohne
+# Dedup waere N=30 nach einer Woche erreicht, ohne dass etwas bewiesen ist.
+INDEPENDENCE_DAYS = 28
+# Signal-Horizont-Exit: nur Anfangs-Stop, dann HOLD_BARS Handelstage halten.
+# Momentum und PEAD wirken ueber Wochen; der Live-Exit (Donchian-Trail +
+# Time-Stop 5d) kann ein tragfaehiges Signal abwuergen. Der Abstand zwischen
+# beiden Exits zeigt, ob die Selektion oder die Haltedauer das Problem ist.
+HOLD_BARS = 20
 
 
 # ── Schema ──────────────────────────────────────────────────────────────────
@@ -113,6 +147,16 @@ def ensure_schema(con):
         CREATE INDEX IF NOT EXISTS idx_shadow_status
             ON shadow_selection(eval_status, select_date);
     """)
+    # 28.09.2026: Exit-Bewertung netto (siehe evaluate_exits)
+    cols = {r[1] for r in con.execute("PRAGMA table_info(shadow_selection)")}
+    for col, typ in (("pnl_live_net", "REAL"), ("pnl_hold_net", "REAL"),
+                     ("cost_pct", "REAL"), ("exit_eval_date", "TEXT"),
+                     ("exit_mode", "TEXT")):
+        if col not in cols:
+            con.execute(f"ALTER TABLE shadow_selection ADD COLUMN {col} {typ}")
+    # Idempotent: Baseline-Zeilen vor der Fade-Umstellung umbenennen (s. FADE_SINCE)
+    con.execute("UPDATE shadow_selection SET hypothesis='live_baseline_v1' "
+                "WHERE hypothesis='live_baseline' AND select_date < ?", (FADE_SINCE,))
     con.commit()
 
 
@@ -163,17 +207,22 @@ def record(con, hypothesis, today, picks):
         if not lv:
             skipped += 1
             continue
+        if p.get("exit_mode") == YT_FADE_MODE:
+            # wie signal_manager: Notfallstop statt ATR-Stop, TP nur Anzeige
+            lv["sl"] = lv["entry"] * (1 + p.get("stop_pct", 0.40))
+            lv["tp"] = lv["entry"] * 0.5
         con.execute("""
             INSERT OR IGNORE INTO shadow_selection
             (hypothesis, ticker, name, direction, select_date, selected_at,
              rank_in_set, score, rationale, price_at_select, would_entry,
-             would_sl, would_tp, atr_at_select, asset_type)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+             would_sl, would_tp, atr_at_select, asset_type, exit_mode)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
         """, (hypothesis, p["ticker"], p.get("name"), p["direction"], today,
               datetime.now().strftime("%Y-%m-%d %H:%M"), rank,
               p.get("score"), p.get("rationale"),
               round(lv["price"], 4), round(lv["entry"], 4), round(lv["sl"], 4),
-              round(lv["tp"], 4), round(lv["atr"], 4), lv["asset_type"]))
+              round(lv["tp"], 4), round(lv["atr"], 4), lv["asset_type"],
+              p.get("exit_mode")))
         written += 1
     con.commit()
     print(f"  {hypothesis:14} {written} Kandidaten"
@@ -188,9 +237,9 @@ def select_live_baseline(con, cfg):
     Mindest-Mentions. Ohne diese Referenz sagt die Trefferquote der anderen
     Hypothesen nichts aus.
     """
-    from signal_manager import MENTIONS_CLAUSE, _mentions_params
+    from signal_manager import MENTIONS_CLAUSE, _mentions_params, _derive_signal_source
     rows = con.execute(f"""
-        SELECT w.ticker, w.name, w.conviction_score conv, w.tech_score ts
+        SELECT w.ticker, w.name, w.conviction_score conv, w.tech_score ts, w.channels
         FROM watchlist w
         WHERE w.status='watching' AND w.ticker IS NOT NULL
           AND w.conviction_score >= ?
@@ -201,9 +250,23 @@ def select_live_baseline(con, cfg):
     """, (cfg.get("min_conviction", 0.60),
           *_mentions_params(cfg.get("min_mentions", 2)),
           0.70, TOP_N)).fetchall()
-    return [{"ticker": r["ticker"], "name": r["name"], "direction": "LONG",
-             "score": r["conv"],
-             "rationale": f"live: conv={r['conv']:.2f} tech={r['ts']}"} for r in rows]
+    fade_on = bool(cfg.get("yt_fade_enabled"))
+    picks = []
+    for r in rows:
+        try:
+            channels = json.loads(r["channels"] or "[]")
+        except Exception:
+            channels = []
+        fade = fade_on and _derive_signal_source(channels) == "youtube"
+        picks.append({
+            "ticker": r["ticker"], "name": r["name"],
+            "direction": "SHORT" if fade else "LONG",
+            "exit_mode": YT_FADE_MODE if fade else None,
+            "stop_pct": cfg.get("yt_fade_stop_pct", 0.40),
+            "score": r["conv"],
+            "rationale": (f"live: conv={r['conv']:.2f} tech={r['ts']}"
+                          + (" | YT-Fade" if fade else ""))})
+    return picks
 
 
 def select_h1_momentum(con):
@@ -556,6 +619,182 @@ def evaluate(con, horizon=HORIZON_DAYS):
     return done
 
 
+def _typical_position_size(con):
+    """Median der Positionsgroessen der letzten 90 Tage — fuer den
+    Kommissionsanteil der Kosten (Schatten-Trades haben keine eigene Groesse)."""
+    rows = con.execute("""
+        SELECT position_size FROM positions
+        WHERE position_size > 0 AND entry_date >= date('now', '-90 day')
+        ORDER BY position_size
+    """).fetchall()
+    return rows[len(rows) // 2][0] if rows else 800.0
+
+
+def evaluate_exits(con):
+    """Jeden reifen Kandidaten mit ZWEI Exits bewerten, beide netto (28.09.2026).
+
+    live — exakt die Exit-Logik des Optimizers (strategy_optimizer.
+           backtest_params: Exit-Matrix x Exit-Profil, Donchian-primary,
+           Partial, Time-Stop aus strategy_config, Roundtrip-Kosten).
+           Frage: was haette dieses Signal im heutigen Live-System verdient?
+    hold — Anfangs-Stop, sonst HOLD_BARS Handelstage halten, Kosten abgezogen.
+           Frage: was gibt das Signal selbst her?
+
+    Die alte pnl_pct_sim (simulate_forward: Chandelier, Tag-7-Stop, brutto)
+    bleibt zur Kontinuitaet stehen, ist aber keine Entscheidungsgroesse mehr:
+    sie bildet weder den Live-Exit noch den Signal-Horizont ab.
+    """
+    from trade_paths import _download, entry_index
+    from exit_rules import replay_exit_path
+    from utils import roundtrip_cost_pct
+    from config import EXIT_PROFILES
+    import strategy_optimizer as so
+
+    cfg = so.load_config()
+    profile = cfg.get("exit_profile", "current")
+    time_stop = cfg.get("time_stop_trading_days", 7)
+    scale = EXIT_PROFILES.get(profile, EXIT_PROFILES["current"])["sl_scale"]
+    size = _typical_position_size(con)
+    cost = roundtrip_cost_pct(size)
+    fade_hold = cfg.get("yt_fade_hold_days", 40)
+    fade_stop = cfg.get("yt_fade_stop_pct", 0.40)
+    fade_cutoff = (datetime.now() - timedelta(days=fade_hold * 7 // 5 + 2)).strftime("%Y-%m-%d")
+    # grob HOLD_BARS Handelstage in Kalendertagen; die exakte Reife prueft
+    # unten die Bar-Anzahl
+    cutoff = (datetime.now() - timedelta(days=HOLD_BARS * 7 // 5 + 2)).strftime("%Y-%m-%d")
+    rows = con.execute("""
+        SELECT * FROM shadow_selection
+        WHERE pnl_live_net IS NULL AND eval_status != 'no_data' AND select_date <= ?
+        ORDER BY select_date
+    """, (cutoff,)).fetchall()
+    if not rows:
+        print("  Exit-Bewertung: keine reifen Eintraege "
+              f"(Reife nach {HOLD_BARS} Handelstagen).", flush=True)
+        return 0
+
+    bars_by_key = {}
+    done = unripe = 0
+    for row in rows:
+        is_fade = row["exit_mode"] == YT_FADE_MODE
+        if is_fade and row["select_date"] > fade_cutoff:
+            unripe += 1          # Fade braucht fade_hold Bars — nicht vorher laden
+            continue
+        key = (row["ticker"], row["select_date"])
+        if key not in bars_by_key:
+            bars_by_key[key] = _download(row["ticker"], row["select_date"])
+        bars = bars_by_key[key]
+        idx = entry_index(bars, row["select_date"]) if bars else None
+        atr = row["atr_at_select"]
+        need = max(HOLD_BARS, fade_hold) if is_fade else HOLD_BARS
+        if idx is None or not atr or len(bars) - idx - 1 < need:
+            unripe += 1
+            continue
+        entry = bars[idx]["close"]
+        asset_type = row["asset_type"] or "STANDARD"
+        trade = {"_bars": bars, "_entry_idx": idx, "_atr": atr,
+                 "entry_price": entry, "direction": row["direction"],
+                 "asset_type": asset_type, "position_size": size}
+        if is_fade:
+            # Live-Exit des YT-Fade: Notfallstop auf Schlusskurs oder fade_hold
+            # Bars — dieselbe Regel wie exit_rules.fade_exit_decision (live)
+            _why, fpx, _n = simulate_fade_close(bars, idx, entry, fade_stop, fade_hold)
+            live = ([{"pnl_pct": (entry - fpx) / entry * 100 - cost}]
+                    if fpx is not None else [])
+        else:
+            live = so.backtest_params([trade], profile, time_stop)
+        if not live:
+            unripe += 1
+            continue
+
+        ex = get_exit_config(asset_type=asset_type, regime="sideways")
+        sl_mult = round(ex["sl"] * scale, 2)
+        res = replay_exit_path(
+            bars, idx, entry, row["direction"], atr,
+            sl_mult=sl_mult, partial_atr=ex["partial_atr"], partial_pct=0.0,
+            profit_lock_atr=1e9, chandelier_mult=ex["chandelier_mult"],
+            donchian_primary=False, time_stop_bars=HOLD_BARS, tp_mult=None)
+        hold = (res["r_multiple"] * (sl_mult * atr / entry * 100) - cost
+                if res["r_multiple"] is not None else None)
+
+        con.execute("""
+            UPDATE shadow_selection SET pnl_live_net=?, pnl_hold_net=?,
+                cost_pct=?, exit_eval_date=? WHERE id=?
+        """, (round(live[0]["pnl_pct"], 3),
+              round(hold, 3) if hold is not None else None,
+              round(cost, 4), datetime.now().strftime("%Y-%m-%d"), row["id"]))
+        done += 1
+    con.commit()
+    print(f"  Exit-Bewertung: {done} bewertet (Live-Exit {profile}/{time_stop}d "
+          f"vs. Halten {HOLD_BARS}d, Kosten {cost:.2f}%), {unripe} noch nicht reif",
+          flush=True)
+    return done
+
+
+def _independent(rows):
+    """Pro (Ticker, Richtung) hoechstens ein Trade je INDEPENDENCE_DAYS."""
+    kept, last = [], {}
+    for r in rows:
+        k = (r["ticker"], r["direction"])
+        d = datetime.strptime(r["select_date"], "%Y-%m-%d")
+        if k in last and (d - last[k]).days < INDEPENDENCE_DAYS:
+            continue
+        last[k] = d
+        kept.append(r)
+    return kept
+
+
+def _exit_rows(con, hypothesis):
+    return _independent(con.execute("""
+        SELECT select_date, ticker, direction, pnl_live_net, pnl_hold_net, cost_pct
+        FROM shadow_selection
+        WHERE hypothesis=? AND pnl_live_net IS NOT NULL
+        ORDER BY select_date
+    """, (hypothesis,)).fetchall())
+
+
+def criteria_report(con):
+    """Prueft jede Hypothese gegen die VORAB festgelegten Kriterien."""
+    cols = {r[1] for r in con.execute("PRAGMA table_info(shadow_selection)")}
+    if "pnl_live_net" not in cols:
+        return   # Schema ohne Exit-Bewertung (z.B. Test-Fixture) — nichts zu pruefen
+    print(f"\n🎯 Vorab-Kriterien (festgelegt {CRITERIA_FIXED_ON}) — Live-Exit, netto, "
+          f"unabhaengige Trades", flush=True)
+    print(f"  {'Hypothese':14} {'N':>4} {'Ø live':>8} {'Ø halten':>9} "
+          f"{'Ø Kost.x2':>10} {'o.Top3 Σ':>9}  Urteil", flush=True)
+    base = sorted(_exit_rows(con, "live_baseline") + _exit_rows(con, "live_baseline_v1"),
+                  key=lambda r: r["select_date"])
+    for h in HYPOTHESES:
+        rows = _exit_rows(con, h)
+        n = len(rows)
+        if not n:
+            continue
+        live = [r["pnl_live_net"] for r in rows]
+        hold = [r["pnl_hold_net"] for r in rows if r["pnl_hold_net"] is not None]
+        mean = sum(live) / n
+        mean_hold = sum(hold) / len(hold) if hold else float("nan")
+        stress = sum(p - (COST_STRESS_MULT - 1) * (r["cost_pct"] or 0)
+                     for p, r in zip(live, rows)) / n
+        rest = sorted(live, reverse=True)[DROP_TOP_K:]
+        rest_sum = sum(rest) if rest else float("nan")
+
+        checks = [(f"N {n}/{MIN_INDEPENDENT}", n >= MIN_INDEPENDENT),
+                  (f"Kosten x{COST_STRESS_MULT:g}", stress > 0),
+                  (f"ohne Top-{DROP_TOP_K}", bool(rest) and rest_sum > 0)]
+        if h not in BASELINES:
+            lo, hi = rows[0]["select_date"], rows[-1]["select_date"]
+            b = [r["pnl_live_net"] for r in base if lo <= r["select_date"] <= hi]
+            bmean = sum(b) / len(b) if b else None
+            checks.append(("> Referenz", bmean is not None and mean > bmean))
+        failed = [name for name, ok in checks if not ok]
+        verdict = "✅ ALLE ERFUELLT — Live-Kandidat" if not failed \
+            else "offen: " + ", ".join(failed)
+        print(f"  {h:14} {n:>4} {mean:>+7.2f}% {mean_hold:>+8.2f}% "
+              f"{stress:>+9.2f}% {rest_sum:>+8.1f}%  {verdict}", flush=True)
+    print(f"  Ø halten = nur Anfangs-Stop, {HOLD_BARS} Handelstage. Liegt es klar "
+          f"ueber Ø live,\n  wuergt der Live-Exit das Signal ab — dann ist die "
+          f"Haltedauer das Problem, nicht die Selektion.", flush=True)
+
+
 # ── Bericht ─────────────────────────────────────────────────────────────────
 
 def _source_health(con, hypothesis):
@@ -612,8 +851,10 @@ def report(con):
             else "nicht besser als Referenz")
         print(f"  {h:14} {tot:>8} {n:>9} {wr:>5.0f}% {avg:>+7.2f}% "
               f"{r['tot']:>+7.1f}%  {verdict}", flush=True)
-    print("\n  Hinweis: die Bücher entscheiden nichts. Erst ab N≈30 pro Hypothese\n"
-          "  ist der Vergleich mit live_baseline aussagekräftig.", flush=True)
+    print("\n  Hinweis: Tabelle oben = Alt-Simulation (Chandelier, Tag-7-Stop, brutto,\n"
+          "  Tageszeilen statt unabhaengiger Trades). Entscheidungsgroesse sind die\n"
+          "  Vorab-Kriterien unten.", flush=True)
+    criteria_report(con)
     dead = [h for h in HYPOTHESES if not _source_health(con, h)[0]]
     if dead:
         print(f"⛔ {len(dead)} Hypothese(n) ohne laufende Datenquelle: "
@@ -661,6 +902,7 @@ def main():
         if do_all or args.evaluate:
             print(f"\n🔍 Vorwärtsbepreisung (Horizont {HORIZON_DAYS} Tage)", flush=True)
             evaluate(con)
+            evaluate_exits(con)
 
         if do_all or args.report:
             report(con)

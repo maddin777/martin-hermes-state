@@ -1,9 +1,9 @@
 {
-  "last_report_path": "/root/.hermes/logs/curator/20260921-080534",
-  "last_run_at": "2026-09-21T08:05:34.200902+00:00",
-  "last_run_duration_seconds": 294.38107,
-  "last_run_summary": "auto: 37 archived, 2 reactivated; llm: ## Consolidation Pass Summary\n\n### Clusters Identified\n\nI analyzed the 33 curator-managed skills and identified these natural clusters:\n\n1. **Office/Document Productivity** — `box`, `docx`, `pdf`, `xlsx`, `powerpoint`, `ocr-and-documents`, …\narchived 2 skill(s):\n  • computer-use — pruned (stale)\n  • requesting-code-review — pruned (stale)\nfull report: hermes curator status",
+  "last_report_path": "/root/.hermes/logs/curator/20260928-080853",
+  "last_run_at": "2026-09-28T08:08:53.960506+00:00",
+  "last_run_duration_seconds": 109.183924,
+  "last_run_summary": "auto: 9 marked stale, 1 archived; llm: The patch was applied successfully. Now let me provide the final summary.\n\n---\n\n## Consolidation Summary\n\nAfter examining all 12 agent-created skills and cross-referencing with the broader skill landscape (77 total skills), I found:\n\n**Find…",
   "last_run_summary_shown_at": "2026-09-21T08:05:34.200902+00:00",
   "paused": false,
-  "run_count": 20
+  "run_count": 21
 }

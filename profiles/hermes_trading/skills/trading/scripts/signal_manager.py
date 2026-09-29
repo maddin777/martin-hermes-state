@@ -26,6 +26,7 @@ log = get_logger("signal_manager")
 from config import DB_PATH, SIGNALS_VALIDATED_PATH, STRATEGY_CONFIG_PATH, MACRO_SIGNAL_PATH, db_connect, get_asset_type, get_exit_config, get_sector_regime, sector_regime_key, drawdown_params
 from config import DETERMINISTIC_CHANNELS, MIN_MENTIONS_DETERMINISTIC
 from exit_rules import initial_stop, peak_chandelier_stop, protected_time_stop_price, time_stop_due
+from exit_rules import YT_FADE_MODE, fade_exit_decision
 CONFIG_PATH = STRATEGY_CONFIG_PATH
 
 
@@ -242,6 +243,10 @@ def init_db(con):
     if "crabel_at_entry" not in cols:
         con.execute("ALTER TABLE positions ADD COLUMN crabel_at_entry TEXT")
         print("  📝 positions: crabel_at_entry-Spalte hinzugefügt", flush=True)
+    # 28.09.2026: positionsspezifische Exit-Regel (NULL = Standard-Exit-Matrix)
+    if "exit_mode" not in cols:
+        con.execute("ALTER TABLE positions ADD COLUMN exit_mode TEXT")
+        print("  📝 positions: exit_mode-Spalte hinzugefügt", flush=True)
 
     # Shadow-Log geblockter Entries (Counterfactual für die Gate-Bewertung)
     con.executescript("""
@@ -798,6 +803,51 @@ def check_open_positions(con, cfg):
              round(_hi, 4), round(_lo, 4), pos["id"])
         )
         con.commit()
+
+        # --- YT-Fade (28.09.2026): nur Notfallstop oder Haltedauer ---------
+        # Kein Time-Stop 5d, kein Partial, kein Trail — siehe exit_rules.
+        if (pos["exit_mode"] if "exit_mode" in pos.keys() else None) == YT_FADE_MODE:
+            fade_reason, fade_px = fade_exit_decision(
+                pos, current_price, cfg.get("yt_fade_hold_days", 40))
+            if fade_reason:
+                pnl_eur, pnl_pct = realized_pnl_from_effective_entry(
+                    entry, fade_px, original_position_size, direction)
+                cash += original_position_size + pnl_eur
+                con.execute("""
+                    UPDATE positions SET status='closed', exit_price=?, exit_date=?,
+                        exit_reason=?, pnl_eur=?, pnl_pct=? WHERE id=?
+                """, (fade_px, datetime.now().isoformat(), fade_reason,
+                      round(pnl_eur, 2), round(pnl_pct * 100, 2), pos["id"]))
+                con.execute(
+                    "UPDATE portfolio SET cash=?, total_value=?, updated_at=? WHERE id=1",
+                    (round(cash, 2), round(cash + sum(
+                        r["position_size"] for r in con.execute(
+                            "SELECT position_size FROM positions WHERE status='open'"
+                        ).fetchall()
+                    ), 2), datetime.now().isoformat())
+                )
+                con.commit()
+                won = pnl_eur > 0
+                cfg["total_trades"] += 1
+                if won:
+                    cfg["winning_trades"] += 1
+                    cfg["consecutive_wins"] += 1
+                    cfg["consecutive_losses"] = 0
+                else:
+                    cfg["consecutive_losses"] += 1
+                    cfg["consecutive_wins"] = 0
+                save_config(cfg)
+                msg = (
+                    f"{'✅' if won else '❌'} <b>YT-Fade geschlossen: {pos['name']}</b>\n"
+                    f"Ticker: {ticker} | SHORT\n"
+                    f"Grund: {fade_reason}\n"
+                    f"Entry: {entry:.2f} → Exit: {fade_px:.2f}\n"
+                    f"P&L: {pnl_eur:+.2f}€ ({pnl_pct*100:+.1f}%)\n"
+                    f"💰 Cash: {cash:.2f}€"
+                )
+                print(f"\n{msg}")
+                send_telegram(msg)
+            continue
 
         # --- Partial Take-Profit ---
         # asset_type- + regime-spezifische Multiplikatoren für Exit-Regeln
@@ -1623,8 +1673,11 @@ def open_new_positions(con, cfg):
     open_long_count = con.execute(
         "SELECT COUNT(*) FROM positions WHERE status='open' AND direction='LONG'"
     ).fetchone()[0]
+    # 28.09.2026: YT-Fade-Positionen haben eigene Slots/Budget (s. unten) und
+    # duerfen die regulaeren SHORT-Slots nicht belegen.
     open_short_count = con.execute(
-        "SELECT COUNT(*) FROM positions WHERE status='open' AND direction='SHORT'"
+        "SELECT COUNT(*) FROM positions WHERE status='open' AND direction='SHORT' "
+        "AND exit_mode IS NULL"
     ).fetchone()[0]
     open_count = open_long_count + open_short_count
 
@@ -1711,12 +1764,25 @@ def open_new_positions(con, cfg):
     )
     short_invested = sum(
         r["position_size"] for r in con.execute(
-            "SELECT position_size FROM positions WHERE status='open' AND direction='SHORT'"
+            "SELECT position_size FROM positions WHERE status='open' AND direction='SHORT' "
+            "AND exit_mode IS NULL"
         ).fetchall()
     )
 
     max_long = portfolio_value * cfg.get("max_long_allocation", 0.70)
     max_short = portfolio_value * cfg.get("max_short_allocation", 0.30)
+
+    # YT-Fade (28.09.2026): LONG-Kandidaten, deren Quelle rein YouTube ist,
+    # durchlaufen ALLE LONG-Gates unveraendert (= genau die Menge, die die
+    # Probe untersucht hat) und werden erst vor dem Eroeffnen zum SHORT.
+    fade_on = bool(cfg.get("yt_fade_enabled"))
+    _fade_rows = con.execute(
+        "SELECT position_size FROM positions WHERE status='open' AND exit_mode=?",
+        (YT_FADE_MODE,)
+    ).fetchall()
+    fade_open = len(_fade_rows)
+    fade_invested = sum(r["position_size"] for r in _fade_rows)
+    max_fade = portfolio_value * cfg.get("yt_fade_max_allocation", 0.50)
 
     # Kandidaten laden (LONG + SHORT)
     candidates_long = []
@@ -1856,6 +1922,8 @@ def open_new_positions(con, cfg):
 
         channels = json.loads(c["channels"] or "[]")
         unique_channels = len(set(channels))
+        is_fade = (fade_on and direction == "LONG"
+                   and _derive_signal_source(channels) == "youtube")
 
         # Filter
         if ticker in open_tickers:
@@ -1944,7 +2012,14 @@ def open_new_positions(con, cfg):
 
 
         # Allokations-Limit pro Richtung
-        if direction == "LONG" and long_invested >= max_long:
+        if is_fade:
+            if (fade_open >= cfg.get("yt_fade_max_open", 6)
+                    or fade_invested >= max_fade):
+                print(f"  💰 YT-Fade-Budget voll ({fade_open} offen, "
+                      f"{fade_invested:.0f}€/{max_fade:.0f}€)")
+                _skip("allocation-yt-fade")
+                continue
+        elif direction == "LONG" and long_invested >= max_long:
             print(f"  💰 LONG-Allokation voll ({long_invested:.0f}€/{max_long:.0f}€)")
             _skip("allocation-long")
             continue
@@ -2247,7 +2322,9 @@ def open_new_positions(con, cfg):
             continue
 
         # Slippage auf Entry anwenden
-        effective_entry = apply_slippage(current_price, direction, is_entry=True)
+        # YT-Fade: ab hier ist der Kandidat ein SHORT (Gates liefen als LONG).
+        trade_direction = "SHORT" if is_fade else direction
+        effective_entry = apply_slippage(current_price, trade_direction, is_entry=True)
 
         # Commission abziehen und Stückzahl FX-korrekt berechnen
         position_size_after_commission = position_size - COMMISSION_EUR
@@ -2264,6 +2341,11 @@ def open_new_positions(con, cfg):
         # Exit-Pfad teilen dieselbe Regimequelle.
         _regime, _vix = get_current_regime(con)
         sl, tp = compute_sl_tp(effective_entry, atr, asset_type, direction, regime=_regime)
+        if is_fade:
+            # Weiter Notfallstop statt ATR-Stop (siehe exit_rules);
+            # TP nur Anzeige — der Exit laeuft ueber die Haltedauer.
+            sl = effective_entry * (1 + cfg.get("yt_fade_stop_pct", 0.40))
+            tp = effective_entry * 0.5
 
         sl_pct = abs(effective_entry - sl) / effective_entry * 100
         tp_pct = abs(tp - effective_entry) / effective_entry * 100
@@ -2278,10 +2360,11 @@ def open_new_positions(con, cfg):
             (ticker, name, direction, entry_price, entry_date,
              stop_loss, take_profit, trailing_sl, position_size, shares,
              atr_at_entry, confidence, source_channel, reason,
-             highest_price, lowest_price, asset_type, crabel_at_entry, signal_source)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+             highest_price, lowest_price, asset_type, crabel_at_entry, signal_source,
+             exit_mode)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
         """, (
-            ticker, c["name"], direction,
+            ticker, c["name"], trade_direction,
             round(effective_entry, 2),
             datetime.now().strftime("%Y-%m-%d %H:%M"),
             round(sl, 2), round(tp, 2), round(sl, 2),
@@ -2301,7 +2384,8 @@ def open_new_positions(con, cfg):
             asset_type,
             # Instrumentierung: Pattern-State beim Entry → Kohorten-Split später
             json.dumps(crabel) if crabel else None,
-            _derive_signal_source(channels) or None
+            _derive_signal_source(channels) or None,
+            YT_FADE_MODE if is_fade else None,
         ))
 
         # Committee-Audit: Entry hat stattgefunden → Join-Basis für nightly_eval
@@ -2323,7 +2407,10 @@ def open_new_positions(con, cfg):
         # Cash reduzieren
         cash -= position_size
         remaining_budget -= position_size
-        if direction == "LONG":
+        if is_fade:
+            fade_open += 1
+            fade_invested += position_size
+        elif direction == "LONG":
             long_invested += position_size
         else:
             short_invested += position_size
@@ -2357,7 +2444,11 @@ def open_new_positions(con, cfg):
 
         msg = (
             f"📈 <b>NEUES SIGNAL: {c['name']}</b>\n"
-            f"Ticker: {ticker} | {direction}\n"
+            f"Ticker: {ticker} | {trade_direction}\n"
+            + (f"🔄 <b>YT-Fade</b>: YouTube-LONG-Signal wird geshortet — kein ATR-Stop, "
+               f"Notfallstop {sl:.2f} (+{cfg.get('yt_fade_stop_pct', 0.40):.0%}), "
+               f"Exit nach {cfg.get('yt_fade_hold_days', 40)} Handelstagen\n"
+               if is_fade else "") +
             f"Entry: {effective_entry:.2f} (Slippage inkl.)\n"
             f"Stop-Loss: {sl:.2f} (-{sl_pct:.1f}%)\n"
             f"Take-Profit: {tp:.2f} (+{tp_pct:.1f}%)\n"

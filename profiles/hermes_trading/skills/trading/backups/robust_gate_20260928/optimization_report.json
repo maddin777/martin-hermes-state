@@ -1,0 +1,100 @@
+{
+  "timestamp": "2026-09-18T23:32:46.801464",
+  "trades_analyzed": 86,
+  "method": "path_replay_v2",
+  "path_coverage": 0.977,
+  "current_params": {
+    "exit_profile": "current",
+    "time_stop_trading_days": 7
+  },
+  "best_metrics": {
+    "total_trades": 86,
+    "win_rate": 54.7,
+    "avg_win": 5.2,
+    "avg_loss": 7.16,
+    "payoff_ratio": 0.73,
+    "expectancy": -0.406,
+    "profit_factor": 0.88,
+    "sharpe": -0.82,
+    "max_drawdown": 80.69,
+    "composite": 0.2177,
+    "total_pnl": -34.9
+  },
+  "current_metrics": {
+    "total_trades": 86,
+    "win_rate": 46.5,
+    "avg_win": 5.95,
+    "avg_loss": 6.36,
+    "payoff_ratio": 0.94,
+    "expectancy": -0.635,
+    "profit_factor": 0.81,
+    "sharpe": -1.22,
+    "max_drawdown": 84.95,
+    "composite": 0.1987,
+    "total_pnl": -54.61
+  },
+  "best_params": {
+    "exit_profile": "wider_stop",
+    "time_stop_trading_days": 5,
+    "composite": 0.2177
+  },
+  "improvement_pct": 9.56,
+  "top5_combinations": [
+    {
+      "profile": "wider_stop",
+      "time_stop": 5,
+      "sl_scale": 1.15,
+      "composite": 0.2177,
+      "win_rate": 54.7,
+      "p": 0.88,
+      "expectancy": -0.406,
+      "sharpe": -0.82,
+      "trades": 86
+    },
+    {
+      "profile": "wider_stop",
+      "time_stop": 10,
+      "sl_scale": 1.15,
+      "composite": 0.2173,
+      "win_rate": 51.2,
+      "p": 0.87,
+      "expectancy": -0.441,
+      "sharpe": -0.88,
+      "trades": 86
+    },
+    {
+      "profile": "wider_stop",
+      "time_stop": 15,
+      "sl_scale": 1.15,
+      "composite": 0.2163,
+      "win_rate": 47.7,
+      "p": 0.86,
+      "expectancy": -0.493,
+      "sharpe": -0.93,
+      "trades": 86
+    },
+    {
+      "profile": "wider_stop",
+      "time_stop": 7,
+      "sl_scale": 1.15,
+      "composite": 0.2091,
+      "win_rate": 52.3,
+      "p": 0.86,
+      "expectancy": -0.488,
+      "sharpe": -0.91,
+      "trades": 86
+    },
+    {
+      "profile": "current",
+      "time_stop": 7,
+      "sl_scale": 1.0,
+      "composite": 0.1987,
+      "win_rate": 46.5,
+      "p": 0.81,
+      "expectancy": -0.635,
+      "sharpe": -1.22,
+      "trades": 86
+    }
+  ],
+  "updated": false
+}

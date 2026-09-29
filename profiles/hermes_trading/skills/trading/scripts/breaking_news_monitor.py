@@ -78,7 +78,11 @@ def _score_news_sentiment(news_items: list, company_name: str) -> tuple:
             "https://openrouter.ai/api/v1/chat/completions",
             headers={"Authorization": f"Bearer {OPENROUTER_KEY}",
                      "Content-Type": "application/json"},
-            json={"model": "deepseek/deepseek-v4-flash-0731", "max_tokens": 200,
+            # FIX 28.09.2026: Reasoning aus + mehr Tokens — bei max_tokens=200 lief
+            # das Reasoning ins Limit, content blieb leer und der Score fiel still
+            # auf 0.5 zurueck (Testlauf: 3/3 Positionen exakt 0.50).
+            json={"model": "deepseek/deepseek-v4-flash-0731", "max_tokens": 400,
+                  "reasoning": {"enabled": False},
                   "messages": [{"role": "user", "content": prompt}]},
             timeout=30,
         )
@@ -131,6 +135,10 @@ def main():
     alerts = []
 
     for pos in positions:
+        # 28.09.2026: YT-Fade-Positionen haben bewusst keinen ATR-Stop — ein
+        # News-bedingtes Nachziehen wuerde genau das wieder einfuehren.
+        if (pos["exit_mode"] if "exit_mode" in pos.keys() else None):
+            continue
         ticker    = pos["ticker"]
         name      = pos["name"] or ticker
         direction = pos["direction"]

@@ -985,6 +985,12 @@ cp /root/martin-hermes-state/profiles/hermes_trading/skills/trading/scripts/<fil
 ```
 Vorher `wc -l` beider Dateien vergleichen — das Backup kann älter sein als die Live-Version. Nach dem Restore die neuen Änderungen erneut per `patch` (nicht write_file) anwenden.
 
+## Trading Scan — Wrapper Entry Point
+
+> **Hinweis:** Der `trading-scan`-Skill ist ein dünner Wrapper um diese Pipeline. Sämtliche Dokumentation und Verfahren finden sich in diesem Skill oben.
+
+Siehe `trading-scan` Skill für die kompakte Zusammenfassung aller Pipeline-Schritte als einzeiligen Workflow.
+
 ## Quick Debug
 
 ```bash

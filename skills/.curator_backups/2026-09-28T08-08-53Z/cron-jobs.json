@@ -18,15 +18,15 @@
       "schedule_display": "0 2 * * *",
       "repeat": {
         "times": null,
-        "completed": 127
+        "completed": 162
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-04-21T23:30:01.012140+02:00",
-      "next_run_at": "2026-08-25T02:00:00+02:00",
-      "last_run_at": "2026-08-24T02:00:46.178506+02:00",
+      "next_run_at": "2026-09-29T02:00:00+02:00",
+      "last_run_at": "2026-09-28T02:00:48.330164+02:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -34,7 +34,13 @@
       "origin": null,
       "no_agent": true,
       "fire_claim": null,
-      "failure_streak": 0
+      "failure_streak": 0,
+      "last_dispatch": {
+        "scheduled_at": "2026-09-28T02:00:00+02:00",
+        "dispatched_at": "2026-09-28T02:00:33.039526+02:00",
+        "lateness_seconds": 33.0,
+        "kind": "on_time"
+      }
     },
     {
       "id": "eec953aecbd8",
@@ -56,15 +62,15 @@
       "schedule_display": "every 5m",
       "repeat": {
         "times": null,
-        "completed": 18945
+        "completed": 27984
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-05-11T13:12:20.006963+02:00",
-      "next_run_at": "2026-08-24T08:09:24.422540+02:00",
-      "last_run_at": "2026-08-24T08:04:24.422540+02:00",
+      "next_run_at": "2026-09-28T10:09:34.321388+02:00",
+      "last_run_at": "2026-09-28T10:04:34.321388+02:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -73,12 +79,18 @@
       "enabled_toolsets": null,
       "workdir": null,
       "fire_claim": null,
-      "failure_streak": 0
+      "failure_streak": 0,
+      "last_dispatch": {
+        "scheduled_at": "2026-09-28T10:03:34.327540+02:00",
+        "dispatched_at": "2026-09-28T10:04:33.036855+02:00",
+        "lateness_seconds": 58.7,
+        "kind": "on_time"
+      }
     },
     {
       "id": "53f222b00811",
       "name": "vault-insights-daily",
-      "prompt": "Du hast Zugriff auf den Obsidian Vault unter /root/obsidian-vault/. Der nächtliche GDrive-Sync war vor ~30 Minuten abgeschlossen (Cron 02:00).\n\nDeine Aufgaben:\n\n## A — Wiki pflegen (höchste Priorität)\nScanne ob es neue/geänderte Dateien im Vault gibt (seit letztem Sync mit `find /root/obsidian-vault/ -maxdepth 5 -type f -newer /tmp/vault-last-sync -name \"*.md\" -not -path \"*/wiki/*\" -not -path \"*/.*\"` nachdem du /tmp/vault-last-sync per touch aktualisiert hast).\n\n**Wichtig:** `-maxdepth 5` ist nötig weil Dateien in `Projekte/MarineIT/` (Tiefe 4) sonst nicht gefunden werden.\n\n**Proaktive Watchlist-Wartung:** Prüf ob `Trading/Watchlist.md` aktualisiert wurde. Wenn ja:\n- Aktualisiere `wiki/entities/Watchlist.md` mit neuen Metriken (Anzahl Einträge, Paper-Positionen, Quellenverteilung, Data Quality Issues)\n- Tracke ob die Exit-Management-Quelldatei `Trading/Erklaerung.md` neuer ist als `wiki/concepts/Exit Management.md`. Wenn ja, aktualisiere die Exit Management Seite mit dem aktuellen Stand.\n\n**Sonstige neue/geänderte Dateien:** Kaufe neue Konzepte, Entitäten oder Quellen als Wiki-Seiten ein:\n- Trading-relevante Dateien aus boerse/, Trading/, Geldverdienen/ (Trading-Anteil) → wiki/concepts/ oder wiki/entities/\n- Hermes-relevante Dateien → wiki/concepts/ (z.B. Automation, Agent, Prompt)\n- Reise/Orte → wiki/entities/ (Berlin, München, Krakau, Prag, etc.)\n- Tools/KI → wiki/entities/ (Claude, ChatGPT, Gemini, Google, etc.)\n- **Projekte/ Dateien** (z.B. MarineIT/Zeeslogger*): Wenn relevant, lege eine Wiki-Seite unter wiki/concepts/ oder wiki/entities/ an und verlinke sie im trading-index.md\n- Verlinke jede neue Seite im trading-index.md unter der richtigen Kategorie\n\n## B — Intention weiterdenken\nLies neue/geänderte Dateien. Was ist der Kern? Übersetze ihn in konkrete nächste Schritte für Martins Infrastruktur. Schreib eine \"Weitergedacht\"-Sektion in deinen Report. Wenn die Watchlist neue auffällige Muster zeigt (Duplikate, fehlende Ticker, Quellenverschiebung), analysiere die möglichen Auswirkungen auf das Trading-System.\n\n**WICHTIG — Richtungs-Zählregel (seit 19.08.2026):** Bei der Auswertung der Watchlist-Richtung (LONG/SHORT/NEUTRAL) gilt:\n- **Realer SHORT-Pool = sentiment-basiert:** Einträge wo `conviction_score_bear > conviction_score`. Das sind die echten Bären-Signale mit bearish Mention-Rohdaten.\n- `tech_direction='SHORT'` ist NICHT der alleinige Maßstab — viele bought-LONG-Positionen (z.B. TSLA, META, GOOGL, IFX, MARA) haben tech_direction='SHORT', weil die Technik fürs Papier bearish warnt, obwohl es gehaltene LONG-Positionen sind. Das ist Exit-Relevanz, KEINE breite Bärenwelle.\n- Berichte beide Kennzahlen getrennt (z.B. \"echte Shorts sentiment-basiert: X | tech_direction=SHORT: Y\") — verwechsle sie nicht und stelle gehaltene bought-LONG-Positionen mit tech_direction=SHORT nicht als neue Bären-Signale dar.\n\n## C — Proaktive Vorschläge (max 3)\nWenn dir etwas auffällt was Martin übersehen hat: maximal 3 Vorschläge, jeder mit:\n- Konkretem nächstem Schritt\n- Aufwandsschätzung\n- Der Frage \"Soll ich das jetzt umsetzen?\"\n\n**Wichtig:** Prüfe bei Watchlist-Änderungen ob die Exit Management Page noch aktuell ist.\n\n## D — Exit Management Auto-Refresh\nNachdem du Wiki-Seiten aktualisiert hast: prüfe die Timestamps von `Trading/Erklaerung.md` vs `wiki/concepts/Exit Management.md`. Wenn die Quelle neuer ist, aktualisiere die Exit Management Seite. Tracke diesen Check im Report.\n\n**Zusatz (DQ-Wartung, seit 19.08.):** Die Quelle `rss:share talk` ist deaktiviert (0% Erfolgsquote). Wenn in der Watchlist-DQ-Sektion weiterhin viele `.L`-Microcaps ohne Tech-Score auftauchen, prüfe aus welchen anderen Quellen sie kommen (z.B. motley fool uk, seeking alpha) und melde sie — der tägliche watchlist-cleanup (22:30) droppt sie zwar, aber anhaltender Zufluss deutet auf weitere Problem-Quellen hin.\n\nLiefere deinen Report als strukturierte Telegram-Nachricht mit Sektionen: Wiki-Updates, Weitergedacht, Proaktive Vorschläge, Exit-Management-Check.",
+      "prompt": "Du hast Zugriff auf den Obsidian Vault unter /root/obsidian-vault/. Der nächtliche GDrive-Sync war vor ~30 Minuten abgeschlossen (Cron 02:00).\n\nDeine Aufgaben:\n\n## A — Wiki pflegen (höchste Priorität)\nScanne ob es neue/geänderte Dateien im Vault gibt (seit dem letzten Lauf). Nutze einen PERSISTENTEN Marker unter `/root/.hermes/cache/vault-last-sync` (NICHT /tmp — das ist ephemer, geht bei Neustart verloren und eine Nacht würde sich verlieren). Reihenfolge ist kritisch:\n\n1. **Bootstrap (nur falls Marker fehlt):** `mkdir -p /root/.hermes/cache && touch /root/.hermes/cache/vault-last-sync` und scanne dann mit `-mtime -2` statt `-newer`, damit der Erstlauf nicht alles als neu einpaukt.\n2. **Zuerst scannen** mit dem BESTEHENDEN Marker: `find /root/obsidian-vault/ -maxdepth 5 -type f -newer /root/.hermes/cache/vault-last-sync -name \"*.md\" -not -path \"*/wiki/*\" -not -path \"*/.*\"`\n3. **Erst danach** die Baseline auf jetzt rollen: `touch /root/.hermes/cache/vault-last-sync` — so findet der nächste Lauf nur, was seither dazukam.\n\n**Wichtig:** `-maxdepth 5` ist nötig weil Dateien in `Projekte/MarineIT/` (Tiefe 4) sonst nicht gefunden werden.\n\n**Proaktive Watchlist-Wartung:** Prüf ob `Trading/Watchlist.md` aktualisiert wurde. Wenn ja:\n- Aktualisiere `wiki/entities/Watchlist.md` mit neuen Metriken (Anzahl Einträge, Paper-Positionen, Quellenverteilung, Data Quality Issues)\n- Tracke ob die Exit-Management-Quelldatei `Trading/Erklaerung.md` neuer ist als `wiki/concepts/Exit Management.md`. Wenn ja, aktualisiere die Exit Management Seite mit dem aktuellen Stand.\n\n**Sonstige neue/geänderte Dateien:** Kaufe neue Konzepte, Entitäten oder Quellen als Wiki-Seiten ein:\n- Trading-relevante Dateien aus boerse/, Trading/, Geldverdienen/ (Trading-Anteil) → wiki/concepts/ oder wiki/entities/\n- Hermes-relevante Dateien → wiki/concepts/ (z.B. Automation, Agent, Prompt)\n- Reise/Orte → wiki/entities/ (Berlin, München, Krakau, Prag, etc.)\n- Tools/KI → wiki/entities/ (Claude, ChatGPT, Gemini, Google, etc.)\n- **Projekte/ Dateien** (z.B. MarineIT/Zeeslogger*): Wenn relevant, lege eine Wiki-Seite unter wiki/concepts/ oder wiki/entities/ an und verlinke sie im trading-index.md\n- Verlinke jede neue Seite im trading-index.md unter der richtigen Kategorie\n\n## B — Intention weiterdenken\nLies neue/geänderte Dateien. Was ist der Kern? Übersetze ihn in konkrete nächste Schritte für Martins Infrastruktur. Schreib eine \"Weitergedacht\"-Sektion in deinen Report. Wenn die Watchlist neue auffällige Muster zeigt (Duplikate, fehlende Ticker, Quellenverschiebung), analysiere die möglichen Auswirkungen auf das Trading-System.\n\n**WICHTIG — Richtungs-Zählregel (seit 19.08.2026):** Bei der Auswertung der Watchlist-Richtung (LONG/SHORT/NEUTRAL) gilt:\n- **Realer SHORT-Pool = sentiment-basiert:** Einträge wo `conviction_score_bear > conviction_score`. Das sind die echten Bären-Signale mit bearish Mention-Rohdaten.\n- `tech_direction='SHORT'` ist NICHT der alleinige Maßstab — viele bought-LONG-Positionen (z.B. TSLA, META, GOOGL, IFX, MARA) haben tech_direction='SHORT', weil die Technik fürs Papier bearish warnt, obwohl es gehaltene LONG-Positionen sind. Das ist Exit-Relevanz, KEINE breite Bärenwelle.\n- Berichte beide Kennzahlen getrennt (z.B. \"echte Shorts sentiment-basiert: X | tech_direction=SHORT: Y\") — verwechsle sie nicht und stelle gehaltene bought-LONG-Positionen mit tech_direction=SHORT nicht als neue Bären-Signale dar.\n\n## C — Proaktive Vorschläge (max 3)\nWenn dir etwas auffällt was Martin übersehen hat: maximal 3 Vorschläge, jeder mit:\n- Konkretem nächstem Schritt\n- Aufwandsschätzung\n- Der Frage \"Soll ich das jetzt umsetzen?\"\n\n**Wichtig:** Prüfe bei Watchlist-Änderungen ob die Exit Management Page noch aktuell ist.\n\n## D — Exit Management Auto-Refresh\nNachdem du Wiki-Seiten aktualisiert hast: prüfe die Timestamps von `Trading/Erklaerung.md` vs `wiki/concepts/Exit Management.md`. Wenn die Quelle neuer ist, aktualisiere die Exit Management Seite. Tracke diesen Check im Report.\n\n**Zusatz (DQ-Wartung, seit 19.08.):** Die Quelle `rss:share talk` ist deaktiviert (0% Erfolgsquote). Wenn in der Watchlist-DQ-Sektion weiterhin viele `.L`-Microcaps ohne Tech-Score auftauchen, prüfe aus welchen anderen Quellen sie kommen (z.B. motley fool uk, seeking alpha) und melde sie — der tägliche watchlist-cleanup (22:30) droppt sie zwar, aber anhaltender Zufluss deutet auf weitere Problem-Quellen hin.\n\nLiefere deinen Report als strukturierte Telegram-Nachricht mit Sektionen: Wiki-Updates, Weitergedacht, Proaktive Vorschläge, Exit-Management-Check.",
       "skills": [],
       "skill": null,
       "model": null,
@@ -95,15 +107,15 @@
       "schedule_display": "45 2 * * *",
       "repeat": {
         "times": null,
-        "completed": 109
+        "completed": 144
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-05-11T15:27:25.229495+02:00",
-      "next_run_at": "2026-08-25T02:45:00+02:00",
-      "last_run_at": "2026-08-24T02:47:59.952818+02:00",
+      "next_run_at": "2026-09-29T02:45:00+02:00",
+      "last_run_at": "2026-09-28T02:47:17.947369+02:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -116,7 +128,13 @@
       ],
       "workdir": null,
       "fire_claim": null,
-      "failure_streak": 0
+      "failure_streak": 0,
+      "last_dispatch": {
+        "scheduled_at": "2026-09-28T02:45:00+02:00",
+        "dispatched_at": "2026-09-28T02:45:33.037478+02:00",
+        "lateness_seconds": 33.0,
+        "kind": "on_time"
+      }
     },
     {
       "id": "beb26022a5d9",
@@ -138,15 +156,15 @@
       "schedule_display": "0 19 * * 0",
       "repeat": {
         "times": null,
-        "completed": 15
+        "completed": 20
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-05-23T08:18:41.805414+02:00",
-      "next_run_at": "2026-08-30T19:00:00+02:00",
-      "last_run_at": "2026-08-23T19:01:50.128707+02:00",
+      "next_run_at": "2026-10-04T19:00:00+02:00",
+      "last_run_at": "2026-09-27T19:03:27.077359+02:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -160,7 +178,13 @@
       "enabled_toolsets": null,
       "workdir": null,
       "fire_claim": null,
-      "failure_streak": 0
+      "failure_streak": 0,
+      "last_dispatch": {
+        "scheduled_at": "2026-09-27T19:00:00+02:00",
+        "dispatched_at": "2026-09-27T19:00:33.039788+02:00",
+        "lateness_seconds": 33.0,
+        "kind": "on_time"
+      }
     },
     {
       "id": "326343c87149",
@@ -182,15 +206,15 @@
       "schedule_display": "0 3 * * 6",
       "repeat": {
         "times": null,
-        "completed": 13
+        "completed": 18
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-05-23T08:19:14.921845+02:00",
-      "next_run_at": "2026-08-29T03:00:00+02:00",
-      "last_run_at": "2026-08-22T03:06:54.310577+02:00",
+      "next_run_at": "2026-10-03T03:00:00+02:00",
+      "last_run_at": "2026-09-26T03:08:28.285314+02:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -203,7 +227,14 @@
       },
       "enabled_toolsets": null,
       "workdir": null,
-      "fire_claim": null
+      "fire_claim": null,
+      "failure_streak": 0,
+      "last_dispatch": {
+        "scheduled_at": "2026-09-26T03:00:00+02:00",
+        "dispatched_at": "2026-09-26T03:00:16.442968+02:00",
+        "lateness_seconds": 16.4,
+        "kind": "on_time"
+      }
     },
     {
       "id": "736b150caef2",
@@ -225,15 +256,15 @@
       "schedule_display": "0 3 * * *",
       "repeat": {
         "times": null,
-        "completed": 92
+        "completed": 127
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-05-24T22:49:04.140156+02:00",
-      "next_run_at": "2026-08-25T03:00:00+02:00",
-      "last_run_at": "2026-08-24T03:00:33.935684+02:00",
+      "next_run_at": "2026-09-29T03:00:00+02:00",
+      "last_run_at": "2026-09-28T03:00:45.798486+02:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -250,7 +281,13 @@
       ],
       "workdir": null,
       "fire_claim": null,
-      "failure_streak": 0
+      "failure_streak": 0,
+      "last_dispatch": {
+        "scheduled_at": "2026-09-28T03:00:00+02:00",
+        "dispatched_at": "2026-09-28T03:00:33.043004+02:00",
+        "lateness_seconds": 33.0,
+        "kind": "on_time"
+      }
     },
     {
       "id": "b0b06693e8f9",
@@ -272,15 +309,15 @@
       "schedule_display": "30 8 * * *",
       "repeat": {
         "times": null,
-        "completed": 91
+        "completed": 127
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-05-26T07:54:00.434041+02:00",
-      "next_run_at": "2026-08-24T08:30:00+02:00",
-      "last_run_at": "2026-08-23T08:30:36.643228+02:00",
+      "next_run_at": "2026-09-29T08:30:00+02:00",
+      "last_run_at": "2026-09-28T08:30:35.627827+02:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -294,103 +331,13 @@
       "enabled_toolsets": null,
       "workdir": null,
       "fire_claim": null,
-      "failure_streak": 0
-    },
-    {
-      "id": "472ace6fe18a",
-      "name": "Watchlist Dedup (weekly)",
-      "prompt": "Run the weekly watchlist dedup. Execute: python3 /root/.hermes/scripts/watchlist_dedup.py\n\nReport the results briefly — how many duplicates dropped, before/after counts. If there's an error, say what went wrong.",
-      "skills": [
-        "trading-pipeline"
-      ],
-      "skill": "trading-pipeline",
-      "model": null,
-      "provider": null,
-      "base_url": null,
-      "script": null,
-      "no_agent": false,
-      "context_from": null,
-      "schedule": {
-        "kind": "cron",
-        "expr": "30 5 * * 0",
-        "display": "30 5 * * 0"
-      },
-      "schedule_display": "30 5 * * 0",
-      "repeat": {
-        "times": null,
-        "completed": 13
-      },
-      "enabled": true,
-      "state": "scheduled",
-      "paused_at": null,
-      "paused_reason": null,
-      "created_at": "2026-05-28T07:47:50.291030+02:00",
-      "next_run_at": "2026-08-30T05:30:00+02:00",
-      "last_run_at": "2026-08-23T05:30:46.256698+02:00",
-      "last_status": "ok",
-      "last_error": null,
-      "last_delivery_error": null,
-      "deliver": "origin",
-      "origin": {
-        "platform": "telegram",
-        "chat_id": "216051232",
-        "chat_name": "Martin",
-        "thread_id": null
-      },
-      "enabled_toolsets": null,
-      "workdir": null,
-      "fire_claim": null,
-      "failure_streak": 0
-    },
-    {
-      "id": "b99c78a79959",
-      "name": "ttwo-catalyst-alarm",
-      "prompt": "TTWO Katalysator-Alarm (wöchentlich)\n\nFühre den TTWO-Katalysator-Alarm aus:\n\n1. **State laden**: Lies /root/.hermes/state/ttwo_catalyst_state.json (JSON mit last_catalyst, last_earnings, last_checked, gta6_trailer_found, pre_order_found)\n\n2. **GTA6 Launch-Check**: Heute ist $(date +%Y-%m-%d). GTA6 Launch ist am 2026-11-19. Berechne Tage bis Launch. Wenn ≤ 90 Tage, alarmiere. Wenn heute >= Launch, alarmiere.\n\n3. **Web-Suche**: Suche nach aktuellen TTWO/ Take-Two Interactive News:\n   - \"Take-Two Interactive earnings date 2026\"\n   - \"GTA 6 trailer 2026\" (prüfe ob neuer Trailer veröffentlicht wurde)\n   - \"GTA 6 pre-order 2026\" (prüfe ob Pre-Orders gestartet sind)\n\n4. **Vergleich**: Vergleiche Ergebnisse mit dem State-File. Nur neue/geänderte Ereignisse melden.\n\n5. **State aktualisieren**: Schreibe neuen State mit den aktuellen Daten.\n\n6. **Report**: Wenn neue Katalysatoren gefunden wurden, sende einen strukturierten Report mit:\n   - Was sich geändert hat\n   - Trade-Implication für TTWO (bullish/bearish)\n   - Kontext für die Watchlist\n\nWenn nichts Neues: \"TTWO: Keine neuen Katalysatoren diese Woche.\"",
-      "skills": [
-        "trading-pipeline"
-      ],
-      "skill": "trading-pipeline",
-      "model": null,
-      "provider": null,
-      "base_url": null,
-      "script": null,
-      "no_agent": false,
-      "context_from": null,
-      "schedule": {
-        "kind": "cron",
-        "expr": "0 10 * * 0",
-        "display": "0 10 * * 0"
-      },
-      "schedule_display": "0 10 * * 0",
-      "repeat": {
-        "times": null,
-        "completed": 11
-      },
-      "enabled": true,
-      "state": "scheduled",
-      "paused_at": null,
-      "paused_reason": null,
-      "created_at": "2026-06-09T09:03:36.625002+02:00",
-      "next_run_at": "2026-08-30T10:00:00+02:00",
-      "last_run_at": "2026-08-23T10:01:41.232815+02:00",
-      "last_status": "ok",
-      "last_error": null,
-      "last_delivery_error": null,
-      "deliver": "origin",
-      "origin": {
-        "platform": "telegram",
-        "chat_id": "216051232",
-        "chat_name": "Martin",
-        "thread_id": null
-      },
-      "enabled_toolsets": [
-        "web",
-        "terminal",
-        "file"
-      ],
-      "workdir": null,
-      "fire_claim": null,
-      "failure_streak": 0
+      "failure_streak": 0,
+      "last_dispatch": {
+        "scheduled_at": "2026-09-28T08:30:00+02:00",
+        "dispatched_at": "2026-09-28T08:30:33.037129+02:00",
+        "lateness_seconds": 33.0,
+        "kind": "on_time"
+      }
     },
     {
       "id": "fbc802343226",
@@ -419,7 +366,7 @@
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-06-09T19:45:43.852511+02:00",
-      "next_run_at": "2026-08-30T04:00:00+02:00",
+      "next_run_at": "2026-10-04T04:00:00+02:00",
       "last_run_at": null,
       "last_status": null,
       "last_error": null,
@@ -435,8 +382,14 @@
       "workdir": null,
       "profile": null,
       "fire_claim": {
-        "at": "2026-08-23T04:00:50.205523+02:00",
-        "by": "hermes2nd:1129113:278f5fe509c64c69b2c32eb9b4481ed8"
+        "at": "2026-09-27T04:00:17.376166+02:00",
+        "by": "hermes2nd:1323342:ca32c2a317554fa8859d28f4241c0a81"
+      },
+      "last_dispatch": {
+        "scheduled_at": "2026-09-27T04:00:00+02:00",
+        "dispatched_at": "2026-09-27T04:00:16.445436+02:00",
+        "lateness_seconds": 16.4,
+        "kind": "on_time"
       }
     },
     {
@@ -459,15 +412,15 @@
       "schedule_display": "every 15m",
       "repeat": {
         "times": null,
-        "completed": 6332
+        "completed": 9542
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-06-15T09:15:46.824370+02:00",
-      "next_run_at": "2026-08-24T08:17:25.200852+02:00",
-      "last_run_at": "2026-08-24T08:02:25.200852+02:00",
+      "next_run_at": "2026-09-28T10:10:37.105639+02:00",
+      "last_run_at": "2026-09-28T09:55:37.105639+02:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -482,7 +435,13 @@
       "workdir": null,
       "profile": null,
       "fire_claim": null,
-      "failure_streak": 0
+      "failure_streak": 0,
+      "last_dispatch": {
+        "scheduled_at": "2026-09-28T09:54:36.963097+02:00",
+        "dispatched_at": "2026-09-28T09:55:33.037249+02:00",
+        "lateness_seconds": 56.1,
+        "kind": "on_time"
+      }
     },
     {
       "id": "1bbecc075d3e",
@@ -493,7 +452,7 @@
       "model": null,
       "provider": null,
       "base_url": null,
-      "script": "sp500_sma200_check.py",
+      "script": "sp500_sma200_check.sh",
       "no_agent": true,
       "context_from": null,
       "schedule": {
@@ -504,17 +463,17 @@
       "schedule_display": "0 10 * * 1-5",
       "repeat": {
         "times": null,
-        "completed": 46
+        "completed": 73
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-06-18T10:13:44.309674+02:00",
-      "next_run_at": "2026-08-24T10:00:00+02:00",
-      "last_run_at": "2026-08-21T10:00:38.945934+02:00",
-      "last_status": "error",
-      "last_error": "Script exited with code 1\nstderr:\nTraceback (most recent call last):\n  File \"/root/.hermes/scripts/sp500_sma200_check.py\", line 8, in <module>\n    import yfinance as yf\nModuleNotFoundError: No module named 'yfinance'",
+      "next_run_at": "2026-09-29T10:00:00+02:00",
+      "last_run_at": "2026-09-28T10:00:37.347649+02:00",
+      "last_status": "ok",
+      "last_error": null,
       "last_delivery_error": null,
       "deliver": "origin",
       "origin": {
@@ -526,7 +485,14 @@
       "enabled_toolsets": null,
       "workdir": null,
       "profile": null,
-      "fire_claim": null
+      "fire_claim": null,
+      "failure_streak": 0,
+      "last_dispatch": {
+        "scheduled_at": "2026-09-28T10:00:00+02:00",
+        "dispatched_at": "2026-09-28T10:00:33.042145+02:00",
+        "lateness_seconds": 33.0,
+        "kind": "on_time"
+      }
     },
     {
       "id": "12fe050bd162",
@@ -534,8 +500,8 @@
       "prompt": "Führe den Micro-SaaS Pain Scan SLOT A aus. Lade ~/hermes/goals/scan_A_reddit_hn.txt und folge dem darin enthaltenen Workflow.\n\nNach dem Scan:\n- Extrahiere die Top-3 Pain-Kandidaten (höchster Schmerz × Machbarkeit Score)\n- Validiere jeden Kandidaten via last30days: lade skill_view(name='last30days'), suche auf X + GitHub + Web nach dem Thema\n- Prüfe: Gibt es aktuelle Diskussionen? Negative Erfahrungen? Bestätigung des Pains?\n- Füge die Validierung als \"📡 Last30days-Validierung\" an den Report an\n\nLiefere das Ergebnis als Telegram-Nachricht.",
       "skills": [],
       "skill": null,
-      "model": null,
-      "provider": null,
+      "model": "openai/gpt-5.6-luna",
+      "provider": "openrouter",
       "base_url": null,
       "script": null,
       "no_agent": false,
@@ -548,19 +514,19 @@
       "schedule_display": "0 14 * * 1",
       "repeat": {
         "times": null,
-        "completed": 10
+        "completed": 15
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-06-27T23:41:54.362055+02:00",
-      "next_run_at": "2026-08-24T14:00:00+02:00",
-      "last_run_at": "2026-08-17T14:14:10.783749+02:00",
+      "next_run_at": "2026-09-28T14:00:00+02:00",
+      "last_run_at": "2026-09-21T14:02:09.437385+02:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
-      "deliver": "origin",
+      "deliver": "local",
       "origin": null,
       "enabled_toolsets": [
         "web",
@@ -568,7 +534,10 @@
         "file"
       ],
       "workdir": null,
-      "fire_claim": null
+      "fire_claim": null,
+      "failure_streak": 0,
+      "provider_snapshot": null,
+      "model_snapshot": null
     },
     {
       "id": "345b36a7851b",
@@ -576,8 +545,8 @@
       "prompt": "Führe den Micro-SaaS Pain Scan SLOT B aus. Lade ~/hermes/goals/scan_B_reviews.txt und folge dem darin enthaltenen Workflow.\n\nNach dem Scan:\n- Extrahiere die Top-3 Pain-Kandidaten (höchster Schmerz × Machbarkeit Score)\n- Validiere jeden Kandidaten via last30days: lade skill_view(name='last30days'), suche auf X + GitHub + Web nach dem Thema\n- Prüfe: Gibt es aktuelle Diskussionen? Negative Erfahrungen? Bestätigung des Pains?\n- Füge die Validierung als \"📡 Last30days-Validierung\" an den Report an\n\nLiefere das Ergebnis als Telegram-Nachricht.",
       "skills": [],
       "skill": null,
-      "model": null,
-      "provider": null,
+      "model": "openai/gpt-5.6-luna",
+      "provider": "openrouter",
       "base_url": null,
       "script": null,
       "no_agent": false,
@@ -590,19 +559,19 @@
       "schedule_display": "0 14 * * 4",
       "repeat": {
         "times": null,
-        "completed": 9
+        "completed": 14
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-06-27T23:41:55.378747+02:00",
-      "next_run_at": "2026-08-27T14:00:00+02:00",
-      "last_run_at": "2026-08-20T14:04:20.469694+02:00",
+      "next_run_at": "2026-10-01T14:00:00+02:00",
+      "last_run_at": "2026-09-24T14:02:11.858449+02:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
-      "deliver": "origin",
+      "deliver": "local",
       "origin": null,
       "enabled_toolsets": [
         "web",
@@ -610,7 +579,16 @@
         "file"
       ],
       "workdir": null,
-      "fire_claim": null
+      "fire_claim": null,
+      "failure_streak": 0,
+      "provider_snapshot": null,
+      "model_snapshot": null,
+      "last_dispatch": {
+        "scheduled_at": "2026-09-24T14:00:00+02:00",
+        "dispatched_at": "2026-09-24T14:00:16.445641+02:00",
+        "lateness_seconds": 16.4,
+        "kind": "on_time"
+      }
     },
     {
       "id": "67cd99c7e54e",
@@ -618,8 +596,8 @@
       "prompt": "Führe den Micro-SaaS Pain Scan SLOT C aus. Lade ~/hermes/goals/scan_C_deep.txt und folge dem darin enthaltenen Workflow.\n\nNach dem Scan:\n- Extrahiere die Top-3 Pain-Kandidaten (höchster Schmerz × Machbarkeit Score)\n- Validiere jeden Kandidaten via last30days: lade skill_view(name='last30days'), suche auf X + GitHub + Web nach dem Thema\n- Prüfe: Gibt es aktuelle Diskussionen? Negative Erfahrungen? Bestätigung des Pains?\n- Füge die Validierung als \"📡 Last30days-Validierung\" an den Report an\n\nLiefere das Ergebnis als Telegram-Nachricht.",
       "skills": [],
       "skill": null,
-      "model": null,
-      "provider": null,
+      "model": "openai/gpt-5.6-luna",
+      "provider": "openrouter",
       "base_url": null,
       "script": null,
       "no_agent": false,
@@ -632,19 +610,19 @@
       "schedule_display": "0 14 * * 6",
       "repeat": {
         "times": null,
-        "completed": 8
+        "completed": 13
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-06-27T23:41:56.392843+02:00",
-      "next_run_at": "2026-08-29T14:00:00+02:00",
-      "last_run_at": "2026-08-22T14:04:52.067140+02:00",
+      "next_run_at": "2026-10-03T14:00:00+02:00",
+      "last_run_at": "2026-09-26T14:03:47.922839+02:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
-      "deliver": "origin",
+      "deliver": "local",
       "origin": null,
       "enabled_toolsets": [
         "web",
@@ -653,7 +631,15 @@
       ],
       "workdir": null,
       "fire_claim": null,
-      "failure_streak": 0
+      "failure_streak": 0,
+      "provider_snapshot": null,
+      "model_snapshot": null,
+      "last_dispatch": {
+        "scheduled_at": "2026-09-26T14:00:00+02:00",
+        "dispatched_at": "2026-09-26T14:00:16.443993+02:00",
+        "lateness_seconds": 16.4,
+        "kind": "on_time"
+      }
     },
     {
       "id": "e72e7a549b32",
@@ -661,8 +647,8 @@
       "prompt": "Führe den Micro-SaaS Pain DIGEST (Wochenübersicht) aus. Lade ~/hermes/goals/scan_digest.txt und folge dem darin enthaltenen /goal exakt. Scanne KEINE neuen Quellen — lies ausschließlich den 30-Tage-Cluster-Store unter ~/hermes/reports/. Prüfe die Action-Schwelle inklusive WETTBEWERB-Gate-Bestätigung und Wettbewerb-Recheck. Speichere Report als ~/hermes/reports/digest_$(date +%Y-W%V).md und sende kompakte Zusammenfassung per Telegram.",
       "skills": [],
       "skill": null,
-      "model": null,
-      "provider": null,
+      "model": "openai/gpt-5.6-luna",
+      "provider": "openrouter",
       "base_url": null,
       "script": null,
       "no_agent": false,
@@ -675,15 +661,15 @@
       "schedule_display": "0 18 * * 0",
       "repeat": {
         "times": null,
-        "completed": 9
+        "completed": 14
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-06-27T23:41:57.407254+02:00",
-      "next_run_at": "2026-08-30T18:00:00+02:00",
-      "last_run_at": "2026-08-23T18:04:52.224453+02:00",
+      "next_run_at": "2026-10-04T18:00:00+02:00",
+      "last_run_at": "2026-09-27T18:01:36.932980+02:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -695,7 +681,15 @@
       ],
       "workdir": null,
       "fire_claim": null,
-      "failure_streak": 0
+      "failure_streak": 0,
+      "provider_snapshot": null,
+      "model_snapshot": null,
+      "last_dispatch": {
+        "scheduled_at": "2026-09-27T18:00:00+02:00",
+        "dispatched_at": "2026-09-27T18:00:33.040262+02:00",
+        "lateness_seconds": 33.0,
+        "kind": "on_time"
+      }
     },
     {
       "id": "f9f061808aaf",
@@ -717,19 +711,19 @@
       "schedule_display": "0 14 * * 3,5",
       "repeat": {
         "times": null,
-        "completed": 16
+        "completed": 26
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-07-01T10:11:12.389582+02:00",
-      "next_run_at": "2026-08-26T14:00:00+02:00",
-      "last_run_at": "2026-08-21T14:12:11.789874+02:00",
+      "next_run_at": "2026-09-30T14:00:00+02:00",
+      "last_run_at": "2026-09-25T14:10:22.018257+02:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
-      "deliver": "telegram",
+      "deliver": "local",
       "origin": null,
       "enabled_toolsets": [
         "web",
@@ -737,7 +731,14 @@
         "file"
       ],
       "workdir": null,
-      "fire_claim": null
+      "fire_claim": null,
+      "failure_streak": 0,
+      "last_dispatch": {
+        "scheduled_at": "2026-09-25T14:00:00+02:00",
+        "dispatched_at": "2026-09-25T14:00:16.443452+02:00",
+        "lateness_seconds": 16.4,
+        "kind": "on_time"
+      }
     },
     {
       "id": "f7b44ebca4ee",
@@ -759,15 +760,15 @@
       "schedule_display": "0 10 * * 0",
       "repeat": {
         "times": null,
-        "completed": 8
+        "completed": 13
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-07-01T14:57:15.555474+02:00",
-      "next_run_at": "2026-08-30T10:00:00+02:00",
-      "last_run_at": "2026-08-23T10:00:49.570287+02:00",
+      "next_run_at": "2026-10-04T10:00:00+02:00",
+      "last_run_at": "2026-09-27T10:00:47.551070+02:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -776,7 +777,13 @@
       "enabled_toolsets": null,
       "workdir": null,
       "fire_claim": null,
-      "failure_streak": 0
+      "failure_streak": 0,
+      "last_dispatch": {
+        "scheduled_at": "2026-09-27T10:00:00+02:00",
+        "dispatched_at": "2026-09-27T10:00:33.039850+02:00",
+        "lateness_seconds": 33.0,
+        "kind": "on_time"
+      }
     },
     {
       "id": "5b2f87f87a1e",
@@ -802,15 +809,15 @@
       "schedule_display": "0 16 * * *",
       "repeat": {
         "times": null,
-        "completed": 42
+        "completed": 77
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-07-16T10:28:38.890635+02:00",
-      "next_run_at": "2026-08-24T16:00:00+02:00",
-      "last_run_at": "2026-08-23T16:06:22.074016+02:00",
+      "next_run_at": "2026-09-28T16:00:00+02:00",
+      "last_run_at": "2026-09-27T16:00:58.624610+02:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -823,7 +830,13 @@
       ],
       "workdir": null,
       "fire_claim": null,
-      "failure_streak": 0
+      "failure_streak": 0,
+      "last_dispatch": {
+        "scheduled_at": "2026-09-27T16:00:00+02:00",
+        "dispatched_at": "2026-09-27T16:00:33.037265+02:00",
+        "lateness_seconds": 33.0,
+        "kind": "on_time"
+      }
     },
     {
       "id": "13fc1d04c778",
@@ -847,15 +860,15 @@
       "schedule_display": "15 23 * * 1-5",
       "repeat": {
         "times": null,
-        "completed": 30
+        "completed": 55
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-07-20T12:28:17.413092+02:00",
-      "next_run_at": "2026-08-24T23:15:00+02:00",
-      "last_run_at": "2026-08-21T23:16:43.414165+02:00",
+      "next_run_at": "2026-09-28T23:15:00+02:00",
+      "last_run_at": "2026-09-25T23:15:58.727466+02:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -863,7 +876,14 @@
       "origin": null,
       "enabled_toolsets": null,
       "workdir": null,
-      "fire_claim": null
+      "fire_claim": null,
+      "failure_streak": 0,
+      "last_dispatch": {
+        "scheduled_at": "2026-09-25T23:15:00+02:00",
+        "dispatched_at": "2026-09-25T23:15:16.443144+02:00",
+        "lateness_seconds": 16.4,
+        "kind": "on_time"
+      }
     },
     {
       "id": "7e364ce47b69",
@@ -887,15 +907,15 @@
       "schedule_display": "30 22 * * 1-5",
       "repeat": {
         "times": null,
-        "completed": 9
+        "completed": 34
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-07-23T08:15:04.562410+02:00",
-      "next_run_at": "2026-08-24T22:30:00+02:00",
-      "last_run_at": "2026-08-21T22:30:50.520093+02:00",
+      "next_run_at": "2026-09-28T22:30:00+02:00",
+      "last_run_at": "2026-09-25T22:30:17.663560+02:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -909,20 +929,27 @@
       },
       "enabled_toolsets": null,
       "workdir": null,
-      "fire_claim": null
+      "fire_claim": null,
+      "failure_streak": 0,
+      "last_dispatch": {
+        "scheduled_at": "2026-09-25T22:30:00+02:00",
+        "dispatched_at": "2026-09-25T22:30:16.442669+02:00",
+        "lateness_seconds": 16.4,
+        "kind": "on_time"
+      }
     },
     {
       "id": "83634e101d3d",
       "name": "last30days-weekly",
-      "prompt": "Führe den Last30days Research-Skill aus für das Thema \"Micro-SaaS und AI Trends\".\n\n1. Lade den Skill via skill_view(name='last30days') und folge dem Workflow\n2. Lese die Themen aus den Dateien: \n   - ~/hermes/goals/scan_A_reddit_hn.txt (Reddit/HN Pain Points)\n   - ~/hermes/goals/scan_B_reviews.txt (App Reviews)\n   - ~/hermes/goals/scan_C_deep.txt (Tiefen-Recherche)\n   Extrahiere die 3 relevantesten Themen aus diesen Dateien.\n3. Generiere pro Thema 3-5 Such-Queries\n4. Suche parallel über Reddit, HN, Web, X, GitHub\n5. Synthetisiere einen Report im Format aus dem Skill\n6. Liefere das Ergebnis als Telegram-Report\n7. Speichere eine Kopie unter ~/.hermes/cron/output/last30days/$(date +%Y-%m-%d)-report.md\n\nWichtig: Max 30 Ergebnisse gesamt, fokussiert auf die letzten 30 Tage.",
+      "prompt": "Fuehre den Last30days Research-Skill aus fuer das Thema \"Micro-SaaS und AI Trends\".\n\n1. Lade den Skill via skill_view(name=\"last30days\") und folge dem Workflow\n2. Lese die Themen aus den Dateien:\n   - ~/hermes/goals/scan_A_reddit_hn.txt (Reddit/HN Pain Points)\n   - ~/hermes/goals/scan_B_reviews.txt (App Reviews)\n   - ~/hermes/goals/scan_C_deep.txt (Tiefen-Recherche)\n   Extrahiere die 3 relevantesten Themen aus diesen Dateien.\n3. Generiere pro Thema 3-5 Such-Queries\n4. Suche parallel ueber Reddit, HN, Web, X, GitHub\n5. Synthetisiere einen Report im Format aus dem Skill\n6. KEINE Telegram-Nachricht senden — speichere den Report NUR unter\n   ~/.hermes/cron/output/last30days/2026-08-27-report.md\n   und ergaenze ihn als Input-Kontext, damit der woechentliche MicroSaaS-DIGEST\n   ihn fuer die Implementierbarkeits-Bewertung mit heranziehen kann.",
       "skills": [
         "last30days"
       ],
       "skill": "last30days",
-      "model": "deepseek/deepseek-v4-flash",
+      "model": "openai/gpt-5.6-luna",
       "provider": "openrouter",
-      "provider_snapshot": "openrouter",
-      "model_snapshot": "deepseek/deepseek-v4-flash",
+      "provider_snapshot": null,
+      "model_snapshot": null,
       "base_url": null,
       "script": null,
       "no_agent": false,
@@ -935,19 +962,19 @@
       "schedule_display": "0 15 * * 0",
       "repeat": {
         "times": null,
-        "completed": 6
+        "completed": 11
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-07-24T08:52:21.256098+02:00",
-      "next_run_at": "2026-08-30T15:00:00+02:00",
-      "last_run_at": "2026-08-23T15:05:34.471682+02:00",
+      "next_run_at": "2026-10-04T15:00:00+02:00",
+      "last_run_at": "2026-09-27T15:02:11.595348+02:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
-      "deliver": "telegram",
+      "deliver": "local",
       "origin": {
         "platform": "telegram",
         "chat_id": "216051232",
@@ -961,7 +988,13 @@
       ],
       "workdir": null,
       "fire_claim": null,
-      "failure_streak": 0
+      "failure_streak": 0,
+      "last_dispatch": {
+        "scheduled_at": "2026-09-27T15:00:00+02:00",
+        "dispatched_at": "2026-09-27T15:00:33.039506+02:00",
+        "lateness_seconds": 33.0,
+        "kind": "on_time"
+      }
     },
     {
       "id": "fc93e6e82376",
@@ -987,15 +1020,15 @@
       "schedule_display": "0 8 * * 0",
       "repeat": {
         "times": null,
-        "completed": 5
+        "completed": 10
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-07-24T09:02:54.466386+02:00",
-      "next_run_at": "2026-08-30T08:00:00+02:00",
-      "last_run_at": "2026-08-23T08:07:00.486510+02:00",
+      "next_run_at": "2026-10-04T08:00:00+02:00",
+      "last_run_at": "2026-09-27T08:01:56.149913+02:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -1014,7 +1047,13 @@
       ],
       "workdir": null,
       "fire_claim": null,
-      "failure_streak": 0
+      "failure_streak": 0,
+      "last_dispatch": {
+        "scheduled_at": "2026-09-27T08:00:00+02:00",
+        "dispatched_at": "2026-09-27T08:00:33.038216+02:00",
+        "lateness_seconds": 33.0,
+        "kind": "on_time"
+      }
     },
     {
       "id": "f10b0e7c8d45",
@@ -1024,7 +1063,7 @@
         "last30days"
       ],
       "skill": "last30days",
-      "model": "deepseek/deepseek-v4-flash-0731",
+      "model": "openai/gpt-5.6-luna",
       "provider": "openrouter",
       "provider_snapshot": null,
       "model_snapshot": null,
@@ -1040,19 +1079,19 @@
       "schedule_display": "0 14 * * 3",
       "repeat": {
         "times": null,
-        "completed": 4
+        "completed": 9
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-07-26T22:05:46.398516+02:00",
-      "next_run_at": "2026-08-26T14:00:00+02:00",
-      "last_run_at": "2026-08-19T14:07:12.608785+02:00",
+      "next_run_at": "2026-09-30T14:00:00+02:00",
+      "last_run_at": "2026-09-23T14:02:43.851044+02:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
-      "deliver": "origin",
+      "deliver": "local",
       "origin": {
         "platform": "telegram",
         "chat_id": "216051232",
@@ -1066,7 +1105,14 @@
         "file"
       ],
       "workdir": null,
-      "fire_claim": null
+      "fire_claim": null,
+      "failure_streak": 0,
+      "last_dispatch": {
+        "scheduled_at": "2026-09-23T14:00:00+02:00",
+        "dispatched_at": "2026-09-23T14:00:16.446731+02:00",
+        "lateness_seconds": 16.4,
+        "kind": "on_time"
+      }
     },
     {
       "id": "446aad622784",
@@ -1090,15 +1136,15 @@
       "schedule_display": "15 22 * * 1-5",
       "repeat": {
         "times": null,
-        "completed": 19
+        "completed": 44
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-07-28T07:44:35.112901+02:00",
-      "next_run_at": "2026-08-24T22:15:00+02:00",
-      "last_run_at": "2026-08-21T22:15:50.368356+02:00",
+      "next_run_at": "2026-09-28T22:15:00+02:00",
+      "last_run_at": "2026-09-25T22:15:17.706655+02:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -1106,7 +1152,14 @@
       "origin": null,
       "enabled_toolsets": null,
       "workdir": null,
-      "fire_claim": null
+      "fire_claim": null,
+      "failure_streak": 0,
+      "last_dispatch": {
+        "scheduled_at": "2026-09-25T22:15:00+02:00",
+        "dispatched_at": "2026-09-25T22:15:16.445413+02:00",
+        "lateness_seconds": 16.4,
+        "kind": "on_time"
+      }
     },
     {
       "id": "53e28fdb66d4",
@@ -1130,15 +1183,15 @@
       "schedule_display": "20 22 * * 1-5",
       "repeat": {
         "times": null,
-        "completed": 16
+        "completed": 41
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-07-31T07:47:08.103222+02:00",
-      "next_run_at": "2026-08-24T22:20:00+02:00",
-      "last_run_at": "2026-08-21T22:20:50.327431+02:00",
+      "next_run_at": "2026-09-28T22:20:00+02:00",
+      "last_run_at": "2026-09-25T22:20:17.613935+02:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -1152,7 +1205,14 @@
       },
       "enabled_toolsets": null,
       "workdir": null,
-      "fire_claim": null
+      "fire_claim": null,
+      "failure_streak": 0,
+      "last_dispatch": {
+        "scheduled_at": "2026-09-25T22:20:00+02:00",
+        "dispatched_at": "2026-09-25T22:20:16.446355+02:00",
+        "lateness_seconds": 16.4,
+        "kind": "on_time"
+      }
     },
     {
       "id": "dda431ae4b55",
@@ -1178,15 +1238,15 @@
       "schedule_display": "30 9 * * 1-5",
       "repeat": {
         "times": null,
-        "completed": 14
+        "completed": 20
       },
-      "enabled": true,
-      "state": "scheduled",
-      "paused_at": null,
+      "enabled": false,
+      "state": "paused",
+      "paused_at": "2026-08-31T18:10:09.205476+02:00",
       "paused_reason": null,
       "created_at": "2026-08-04T06:54:45.372507+02:00",
-      "next_run_at": "2026-08-24T09:30:00+02:00",
-      "last_run_at": "2026-08-21T09:30:48.082489+02:00",
+      "next_run_at": "2026-09-01T09:30:00+02:00",
+      "last_run_at": "2026-08-31T09:30:53.767074+02:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -1197,46 +1257,8 @@
         "file"
       ],
       "workdir": null,
-      "fire_claim": null
-    },
-    {
-      "id": "0202606b73fd",
-      "name": "phase-3-review-trading",
-      "prompt": "Erinnere Martin an Phase 3 des Trading-Skill-Reviews vom 09.08.2026.\n\nPhase 3 ist fällig wenn Phase 1+2 nach 4 Wochen keine Verbesserung gebracht haben.\n\nWICHTIGER KONTEXT: Am 09.08.2026 wurde das Exit-System radikal umgebaut und ein unabhängiges Review mit glm-5.2 gemacht. ALLE historischen Daten (vor 09.08.) liefen mit dem ALTEN defekten Chandelier-System — das neue Turtle/Donchian-Primary-System ist erst seit dem 09.08. aktiv. Beim 4-Wochen-Check zählen also NUR die Trades/daten nach dem 09.08., nicht die Altlasten.\n\nHIER SIND DIE PHASE-3-DETAILS:\n\nPhase 3 — Radikaler Umbau (nur wenn Phase 1+2 nicht reichen)\n\nF. Das System auf das Nötigste reduzieren:\n- Heute 25 Scripts → 5 Scripts (scanner, pipeline, signal_manager, nightly_eval, dashboard)\n- Heute 30 Cron-Jobs → 8 Cron-Jobs\n- Heute 6 LLM-Rollen → 2 Rollen (Extractor + Validator)\n- 525 Zeilen Erklaerung.md → 150 Zeilen\n\nG. Alternative: Aufhören zu \"system-bauen\" und stattdessen als Decision Support traden:\n- 1x täglich Pipeline laufen lassen, Top-5-Signale manuell prüfen, Einstiege manuell setzen.\n\nAM 09.08.2026 UMGESETZTE FIXES (prüfe ob sie gewirkt haben):\n\nPhase 1A-I: Exit-Matrix get_exit_config() als einzige Quelle für SL/TP/partial/profit_lock. profit_lock_atr=1.0. Donchian-Primary aktiviert. signal_manager profit_lock-Gate eingebaut. active_exit_check respektiert Donchian-Präzedenz. Regime-Override übersteuert profit_lock nicht mehr.\n\nPhase 2: MIN_CONVICTION 0.55→0.60, min_confidence 0.80, Tech-Score-Schwelle 0.30→0.60, source_lifecycle schneller, backtest_gate.py neu, signal_source beim Entry + Winrate-nach-Quelle.\n\nTeil 2 (a+b): (a) Breakeven-Zug nach Partial-TP im Donchian-Primary-Modus ENTFERNT — Gewinner sollen laufen (Payoff war 0.95, Ziel 1.56). (b) Makro-Filter blockt NFP (erster Freitag) + Overnight-Gap-Filter verhindert Gap-Entries.\n\nCHECKLISTE für deinen Bericht an Martin (mit LIVE-DB-Daten, nicht Altlasten):\n1. Exit-Statistik seit 09.08.: Wie ist die SL_HIT/TP_HIT-Quoten? Hat sich die Exit-Quote vom historischen 0% TP verbessert?\n2. Payoff seit 09.08.: Sind Gewinner jetzt größer als Verlierer (Payoff > 1.0)? Das war das Kernproblem (0.95).\n3. Signal-Qualität: Winrate-nach-Quelle anzeigen (RSS/X/YouTube/Screener) — welche Komponente trägt, welche kostet?\n4. Tag-0-Verlierer: Gibt es seit dem Makro/Gap-Filter noch Tag-0-Stops?\n5. Wurden Entry-Starvation vermieden (min_confidence 0.80) ODER zu wenige Trades?\n\nSag Martin klar: \"Phase 3 ist fällig. Hier die Live-Daten seit 09.08.: [Exit-Quote, Payoff, Tag-0-Stops, Winrate-nach-Quelle]. Wenn das Kernproblem (Payoff < 1) nicht behoben ist, folgt der radikale Umbau oder der Decision-Support-Modus.\"\n\nVerwende Ton: direkt, kurz, Deutsch. Kein Smalltalk. Nenne konkrete Zahlen aus der DB.",
-      "skills": [],
-      "skill": null,
-      "model": null,
-      "provider": null,
-      "provider_snapshot": "openrouter",
-      "model_snapshot": "deepseek/deepseek-v4-flash-0731",
-      "base_url": null,
-      "script": null,
-      "no_agent": false,
-      "context_from": null,
-      "schedule": {
-        "kind": "cron",
-        "expr": "0 9 6 9 *",
-        "display": "0 9 6 9 *"
-      },
-      "schedule_display": "0 9 6 9 *",
-      "repeat": {
-        "times": 1,
-        "completed": 0
-      },
-      "enabled": true,
-      "state": "scheduled",
-      "paused_at": null,
-      "paused_reason": null,
-      "created_at": "2026-08-09T01:27:52.005281+02:00",
-      "next_run_at": "2026-09-06T09:00:00+02:00",
-      "last_run_at": null,
-      "last_status": null,
-      "last_error": null,
-      "last_delivery_error": null,
-      "deliver": "telegram",
-      "origin": null,
-      "enabled_toolsets": null,
-      "workdir": null
+      "fire_claim": null,
+      "failure_streak": 0
     },
     {
       "id": "37d505cbc47b",
@@ -1260,15 +1282,15 @@
       "schedule_display": "40 22 * * 1-5",
       "repeat": {
         "times": null,
-        "completed": 5
+        "completed": 30
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-08-16T09:18:06.685757+02:00",
-      "next_run_at": "2026-08-24T22:40:00+02:00",
-      "last_run_at": "2026-08-21T22:40:50.763168+02:00",
+      "next_run_at": "2026-09-28T22:40:00+02:00",
+      "last_run_at": "2026-09-25T22:40:17.794946+02:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -1282,7 +1304,14 @@
       },
       "enabled_toolsets": null,
       "workdir": null,
-      "fire_claim": null
+      "fire_claim": null,
+      "failure_streak": 0,
+      "last_dispatch": {
+        "scheduled_at": "2026-09-25T22:40:00+02:00",
+        "dispatched_at": "2026-09-25T22:40:16.442509+02:00",
+        "lateness_seconds": 16.4,
+        "kind": "on_time"
+      }
     },
     {
       "id": "310dfa0df1a6",
@@ -1306,15 +1335,15 @@
       "schedule_display": "0 7 * * 0",
       "repeat": {
         "times": null,
-        "completed": 1
+        "completed": 6
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-08-16T09:21:14.943961+02:00",
-      "next_run_at": "2026-08-30T07:00:00+02:00",
-      "last_run_at": "2026-08-23T07:00:36.897020+02:00",
+      "next_run_at": "2026-10-04T07:00:00+02:00",
+      "last_run_at": "2026-09-27T07:00:36.923958+02:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -1329,7 +1358,13 @@
       "enabled_toolsets": null,
       "workdir": null,
       "fire_claim": null,
-      "failure_streak": 0
+      "failure_streak": 0,
+      "last_dispatch": {
+        "scheduled_at": "2026-09-27T07:00:00+02:00",
+        "dispatched_at": "2026-09-27T07:00:33.038714+02:00",
+        "lateness_seconds": 33.0,
+        "kind": "on_time"
+      }
     },
     {
       "id": "866647ef510c",
@@ -1347,21 +1382,21 @@
       "context_from": null,
       "schedule": {
         "kind": "cron",
-        "expr": "*/15 9-21 * * 1-5",
-        "display": "*/15 9-21 * * 1-5"
+        "expr": "45 17 * * 1-5",
+        "display": "45 17 * * 1-5"
       },
       "schedule_display": "*/15 9-21 * * 1-5",
       "repeat": {
         "times": null,
-        "completed": 104
+        "completed": 384
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-08-19T23:10:56.237761+02:00",
-      "next_run_at": "2026-08-24T09:00:00+02:00",
-      "last_run_at": "2026-08-21T21:45:54.376139+02:00",
+      "next_run_at": "2026-09-28T17:45:00+02:00",
+      "last_run_at": "2026-09-25T17:46:24.610696+02:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -1375,7 +1410,14 @@
       },
       "enabled_toolsets": null,
       "workdir": null,
-      "fire_claim": null
+      "fire_claim": null,
+      "failure_streak": 0,
+      "last_dispatch": {
+        "scheduled_at": "2026-09-25T17:45:00+02:00",
+        "dispatched_at": "2026-09-25T17:45:16.445740+02:00",
+        "lateness_seconds": 16.4,
+        "kind": "on_time"
+      }
     },
     {
       "id": "4151bc36d2f6",
@@ -1399,15 +1441,15 @@
       "schedule_display": "30 22 * * 0",
       "repeat": {
         "times": null,
-        "completed": 1
+        "completed": 5
       },
-      "enabled": true,
-      "state": "scheduled",
-      "paused_at": null,
+      "enabled": false,
+      "state": "paused",
+      "paused_at": "2026-09-24T16:01:46.614315+02:00",
       "paused_reason": null,
       "created_at": "2026-08-19T23:10:57.253803+02:00",
-      "next_run_at": "2026-08-30T22:30:00+02:00",
-      "last_run_at": "2026-08-23T22:32:28.680921+02:00",
+      "next_run_at": "2026-09-27T22:30:00+02:00",
+      "last_run_at": "2026-09-20T22:30:34.374093+02:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -1446,15 +1488,15 @@
       "schedule_display": "15 22 * * 1-5",
       "repeat": {
         "times": null,
-        "completed": 2
+        "completed": 27
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-08-19T23:11:01.880659+02:00",
-      "next_run_at": "2026-08-24T22:15:00+02:00",
-      "last_run_at": "2026-08-21T22:15:50.509368+02:00",
+      "next_run_at": "2026-09-28T22:15:00+02:00",
+      "last_run_at": "2026-09-25T22:15:19.657457+02:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -1468,8 +1510,179 @@
       },
       "enabled_toolsets": null,
       "workdir": null,
-      "fire_claim": null
+      "fire_claim": null,
+      "failure_streak": 0,
+      "last_dispatch": {
+        "scheduled_at": "2026-09-25T22:15:00+02:00",
+        "dispatched_at": "2026-09-25T22:15:16.445413+02:00",
+        "lateness_seconds": 16.4,
+        "kind": "on_time"
+      }
+    },
+    {
+      "id": "b907fdfdba5c",
+      "name": "weekly-strategy-review",
+      "prompt": "Wöchentlicher Trading-Strategie-Review (no_agent): führt weekly_strategy_review.sh aus, das die Post-Umbau-Kennzahlen (SL_HIT-Quote, Payoff, EV/Trade, Momentum-Gate-Blockaden) aus der Trading-DB zieht und den Report in den Trading-Channel sendet.",
+      "skills": [],
+      "skill": null,
+      "model": null,
+      "provider": null,
+      "provider_snapshot": null,
+      "model_snapshot": null,
+      "base_url": null,
+      "script": "weekly_strategy_review.sh",
+      "no_agent": true,
+      "monitor_script": null,
+      "monitor_url": null,
+      "monitor_state": null,
+      "context_from": null,
+      "schedule": {
+        "kind": "cron",
+        "expr": "0 9 * * 0",
+        "display": "0 9 * * 0"
+      },
+      "schedule_display": "0 9 * * 0",
+      "repeat": {
+        "times": null,
+        "completed": 5
+      },
+      "enabled": true,
+      "state": "scheduled",
+      "paused_at": null,
+      "paused_reason": null,
+      "created_at": "2026-08-27T09:36:43.294102+02:00",
+      "next_run_at": "2026-10-04T09:00:00+02:00",
+      "last_run_at": "2026-09-27T09:00:35.924721+02:00",
+      "last_status": "ok",
+      "last_error": null,
+      "last_delivery_error": null,
+      "failure_streak": 0,
+      "deliver": "origin",
+      "origin": {
+        "platform": "telegram",
+        "chat_id": "216051232",
+        "chat_name": "Martin",
+        "thread_id": null,
+        "user_id": "216051232",
+        "scope_id": null
+      },
+      "enabled_toolsets": null,
+      "workdir": null,
+      "fire_claim": null,
+      "last_dispatch": {
+        "scheduled_at": "2026-09-27T09:00:00+02:00",
+        "dispatched_at": "2026-09-27T09:00:33.036829+02:00",
+        "lateness_seconds": 33.0,
+        "kind": "on_time"
+      }
+    },
+    {
+      "id": "5609b66d0e11",
+      "name": "pipeline-timing-check",
+      "prompt": "Pipeline-Timing-Check (no_agent): meldet nur wenn die KI-Analyse/Pipeline nach dem Haertungs-Fix (Task 4) zu spaet (>05:00) fertig war oder der Lauf fehlt — sonst silent. AC-7-Live-Beweis.",
+      "skills": [],
+      "skill": null,
+      "model": null,
+      "provider": null,
+      "provider_snapshot": null,
+      "model_snapshot": null,
+      "base_url": null,
+      "script": "pipeline_timing_check.sh",
+      "no_agent": true,
+      "monitor_script": null,
+      "monitor_url": null,
+      "monitor_state": null,
+      "context_from": null,
+      "schedule": {
+        "kind": "cron",
+        "expr": "0 8 * * 1-5",
+        "display": "0 8 * * 1-5"
+      },
+      "schedule_display": "0 8 * * 1-5",
+      "repeat": {
+        "times": null,
+        "completed": 22
+      },
+      "enabled": true,
+      "state": "scheduled",
+      "paused_at": null,
+      "paused_reason": null,
+      "created_at": "2026-08-27T12:29:07.809430+02:00",
+      "next_run_at": "2026-09-29T08:00:00+02:00",
+      "last_run_at": "2026-09-28T08:00:34.432820+02:00",
+      "last_status": "ok",
+      "last_error": null,
+      "last_delivery_error": null,
+      "failure_streak": 0,
+      "deliver": "origin",
+      "origin": {
+        "platform": "telegram",
+        "chat_id": "216051232",
+        "chat_name": "Martin",
+        "thread_id": null,
+        "user_id": "216051232",
+        "scope_id": null
+      },
+      "enabled_toolsets": null,
+      "workdir": null,
+      "fire_claim": null,
+      "last_dispatch": {
+        "scheduled_at": "2026-09-28T08:00:00+02:00",
+        "dispatched_at": "2026-09-28T08:00:33.037267+02:00",
+        "lateness_seconds": 33.0,
+        "kind": "on_time"
+      }
+    },
+    {
+      "id": "4b9cc195a9ac",
+      "name": "dataviz-review-weekly",
+      "prompt": "Reviewer-QA fuer den woechentlichen Dataviz-Ideen-Report.\n\nDu bist der REVIEWER. Martin hat die Dataviz-Ideengenerierung laufen lassen (Mi+Fr), die nur Reports schreibt und NICHT mehr direkt liefert. Deine Aufgabe: Schaue als Qualitaetskontrolle ueber den neuesten Report und liefere Martin das finale, gepruefte Ergebnis — einmal pro Woche.\n\n1. Finde den neuesten Dataviz-Report:\n   ls -t ~/hermes/reports/dataviz_ideen_*.md | head -1\n   und lies ihn vollstaendig.\n\n2. REVIEWE jede der ~10 Ideen kritisch. Sei anspruchsvoll, kein Ja-Sager:\n   - Sind die angeblichen Datenquellen real und frei zugaenglich (keine erfundenen Zahlen/Tabellen)?\n   - Trifft jede Idee einen der 4 Hooks: Identitaet / Vergleich / Neugier / Ueberraschung? Chart ohne Haltung -> streichen.\n   - Ist der 'Warum jetzt'-Bezug wirklich aktuell (nicht uralt)?\n   - Ist der Caption-Hook knackig und teilbar?\n\n3. LIESSE die Liste auf die staerksten Ideen (Ziel: Top 5, ehrlich auch weniger wenn schwach).\n   Streiche schwache/derivative Ideen und erfundene Quellen.\n\n4. AUSGABE als kompakte Telegram-Nachricht an Martin:\n   \"📊 DATAVIZ REVIEW — KW YY: N gepruefte Ideen\"\n   Je Top-Idee (kompakt):\n   - Titel/Hook (1 Zeile)\n   - Datenquelle (kondensiert)\n   - Warum jetzt (kurz)\n   - Score Hook/Daten/Aktualitaet\n   - Caption (1 Zeile)\n   Markiere klar, welche Ideen du VERWORFEN hast und warum (1 niedrige Zeile pro verworfener Bank).\n\n5. Speichere die Vollversion der Review als\n   ~/hermes/reports/dataviz_review_YYYY-WW.md\n   Keine erfundenen Fakten. Sei ehrlich und kritisch — Qualitaet > Quantitaet.",
+      "skills": [],
+      "skill": null,
+      "model": "qwen/qwen3.8-27b",
+      "provider": "openrouter",
+      "provider_snapshot": null,
+      "model_snapshot": null,
+      "base_url": null,
+      "script": null,
+      "no_agent": false,
+      "monitor_script": null,
+      "monitor_url": null,
+      "monitor_state": null,
+      "context_from": null,
+      "schedule": {
+        "kind": "cron",
+        "expr": "0 17 * * 0",
+        "display": "0 17 * * 0"
+      },
+      "schedule_display": "0 17 * * 0",
+      "repeat": {
+        "times": null,
+        "completed": 5
+      },
+      "enabled": true,
+      "state": "scheduled",
+      "paused_at": null,
+      "paused_reason": null,
+      "created_at": "2026-08-27T20:21:09.592909+02:00",
+      "next_run_at": "2026-10-04T17:00:00+02:00",
+      "last_run_at": "2026-09-27T17:06:16.717706+02:00",
+      "last_status": "ok",
+      "last_error": null,
+      "last_delivery_error": null,
+      "failure_streak": 0,
+      "deliver": "telegram",
+      "origin": null,
+      "enabled_toolsets": null,
+      "workdir": null,
+      "fire_claim": null,
+      "last_dispatch": {
+        "scheduled_at": "2026-09-27T17:00:00+02:00",
+        "dispatched_at": "2026-09-27T17:00:33.039506+02:00",
+        "lateness_seconds": 33.0,
+        "kind": "on_time"
+      }
     }
   ],
-  "updated_at": "2026-08-24T08:04:24.423203+02:00"
+  "updated_at": "2026-09-28T10:04:34.324212+02:00"
 }

@@ -89,7 +89,10 @@ def main():
             "SELECT pnl_eur FROM positions WHERE status = 'open'"
         ).fetchall()
     )
-    portfolio_value = cash + open_pos_val + open_pnl
+    # FIX 28.09.2026: open_pnl NICHT addieren — der Mark-to-Market-Wert aus
+    # open_positions_market_value_eur enthaelt den offenen Gewinn/Verlust bereits
+    # (vorher doppelt gezaehlt). Gleiche Rechnung wie signal_manager.check_drawdown.
+    portfolio_value = cash + open_pos_val
 
     # All-Time-High
     ath_row = con.execute(
@@ -121,21 +124,29 @@ def main():
             _set_system_state(
                 con, "reactivation_eligible_at", eligible.isoformat()
             )
-            action = "AUTO-PAUSE aktiviert. Briefings pausiert. 72h Cooling-Off."
+            # 28.09.2026: system_paused liest nur dashboard_thematic — der Handel
+            # laeuft weiter und wird ueber config.drawdown_params gebremst.
+            action = "Status 'pausiert' (nur Thematic-Dashboard). 72h Cooling-Off."
             _send_telegram(
-                f"🛑 <b>AUTO-PAUSE: Portfolio Drawdown -20%</b>\n"
+                f"🛑 <b>Portfolio Drawdown -20%</b>\n"
                 f"Portfolio: {portfolio_value:.2f}€ | ATH: {ath:.2f}€\n"
                 f"Drawdown: {dd_pct:.1%}\n\n"
-                f"Reaktivierung fruehestens: {eligible.strftime('%d.%m.%Y %H:%M')}"
+                f"Thematic-Dashboard auf 'pausiert' (bis fruehestens "
+                f"{eligible.strftime('%d.%m.%Y %H:%M')}). Entries steuert weiter die "
+                f"Drawdown-Matrix im signal_manager (ab -25 %: alle Positionen schliessen)."
             )
     elif dd_pct <= -hard:
         trigger = "hard"
-        action = "Hard Restriction: Alle neuen Kaeufe blockiert, Trailing Stops verschaerft."
+        # 28.09.2026: Text korrigiert — dieses Skript blockiert nichts. Die
+        # wirksame Bremse ist config.drawdown_params (15-25 %: Size 65 %,
+        # Tech-Schwelle 0,75, max. 6 Positionen).
+        action = "Hard: Drawdown-Matrix aktiv (Size 65 %, max. 6 Pos.)."
         _send_telegram(
-            f"⚠ <b>HARD RESTRICTION: Portfolio Drawdown -15%</b>\n"
+            f"⚠ <b>Portfolio Drawdown -15%</b>\n"
             f"Portfolio: {portfolio_value:.2f}€ | ATH: {ath:.2f}€\n"
             f"Drawdown: {dd_pct:.1%}\n\n"
-            f"Alle neuen Kaeufe blockiert."
+            f"Drawdown-Matrix im signal_manager: Size 65 %, Tech-Schwelle 0,75, "
+            f"max. 6 Positionen."
         )
     elif dd_pct <= -soft:
         trigger = "soft"

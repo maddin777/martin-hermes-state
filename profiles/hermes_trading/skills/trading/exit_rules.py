@@ -18,6 +18,60 @@ def time_stop_due(entry_date: str, limit: int = 7, as_of: date | None = None) ->
     return trading_days_held(entry_date, as_of) >= limit
 
 
+# ── YT-Fade (28.09.2026) ────────────────────────────────────────────────────
+# YouTube-Long-Kandidaten werden geshortet und nur ueber Haltedauer bzw. einen
+# weiten Notfallstop geschlossen. Probe 28.09. auf 49 YT-Long-Entries
+# (gespiegelt): ATR-Stops und Stops unter ~+25 % zerstoeren den Effekt, weil
+# die Titel vor dem Abverkauf erst noch 10-25 % steigen. Der Notfallstop
+# (yt_fade_stop_pct, Nutzer-Entscheidung 28.09.: +40 %) kappt nur die
+# Extremlaeufer (2 von 49) und begrenzt den Verlust pro Position; geprueft
+# wird auf dem Kurs zum Check-Zeitpunkt, nicht auf dem Intraday-Hoch — so
+# arbeitet auch der Live-Check. Weder Trail noch Tech-Exit noch der globale
+# Time-Stop gelten; beide Exit-Engines rufen fade_exit_decision() und sonst
+# nichts, das Schattenbuch simulate_fade_close().
+YT_FADE_MODE = "yt_fade_40d"
+# 1x-Short-Zertifikat: bei Kursverdopplung wertlos — mehr als 100 % kann die
+# Position auch nach einer Kursluecke nicht verlieren.
+FADE_MAX_LOSS_MULT = 2.0
+
+
+def _fade_fill(entry: float, price: float) -> float:
+    return min(price, entry * FADE_MAX_LOSS_MULT)
+
+
+def fade_exit_decision(pos, current_price: float, hold_days: int = 40):
+    """(reason, exit_price) fuer eine YT-Fade-Position, sonst (None, None).
+
+    FADE_STOP:      Kurs auf/ueber stop_loss (Notfallstop). Fill zum aktuellen
+                    Kurs, nicht zum Stop-Level — nach einer Luecke wird
+                    schlechter ausgefuehrt; gedeckelt bei Totalverlust.
+    FADE_TIME_EXIT: Haltedauer erreicht — Fill zum aktuellen Kurs.
+    """
+    sl = pos["stop_loss"]
+    if sl and current_price >= sl:
+        return "FADE_STOP", _fade_fill(pos["entry_price"], current_price)
+    if time_stop_due(pos["entry_date"], hold_days):
+        return "FADE_TIME_EXIT", _fade_fill(pos["entry_price"], current_price)
+    return None, None
+
+
+def simulate_fade_close(bars: list, entry_idx: int, entry: float,
+                        stop_pct: float, hold_bars: int = 40):
+    """Dieselbe Regel wie fade_exit_decision auf Tages-Schlusskursen.
+
+    Returns (reason, exit_price, bars_held) oder (None, None, 0), wenn der
+    Pfad noch keine hold_bars Bars nach dem Entry hat.
+    """
+    stop = entry * (1 + stop_pct)
+    path = bars[entry_idx + 1: entry_idx + 1 + hold_bars]
+    for n, b in enumerate(path, 1):
+        if b["close"] >= stop:
+            return "FADE_STOP", _fade_fill(entry, b["close"]), n
+    if len(path) < hold_bars:
+        return None, None, 0
+    return "FADE_TIME_EXIT", _fade_fill(entry, path[-1]["close"]), hold_bars
+
+
 def initial_stop(entry: float, atr_at_entry: float, direction: str, sl_mult: float) -> float:
     risk = atr_at_entry * sl_mult
     return entry - risk if direction == "LONG" else entry + risk

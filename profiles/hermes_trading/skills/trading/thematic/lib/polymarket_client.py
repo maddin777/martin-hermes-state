@@ -5,7 +5,17 @@ Importiert direkt aus dem Hermes-Research-Skill statt eigene Implementierung.
 import sys
 import json
 
-HERMES_PM_PATH = "/root/.hermes/hermes-agent/skills/research/polymarket/scripts"
+import os
+
+# FIX 28.09.2026: der alte Pfad im hermes-agent existiert nach einem Agent-Update
+# nicht mehr (ModuleNotFoundError 'polymarket' -> thesis_monitor und
+# prediction_market_scanner starteten nicht). Erster vorhandener Pfad gewinnt.
+_PM_CANDIDATES = (
+    "/root/.hermes/profiles/hermes_trading/skills/research/polymarket/scripts",
+    "/root/.hermes/hermes-agent/optional-skills/finance/polymarket/scripts",
+    "/root/.hermes/hermes-agent/skills/research/polymarket/scripts",
+)
+HERMES_PM_PATH = next((p for p in _PM_CANDIDATES if os.path.isdir(p)), _PM_CANDIDATES[0])
 if HERMES_PM_PATH not in sys.path:
     sys.path.insert(0, HERMES_PM_PATH)
 
