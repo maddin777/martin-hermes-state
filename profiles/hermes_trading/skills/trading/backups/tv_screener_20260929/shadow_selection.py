@@ -40,10 +40,6 @@ Hypothesen
                  Wahrscheinlichkeit, dass das Take-Profit vor dem Stop-Loss erreicht wird.
                  Grundmenge = ganzer Topf, nicht Top-N (der Rangvergleich braucht ihn).
                  Nur aktiv mit JEV_SHADOW=on (Default aus), keinerlei Einfluss auf den Handel.
-  h_tv_screener  Dieselbe Screener-Logik wie screener_source (Stage 2), aber Stage 1
-                 ueber den TradingView-Scanner: ganzer US-Markt (~4.200 Aktien) statt
-                 des festen 546er-Universums. Frage: bringt die Breite bessere
-                 Kandidaten? Fail-open — faellt der Scanner aus, entfaellt nur diese Spur.
 
 Aufruf
 ------
@@ -52,7 +48,6 @@ Aufruf
     python3 shadow_selection.py --evaluate  # nur bewerten
     python3 shadow_selection.py --report    # nur Bericht
     python3 shadow_selection.py --jev-dry-run  # h_jev: Zustaende + Kosten zeigen, nichts schreiben
-    python3 shadow_selection.py --tv-dry-run   # h_tv_screener: Auswahl zeigen, nichts schreiben
 """
 import argparse
 import json
@@ -83,7 +78,7 @@ TOP_N = 5
 HORIZON_DAYS = 21
 
 HYPOTHESES = ("live_baseline", "live_baseline_v1", "h1_momentum", "h2_pead",
-              "h3_crowding", "h_jev", "h_tv_screener")
+              "h3_crowding", "h_jev")
 
 # Ab diesem Auswahldatum shortet der Live-Entry YouTube-LONG-Kandidaten
 # (YT-Fade, exit_mode yt_fade_40d). live_baseline bildet das ab; die Zeilen
@@ -207,8 +202,7 @@ def record(con, hypothesis, today, picks):
             log.warning("prefetch fehlgeschlagen: %s", e)
 
     for rank, p in enumerate(picks, 1):
-        # h_tv_screener: Titel ausserhalb von companies bringen den yfinance-Sektor mit
-        sector = p.get("sector") or _sector_of(con, p["ticker"])
+        sector = _sector_of(con, p["ticker"])
         lv = _levels(con, p["ticker"], p["direction"], sector)
         if not lv:
             skipped += 1
@@ -557,251 +551,6 @@ def jev_dry_run(con, sample=3):
 
 # ── Bewertung ───────────────────────────────────────────────────────────────
 
-# ── h_tv_screener: TradingView-Scanner als Stage 1 (29.09.2026) ────────────
-# Stage 1 = EIN Aufruf an den TradingView-Scanner (Paket tradingview-screener,
-# inoffizieller Endpoint, kein Login), serverseitig grob vorgefiltert. Die
-# Schwellen sind bewusst lockerer als die von Stage 2 (TradingView rechnet das
-# 52W-Hoch intraday, Perf.3M ist nur ~63 Handelstage): Stage 1 soll nichts
-# verlieren, was Stage 2 nehmen wuerde. Stage 2 = screener_source.screen_stage2,
-# unveraendert. Pools zusammen = MAX_STAGE2_CANDIDATES (400er Kurs-Cache).
-TV_EXCHANGES = ["NASDAQ", "NYSE", "AMEX"]
-TV_MIN_PRICE = 2.0
-TV_MIN_TURNOVER_USD = 600_000      # ~ screener_source.MIN_STAGE1_TURNOVER_EUR
-TV_LONG_MAX_BELOW_HIGH = 0.20      # Stage 2: 15 % unter 52W-Hoch (Schlusskurs)
-TV_SHORT_ABOVE_LOW = (0.03, 0.20)  # Stage 2: 5-15 % ueber 52W-Tief
-TV_REL_SLACK = 5.0                 # Prozentpunkte Spielraum auf die relative Staerke
-TV_MAX_LONG_POOL = 300
-TV_MAX_SHORT_POOL = 100
-TV_CHUNK = 50
-TV_FIELDS = ["name", "close", "average_volume_30d_calc", "price_52_week_high",
-             "price_52_week_low", "Perf.3M"]
-
-
-def tv_to_yf(symbol):
-    """TradingView-Kuerzel -> yfinance ('BRK.B' -> 'BRK-B')."""
-    return str(symbol).strip().upper().replace(".", "-").replace("/", "-")
-
-
-def tv_fetch_universe():
-    """Alle primaer gelisteten US-Stammaktien ab TV_MIN_PRICE (Netzwerk)."""
-    from tradingview_screener import Query, col
-    _n, df = (Query().set_markets("america")
-              .select(*TV_FIELDS)
-              .where(col("type") == "stock", col("subtype") == "common",
-                     col("exchange").isin(TV_EXCHANGES), col("is_primary") == True,  # noqa: E712
-                     col("close") >= TV_MIN_PRICE)
-              .order_by("market_cap_basic", ascending=False)
-              .limit(6000)
-              .get_scanner_data())
-    return df.to_dict("records")
-
-
-def tv_stage1(rows, bench_ret):
-    """Reine Funktion: Long- und Short-Pool (yfinance-Ticker) nach Umsatz sortiert."""
-    longs, shorts = [], []
-    for r in rows:
-        try:
-            close = float(r["close"])
-            turnover = close * float(r["average_volume_30d_calc"])
-            hi, lo = float(r["price_52_week_high"]), float(r["price_52_week_low"])
-            perf = float(r["Perf.3M"])
-        except (TypeError, ValueError, KeyError):
-            continue
-        if perf != perf or turnover != turnover:      # NaN
-            continue
-        if not (close >= TV_MIN_PRICE and turnover >= TV_MIN_TURNOVER_USD and hi > 0 and lo > 0):
-            continue
-        rel = perf - bench_ret
-        t = tv_to_yf(r["name"])
-        if close >= hi * (1 - TV_LONG_MAX_BELOW_HIGH) and rel >= -TV_REL_SLACK:
-            longs.append((turnover, t))
-        elif (lo * (1 + TV_SHORT_ABOVE_LOW[0]) <= close <= lo * (1 + TV_SHORT_ABOVE_LOW[1])
-              and rel <= TV_REL_SLACK):
-            shorts.append((turnover, t))
-    longs.sort(key=lambda x: (-x[0], x[1]))
-    shorts.sort(key=lambda x: (-x[0], x[1]))
-    return ([t for _, t in longs[:TV_MAX_LONG_POOL]],
-            [t for _, t in shorts[:TV_MAX_SHORT_POOL]])
-
-
-def tv_screener_picks(verbose=True):
-    """Stage 1 (TradingView) + Stage 2 (screener_source) -> Top-N-Picks.
-
-    Fail-open: jeder Fehler -> [] mit Warnung, der Rest der Pipeline laeuft.
-    """
-    try:
-        import screener_source as sc
-        rows = tv_fetch_universe()
-    except Exception as e:
-        print(f"  ⚠ h_tv_screener: TradingView-Scanner nicht erreichbar ({e}) – übersprungen", flush=True)
-        log.warning("h_tv_screener Stage 1 fehlgeschlagen: %s", e)
-        return []
-    if not rows:
-        print("  ⚠ h_tv_screener: Scanner lieferte 0 Titel – übersprungen", flush=True)
-        return []
-    try:
-        regime, vix, overlay = sc._current_regime()
-        p = sc.regime_params(regime, vix, overlay)
-        bench_ret = sc._benchmark_return(sc.REL_STRENGTH_LOOKBACK)
-        long_pool, short_pool = tv_stage1(rows, bench_ret)
-        stage2 = list(dict.fromkeys(long_pool + short_pool))
-        for i in range(0, len(stage2), TV_CHUNK):
-            prefetch_prices(stage2[i:i + TV_CHUNK])
-        longs, shorts = sc.screen_stage2(stage2, {t: "tradingview" for t in stage2}, p, bench_ret)
-        selected = sorted(sc.select_candidates(longs + shorts, p),
-                          key=lambda c: c["composite"], reverse=True)[:TOP_N]
-    except Exception as e:
-        print(f"  ⚠ h_tv_screener: Stage 2 fehlgeschlagen ({e}) – übersprungen", flush=True)
-        log.warning("h_tv_screener Stage 2 fehlgeschlagen: %s", e)
-        return []
-    if verbose:
-        print(f"  h_tv_screener  TradingView {len(rows)} Titel → Stage 1 "
-              f"{len(long_pool)} long / {len(short_pool)} short → Stage 2 "
-              f"{len(longs)} long / {len(shorts)} short → {len(selected)} gewählt", flush=True)
-    picks = []
-    for c in selected:
-        info = c.get("info") or {}
-        picks.append({"ticker": c["ticker"],
-                      "name": info.get("shortName") or info.get("longName") or c["ticker"],
-                      "direction": c["direction"].upper(),
-                      "score": round(c["composite"], 3),
-                      "sector": info.get("sector"),
-                      "rationale": "tv: " + c["reason"]})
-    return picks
-
-
-# ── Jev-Veto als Annotation auf die h_tv_screener-Picks (29.09.2026) ──────── jev-tv-veto-20260929
-# Probe 29.09. (scripts/jev_veto_probe.py, Erklaerung.md): Jev erkennt aus Schlagzeilen Ereignisse, die ein
-# Kurs-Setup entwerten, fast so gut wie DeepSeek (Recall 85 %, Precision 79 %) und ist gut kalibriert. Am
-# Stichtag lag aber kein Veto-Titel in den Top-5. Deshalb NUR Annotation: Auswahl und Reihenfolge bleiben
-# unveraendert, die Begruendung bekommt "veto=<kategorie>;p=<P(Veto)>;m=<modell>" (P(Veto) = 1 - P(none)),
-# "veto=no_news" oder "veto=n/a" (Fehler). Kategorien und Fragetext identisch zur Probe — nicht aendern,
-# sonst gelten deren Messwerte nicht mehr.
-JEV_VETO_BUDGET_ROLE = "jev_tv_veto"
-JEV_VETO_NEWS_DAYS = 14
-JEV_VETO_MAX_NEWS = 12
-JEV_VETO_FLAG_P = 0.5        # nur fuer die Konsolenmeldung; gespeichert wird p selbst
-JEV_VETO_CATS = {
-    "acquisition_pending": "the company itself has agreed to be acquired or taken private, or is the target of a "
-                           "pending tender offer or merger (it is the TARGET, not the buyer)",
-    "offering_dilution": "the company announced or priced a share offering, secondary sale by the company, "
-                         "convertible notes, an at-the-market program or another issuance that dilutes shareholders",
-    "legal_accounting": "a credible, company-specific problem: regulator or government investigation, fraud "
-                        "allegation, short-seller report, restatement, delayed filing or auditor resignation "
-                        "(generic law-firm press releases soliciting investors do NOT count)",
-    "guidance_cut": "the company lowered its guidance or outlook, issued a profit warning or clearly missed "
-                    "earnings expectations",
-    "none": "none of the above: routine, positive or unrelated news, or not enough information",
-}
-JEV_VETO_TASK = ("News items about one US-listed company from the last two weeks, newest first. Judge ONLY what "
-                 "the news says about this company. Pick the single most important development.")
-JEV_VETO_QUESTIONS = {"event": {"type": "choice",
-                                "instructions": "Which category best describes the most important "
-                                                "company-specific development in these news items?",
-                                "criteria": JEV_VETO_CATS}}
-
-
-def _jev_veto_enabled():
-    return os.environ.get("JEV_TV_VETO", "").strip().lower() == "on"
-
-
-def _veto_news(ticker, today):
-    """Finnhub company-news der letzten JEV_VETO_NEWS_DAYS Tage, neueste zuerst, ohne Dubletten.
-    [] = keine Nachrichten, None = Abruffehler."""
-    import requests
-    key = os.environ.get("FINNHUB_API_KEY")
-    if not key:
-        return None
-    try:
-        r = requests.get("https://finnhub.io/api/v1/company-news", timeout=20,
-                         params={"symbol": str(ticker).replace("-", "."),
-                                 "from": (today - timedelta(days=JEV_VETO_NEWS_DAYS)).isoformat(),
-                                 "to": today.isoformat(), "token": key})
-        data = r.json() if r.status_code == 200 else None
-    except Exception:
-        return None
-    if not isinstance(data, list):
-        return None
-    items, seen = [], set()
-    for n in sorted(data, key=lambda x: -(x.get("datetime") or 0)):
-        h = (n.get("headline") or "").strip()
-        if not h or h.lower() in seen:
-            continue
-        seen.add(h.lower())
-        days = (today - datetime.fromtimestamp(n.get("datetime") or 0).date()).days
-        items.append({"when": "this week" if days <= 6 else "last week",
-                      "headline": h[:220], "summary": (n.get("summary") or "").strip()[:300]})
-        if len(items) >= JEV_VETO_MAX_NEWS:
-            break
-    return items
-
-
-def _veto_state(pick, news):
-    """Nur Text: Firma und Schlagzeilen, keine Kurse oder Scores (Jev ist bei Zahlen schwach)."""
-    return {"task": JEV_VETO_TASK, "company": pick.get("name") or pick["ticker"],
-            "ticker": pick["ticker"], "news": news}
-
-
-def jev_veto_annotate(picks, today=None):
-    """Haengt an die Begruendung jedes Picks das Jev-Veto an (in place). Kein DB-Zugriff.
-    Returns (tokens_in, tokens_out, model) fuer die Buchung durch den Aufrufer."""
-    from thematic.lib import jev_client as jc
-    today = today or datetime.now().date()
-    t_in = t_out = answered = flagged = 0
-    cost = 0.0
-    for p in picks:
-        news = _veto_news(p["ticker"], today)
-        tag = "veto=n/a"
-        if news is not None and not news:
-            tag = "veto=no_news"
-        elif news:
-            resp = jc.decide(_veto_state(p, news), JEV_VETO_QUESTIONS, timeout=60)
-            ch = jc.choice_of(resp, "event", options=JEV_VETO_CATS) if resp else None
-            if ch:
-                label, _conf, probs = ch
-                pv = min(1.0, max(0.0, 1.0 - float(probs.get("none", 0.0))))
-                ti, to, c = jc.usage_of(resp)
-                t_in, t_out, cost = t_in + ti, t_out + to, cost + c
-                answered += 1
-                flagged += pv >= JEV_VETO_FLAG_P
-                tag = f"veto={label};p={pv:.2f};m={jc.model_of(resp) or '?'}"
-        p["rationale"] = f"{p['rationale']} | {tag}" if p.get("rationale") else tag
-    print(f"  h_tv_screener  Jev-Veto: {answered}/{len(picks)} Antworten, {flagged} markiert "
-          f"(P >= {JEV_VETO_FLAG_P}), ${cost:.4f}", flush=True)
-    return t_in, t_out, jc.JEV_MODEL
-
-
-def tv_screener_picks_annotated(con=None):
-    """tv_screener_picks() plus Jev-Veto-Annotation (nur mit JEV_TV_VETO=on).
-    Fail-open: jeder Fehler -> unannotierte Picks. Gebucht wird nur mit con (Haupt-Thread)."""
-    picks = tv_screener_picks()
-    if not picks or not _jev_veto_enabled():
-        return picks
-    annotated = [dict(p) for p in picks]
-    try:
-        t_in, t_out, model = jev_veto_annotate(annotated)
-    except Exception as e:
-        print(f"  ⚠ h_tv_screener: Jev-Veto fehlgeschlagen ({e}) – Picks ohne Annotation", flush=True)
-        log.warning("Jev-Veto fehlgeschlagen: %s", e)
-        return picks
-    if con is not None and (t_in or t_out):
-        try:
-            from roles import budget as _role_budget
-            _role_budget.record_spend(con, JEV_VETO_BUDGET_ROLE, datetime.now().strftime("%Y-%m-%d"),
-                                      t_in, t_out, model)
-        except Exception as e:
-            print(f"  ⚠ Budget-Buchung ({JEV_VETO_BUDGET_ROLE}) fehlgeschlagen: {e}", flush=True)
-    return annotated
-
-
-def tv_dry_run():
-    picks = tv_screener_picks_annotated()      # ohne con: keine Buchung
-    for p in picks:
-        print(f"  {p['direction']:5} {p['ticker']:8} score={p['score']:.2f} "
-              f"sektor={p['sector'] or '?'}  {p['rationale']}", flush=True)
-    print("  (Trockenlauf: nichts geschrieben)", flush=True)
-
-
 def evaluate(con, horizon=HORIZON_DAYS):
     """Bepreist reife Kandidaten vorwärts — dieselbe Simulation wie
     crabel_shadow_eval (Import statt Nachbau, damit beide Bücher identisch
@@ -1068,16 +817,6 @@ def _source_health(con, hypothesis):
                - datetime.strptime(last, "%Y-%m-%d").date()).days
         if age > 7:
             return False, f"factor_scores {age}d alt (Stand {last})"
-    cols = {r[1] for r in con.execute("PRAGMA table_info(shadow_selection)")}
-    if hypothesis == "h_tv_screener" and "select_date" in cols:
-        row = con.execute("SELECT MAX(select_date) d FROM shadow_selection "
-                          "WHERE hypothesis='h_tv_screener'").fetchone()
-        last = row["d"] if row else None
-        if last:   # vor dem ersten Lauf: junge Spur, nicht tot
-            age = (datetime.now().date()
-                   - datetime.strptime(last, "%Y-%m-%d").date()).days
-            if age > 7:
-                return False, f"TradingView-Scanner liefert seit {last} nichts"
     return True, ""
 
 
@@ -1134,8 +873,6 @@ def main():
     ap.add_argument("--report", action="store_true", help="nur Bericht")
     ap.add_argument("--jev-dry-run", action="store_true",
                     help="h_jev: Zustaende und Kosten zeigen, nichts schreiben")
-    ap.add_argument("--tv-dry-run", action="store_true",
-                    help="h_tv_screener: Auswahl zeigen, nichts schreiben")
     args = ap.parse_args()
     do_all = not (args.select or args.evaluate or args.report)
 
@@ -1145,9 +882,6 @@ def main():
         today = datetime.now().strftime("%Y-%m-%d")
         if args.jev_dry_run:
             jev_dry_run(con)
-            return
-        if args.tv_dry_run:
-            tv_dry_run()
             return
 
         if do_all or args.select:
@@ -1164,7 +898,6 @@ def main():
             record(con, "h3_crowding",   today, select_h3_crowding(con))
             if _jev_enabled():
                 record(con, "h_jev",     today, select_h_jev(con))
-            record(con, "h_tv_screener", today, tv_screener_picks_annotated(con))
 
         if do_all or args.evaluate:
             print(f"\n🔍 Vorwärtsbepreisung (Horizont {HORIZON_DAYS} Tage)", flush=True)

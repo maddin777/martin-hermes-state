@@ -421,14 +421,34 @@ def select_candidates(candidates: list, params: dict) -> list:
     return longs[:params["max_long"]] + shorts[:params["max_short"]]
 
 
-def screen_stage2(stage2: list, channels: dict, p: dict, bench_ret: float):
-    """Stage 2: Tech-Score, 52W-Distanz, relative Staerke, Quality-Gate.
+def main(dry_run: bool = False, include_nasdaq: bool = True):
+    today = datetime.now().strftime("%Y-%m-%d")
+    regime, vix, overlay = _current_regime()
+    p = regime_params(regime, vix, overlay)
+    print(f"📡 Screener Source | Regime={regime} VIX={vix} Overlay={overlay} "
+          f"→ max_long={p['max_long']} max_short={p['max_short']} "
+          f"long_conf={p['long_conf']:.2f} short_conf={p['short_conf']:.2f}", flush=True)
+    log.info("Screener Start | regime=%s vix=%s overlay=%s params=%s",
+             regime, vix, overlay, p)
 
-    Ausgelagert am 29.09.2026, damit die Schattenspur h_tv_screener
-    (shadow_selection.py) exakt dieselbe Stage 2 auf ein anderes Universum
-    anwendet. Kursdaten muessen vorher per prefetch_prices geladen sein.
-    Returns (longs, shorts) als _make_cand-Dicts.
-    """
+    universe = _build_universe(include_nasdaq=include_nasdaq)
+    channels = dict(universe)
+    legacy = [ticker for ticker, channel in universe if channel == SCREENER_CHANNEL]
+    nasdaq = [ticker for ticker, channel in universe if channel == NASDAQ_CHANNEL]
+    nasdaq_stage2 = stage1_prefilter(nasdaq, max(0, MAX_STAGE2_CANDIDATES - len(legacy)))
+    stage2 = legacy + nasdaq_stage2
+    # Stage 1 darf Einträge aus dem 400er-TTL-Cache verdrängen. Deshalb die exakt
+    # budgetierte Stage-2-Menge gemeinsam erneut vorladen: danach entstehen im
+    # vollen Screen keine Einzel-Downloads für Kursdaten.
+    for i in range(0, len(stage2), PREFETCH_CHUNK):
+        prefetch_prices(stage2[i:i + PREFETCH_CHUNK])
+    print(f"  Universum: {len(universe)} Ticker "
+          f"(Alt={len(legacy)}, Nasdaq/US={len(nasdaq)}; Stage 2={len(stage2)}, "
+          f"Nasdaq Stage 1→2={len(nasdaq_stage2)})", flush=True)
+
+    bench_ret = _benchmark_return(REL_STRENGTH_LOOKBACK)
+    print(f"  Benchmark ({BENCHMARK}) {REL_STRENGTH_LOOKBACK}d-Return: {bench_ret:+.1f}%", flush=True)
+
     longs, shorts = [], []
     for tkr in stage2:
         channel = channels[tkr]
@@ -465,38 +485,6 @@ def screen_stage2(stage2: list, channels: dict, p: dict, bench_ret: float):
                 continue
             strength, composite = map_strength("short", conf, mt, qbonus, quality)
             shorts.append(_make_cand(tkr, channel, "short", strength, composite, conf, mt, quality, info))
-    return longs, shorts
-
-
-def main(dry_run: bool = False, include_nasdaq: bool = True):
-    today = datetime.now().strftime("%Y-%m-%d")
-    regime, vix, overlay = _current_regime()
-    p = regime_params(regime, vix, overlay)
-    print(f"📡 Screener Source | Regime={regime} VIX={vix} Overlay={overlay} "
-          f"→ max_long={p['max_long']} max_short={p['max_short']} "
-          f"long_conf={p['long_conf']:.2f} short_conf={p['short_conf']:.2f}", flush=True)
-    log.info("Screener Start | regime=%s vix=%s overlay=%s params=%s",
-             regime, vix, overlay, p)
-
-    universe = _build_universe(include_nasdaq=include_nasdaq)
-    channels = dict(universe)
-    legacy = [ticker for ticker, channel in universe if channel == SCREENER_CHANNEL]
-    nasdaq = [ticker for ticker, channel in universe if channel == NASDAQ_CHANNEL]
-    nasdaq_stage2 = stage1_prefilter(nasdaq, max(0, MAX_STAGE2_CANDIDATES - len(legacy)))
-    stage2 = legacy + nasdaq_stage2
-    # Stage 1 darf Einträge aus dem 400er-TTL-Cache verdrängen. Deshalb die exakt
-    # budgetierte Stage-2-Menge gemeinsam erneut vorladen: danach entstehen im
-    # vollen Screen keine Einzel-Downloads für Kursdaten.
-    for i in range(0, len(stage2), PREFETCH_CHUNK):
-        prefetch_prices(stage2[i:i + PREFETCH_CHUNK])
-    print(f"  Universum: {len(universe)} Ticker "
-          f"(Alt={len(legacy)}, Nasdaq/US={len(nasdaq)}; Stage 2={len(stage2)}, "
-          f"Nasdaq Stage 1→2={len(nasdaq_stage2)})", flush=True)
-
-    bench_ret = _benchmark_return(REL_STRENGTH_LOOKBACK)
-    print(f"  Benchmark ({BENCHMARK}) {REL_STRENGTH_LOOKBACK}d-Return: {bench_ret:+.1f}%", flush=True)
-
-    longs, shorts = screen_stage2(stage2, channels, p, bench_ret)
 
     selected = select_candidates(longs + shorts, p)
     print(f"  Treffer: {len(longs)} long / {len(shorts)} short "

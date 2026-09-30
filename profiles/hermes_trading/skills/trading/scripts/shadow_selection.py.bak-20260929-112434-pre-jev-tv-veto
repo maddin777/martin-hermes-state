@@ -670,132 +670,8 @@ def tv_screener_picks(verbose=True):
     return picks
 
 
-# ── Jev-Veto als Annotation auf die h_tv_screener-Picks (29.09.2026) ──────── jev-tv-veto-20260929
-# Probe 29.09. (scripts/jev_veto_probe.py, Erklaerung.md): Jev erkennt aus Schlagzeilen Ereignisse, die ein
-# Kurs-Setup entwerten, fast so gut wie DeepSeek (Recall 85 %, Precision 79 %) und ist gut kalibriert. Am
-# Stichtag lag aber kein Veto-Titel in den Top-5. Deshalb NUR Annotation: Auswahl und Reihenfolge bleiben
-# unveraendert, die Begruendung bekommt "veto=<kategorie>;p=<P(Veto)>;m=<modell>" (P(Veto) = 1 - P(none)),
-# "veto=no_news" oder "veto=n/a" (Fehler). Kategorien und Fragetext identisch zur Probe — nicht aendern,
-# sonst gelten deren Messwerte nicht mehr.
-JEV_VETO_BUDGET_ROLE = "jev_tv_veto"
-JEV_VETO_NEWS_DAYS = 14
-JEV_VETO_MAX_NEWS = 12
-JEV_VETO_FLAG_P = 0.5        # nur fuer die Konsolenmeldung; gespeichert wird p selbst
-JEV_VETO_CATS = {
-    "acquisition_pending": "the company itself has agreed to be acquired or taken private, or is the target of a "
-                           "pending tender offer or merger (it is the TARGET, not the buyer)",
-    "offering_dilution": "the company announced or priced a share offering, secondary sale by the company, "
-                         "convertible notes, an at-the-market program or another issuance that dilutes shareholders",
-    "legal_accounting": "a credible, company-specific problem: regulator or government investigation, fraud "
-                        "allegation, short-seller report, restatement, delayed filing or auditor resignation "
-                        "(generic law-firm press releases soliciting investors do NOT count)",
-    "guidance_cut": "the company lowered its guidance or outlook, issued a profit warning or clearly missed "
-                    "earnings expectations",
-    "none": "none of the above: routine, positive or unrelated news, or not enough information",
-}
-JEV_VETO_TASK = ("News items about one US-listed company from the last two weeks, newest first. Judge ONLY what "
-                 "the news says about this company. Pick the single most important development.")
-JEV_VETO_QUESTIONS = {"event": {"type": "choice",
-                                "instructions": "Which category best describes the most important "
-                                                "company-specific development in these news items?",
-                                "criteria": JEV_VETO_CATS}}
-
-
-def _jev_veto_enabled():
-    return os.environ.get("JEV_TV_VETO", "").strip().lower() == "on"
-
-
-def _veto_news(ticker, today):
-    """Finnhub company-news der letzten JEV_VETO_NEWS_DAYS Tage, neueste zuerst, ohne Dubletten.
-    [] = keine Nachrichten, None = Abruffehler."""
-    import requests
-    key = os.environ.get("FINNHUB_API_KEY")
-    if not key:
-        return None
-    try:
-        r = requests.get("https://finnhub.io/api/v1/company-news", timeout=20,
-                         params={"symbol": str(ticker).replace("-", "."),
-                                 "from": (today - timedelta(days=JEV_VETO_NEWS_DAYS)).isoformat(),
-                                 "to": today.isoformat(), "token": key})
-        data = r.json() if r.status_code == 200 else None
-    except Exception:
-        return None
-    if not isinstance(data, list):
-        return None
-    items, seen = [], set()
-    for n in sorted(data, key=lambda x: -(x.get("datetime") or 0)):
-        h = (n.get("headline") or "").strip()
-        if not h or h.lower() in seen:
-            continue
-        seen.add(h.lower())
-        days = (today - datetime.fromtimestamp(n.get("datetime") or 0).date()).days
-        items.append({"when": "this week" if days <= 6 else "last week",
-                      "headline": h[:220], "summary": (n.get("summary") or "").strip()[:300]})
-        if len(items) >= JEV_VETO_MAX_NEWS:
-            break
-    return items
-
-
-def _veto_state(pick, news):
-    """Nur Text: Firma und Schlagzeilen, keine Kurse oder Scores (Jev ist bei Zahlen schwach)."""
-    return {"task": JEV_VETO_TASK, "company": pick.get("name") or pick["ticker"],
-            "ticker": pick["ticker"], "news": news}
-
-
-def jev_veto_annotate(picks, today=None):
-    """Haengt an die Begruendung jedes Picks das Jev-Veto an (in place). Kein DB-Zugriff.
-    Returns (tokens_in, tokens_out, model) fuer die Buchung durch den Aufrufer."""
-    from thematic.lib import jev_client as jc
-    today = today or datetime.now().date()
-    t_in = t_out = answered = flagged = 0
-    cost = 0.0
-    for p in picks:
-        news = _veto_news(p["ticker"], today)
-        tag = "veto=n/a"
-        if news is not None and not news:
-            tag = "veto=no_news"
-        elif news:
-            resp = jc.decide(_veto_state(p, news), JEV_VETO_QUESTIONS, timeout=60)
-            ch = jc.choice_of(resp, "event", options=JEV_VETO_CATS) if resp else None
-            if ch:
-                label, _conf, probs = ch
-                pv = min(1.0, max(0.0, 1.0 - float(probs.get("none", 0.0))))
-                ti, to, c = jc.usage_of(resp)
-                t_in, t_out, cost = t_in + ti, t_out + to, cost + c
-                answered += 1
-                flagged += pv >= JEV_VETO_FLAG_P
-                tag = f"veto={label};p={pv:.2f};m={jc.model_of(resp) or '?'}"
-        p["rationale"] = f"{p['rationale']} | {tag}" if p.get("rationale") else tag
-    print(f"  h_tv_screener  Jev-Veto: {answered}/{len(picks)} Antworten, {flagged} markiert "
-          f"(P >= {JEV_VETO_FLAG_P}), ${cost:.4f}", flush=True)
-    return t_in, t_out, jc.JEV_MODEL
-
-
-def tv_screener_picks_annotated(con=None):
-    """tv_screener_picks() plus Jev-Veto-Annotation (nur mit JEV_TV_VETO=on).
-    Fail-open: jeder Fehler -> unannotierte Picks. Gebucht wird nur mit con (Haupt-Thread)."""
-    picks = tv_screener_picks()
-    if not picks or not _jev_veto_enabled():
-        return picks
-    annotated = [dict(p) for p in picks]
-    try:
-        t_in, t_out, model = jev_veto_annotate(annotated)
-    except Exception as e:
-        print(f"  ⚠ h_tv_screener: Jev-Veto fehlgeschlagen ({e}) – Picks ohne Annotation", flush=True)
-        log.warning("Jev-Veto fehlgeschlagen: %s", e)
-        return picks
-    if con is not None and (t_in or t_out):
-        try:
-            from roles import budget as _role_budget
-            _role_budget.record_spend(con, JEV_VETO_BUDGET_ROLE, datetime.now().strftime("%Y-%m-%d"),
-                                      t_in, t_out, model)
-        except Exception as e:
-            print(f"  ⚠ Budget-Buchung ({JEV_VETO_BUDGET_ROLE}) fehlgeschlagen: {e}", flush=True)
-    return annotated
-
-
 def tv_dry_run():
-    picks = tv_screener_picks_annotated()      # ohne con: keine Buchung
+    picks = tv_screener_picks()
     for p in picks:
         print(f"  {p['direction']:5} {p['ticker']:8} score={p['score']:.2f} "
               f"sektor={p['sector'] or '?'}  {p['rationale']}", flush=True)
@@ -1164,7 +1040,7 @@ def main():
             record(con, "h3_crowding",   today, select_h3_crowding(con))
             if _jev_enabled():
                 record(con, "h_jev",     today, select_h_jev(con))
-            record(con, "h_tv_screener", today, tv_screener_picks_annotated(con))
+            record(con, "h_tv_screener", today, tv_screener_picks())
 
         if do_all or args.evaluate:
             print(f"\n🔍 Vorwärtsbepreisung (Horizont {HORIZON_DAYS} Tage)", flush=True)

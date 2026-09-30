@@ -1,0 +1,40 @@
+# ── Trading Pipeline (Mo–Fr) ──
+# fundamental_data: 01:30 (alt: 02:00) — mehr Puffer vor social_scanner
+30 1 * * 1-5 echo "=== $(date) === fundamental_data START ===" >> /root/.hermes/profiles/hermes_trading/skills/trading/data/cron.log && /usr/bin/python3 /root/.hermes/profiles/hermes_trading/skills/trading/scripts/fundamental_data.py >> /root/.hermes/profiles/hermes_trading/skills/trading/data/cron.log 2>&1
+# social_scanner: 02:00 (alt: 03:00) — mehr Puffer vor Pipeline (03:30)
+0 2 * * 1-5 echo "=== $(date) === social_scanner START ===" >> /root/.hermes/profiles/hermes_trading/skills/trading/data/cron.log && /usr/bin/python3 /root/.hermes/profiles/hermes_trading/skills/trading/scripts/social_scanner.py >> /root/.hermes/profiles/hermes_trading/skills/trading/data/cron.log 2>&1
+# trading_pipeline: 03:30 (unverändert)
+# nightly_eval: 05:00 (unverändert)
+0 5 * * 1-5 echo "=== $(date) === nightly_eval START ===" >> /root/.hermes/profiles/hermes_trading/skills/trading/data/cron.log && /usr/bin/python3 /root/.hermes/profiles/hermes_trading/skills/trading/scripts/nightly_eval.py >> /root/.hermes/profiles/hermes_trading/skills/trading/data/cron.log 2>&1 && echo "=== $(date) === nightly_eval DONE ===" >> /root/.hermes/profiles/hermes_trading/skills/trading/data/cron.log
+
+# ── Sonntag: weekly eval ──
+0 6 * * 0 echo "=== $(date) === nightly_eval_weekly START ===" >> /root/.hermes/profiles/hermes_trading/skills/trading/data/cron.log && /usr/bin/python3 /root/.hermes/profiles/hermes_trading/skills/trading/scripts/nightly_eval.py >> /root/.hermes/profiles/hermes_trading/skills/trading/data/cron.log 2>&1 && echo "=== $(date) === nightly_eval_weekly DONE ===" >> /root/.hermes/profiles/hermes_trading/skills/trading/data/cron.log
+
+# ── Sonntag: Source Lifecycle (Quellen-Management) ──
+0 7 * * 0 echo "=== $(date) === source_lifecycle START ===" >> /root/.hermes/profiles/hermes_trading/skills/trading/data/cron.log && /usr/bin/python3 /root/.hermes/profiles/hermes_trading/skills/trading/scripts/source_lifecycle.py >> /root/.hermes/profiles/hermes_trading/skills/trading/data/cron.log 2>&1 && echo "=== $(date) === source_lifecycle DONE ===" >> /root/.hermes/profiles/hermes_trading/skills/trading/data/cron.log
+
+# ── Crabel Shadow Eval (Mo–Fr 06:30) ──
+# ── Crabel Shadow Eval (Mo–Fr 06:30) ──
+30 6 * * 1-5 echo "=== $(date) === crabel_shadow_eval START ===" >> /root/.hermes/profiles/hermes_trading/skills/trading/data/cron.log && cd /root/.hermes/profiles/hermes_trading/skills/trading && python3 scripts/crabel_shadow_eval.py >> data/cron.log 2>&1 && echo "=== $(date) === ✅ crabel_shadow_eval DONE ===" >> /root/.hermes/profiles/hermes_trading/skills/trading/data/cron.log
+10 5 * * 1-5 echo "=== $(date) === factor_ranker START ===" >> /root/.hermes/profiles/hermes_trading/skills/trading/data/cron.log && cd /root/.hermes/profiles/hermes_trading/skills/trading/thematic && PYTHONPATH=/root/.hermes/profiles/hermes_trading/skills/trading /usr/bin/python3 factor_ranker.py >> /root/.hermes/profiles/hermes_trading/skills/trading/data/cron.log 2>&1
+30 3 * * 2-5 echo "=== $(date) === trading_pipeline START ===" >> /root/.hermes/profiles/hermes_trading/skills/trading/data/cron.log && /usr/bin/python3 /root/.hermes/profiles/hermes_trading/skills/trading/scripts/trading_pipeline.py >> /root/.hermes/profiles/hermes_trading/skills/trading/data/cron.log 2>&1
+30 2 * * 1 echo "=== $(date) === trading_pipeline START ===" >> /root/.hermes/profiles/hermes_trading/skills/trading/data/cron.log && /usr/bin/python3 /root/.hermes/profiles/hermes_trading/skills/trading/scripts/trading_pipeline.py >> /root/.hermes/profiles/hermes_trading/skills/trading/data/cron.log 2>&1
+35 7 15,29 10 * cd /root/.hermes/profiles/hermes_trading/skills/trading && venv/bin/python scripts/jev_shadow_eval.py --cron >> data/cron.log 2>&1
+35 7 12,26 11 * cd /root/.hermes/profiles/hermes_trading/skills/trading && venv/bin/python scripts/jev_shadow_eval.py --cron >> data/cron.log 2>&1
+
+# ── Wieder eingeplant 28.09.2026 (waren seit ~Mitte Juli ohne Cron-Eintrag) ──
+# llm_validator laeuft als Pipeline-Schritt (trading_pipeline.py), nicht hier.
+# signal_manager check_only: stuendlich 09-20 Uhr Mo-Fr (Exits/Stops/Time-Stop, keine Entries)
+0 9-20 * * 1-5 echo "=== $(date) === signal_manager_check_only START ===" >> /root/.hermes/profiles/hermes_trading/skills/trading/data/cron.log && cd /root/.hermes/profiles/hermes_trading/skills/trading && PYTHONPATH=/root/.hermes/profiles/hermes_trading/skills/trading /usr/bin/python3 scripts/signal_manager.py check_only >> data/cron.log 2>&1 && echo "=== $(date) === ✅ signal_manager_check_only DONE ===" >> /root/.hermes/profiles/hermes_trading/skills/trading/data/cron.log
+# drawdown_monitor: 10:05 Mo-Fr (Log + Telegram, blockiert nichts)
+5 10 * * 1-5 echo "=== $(date) === drawdown_monitor START ===" >> /root/.hermes/profiles/hermes_trading/skills/trading/data/cron.log && cd /root/.hermes/profiles/hermes_trading/skills/trading && PYTHONPATH=/root/.hermes/profiles/hermes_trading/skills/trading /usr/bin/python3 thematic/drawdown_monitor.py >> data/cron.log 2>&1 && echo "=== $(date) === ✅ drawdown_monitor DONE ===" >> /root/.hermes/profiles/hermes_trading/skills/trading/data/cron.log
+# breaking_news_monitor: stuendlich 10:15-17:15 Mo-Fr (Viertelstunde versetzt zu check_only)
+15 10-17 * * 1-5 echo "=== $(date) === breaking_news_monitor START ===" >> /root/.hermes/profiles/hermes_trading/skills/trading/data/cron.log && cd /root/.hermes/profiles/hermes_trading/skills/trading && PYTHONPATH=/root/.hermes/profiles/hermes_trading/skills/trading /usr/bin/python3 scripts/breaking_news_monitor.py >> data/cron.log 2>&1 && echo "=== $(date) === ✅ breaking_news_monitor DONE ===" >> /root/.hermes/profiles/hermes_trading/skills/trading/data/cron.log
+# thesis_monitor (scripts/-Version mit Devil's Advocate): 15:30 Mo-Fr
+30 15 * * 1-5 echo "=== $(date) === thesis_monitor START ===" >> /root/.hermes/profiles/hermes_trading/skills/trading/data/cron.log && cd /root/.hermes/profiles/hermes_trading/skills/trading && PYTHONPATH=/root/.hermes/profiles/hermes_trading/skills/trading /usr/bin/python3 scripts/thesis_monitor.py >> data/cron.log 2>&1 && echo "=== $(date) === ✅ thesis_monitor DONE ===" >> /root/.hermes/profiles/hermes_trading/skills/trading/data/cron.log
+# strategy_optimizer: Sonntag 08:00 (cron-health laeuft 08:30)
+0 8 * * 0 echo "=== $(date) === strategy_optimizer START ===" >> /root/.hermes/profiles/hermes_trading/skills/trading/data/cron.log && cd /root/.hermes/profiles/hermes_trading/skills/trading && PYTHONPATH=/root/.hermes/profiles/hermes_trading/skills/trading /usr/bin/python3 scripts/strategy_optimizer.py >> data/cron.log 2>&1 && echo "=== $(date) === ✅ strategy_optimizer DONE ===" >> /root/.hermes/profiles/hermes_trading/skills/trading/data/cron.log
+
+# ── DB-Backup taeglich 22:00 (wieder eingeplant 29.09.2026; fehlte seit 12.07.) ──
+# sqlite3 .backup statt cp: konsistente Kopie trotz WAL-Modus. Keine Rotation (bewusst).
+0 22 * * * echo "=== $(date) === db_backup START ===" >> /root/.hermes/profiles/hermes_trading/skills/trading/data/cron.log && /usr/bin/sqlite3 /root/.hermes/profiles/hermes_trading/skills/trading/data/trading.db ".backup '/root/obsidian-vault/Projekte/trading_db_backup_$(date +\%Y\%m\%d).db'" >> /root/.hermes/profiles/hermes_trading/skills/trading/data/cron.log 2>&1 && echo "=== $(date) === ✅ db_backup DONE ===" >> /root/.hermes/profiles/hermes_trading/skills/trading/data/cron.log

@@ -1,0 +1,511 @@
+# Hermes Trading Skill – Technische & Fachliche Dokumentation
+
+*Stand: 28.09.2026 (abends: Jobs wieder eingeplant) — vollständig gegen Code, Cron-Tabellen und Datenbank auf dem Server geprüft (vorher: Juli 2026). Die Änderungshistorie mit Begründungen und Messungen steht in `skills/trading/Erklaerung.md` auf dem Server.*
+
+> [!warning] Betriebsbefund 28.09.2026 — Jobs von Mitte Juli bis 28.09. ohne Einplanung
+> Von ~Mitte Juli bis 28.09.2026 liefen `active_exit_check`, `signal_manager check_only`, `strategy_optimizer`, `breaking_news_monitor`, `llm_validator`, `thesis_monitor`, `drawdown_monitor`, die thematische Pipeline, der Prediction-Market-Scanner und das DB-Backup nicht (kein Cron-Eintrag). In dieser Zeit wurden Positionen nur einmal pro Nacht geprüft.
+> **Am 28.09. wieder eingeplant (28.09.2026):** `check_only` (stündlich 09–20), `breaking_news_monitor`, `thesis_monitor`, `drawdown_monitor`, `strategy_optimizer`; `llm_validator` als Pipeline-Schritt. Dabei repariert: LLM-Abschneidung in Validator und Breaking News, Polymarket-Pfad (thesis_monitor startete nicht), Doppelzählung im Drawdown Monitor.
+> **Weiterhin ⏸ nicht eingeplant:** `active_exit_check` (Tech-Exit, Thesis-SL), DB-Backup (letztes 12.07.), thematische Pipeline, Prediction-Market-Scanner.
+
+---
+
+## 1. Überblick
+
+Hermes Trading ist ein vollautomatisches **Paper-Trading-System** (`operating_mode: paper_experiment`, keine Broker-Anbindung) auf dem Linux-Server *hermes2nd*. Es wertet deutschsprachige und internationale YouTube-Finanzkanäle, RSS-Feeds und X-Accounts aus, extrahiert Aktien-Nennungen per LLM, ergänzt sie um zwei deterministische Screener, bewertet die Kandidaten nach Konsens und Technik und verwaltet ein simuliertes Depot. Benachrichtigungen laufen über Telegram.
+
+| | |
+|---|---|
+| **Startkapital** | 10.000 € (simuliert) |
+| **Depotwert** (25.09.) | 9.011 € (Cash 6.947 €), Allzeithoch 11.208 € → Drawdown ~20 % |
+| **Geschlossene Trades** | 96 (25.04.–25.09.2026), Summe −1.345 € |
+| **Märkte** | NYSE/NASDAQ, XETRA, Euronext, SIX, London u. a. (Preise in Heimwährung, Umrechnung in EUR) |
+| **Richtungen** | LONG und SHORT (SHORT simuliert als Knockout-Zertifikat 1× Hebel) |
+| **Kosten im Modell** | Slippage 0,1 % je Seite, 1 € Kommission je Trade (Trade Republic) |
+
+**Was die Daten bisher zeigen** (Details Abschnitt 18): Den Verlust tragen fast vollständig die YouTube-Long-Trades (61 Trades, −0,73 %/Trade). Der Conviction-Score sagt für frische Nennungen nichts voraus. Seit dem 29.09.2026 werden reine YouTube-Long-Kandidaten deshalb **geshortet** (YT-Fade, Abschnitt 3 → Step 6).
+
+---
+
+## 2. Tagesablauf
+
+Zwei Planer: die **System-Crontab** (Trading-Kern) und der **Hermes-Cron** (`/root/.hermes/cron/jobs.json`, Überwachung und Vault). Zeiten in Serverzeit (CEST).
+
+### Mo–Fr
+
+```
+01:30  fundamental_data.py        → FRED-Makrodaten (VIX, Zinskurve, CPI …), Regime + Sektor-Regime
+02:00  social_scanner.py          → RSS-Feeds + X-Accounts (twitterapi.io)
+02:00  [Hermes] obsidian-vault-bisync-nightly   (täglich)
+02:30  trading_pipeline.py        → NUR MONTAGS (Wochenend-Rückstand, Laufzeit bis ~226 min)
+03:00  [Hermes] hermes-state-github-sync        (täglich; Code/Config, ohne DB)
+03:30  trading_pipeline.py        → Di–Fr, Hauptpipeline (Median ~140 min), Schritte:
+         ├─ yt_channel_monitor.py      → YouTube-Transkripte
+         ├─ signal_extractor.py        → LLM-Extraktion (Scout + Analyst)
+         ├─ screener_source.py         → deterministische Screener-Quelle(n)
+         ├─ watchlist_manager.py       → Conviction, Boosts, Watchlist
+         ├─ watchlist_dedup.py         → Duplikate zusammenführen
+         ├─ technical_validator.py     → Ticker-Auflösung + Tech-Score
+         ├─ llm_validator.py           → LLM-Plausibilisierung Top-10 (±Conviction), seit 28.09.
+         ├─ signal_manager.py full     → offene Positionen prüfen, dann Entries
+         └─ shadow_selection.py        → Schattenbücher auswählen + bewerten
+05:00  nightly_eval.py            → Tagesmetriken + Telegram-Report (wartet auf Pipeline-Ende, max. 150 min)
+05:10  thematic/factor_ranker.py  → Querschnitts-Ranking (Momentum/LowVol/Revision), factor_scores
+06:30  crabel_shadow_eval.py      → Counterfactual-Bewertung geblockter Entries (blocked_entries)
+08:00  [Hermes] pipeline-timing-check           → meldet nur, wenn Pipeline nach 08:00 fertig
+09–20  signal_manager.py check_only (stündl.)   → Exits: Stops, Time-Stop, YT-Fade (keine Entries)
+08:30  [Hermes] cron-health-daily               → START/DONE-Abgleich der Cron-Jobs
+10:00  [Hermes] sp500-sma200-check
+10:05  thematic/drawdown_monitor.py            → Drawdown-Log + Telegram (blockiert nichts)
+10:15–17:15  breaking_news_monitor.py (stündl.) → News offener Positionen, ggf. Stop enger
+15:30  scripts/thesis_monitor.py               → Thesis-Status offener Positionen (LLM + Devil's Advocate)
+22:15  [Hermes] watchlist-export-daily          → Watchlist.md in den Vault
+22:20  [Hermes] watchlist-marker-gap-check
+22:30  [Hermes] watchlist-cleanup-daily         → archiviert gedroppte Einträge
+22:40  [Hermes] dq-alarm-daily                  → DQ-Microcap-Alarm (still unter Schwelle)
+23:15  [Hermes] refresh_tech_scores
+```
+
+### Sonntags
+
+```
+06:00  nightly_eval.py            → Wochenaggregat
+07:00  source_lifecycle.py        → Quellen-Performance, Lifecycle, Discovery
+07:00  [Hermes] weekly-exit-review               → offene Positionen vs. Exit-Matrix, Config-Drift
+08:00  strategy_optimizer.py                     → Exit-Parameter-Suche mit Robustheits-Gate
+08:00  [Hermes] last30days-trading-weekly        → Recherche Top-5-Watchlist
+09:00  [Hermes] weekly-strategy-review
+```
+
+### Einmalig / selten
+- `jev_shadow_eval.py` — 15./29.10. und 12./26.11. 07:35 (Auswertung der Jev-Schattenhypothese)
+- `sector-probation-check` (Hermes) — **deaktiviert**
+
+### ⏸ Nicht eingeplant (seit ~Mitte Juli 2026)
+`active_exit_check.py` (war 09:30/15:30), `thematic/thematic_pipeline.py`, `thematic/prediction_market_scanner.py`, DB-Backup (war 22:00). `thematic/thesis_monitor.py` ist durch die weiterentwickelte `scripts/thesis_monitor.py` ersetzt.
+
+---
+
+## 3. Pipeline im Detail
+
+### Step 1: YouTube Channel Monitor (`yt_channel_monitor.py`)
+
+Holt Videos der letzten 5 Tage für die aktiven YouTube-Quellen aus `source_registry` (`yt-dlp` + `youtube-transcript-api`) und speichert sie als `status='pending'`. `status='done'` ist der primäre Cache. Fehler werden mit `error_count` gezählt; nach 3 Fehlern Quarantäne, abgelaufene Transkripte als `transcript_expired`.
+
+### Step 2: Signal Extractor (`signal_extractor.py`)
+
+Zweistufig über OpenRouter:
+- **Scout** (`deepseek/deepseek-v4-flash-0731`) scannt Transkript-Chunks auf Unternehmensnennungen.
+- **Analyst** (dasselbe Modell) bewertet je Firma `sentiment`, `strength` (strong/moderate/weak), Begründung.
+- **Fallback** `openai/gpt-4o-mini`. Seit 21.09.: Wird die Antwort abgeschnitten (`finish_reason=length`), eskaliert die Kaskade sofort auf den Fallback statt identisch zu wiederholen.
+- Reasoning-Einstellungen für Scout/Analyst wurden am 22.09. gemessen, nicht geschätzt (`scout_quality_probe.py`, `analyst_quality_probe.py`).
+
+### Step 2b: Screener-Quellen (`screener_source.py`)
+
+Deterministische Kandidaten parallel zu den Meinungsquellen, kostenlos über yfinance. Schreibt Treffer als Mentions der Kanäle `screener` bzw. `screener_nasdaq` (US-Growth) in `watchlist_mentions`.
+- **Ansatz:** Momentum + Trendstruktur + Katalysator; Technik über `utils.get_technical_score()`.
+- **Long:** ≤ 15 % unter 52-Wochen-Hoch, Outperformance vs. SPY (63 Tage). **Short** spiegelbildlich, aber nicht direkt am 52W-Tief (`SHORT_MIN_PCT_ABOVE_LOW` 5 %).
+- **Quality-Gate:** `junk` (unprofitabel und schrumpfend bzw. hoch verschuldet mit Verlust) wird bei Longs verworfen; hochwertige Titel werden nicht geshortet.
+- **Regime-Overlay:** Bear/High-VIX → weniger und strengere Longs, mehr Shorts.
+- Screener gelten als **deterministische Quelle**: eine Zeile pro Ticker genügt (keine Mindest-Mentions, kein Bestätigungsabschlag).
+
+### Step 3: Watchlist Manager (`watchlist_manager.py`)
+
+Aggregiert Mentions je Ticker (Aliase über `company_aliases`) und berechnet:
+
+```
+effective_bullish = Σ strength_weight   (strong 1,0 | moderate 0,6 | weak 0,3)
+sentiment_score   = effective_bullish / (mention_count × 0,6) × Ø Kanalgewicht
+sentiment_score  *= confirmation_factor      ← seit 08.09.2026
+mention_weight    = log(mention_count + 1) / log(11)
+channel_bonus     = min(unique_channels / 3, 1) × 0,2
+conviction        = (sentiment_score × 0,6 + mention_weight × 0,4) × (1 + channel_bonus)
+```
+
+- **Bestätigungsfaktor:** Meinungsquellen mit nur 1 Kanal → ×0,5, ab 2 unabhängigen Kanälen ×1,0; Screener ×1,0. Grund: Eine einzelne bullishe Nennung ergab Conviction 1,00 — dieses Band trug 93 % des Verlusts.
+- **Kanalgewichte** aus `source_registry.weight`, kalibriert nach `avg_pnl_per_trade` der Quelle.
+- **Bear-Conviction** (`conviction_score_bear`) symmetrisch aus den bearishen Nennungen.
+- **`conviction_score_aged`:** Zeitverfall (Halbwertszeit 14 Tage) + Bayes-Prior, für Reports.
+- **Boosts:** Thesis-Boost (bis +8 %, nur bei aktivem Theme), PEAD +5 % bei Earnings-Beat (Long) bzw. Miss (Short, Fenster 10 Tage), X-Sentiment über twitterapi.io für Conviction ≥ 0,80 (max. 20 Abfragen je Lauf).
+
+> [!note] Messung 25.09.2026
+> Für frische Nennungen hat der Conviction-Score eine Rangkorrelation von +0,004 mit dem 5-Tage-Ergebnis — er sagt nichts voraus. Er ordnet Kandidaten nur noch; die Positionsgröße hängt seit 08.09. nicht mehr davon ab.
+
+### Step 4: Watchlist Dedup (`watchlist_dedup.py`)
+
+Drei Phasen: (1) bekannte Ticker-Varianten derselben Firma (z. B. UL↔ULVR.L, NVDA↔NVD.DE, `.SG`/`.MU`/ISIN-Spiegel), (2) gleicher Ticker, (3) Namens-Fuzzy-Match (`name_compare_key()`). Update/Drop über `rowid`; Conviction wird als **Maximum** übernommen, Zähler summiert; `bought` hat Vorrang. Persistente Zuordnung in `canonical_tickers`.
+
+### Step 5: Technical Validator (`technical_validator.py`)
+
+Löst Namen über `company_validator.py` in Ticker auf (Cache → yf.Search → Equity-Check → Namensähnlichkeit → Liquidität; Negativ-Cache `validation_rejects`, 21 Tage) und berechnet den Confluence-Score über `utils.get_technical_score()`:
+
+| Komponente | Wirkung |
+|---|---|
+| EMA-Stack 20/50/200 | ±1 |
+| RSI(14) | 50–60 +2, 40–70 +1, überkauft/überverkauft −2 |
+| MACD-Histogramm | Vorzeichen + Richtung, bis ±2 |
+| Preis vs. EMA50 | ±1 |
+| Volumen-Trend (5 vs. 20 Tage) | bis +1,5 |
+| Weekly Trend (EMA20 wöchentlich) | ±1, setzt `weekly_trend` bullish/bearish |
+| ADX(14) | Trendstärke |
+| Crabel-Kontraktion (NR4/NR7/Inside Day) | Bonus nur in Trendrichtung, max. ±1,5 |
+| Donchian-Ausbruch | ±1,0 in Ausbruchsrichtung |
+
+`confidence = (score + 10) / 20` (geklemmt 0–1) → `tech_score`. Richtung: `LONG` ab Score ≥ 2, `SHORT` ab ≤ −2, sonst `NEUTRAL`. Mindestens 20-Tage-Umsatz-Schwelle, sonst kein Score.
+
+### Step 6: Signal Manager (`signal_manager.py`)
+
+Läuft nachts im Modus `full`: **erst** offene Positionen prüfen (Exits), **dann** neue Positionen eröffnen. Tagsüber stündlich 09–20 Uhr im Modus `check_only` (nur Exits). Ein gemeinsames Lock (`portfolio.lock`) schließt parallele Schreiber aus.
+
+#### Entry — Rahmen
+
+| Prüfung | Regel |
+|---|---|
+| **Drawdown vom Allzeithoch** (`config.drawdown_params`) | < 12 %: Size 100 %, Tech-Schwelle 0,70, max. 8 Pos. · 12–15 %: 75 %, 0,75, 6 · 15–25 %: 65 %, 0,75, 6 · ≥ 25 %: alle Positionen schließen, 7 Tage Cooldown |
+| **Makro** | bearish + Bear-Regime → keine LONGs; SHORTs nur bei Bear/Sideways-Regime oder bearish/neutralem Makro |
+| **Slots nach Regime** | Bull: LONG = Drawdown-Limit, SHORT 2 · Sideways: LONG 6, SHORT 3 · Bear: LONG 4, SHORT 4 |
+| **Cash-Reserve** | max(1.500 €, 15 % des Depots), auch innerhalb der Schleife |
+| **Budget** | max. 70 % investiert; LONG ≤ 70 %, SHORT ≤ 30 % des Depots |
+
+**Kandidaten-Abfrage** (Watchlist, `status='watching'`):
+- LONG: `conviction_score ≥ min_conviction` (0,65), `tech_score ≥` Drawdown-Schwelle, `tech_direction='LONG'`
+- SHORT: `conviction_score_bear ≥ min_confidence_short` (0,55), `tech_direction='SHORT'`
+- **Mindest-Nennungen** (`MENTIONS_CLAUSE`): Meinungsquellen ≥ `min_mentions` (2), deterministische Quellen ≥ 1; Mindestzahl verschiedener Kanäle `min_distinct_channels` (aktuell 1 = aus).
+- Reihenfolge: `0,4 × Conviction + 0,4 × Technik + 0,2 × Kanalvielfalt` (+ Tiebreaker).
+
+#### Entry — Gates je Kandidat (in dieser Reihenfolge)
+
+Jeder Abbruch wird mit Grund in `blocked_entries` protokolliert (Grundlage für `crabel_shadow_eval`).
+
+1. Krypto-Ticker → aus; bereits offen → übersprungen; **24-h-Sperre** nach letztem Entry
+2. Makro: kein SHORT bei bullish + Bull
+3. Kurs/ATR vorhanden
+4. **Sektor-Regime:** LONG in Bear-Sektor blockiert, SHORT in Bull-Sektor blockiert, Sideways-Sektor → Size 50 %
+5. **Liquiditäts-/Momentum-Gate:** LONG nur mit `weekly_trend=bullish` UND Technik `LONG` (SHORT spiegelbildlich); Liquidität ≥ 500.000 €/Tag; exotische Börsen ohne kanonischen Ticker blockiert
+6. SHORT: Short-Thesis mind. 2 von 4 Kriterien (bearishe Conviction, Bewertung, Analysten, Technik)
+7. **Allokation** je Richtung (YT-Fade: eigenes Budget, siehe unten)
+8. **Sektor-Sperrliste** (14 Tage bei ≥ 3 Verlusttrades in 14 Tagen) und Probation-Trade mit 50 % Größe
+9. **Korrelation** mit offenen Positionen gleicher Richtung ≤ 0,7
+10. **Earnings-Blackout** 5 Tage; **US-Makro-Eventtag** (NFP/FOMC/CPI) → kein Entry
+11. **Segment-Historie** (Ticker/Richtung/Conviction-Band)
+12. Conviction ≥ 0,80: **X-Breaking-News** (twitterapi.io) und **Last30days-Gate** (Block bei stark negativer Nachrichtenlage)
+13. **Overnight-Gap** → kein „Kauf nach Gap"
+14. **Crabel-Gate** (`crabel_gate_mode=contraction`): nach Kontraktionstag Entry erst über Vortageshoch + Stretch (SHORT spiegelbildlich)
+15. **Investment Committee** (LLM-Rollen Bull/Bear/Risk + Devil's Advocate, max. 6 je Lauf): `committee_mode=shadow` — Urteil wird protokolliert (`committee_log`), blockiert aber nicht; Fehler → Fail-Open
+
+#### Position Sizing (seit 08.09.2026)
+
+- Basis für **alle** Kandidaten gleich: `max_position_pct` = 12,5 % des Depots. Die Conviction bestimmt die Größe nicht mehr.
+- **Risk-Parity-Deckel:** `(Depot × risk_pct_per_trade) / (SL-Abstand in €) × Kurs` mit `risk_pct_per_trade` = 0,8 %; SL-Abstand aus der Exit-Matrix, FX-korrekt.
+- **Bremsen** (VIX > 30 → 50 %, Probation, Drawdown, Sektor-Regime, Committee) werden kombiniert und bei 40 % (`size_brake_floor`) abgeschnitten.
+- Unter 200 € → kein Entry. **Sektor-Exposure** ≤ 70 % des Depots.
+- Entry-Kurs inkl. Slippage, Stückzahl FX-korrekt nach Abzug der Kommission.
+
+#### YT-Fade (seit 29.09.2026)
+
+LONG-Kandidaten, deren Kanäle **ausschließlich YouTube** sind (`_derive_signal_source(channels) == "youtube"`), durchlaufen alle LONG-Gates unverändert und werden erst unmittelbar vor dem Eröffnen zum **SHORT**:
+- `positions.exit_mode = 'yt_fade_40d'`, Notfallstop **+40 %** über dem Entry, Haltedauer **40 Handelstage**
+- eigenes Budget: max. 6 Positionen, max. 50 % des Depots; zählt nicht gegen die regulären SHORT-Slots (Ablehnung: `blocked_entries.gate='allocation-yt-fade'`)
+- Konfiguration: `yt_fade_enabled`, `yt_fade_stop_pct` (0,4), `yt_fade_hold_days` (40), `yt_fade_max_open` (6), `yt_fade_max_allocation` (0,5). **Abschalten:** `yt_fade_enabled: false`.
+
+*Warum:* 61 YouTube-Long-Trades verloren −0,73 %/Trade; kein anderer Exit rettete sie (43 Varianten getestet). Gegen den Markt liefen die Titel nach der Nennung zunehmend schlechter (Überrendite nach 20 Tagen −3,4 %, nach 40 Tagen −9,2 %). Gespiegelt als SHORT mit 40 Tagen Haltedauer: Ø +4,1 %/Trade mit +40 %-Stop (ohne Stop +5,4 %). Jeder engere Stop (ATR-basiert oder unter ~+25 %) zerstört den Effekt, weil die Titel vorher noch 10–25 % steigen.
+
+#### Exit-Management
+
+**Exit-Matrix** (`config.get_exit_config`, einzige Quelle): Asset-Typ aus dem Sektor (TECH = Technology/Communication Services; DEFENSIVE = Consumer Defensive/Healthcare/Utilities; sonst STANDARD) × **Sektor-Regime** der Position.
+
+| Asset-Typ | Regime | SL | TP (Anzeige) | Partial ab | Profit-Lock |
+|---|---|---|---|---|---|
+| STANDARD | bull / sideways | 1,5 × ATR | 4,5 × ATR | 1,5 × ATR | 1,0 × ATR |
+| STANDARD | bear | 2,0 | 6,0 | 1,5 | 1,0 |
+| TECH | bull / sideways | 2,0 | 6,0 | 2,0 | 1,0 |
+| TECH | bear | 2,5 | 7,5 | 2,0 | 1,0 |
+| DEFENSIVE | bull / sideways | 1,0 | 3,0 | 1,0 | 1,0 |
+| DEFENSIVE | bear | 1,5 | 4,5 | 1,0 | 1,0 |
+
+- **Exit-Profil** (`exit_profile`, aktuell `wider_stop`) skaliert SL und TP: tighter ×0,85 · current ×1,00 · **wider_stop ×1,15** · wider_stop_plus ×1,33 · wider_stop_aggressive ×1,50. Das Profil und `time_stop_trading_days` sind die einzigen wirksamen Stellhebel; `atr_sl_multiplier`, `atr_tp_multiplier` und `chandelier_mult` steuern live nichts.
+- **Trailing:** `donchian_exit_mode=primary` — ab +1 ATR Gewinn zieht der Stop hinter das 10-Tage-Gegenextrem (Turtle-Exit); der ATR-Chandelier ist dann abgeschaltet. Stops werden nur enger, nie weiter.
+- **Partial Take-Profit:** 50 % bei `partial_atr` Gewinn; im Donchian-Modus bleibt der Stop danach stehen (kein Breakeven).
+- **Take-Profit** feuert nicht (`hit_tp=False`) — Gewinne laufen über den Trail.
+- **Time-Stop:** nach 5 Handelstagen (`time_stop_trading_days`), sofern das TP-Niveau nie erreicht wurde; Fill nicht schlechter als der Anfangs-Stop.
+- **YT-Fade-Positionen:** keine der obigen Regeln — nur `exit_rules.fade_exit_decision()`: `FADE_STOP` (Kurs ≥ Entry +40 %) oder `FADE_TIME_EXIT` nach 40 Handelstagen, jeweils zum aktuellen Kurs, Verlust gedeckelt bei 100 %.
+- ⏸ Nur in `active_exit_check.py` (derzeit nicht eingeplant): **Tech-Exit** (`TECH_BROKEN`, Technik gegen die Position und < 5 % Gewinn) und **Thesis-BROKEN** → Stop auf 0,5 × ATR enger. `breaking_news_monitor.py` (stündlich 10:15–17:15) zieht bei stark negativen News den Stop nach.
+- **Prüfhäufigkeit:** nachts in der Pipeline und stündlich 09–20 Uhr (`check_only`) auf den jeweils aktuellen Kurs — stündliche Stichproben, kein echter Intraday-Stop.
+
+### Step 7: Shadow Selection (`shadow_selection.py`)
+
+Läuft nach dem Signal Manager und ändert weder Config noch Positionen. Konkurrierende Auswahlregeln wählen täglich je 5 Kandidaten; jede wird vorwärts bewertet. Details Abschnitt 17.
+
+---
+
+## 4. FX-Umrechnung (`utils.py`)
+
+yfinance liefert Preise in der Heimwährung: US-Ticker → USD; `.DE`, `.PA`, `.AS`, `.F`, `.MU` … → EUR; `.L`/`.IL` → **Pence (GBp)**, also ÷100, dann GBP→EUR.
+
+| Funktion | Zweck |
+|---|---|
+| `ticker_to_currency(ticker)` | Währung aus Börsensuffix |
+| `price_to_eur(price, ticker)` | Preis → EUR inkl. GBp |
+| `position_size_in_shares(eur, price, ticker)` | EUR-Betrag → Stückzahl |
+| `turnover_to_eur(price, volume, ticker)` | Tagesumsatz → EUR (Liquiditätsfilter) |
+| `get_fx_rate_to_eur(currency)` | EZB-Kurs über Frankfurter-API (tages-gecacht) |
+
+---
+
+## 5. X/Twitter-Anbindung
+
+Seit 01.09.2026 ausschließlich über **twitterapi.io**; die frühere Grok/xAI-Anbindung ist entfernt.
+- `social_scanner.py` holt Tweets der registrierten X-Accounts (aktuell 2 in Probation) und RSS-Feeds.
+- `xsearch_helper.py`: Keyword-Suche über twitterapi.io, Sentiment-Extraktion per OpenRouter (DeepSeek). Funktionen: `conviction_boost()` (Watchlist Manager, Conviction ≥ 0,80), `breaking_news_check()` (Entry-Gate bei Conviction ≥ 0,80).
+- Neue X-Quellen werden nicht per LLM vorgeschlagen (halluzinationsanfällig).
+
+---
+
+## 6. Makro- und Sektor-Regime (`fundamental_data.py`, `config.py`)
+
+- **Globales Regime** (bull/sideways/bear) in `regime_history` aus Makrodaten (VIX, HYG, DXY, Zinskurve); Stand 28.09.: *sideways*, VIX 14,9.
+- **Sektor-Regime** (seit 06.09.2026): jeder Sektor bekommt das Regime seines Sektor-ETFs (`SECTOR_TO_ETF`, Tabelle `sector_regimes`); Edelmetall-Minen → GDX; unbekannt → SPY. Steuert Entry-Gates (Step 6, Punkt 4), Größe und die Exit-Matrix jeder Position.
+- **VIX > 30** → Positionsgröße halbiert (Wert aus `macro_data`).
+
+---
+
+## 7. Thesis-System (`thematic/`)
+
+Themen (`theme_definitions`, 51) und Profiteure (`theme_beneficiaries`, 220) werden von der thematischen Pipeline gepflegt; `thesis_monitor.py` prüft die These offener Positionen per LLM (`intact` / `weakening` / `broken`). Ein intaktes Theme gibt im Watchlist Manager bis +8 % Conviction-Boost.
+
+**Teilweise aktiv:** `scripts/thesis_monitor.py` läuft wieder (Mo–Fr 15:30), `factor_ranker.py` Mo–Fr 05:10. ⏸ `thematic_pipeline.py` und `prediction_market_scanner.py` haben weiterhin keinen Cron-Eintrag — neue Themen und Profiteure entstehen nicht, Positionen bekommen keine These; der Thesis Monitor setzt sie deshalb auf `no_thesis`.
+
+**Drawdown Monitor** (`thematic/drawdown_monitor.py`, Mo–Fr 10:05): protokolliert den Depotwert (Cash + Marktwert) in `drawdown_log` und meldet ab −10/−15/−20 % per Telegram (ab −15 % täglich). Er **blockiert nichts** — `system_paused` liest nur das Thematic-Dashboard; wirksam ist allein die Drawdown-Matrix im Signal Manager.
+
+**Factor Ranker** (`thematic/factor_ranker.py`): derzeit ein Momentum-Ranking über ~477 US-Titel — Momentum 0,60, Low Vol 0,25, Analysten-Revision 0,15; Quality und Value werden nur zur Diagnose berechnet (Gewicht 0, weil der Finnhub-Free-Tier die nötigen Fundamentaldaten nicht liefert). Ergebnis in `factor_scores`, genutzt von der Schattenhypothese `h1_momentum`.
+
+---
+
+## 8. Breaking News Monitor (`breaking_news_monitor.py`) — stündlich 10:15–17:15 Mo–Fr
+
+Holt für jede offene Position die News der letzten 24 h (Tavily), bewertet sie per LLM (0 = positiv … 1 = negativ) und zieht ab 0,65 den Stop auf 0,5 × ATR enger; zusätzlich Alarm bei > 5 % Vor-/Nachbörsenbewegung. YT-Fade-Positionen werden übersprungen (kein ATR-Stop). LLM-Aufruf seit 28.09. ohne Reasoning (vorher lief das Reasoning ins Token-Limit und der Score fiel still auf 0,5).
+
+---
+
+## 9. Datenbank (`data/trading.db`, Auswahl, Zeilen am 28.09.)
+
+| Tabelle | Zweck |
+|---|---|
+| `videos` (293) | YouTube-Videos mit Status, `error_count` |
+| `watchlist_mentions` (12.147) | einzelne Nennungen: Name, Kanal, Sentiment, Stärke, Datum |
+| `watchlist` (1.862) / `watchlist_archive` | aggregiert: Conviction (bull/bear/aged/raw), `tech_score`, `tech_direction`, `weekly_trend`, `channels` |
+| `positions` (99) | Trades: Levels, `highest/lowest_price` (MFE/MAE), `asset_type`, `crabel_at_entry`, `signal_source`, **`exit_mode`** (NULL = Standard, `yt_fade_40d` = YT-Fade) |
+| `portfolio` | Cash, Depotwert, Allzeithoch (`ath_value`) |
+| `blocked_entries` | jeder geblockte Entry mit Gate und hypothetischen Levels |
+| `shadow_selection` (431) | Schattenbücher: Kandidaten, Levels, `pnl_live_net`, `pnl_hold_net`, `cost_pct`, `exit_mode` |
+| `committee_log` | Urteile des Investment Committee |
+| `factor_scores` (7.630) | tägliche Faktor-Scores des Factor Rankers |
+| `companies` (1.783) / `company_aliases` (3.161) / `canonical_tickers` | Firmen-Stammdaten, Aliase, Ticker-Zuordnung |
+| `validation_rejects` | Negativ-Cache der Ticker-Validierung (21 Tage) |
+| `source_registry` (102) / `source_quality` | Quellen mit Lifecycle, Gewicht, Performance |
+| `macro_data`, `regime_history`, `sector_regimes` | Makrodaten, globales und Sektor-Regime |
+| `eval_metrics`, `drawdown_log`, `benchmark` | Auswertung |
+| `pead_cache`, `options_data`, `insider_trades`, `fundamentals_snapshot` | Zusatzdaten (Insider- und PCR-Daten sind laut Probe 25.09. unbrauchbar bzw. zu dünn) |
+| `theme_definitions`, `theme_beneficiaries`, `thesis_status_log`, `prediction_markets` | Thesis-System |
+| `llm_budget_log` | LLM-Kosten (erfasst nur einen kleinen Teil der tatsächlichen OpenRouter-Kosten) |
+| `sector_blacklist` | Sektor-Sperren mit Cooldown/Probation |
+
+---
+
+## 10. Quellen-Management (`source_lifecycle.py`, sonntags 07:00)
+
+```
+Typen:     YouTube | RSS | X | screener | screener_nasdaq
+Lifecycle: candidate → probation → active → (removed)
+```
+
+Stand 28.09.: YouTube 7 aktiv / 8 Probation / 2 Kandidaten / 36 entfernt · RSS 24 Probation / 1 Kandidat / 14 entfernt · X 2 Probation / 6 entfernt · beide Screener aktiv.
+
+- **Performance-Tracking:** Win-Rate, Ø PnL je Trade, Qualitäts-Score → Gewicht (fließt in die Conviction); schwache Quellen werden reduziert oder entfernt, Probation ohne Beförderung läuft nach 30 Tagen aus.
+- **Discovery:** LLM (OpenRouter) schlägt YouTube-Kanäle und RSS-Feeds nach Abdeckungslücken vor; X-Accounts nicht per LLM.
+- **Quellen-Zuordnung je Trade:** `positions.signal_source` (youtube / rss / x_social / screener / screener_nasdaq), abgeleitet aus den Kanälen; bei gemischten Quellen hat screener > x_social > rss > youtube Vorrang. Für Trades vor dem 10.08. am 28.09. nachgetragen.
+
+---
+
+## 11. Code-Architektur
+
+```
+skills/trading/
+├── config.py            ← Pfade, Exit-Matrix + Exit-Profile, Drawdown-Matrix, Sektor→ETF,
+│                          Quellen-Taxonomie, db_connect() (WAL, 30 s Busy-Timeout)
+├── utils.py             ← get_technical_score(), Preis-Cache + Batch-Download, FX,
+│                          Slippage/Kommission, roundtrip_cost_pct(), portfolio_lock, get_logger()
+├── exit_rules.py        ← gemeinsame Exit-Logik: Stops, Chandelier/Donchian, Time-Stop,
+│                          replay_exit_path() (pfadgenaues Replay), YT-Fade-Regeln
+├── scripts/
+│   ├── trading_pipeline.py      ← Orchestrierung der 8 Schritte
+│   ├── yt_channel_monitor.py · signal_extractor.py · screener_source.py
+│   ├── watchlist_manager.py · watchlist_dedup.py · technical_validator.py
+│   ├── company_validator.py · company_normalizer.py · canonicalize_watchlist.py
+│   ├── signal_manager.py        ← Entries, Exits, Sizing, Drawdown, YT-Fade
+│   ├── active_exit_check.py     ← ⏸ Tech-Exit, Thesis-SL (nicht eingeplant)
+│   ├── breaking_news_monitor.py ← stündlich 10:15–17:15
+│   ├── shadow_selection.py      ← Schattenbücher + Vorab-Kriterien
+│   ├── crabel_shadow_eval.py    ← Counterfactual geblockter Entries
+│   ├── strategy_optimizer.py    ← Exit-Parameter-Suche (So 08:00)
+│   ├── backtester.py · trade_paths.py (OHLC-Pfad-Cache) · verify_exit_profile.py
+│   ├── nightly_eval.py · pre_delivery_gate.py · weekly_strategy_review.py · weekly_exit_review.py
+│   ├── fundamental_data.py · social_scanner.py · xsearch_helper.py · last30days_gate.py
+│   ├── source_lifecycle.py · pead_signal.py · llm_validator.py (Pipeline-Schritt)
+│   ├── export_watchlist.py      ← Watchlist.md in den Vault
+│   ├── dashboard.py · dq_alarm.py · pipeline_timing_check.py · refresh_tech_scores.py
+│   └── *_probe.py               ← Mess-Skripte (nur lesend)
+├── roles/               ← Investment Committee (Bull/Bear/Risk), Devil's Advocate, LLM-Budget
+├── thematic/            ← factor_ranker.py + drawdown_monitor.py (aktiv); thematic_pipeline, theme_discovery,
+│                          beneficiary_mapper, prediction_market_scanner, briefing, weekly_review (⏸ ohne Cron);
+│                          thesis_monitor (ersetzt durch scripts/thesis_monitor.py)
+├── backtesting/         ← Backtest-Engine aus ai-hedge-fund (AlphaModel-Interface, PEAD)
+├── tests/               ← pytest (u. a. Schattenbuch, Jev, Signal-Extractor-Härtung, Exit-Asymmetrie)
+└── data/                ← trading.db, strategy_config.json, cron.log (rotierend 10 MB), Reports
+```
+
+**Design-Grundsätze:** `companies` ist die Quelle für Ticker und Sektor · `get_exit_config()` die einzige Quelle für Exit-Parameter · Preis-Cache mit TTL + Batch-Download · alle Schreiber des Depots teilen ein Lock · jeder Entry-Abbruch wird protokolliert · Messungen vor Parameteränderungen (Mess-Skripte, Schattenbücher, pfadgenaues Replay).
+
+---
+
+## 12. Bekannte Einschränkungen / Design-Entscheidungen
+
+- **Paper-Trading:** alle Positionen simuliert; SHORT als Knockout-Zertifikat 1× Hebel (Totalverlust bei Kursverdopplung).
+- **Exit-Prüfung stündlich, nicht laufend:** nachts + stündlich 09–20 Uhr. Ein Stop greift auf den Kurs zum Prüfzeitpunkt; Kursspitzen dazwischen werden nicht gesehen, Lücken werden zum aktuellen Kurs abgerechnet.
+- **Kein Tech-Exit:** `active_exit_check` (TECH_BROKEN, Thesis-SL) ist weiterhin nicht eingeplant.
+- **YT-Fade-Notfallstop und Kurslücken:** Der Stop wird nur zu den (stündlichen) Prüfzeitpunkten geprüft. Laut Probe ist eine Prüfung näher am Intraday-Verlauf etwas ungünstiger (Stop auf Intraday-Hoch Ø +3,4 %/Trade, auf Schlusskurs Ø +4,1 %). Springt der Kurs dazwischen über die Schwelle, wird zum aktuellen Kurs abgerechnet — im Rückblick hätte PLTR so −44 % gebracht, so viel wie ohne Stop. Der Stop schützt vor stetigen Anstiegen, nicht vor Sprüngen.
+- **YT-Fade ist in-sample begründet:** Analyse auf denselben Trades, in denen der Effekt gefunden wurde; 40 von 59 Entries aus Mai/Juni 2026. Die Bewertung läuft vorwärts über das Schattenbuch.
+- **Parameter ohne Wirkung:** `atr_sl_multiplier`, `atr_tp_multiplier`, `chandelier_mult` (Donchian-primary) und `min_confidence` werden live nicht gelesen; `adapt_strategy` verstellt nur noch die ersten beiden.
+- **conviction_score_raw vs. conviction_score:** der Watchlist Manager schreibt den rohen Wert in `conviction_score_raw` und setzt `conviction_score` jede Nacht darauf zurück; der LLM-Validator (Pipeline-Schritt direkt davor) verändert nur `conviction_score` (+ bis 0,10 bei CONFIRMED, −0,15 bei CONTRADICTED) und `llm_verdict`.
+- **Kein DB-Backup seit 12.07.2026** außer manuellen Sicherungen in `skills/trading/backups/`.
+- **Telegram:** `TELEGRAM_HOME_CHANNEL` mit Fallback `TELEGRAM_CHAT_ID`; `signal_manager` prüft beim Start `getMe`.
+
+---
+
+## 13. LLM-Konfiguration (alle über OpenRouter)
+
+| Rolle | Modell |
+|---|---|
+| Signal Extractor Scout + Analyst | `deepseek/deepseek-v4-flash-0731` |
+| Signal Extractor Fallback | `openai/gpt-4o-mini` |
+| X-Sentiment (`xsearch_helper`), Breaking News, LLM-Validator | `deepseek/deepseek-v4-flash-0731` |
+| Committee Bull | `deepseek/deepseek-v4-pro` |
+| Committee Bear | `openai/gpt-5.4-nano` |
+| Committee Risk | `google/gemini-2.5-flash-lite` |
+| Devil's Advocate | `deepseek/deepseek-v4-flash-0731` |
+| Theme Discovery, Beneficiary A/B, PM-Classifier | `deepseek/deepseek-v4-flash-0731` |
+| Beneficiary C | `qwen/qwen3.5-flash-02-23` |
+| Thesis Monitor | `google/gemini-2.5-flash-lite` |
+| Thematic Weekly Review | `anthropic/claude-sonnet-4` |
+| Embeddings | `openai/text-embedding-3-small` (Fallback lokal `all-MiniLM-L6-v2`) |
+| Jev-Schattenhypothese (nur mit `JEV_SHADOW=on`) | `typesafe/jev-1.13-20260917` |
+
+Modelle der thematischen und Rollen-Komponenten stehen in `thematic/config/thematic_config.json` (`llm_models`). Ein OpenRouter-Key für alle Profile; Kosten ~18 $/Monat, `llm_budget_log` erfasst nur einen kleinen Teil.
+
+---
+
+## 14. Datenbank-Migrationen (automatisch)
+
+Beim Start prüfen die Skripte per `PRAGMA table_info` und ergänzen fehlende Spalten/Tabellen — kein manuelles Setup:
+
+| Skript | Tabelle | Spalten / Tabellen |
+|---|---|---|
+| `signal_manager.py` | `positions` | `highest_price`, `lowest_price`, `partial_exit_done`, `thesis_current_status`, `thesis_theme_id`, `asset_type`, `crabel_at_entry`, `exit_mode` |
+| `signal_manager.py` | `portfolio` | `ath_value` |
+| `signal_manager.py` | `watchlist` | `conviction_score_raw`, `llm_verdict`, `llm_verdict_at` |
+| `signal_manager.py` | — | `blocked_entries`, `canonical_tickers` |
+| `shadow_selection.py` | `shadow_selection` | Tabelle + `pnl_live_net`, `pnl_hold_net`, `cost_pct`, `exit_eval_date`, `exit_mode`; benennt alte Baseline-Zeilen in `live_baseline_v1` um |
+| `watchlist_manager.py` | `watchlist` | `conviction_score_bear`, `weekly_trend` |
+| `yt_channel_monitor.py` | `videos` | `error_count` |
+
+---
+
+## 15. Konfiguration (`data/strategy_config.json`) und Strategie-Anpassung
+
+**Wirksame Kernwerte (28.09.):**
+
+| Parameter | Wert | Wirkung |
+|---|---|---|
+| `exit_profile` | `wider_stop` | Stop-Abstand ×1,15 der Exit-Matrix |
+| `time_stop_trading_days` | 5 | Time-Stop |
+| `donchian_exit_mode` / `_period` | primary / 10 | Trailing |
+| `partial_tp_enabled` / `_pct` | true / 0,5 | Partial Take-Profit |
+| `max_positions` | 8 | Obergrenze (Drawdown-Matrix kann senken) |
+| `max_position_pct` | 0,125 | Basisgröße je Position |
+| `risk_pct_per_trade` | 0,008 | Risk-Parity-Deckel |
+| `max_portfolio_allocation` / `max_long_allocation` / `max_short_allocation` | 0,7 / 0,7 / 0,3 | Budget |
+| `min_conviction` / `min_confidence_short` | 0,65 / 0,55 | Kandidaten-Schwellen |
+| `min_mentions` / `min_distinct_channels` | 2 / 1 | Mindest-Nennungen |
+| `crabel_gate_mode` | contraction | Crabel-Gate |
+| `committee_enabled` / `committee_mode` | true / shadow | Committee protokolliert nur |
+| `size_brake_floor` | 0,4 | Untergrenze der Größenbremsen |
+| `yt_fade_*` | siehe Step 6 | YT-Fade |
+
+**`adapt_strategy()`** (nach jedem Exit): setzt `atr_sl_multiplier`/`atr_tp_multiplier` auf die Regime-Werte der Matrix und verstellt sie nach 3 Gewinnen/Verlusten in Folge (nicht im Sideways-Regime). Da beide Werte live nicht gelesen werden, ist die Funktion faktisch **ohne Wirkung**; die Risikosteuerung nach Verlusten läuft über die Drawdown-Matrix.
+
+**Sektor-Sperrliste:** Sektoren mit ≥ 3 geschlossenen Trades in 14 Tagen und negativem PnL werden 14 Tage gesperrt; danach ein Probation-Trade mit 50 % Größe.
+
+---
+
+## 16. Backtesting & Messwerkzeuge
+
+- **`backtesting/`** (aus ai-hedge-fund, 11.07.2026): `BacktestEngine` mit AlphaModel-Interface und yfinance-Datenclient; PEAD-Signal als Quant-Modell. Equal-Dollar-Sizing — testet Signale, nicht die Portfolio-Konstruktion.
+- **Pfadgenaues Exit-Replay** (seit 18.09.2026): `exit_rules.replay_exit_path()` spielt jede Exit-Regel auf den echten Tages-OHLC-Bars nach (Stop zuerst, dann Partial, Trail, Time-Stop), `trade_paths.py` cached die Kurspfade. Grundlage für Optimizer, Backtester, Schattenbuch und `verify_exit_profile.py`. Vorher bewertete der Optimizer nur den Exit-Preis und bevorzugte dadurch systematisch zu enge Stops.
+- **PEAD** im Watchlist Manager: Earnings-Beat → +5 % Long-Conviction, Miss → +5 % Bear-Conviction, Fenster 10 Tage, Cache `pead_cache`.
+- **Mess-Skripte** (`*_probe.py`, nur lesend): Entscheidungsregeln stehen vorab im Skriptkopf.
+
+---
+
+## 17. Optimizer-Robustheit & Schattenbücher (Stand 28.09.2026)
+
+### 17.1 Strategy Optimizer (`strategy_optimizer.py`, `backtester.py`) — sonntags 08:00
+
+Sucht über `exit_profile` × `time_stop_trading_days` (5/7/10/15) auf dem pfadgenauen Replay. Pro Lauf höchstens eine Stufe auf der Profil-Leiter. Seit 28.09.2026:
+- **Netto statt brutto:** jedes Replay zieht die Roundtrip-Kosten ab (`utils.roundtrip_cost_pct`, im Mittel ~0,33 %/Trade).
+- **Robustheits-Gate** vor jedem Zurückschreiben (Grid- und Walk-Forward-Pfad): auch mit **doppelten Kosten** Erwartungswert > 0 und PF ≥ 1, und PF ≥ 1 **ohne den besten Trade**.
+- **Walk-Forward zuerst:** Meldet er „nicht robust" (Out-of-Sample), läuft die Grid Search nur als Bericht und schreibt nichts.
+- YT-Fade-Trades sind ausgeschlossen. `--dry-run` schreibt wirklich nichts.
+
+Stand 28.09.: Die Live-Konfiguration fällt im Replay durch das Gate (netto −0,60 %/Trade); Exit-Tuning ist nicht der Hebel.
+
+### 17.2 Schattenbücher (`shadow_selection.py`)
+
+Auswahlregeln, täglich je Top-5, ohne Einfluss auf den Handel:
+
+| Hypothese | Regel |
+|---|---|
+| `live_baseline` | was der Live-Entry auswählt (inkl. YT-Fade, ab 29.09.) |
+| `live_baseline_v1` | alte Live-Logik bis 28.09. (alles LONG) |
+| `h1_momentum` | Top-N nach `factor_scores.composite_score` |
+| `h2_pead` | Post-Earnings-Drift als Primärquelle |
+| `h3_crowding` | preisbestätigte Kandidaten mit der niedrigsten Conviction |
+| `h_jev` | Jev-Modell (nur mit `JEV_SHADOW=on`) |
+
+**Bewertung je Kandidat, netto:** `pnl_live_net` = exakt der Live-Exit (YT-Fade: +40 %-Stop / 40 Handelstage auf Schlusskursen); `pnl_hold_net` = Anfangs-Stop, 20 Handelstage halten. Liegt „halten" klar über „live", würgt der Exit das Signal ab. Die ältere Spalte `pnl_pct_sim` (Chandelier, Tag-7-Stop, brutto) ist keine Entscheidungsgröße mehr.
+
+**Vorab festgelegte Erfolgskriterien** (28.09.2026, vor der ersten Bewertung — nicht nachträglich lockern). Live-Kandidat erst, wenn alle erfüllt:
+1. mindestens **30 unabhängige Trades** (ein Titel zählt höchstens einmal je 28 Tage)
+2. im Schnitt besser als die Live-Logik, die am jeweiligen Auswahltag galt (`live_baseline` + `live_baseline_v1`)
+3. auch mit **doppelten Kosten** im Schnitt positiv
+4. **ohne die besten 3 Trades** in Summe positiv
+
+Erste Bewertungen ab ~08.10.2026, YT-Fade-Einträge frühestens ~Ende November.
+
+---
+
+## 18. Bisherige Ergebnisse (Stand 28.09.2026)
+
+**Nach Quelle** (geschlossene Trades, realisiert):
+
+| Quelle | Richtung | Trades | Ø pro Trade | PF | Summe |
+|---|---|---|---|---|---|
+| YouTube | LONG | 61 | −0,73 % | 0,78 | −1.368 € |
+| YouTube | SHORT | 10 | −2,07 % | 0,21 | −172 € |
+| RSS | LONG | 12 | +4,88 % | 3,86 | +492 € — hängt allein an IONQ + ARM (21.05.) |
+| Screener | LONG | 8 | −2,03 % | 0,37 | −177 € |
+| Screener Nasdaq | LONG/SHORT | 4 | klein | – | +18 € |
+
+**Weitere Befunde:**
+- **Conviction:** das oberste Band (1,00) trug bis 08.09. 93 % des Verlusts; für frische Nennungen keine Vorhersagekraft (Probe 25.09.).
+- **Hinterherlaufen** (Nennung nach Kursanstieg schlechter?): kein belegbarer Effekt auf 5 Tage (743 Ereignisse). Über 20–40 Tage laufen die YouTube-Long-Titel dagegen deutlich schlechter als der Markt → Grundlage des YT-Fade.
+- **Exits:** Median-MAE der Trades 1,31 × ATR — enge Stops werden mechanisch ausgelöst; breitere Stops heben Trefferquote und PF, lösen aber das Entry-Problem nicht.
+- **Einzelquellen-Trades** (nur ein Kanal): meanR −0,29 gegen +0,02 bei Mehrfachbestätigung (p = 0,12, richtungsweisend).
