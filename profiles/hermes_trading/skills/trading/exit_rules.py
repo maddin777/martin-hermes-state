@@ -4,6 +4,30 @@ from __future__ import annotations
 from datetime import date, datetime
 
 
+# M5 (30.09.2026): Replay und Shadow-Buecher fuellten Stops exakt zum Stop-Preis, live rutscht der Ausstieg im Schnitt
+# 0,35 ATR durch (64 SL-Trades). Seit dem Stichtag 30.09.2026 wirkt der Wert ueber die Config (stop_slippage_atr) in allen
+# Replays (Optimizer, Backtester, verify_exit_profile, Shadow-Selection, Crabel-Shadow). Zu diesem Zeitpunkt hatte die
+# Shadow-Selection noch keine einzige Exit-Bewertung (pnl_live_net leer), die Vorab-Kriterien sind also nicht verschoben.
+LIVE_STOP_SLIPPAGE_ATR = 0.35
+
+
+def stop_fill_price(stop: float, atr: float, direction: str, slippage_atr: float = 0.0) -> float:
+    """Fuellpreis eines Stop-Treffers: der Stop, schlechter um slippage_atr * ATR."""
+    delta = slippage_atr * atr
+    return stop - delta if direction == "LONG" else stop + delta
+
+
+def replay_fill_settings(cfg: dict | None) -> dict:
+    """Fill-Annahmen der Replays aus der Config (M5 stop_slippage_atr, N9 time_stop_protected_fill).
+
+    Ohne die Schluessel gilt das alte Verhalten (Stop exakt, Time-Stop nie schlechter als der Anfangs-Stop).
+    Als ``**``-Argument an replay_exit_path gedacht.
+    """
+    cfg = cfg or {}
+    return {"stop_slippage_atr": float(cfg.get("stop_slippage_atr", 0.0) or 0.0),
+            "protect_time_stop": bool(cfg.get("time_stop_protected_fill", True))}
+
+
 def trading_days_held(entry_date: str, as_of: date | None = None) -> int:
     """Count weekdays after entry through ``as_of`` (exchange holidays excluded)."""
     start = datetime.fromisoformat(entry_date).date()
@@ -149,6 +173,8 @@ def replay_exit_path(
     donchian_period: int = 10,
     time_stop_bars: int = 7,
     tp_mult: float | None = None,
+    stop_slippage_atr: float = 0.0,
+    protect_time_stop: bool = True,
 ) -> dict:
     """Pfadgenaues Replay der Exit-Logik auf echten OHLC-Bars.
 
@@ -202,7 +228,8 @@ def replay_exit_path(
         # 1. Stop zuerst: innerhalb eines Bars ist die Reihenfolge unbekannt,
         #    die pessimistische Annahme haelt die Simulation ehrlich.
         if (low <= stop) if is_long else (high >= stop):
-            return _result(banked + remaining * (sign * (stop - entry) / risk), n, "SL_HIT")
+            sl_fill = stop_fill_price(stop, atr, direction, stop_slippage_atr)
+            return _result(banked + remaining * (sign * (sl_fill - entry) / risk), n, "SL_HIT")
 
         # 2. Partial-TP
         if partial_pct > 0 and not partial_done:
@@ -229,8 +256,8 @@ def replay_exit_path(
 
         # 5. Time-Stop
         if time_stop_bars and n >= time_stop_bars:
-            fill = protected_time_stop_price(close, initial_stop(entry, atr, direction, sl_mult),
-                                             direction)
+            fill = (protected_time_stop_price(close, initial_stop(entry, atr, direction, sl_mult), direction)
+                    if protect_time_stop else close)
             return _result(banked + remaining * (sign * (fill - entry) / risk), n, "TIME_STOP")
 
     close = bars[-1]["close"]

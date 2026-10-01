@@ -28,6 +28,7 @@ aus dem Backup zurueckholen, sobald eine Fundamentalquelle mit Nicht-US-
 Abdeckung angebunden ist.
 """
 import json
+import math
 import os
 import sqlite3
 import sys
@@ -103,6 +104,13 @@ def _compute_momentum_score(close, idx: int = -1):
 
     Jetzt wird der negative Index korrekt in eine Position uebersetzt.
     """
+    # M20 (30.09.2026): Am 23.09. stand Momentum 0,0 fuer alle 398 Ticker. NaN im Kursverlauf (z. B. unvollstaendige
+    # letzte Kerze) ergab einen NaN-Score statt None; _percentile machte daraus ueberall 0 und das h1-Buch blieb
+    # am 24.09. leer. Jetzt: NaN-Kerzen werden verworfen, ein nicht endlicher Wert ergibt None.
+    try:
+        close = close.dropna()
+    except AttributeError:
+        pass
     n = len(close)
     i = idx if idx >= 0 else n + idx
     if i < MOM_LOOKBACK_LONG or i >= n:
@@ -110,6 +118,8 @@ def _compute_momentum_score(close, idx: int = -1):
     px_now = float(close.iloc[i])
     px_6m  = float(close.iloc[i - MOM_LOOKBACK_LONG])
     px_1m  = float(close.iloc[i - MOM_LOOKBACK_SHORT])
+    if not all(math.isfinite(x) for x in (px_now, px_6m, px_1m)):
+        return None
     if px_6m <= 0 or px_1m <= 0:
         return None
     ret_6m = px_now / px_6m - 1.0
@@ -173,14 +183,17 @@ def _percentile(values: list) -> list:
     aus wie "alle maximal stark" statt wie "keine Information". Genau so blieb
     der Momentum-Bug ein Jahr lang unsichtbar. Jetzt: neutral 0.5, plus Warnung.
     """
-    arr = np.array([v for v in values if v is not None], dtype=float)
+    def _missing(v):
+        return v is None or (isinstance(v, float) and math.isnan(v))
+
+    arr = np.array([v for v in values if not _missing(v)], dtype=float)
     if len(arr) == 0:
         return [0.5] * len(values)
     if float(np.ptp(arr)) == 0.0:
         print("[Factor Ranker] \u26a0 Faktor ohne Streuung (alle Werte identisch) "
               "\u2192 neutral 0.5", flush=True)
         return [0.5] * len(values)
-    ranks = [float(np.sum(arr <= v)) / len(arr) if v is not None else 0.5
+    ranks = [float(np.sum(arr <= v)) / len(arr) if not _missing(v) else 0.5
              for v in values]
     return ranks
 
@@ -241,8 +254,10 @@ def main():
             # einem erfundenen Neutralwert das Perzentil zu verwaessern.
             skipped_no_mom += 1
             continue
-        qual = _compute_quality_score(ticker)
-        val = _compute_value_score(ticker)
+        # M20: quality und value haben in thematic_config.json Gewicht 0; ihre Berechnung kostete 2 von 3
+        # Finnhub-Calls je Ticker (Laufzeit ~23 statt ~8 Minuten). Ohne Gewicht: None -> neutral 0.5 in der Diagnose.
+        qual = _compute_quality_score(ticker) if weights.get("quality", 0) > 0 else None
+        val = _compute_value_score(ticker) if weights.get("value", 0) > 0 else None
         rev = _compute_revision_score(ticker)
         lowvol = _compute_lowvol_score(close)
 
@@ -261,6 +276,20 @@ def main():
 
     if not results:
         print("[Factor Ranker] Keine validen Ticker.")
+        con.close()
+        return
+
+    # M20: Ein Lauf mit zu vielen ausgefallenen Tickern oder ohne Momentum-Streuung wird verworfen und NICHT gespeichert
+    # (vorher wurde ein Ranking aus lauter Nullen abgelegt, das das Schattenbuch h1 leer laufen liess).
+    attempted = len(universe[:max_tickers])
+    min_share = float(cfg.get("factor_min_valid_share", 0.8))
+    if attempted and len(results) / attempted < min_share:
+        print(f"[Factor Ranker] \u26a0 nur {len(results)}/{attempted} Ticker mit gueltigen Daten "
+              f"(< {min_share:.0%}): Lauf verworfen, nichts gespeichert", flush=True)
+        con.close()
+        return
+    if float(np.ptp([r["momentum_raw"] for r in results])) == 0.0:
+        print("[Factor Ranker] \u26a0 Momentum ohne Streuung: Lauf verworfen, nichts gespeichert", flush=True)
         con.close()
         return
 

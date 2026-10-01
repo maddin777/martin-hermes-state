@@ -131,11 +131,16 @@ def _market_text(context: dict) -> str:
 # eigene Regel dort lautete "JSON-Repair bauen, sobald die Ausreisserquote >5%
 # liegt"; die Live-Auswertung zeigt 5 von 11 Checks als ERROR_FAIL_OPEN (45%).
 # Bear und Risk antworten kurz und behalten deshalb ein kleineres Budget.
+# P6 (30.09.2026): 8 von 26 Checks endeten als ERROR_FAIL_OPEN. Bull (deepseek-v4-pro) lief mit Reasoning ins
+# Limit (leere oder abgeschnittene Antwort bei genau 1.600 Tokens), Risk lieferte einmal nur 12 Zeichen. Jetzt:
+# Reasoning aus (ROLE_REASONING), mehr Spielraum und ein Wiederholversuch je Rolle (ROLE_ATTEMPTS).
 ROLE_MAX_TOKENS = {
-    "committee_bull": 1600,
-    "committee_bear": 1000,
-    "committee_risk": 1000,
+    "committee_bull": 2500,
+    "committee_bear": 1600,
+    "committee_risk": 1600,
 }
+ROLE_REASONING = {"enabled": False}
+ROLE_ATTEMPTS = 2
 DEFAULT_MAX_TOKENS = 1000
 
 
@@ -175,32 +180,40 @@ def _call_role(con, today, prompt, model_task, results_acc):
     Returns: (data_dict, ok_bool). ok=False → Fail-Open beim Aufrufer.
     """
     model = llm_client.get_model(model_task)
-    res = llm_client.call_llm(
-        prompt, model, temperature=0.3, json_mode=True,
-        max_tokens=ROLE_MAX_TOKENS.get(model_task, DEFAULT_MAX_TOKENS)
-    )
-    toks = res.get("tokens") or {}
-    t_in, t_out = int(toks.get("input", 0) or 0), int(toks.get("output", 0) or 0)
-    results_acc["tokens_in"] += t_in
-    results_acc["tokens_out"] += t_out
-    results_acc["models"].append(res.get("model") or model)
-    budget.record_spend(con, ROLE, today, t_in, t_out, res.get("model") or model)
+    failure = ({}, False)
+    for attempt in range(1, ROLE_ATTEMPTS + 1):
+        res = llm_client.call_llm(
+            prompt, model, temperature=0.3, json_mode=True,
+            max_tokens=ROLE_MAX_TOKENS.get(model_task, DEFAULT_MAX_TOKENS),
+            reasoning=ROLE_REASONING,
+        )
+        toks = res.get("tokens") or {}
+        t_in, t_out = int(toks.get("input", 0) or 0), int(toks.get("output", 0) or 0)
+        results_acc["tokens_in"] += t_in
+        results_acc["tokens_out"] += t_out
+        results_acc["models"].append(res.get("model") or model)
+        budget.record_spend(con, ROLE, today, t_in, t_out, res.get("model") or model)
 
-    if not res.get("ok"):
-        print(f"     ⚠ Committee/{model_task}: {res.get('error')}", flush=True)
-        return {}, False
+        if not res.get("ok"):
+            print(f"     ⚠ Committee/{model_task}: {res.get('error')} (Versuch {attempt}/{ROLE_ATTEMPTS})",
+                  flush=True)
+            failure = ({}, False)
+            continue
 
-    data = _parse_role_json(res, model_task)
-    if not isinstance(data, dict) or not data:
-        # FIX 08.09.2026: Rohantwort mitgeben. Vorher ging bei einem Parse-Fehler
-        # ein leeres {} zurueck und committee_log bekam eine NULL-Spalte — genau
-        # die Payload, die man zur Diagnose braucht, war weg. Die 5 historischen
-        # ERROR_FAIL_OPEN-Zeilen sind deshalb nachtraeglich nicht analysierbar.
-        raw = (res.get("content") or "")
-        print(f"     ⚠ Committee/{model_task}: Parse-Fehler "
-              f"({len(raw)} Zeichen Rohantwort, {t_out} Output-Tokens)", flush=True)
-        return {"_parse_error": True, "_raw": raw[:4000]}, False
-    return data, True
+        data = _parse_role_json(res, model_task)
+        if not isinstance(data, dict) or not data:
+            # FIX 08.09.2026: Rohantwort mitgeben. Vorher ging bei einem Parse-Fehler
+            # ein leeres {} zurueck und committee_log bekam eine NULL-Spalte — genau
+            # die Payload, die man zur Diagnose braucht, war weg. Die 5 historischen
+            # ERROR_FAIL_OPEN-Zeilen sind deshalb nachtraeglich nicht analysierbar.
+            raw = (res.get("content") or "")
+            print(f"     ⚠ Committee/{model_task}: Parse-Fehler "
+                  f"({len(raw)} Zeichen Rohantwort, {t_out} Output-Tokens, Versuch {attempt}/{ROLE_ATTEMPTS})",
+                  flush=True)
+            failure = ({"_parse_error": True, "_raw": raw[:4000]}, False)
+            continue
+        return data, True
+    return failure
 
 
 def run_committee(con, candidate_row, direction: str, context: dict) -> dict:

@@ -336,13 +336,41 @@ def _try_parse(text):
             return json.loads(fixed)
         except json.JSONDecodeError as original_error:
             decoder = json.JSONDecoder()
+            fallback_value = None
             for match in re.finditer(r"[\[{]", fixed):
                 try:
                     value, _end = decoder.raw_decode(fixed[match.start():])
-                    if isinstance(value, (dict, list)):
-                        return value
                 except json.JSONDecodeError:
                     continue
+                if isinstance(value, list) or (isinstance(value, dict) and "companies" in value):
+                    return value
+                # M13 (30.09.2026): ein einzelnes Firmenobjekt aus einem abgeschnittenen Dokument ist kein
+                # Ergebnis (der Chunk lieferte dadurch still 0 Firmen) -> nicht als Treffer werten
+                if isinstance(value, dict) and "name" in value and fallback_value is None:
+                    continue
+                if isinstance(value, dict) and fallback_value is None:
+                    fallback_value = value
+            # M13: abgeschnittenes JSON -> alle VOLLSTAENDIGEN Objekte des companies-Arrays retten
+            m_arr = re.search(r'"companies"\s*:\s*\[', fixed)
+            if m_arr:
+                pos, items = m_arr.end(), []
+                while pos < len(fixed):
+                    while pos < len(fixed) and fixed[pos] in " \t\r\n,":
+                        pos += 1
+                    if pos >= len(fixed) or fixed[pos] == "]":
+                        break
+                    try:
+                        obj, pos = decoder.raw_decode(fixed, pos)
+                    except json.JSONDecodeError:
+                        break
+                    if isinstance(obj, dict):
+                        items.append(obj)
+                if items:
+                    print(f"     ⚠ abgeschnittenes JSON: {len(items)} vollständige Firmenobjekte gerettet",
+                          flush=True)
+                    return {"companies": items}
+            if fallback_value is not None:
+                return fallback_value
             raise original_error
 
 
@@ -575,6 +603,17 @@ def call_scout(chunk, channel, title, date_str, chunk_num, total_chunks):
     )
 
 
+def _as_result_dict(result):
+    """Modelle antworten gelegentlich mit einer Liste (`[]` oder `[{...}]`) statt {"companies": [...]}.
+    M13 (30.09.2026): Listen werden eingewickelt, alles andere ergibt ein leeres Ergebnis, statt mit
+    AttributeError das ganze Video auf 'error' zu setzen."""
+    if isinstance(result, list):
+        return {"companies": [c for c in result if isinstance(c, dict)]}
+    if isinstance(result, dict):
+        return result
+    return {}
+
+
 def merge_scout_results(results):
     """
     Dedupliziert Firmen über alle Chunks und sammelt bis zu
@@ -587,7 +626,10 @@ def merge_scout_results(results):
     outlooks = []
 
     for result in results:
+        result = _as_result_dict(result)
         for company in result.get("companies", []):
+            if not isinstance(company, dict):
+                continue
             name = (company.get("name") or "").strip()
             if not name:
                 continue
@@ -608,7 +650,7 @@ def merge_scout_results(results):
                 if s["rough_sentiment"] == "neutral" and \
                         company.get("rough_sentiment") in ("bullish", "bearish"):
                     s["rough_sentiment"] = company["rough_sentiment"]
-        for theme in result.get("key_themes", []):
+        for theme in (result.get("key_themes") or []):
             if theme not in themes:
                 themes.append(theme)
         if result.get("market_outlook"):
@@ -632,7 +674,8 @@ def _scout_fallback(scout_companies):
         snippet = s["snippets"][0] if s["snippets"] else ""
         out.append({
             "name": s["name"],
-            "sentiment": s.get("rough_sentiment") or "neutral",
+            "sentiment": (str(s.get("rough_sentiment") or "").lower()
+                          if str(s.get("rough_sentiment") or "").lower() in _VALID_SENTIMENT else "neutral"),
             "strength": "moderate",
             "reason": snippet[:150],
             "mentioned_price": None,
@@ -723,8 +766,8 @@ def call_analyst(con, scout_companies, channel, title, date_str):
 
     analyzed = {
         (c.get("name") or "").lower().strip(): c
-        for c in parsed.get("companies", [])
-        if c.get("name")
+        for c in _as_result_dict(parsed).get("companies", [])
+        if isinstance(c, dict) and c.get("name")
     }
     if not analyzed:
         print("     ⚠ Analyst lieferte keine Firmen → Fallback auf Scout-Daten",
@@ -776,9 +819,9 @@ def _chunk_transcript(transcript):
     while start < t_len:
         end = min(start + CHUNK_SIZE + OVERLAP, t_len)
         chunks.append(transcript[start:end])
+        if end >= t_len:
+            break          # N6: der Rest lag sonst komplett im vorherigen Chunk (15.500 -> [15500, 500])
         start += CHUNK_SIZE
-        if start >= t_len:
-            break
     return chunks
 
 
@@ -814,6 +857,53 @@ def _run_scout_chunks(chunks, channel, title, date_str, con=None, max_workers=No
                 print(f"     ⚠ Budget-Buchung (extractor_scout) fehlgeschlagen: {e}",
                       flush=True)
     return [r[0] for r in results]
+
+
+def _iso_date(value):
+    """'2026-09-12', '20260912' oder ISO mit Uhrzeit -> date; sonst None."""
+    s = str(value or "").strip()
+    for fmt, n in (("%Y-%m-%d", 10), ("%Y%m%d", 8)):
+        try:
+            return datetime.strptime(s[:n], fmt).date()
+        except ValueError:
+            continue
+    return None
+
+
+def _rolling_filter(signals, days=30, today=None):
+    """Behält nur Einträge der letzten `days` Tage und normiert source.date auf YYYY-MM-DD.
+
+    M14 (30.09.2026): Der alte String-Vergleich `date >= '2026-09-01'` hielt Einträge mit kompaktem Datum
+    ('20260812') ewig am Leben ('0' > '-'): 579 von 867 Einträgen, jede Nacht ~3.700 neu eingefügte und wieder
+    gelöschte Mentions. Einträge ohne oder mit nicht lesbarem Datum bleiben wie bisher erhalten (Alter unbekannt)."""
+    from datetime import timedelta
+    today = today or date.today()
+    cutoff = today - timedelta(days=days)
+    kept, unknown = [], 0
+    for s in signals:
+        src_info = s.get("source") or {}
+        d = _iso_date(src_info.get("date"))
+        if d is None:
+            unknown += 1
+            kept.append(s)
+            continue
+        if d >= cutoff:
+            if src_info.get("date") != d.isoformat():
+                src_info["date"] = d.isoformat()
+            kept.append(s)
+    if unknown:
+        print(f"   ⚠ {unknown} Einträge ohne lesbares Datum bleiben unbegrenzt erhalten", flush=True)
+    return kept
+
+
+def _write_signals_atomic(path, signals):
+    """N5: temporäre Datei im selben Ordner, fsync, os.replace -> nie eine halbe JSON-Datei."""
+    tmp = f"{path}.tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        json.dump(signals, f, ensure_ascii=False, indent=2)
+        f.flush()
+        os.fsync(f.fileno())
+    os.replace(tmp, path)
 
 
 def analyze(transcript, channel, title, date_str, con=None):
@@ -939,20 +1029,30 @@ def main():
                 "channel":  row['channel'],
                 "title":    row['title'],
                 # upload_date von YouTube ist YYYYMMDD — in YYYY-MM-DD normieren
-                "date":     row['upload_date'][:4] + '-' + row['upload_date'][4:6] + '-' + row['upload_date'][6:8]
-                            if row['upload_date'] and len(row['upload_date']) == 8
-                            else row['upload_date'],
+                "date":     (_iso_date(row['upload_date']).isoformat()
+                             if _iso_date(row['upload_date']) else row['upload_date']),
                 "video_id": row['video_id']
             }
             companies = result.get('companies', [])
             print(f"  ✓ {len(companies)} Unternehmen: {[c['name'] for c in companies]}", flush=True)
+            # N5 (30.09.2026): Ergebnis ZUERST atomar sichern, erst dann den Status auf done setzen.
+            # Vorher stand `done` in der DB, die JSON wurde erst am Ende geschrieben: ein Abbruch dazwischen
+            # verlor das Ergebnis, und das Video wurde nie wieder analysiert. Doppelte Einträge (Abbruch
+            # zwischen JSON-Write und Statuswechsel) werden über die video_id bereinigt.
+            all_signals[:] = [s for s in all_signals
+                              if (s.get("source") or {}).get("video_id") != row['video_id']]
+            all_signals.append(result)
+            try:
+                _write_signals_atomic(SIGNALS_PATH, all_signals)
+            except Exception:
+                all_signals.pop()
+                raise
             con.execute(
                 "UPDATE videos SET status='done', analyzed_at=?, error_count=0 WHERE video_id=?",
                 (datetime.now().isoformat(), row['video_id'])
             )
             con.commit()
             stats["done"] += 1
-            all_signals.append(result)
 
         except Exception as e:
             new_error_count = error_count + 1
@@ -970,14 +1070,8 @@ def main():
 
     os.makedirs(os.path.dirname(SIGNALS_PATH), exist_ok=True)
     # Rolling: nur Einträge der letzten 30 Tage behalten (verhindert unbegrenztes Wachstum)
-    from datetime import timedelta
-    cutoff_date = (datetime.now() - timedelta(days=30)).strftime("%Y-%m-%d")
-    all_signals = [
-        s for s in all_signals
-        if (s.get("source") or {}).get("date", "9999") >= cutoff_date
-    ]
-    with open(SIGNALS_PATH, "w", encoding="utf-8") as f:
-        json.dump(all_signals, f, ensure_ascii=False, indent=2)
+    all_signals = _rolling_filter(all_signals, 30)
+    _write_signals_atomic(SIGNALS_PATH, all_signals)
 
     total_co = sum(len(s.get('companies', [])) for s in all_signals)
     print(f"\n✅ Fertig. {len(all_signals)} Videos, {total_co} Unternehmen.", flush=True)

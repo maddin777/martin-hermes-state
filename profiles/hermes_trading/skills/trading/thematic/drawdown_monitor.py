@@ -94,12 +94,20 @@ def main():
     # (vorher doppelt gezaehlt). Gleiche Rechnung wie signal_manager.check_drawdown.
     portfolio_value = cash + open_pos_val
 
-    # All-Time-High
-    ath_row = con.execute(
-        "SELECT MAX(portfolio_value) as ath FROM drawdown_log"
-    ).fetchone()
-    ath = ath_row["ath"] if ath_row and ath_row["ath"] else portfolio_value
+    # All-Time-High. P12 (30.09.2026): aus portfolio.ath_value, das signal_manager.check_drawdown fuehrt (inkl.
+    # Neusetzen nach der Notbremse, K1b). Vorher MAX(drawdown_log): ignorierte den Reset und enthielt die bis 28.09.
+    # doppelt gezaehlten Werte. drawdown_log nur noch als Fallback.
+    ath = portfolio["ath_value"] if "ath_value" in portfolio.keys() and portfolio["ath_value"] else None
+    if not ath:
+        ath_row = con.execute(
+            "SELECT MAX(portfolio_value) as ath FROM drawdown_log"
+        ).fetchone()
+        ath = ath_row["ath"] if ath_row and ath_row["ath"] else portfolio_value
     ath = max(ath, portfolio_value)
+
+    # P12: Telegram nur beim Wechsel der Stufe (vorher jeden Werktag dieselbe Meldung)
+    _last = con.execute("SELECT trigger_level FROM drawdown_log ORDER BY rowid DESC LIMIT 1").fetchone()
+    last_trigger = (_last["trigger_level"] if _last and _last["trigger_level"] else "none")
 
     # Drawdown
     dd_pct = (portfolio_value - ath) / ath if ath > 0 else 0
@@ -141,18 +149,27 @@ def main():
         # wirksame Bremse ist config.drawdown_params (15-25 %: Size 65 %,
         # Tech-Schwelle 0,75, max. 6 Positionen).
         action = "Hard: Drawdown-Matrix aktiv (Size 65 %, max. 6 Pos.)."
-        _send_telegram(
-            f"⚠ <b>Portfolio Drawdown -15%</b>\n"
-            f"Portfolio: {portfolio_value:.2f}€ | ATH: {ath:.2f}€\n"
-            f"Drawdown: {dd_pct:.1%}\n\n"
-            f"Drawdown-Matrix im signal_manager: Size 65 %, Tech-Schwelle 0,75, "
-            f"max. 6 Positionen."
-        )
+        if last_trigger != "hard":
+            _send_telegram(
+                f"⚠ <b>Portfolio Drawdown -15%</b>\n"
+                f"Portfolio: {portfolio_value:.2f}€ | ATH: {ath:.2f}€\n"
+                f"Drawdown: {dd_pct:.1%}\n\n"
+                f"Drawdown-Matrix im signal_manager: Size 65 %, Tech-Schwelle 0,75, "
+                f"max. 6 Positionen."
+            )
     elif dd_pct <= -soft:
         trigger = "soft"
         action = "Soft Warning: Tier-C-Kaeufe blockiert."
+        if last_trigger != "soft":
+            _send_telegram(
+                f"🟡 <b>SOFT WARNING: Portfolio Drawdown -10%</b>\n"
+                f"Portfolio: {portfolio_value:.2f}€ | ATH: {ath:.2f}€\n"
+                f"Drawdown: {dd_pct:.1%}"
+            )
+
+    if trigger == "none" and last_trigger != "none":
         _send_telegram(
-            f"🟡 <b>SOFT WARNING: Portfolio Drawdown -10%</b>\n"
+            f"✅ <b>Drawdown wieder unter {soft:.0%}</b>\n"
             f"Portfolio: {portfolio_value:.2f}€ | ATH: {ath:.2f}€\n"
             f"Drawdown: {dd_pct:.1%}"
         )

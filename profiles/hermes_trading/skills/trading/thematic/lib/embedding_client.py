@@ -90,9 +90,14 @@ def _embed_token_overlap(text: str, dims: int = 384) -> list:
 
 
 def cosine_similarity(vec_a: list, vec_b: list) -> float:
-    """Berechnet Cosine-Similarity zwischen zwei Embedding-Vektoren."""
+    """Berechnet Cosine-Similarity zwischen zwei Embedding-Vektoren.
+
+    N19: Unterschiedliche Laengen (OpenRouter 1536, lokaler Fallback 384) sind ein Fehler (ValueError mit Klartext), kein
+    stilles Ergebnis."""
     a = np.array(vec_a)
     b = np.array(vec_b)
+    if a.shape != b.shape:
+        raise ValueError(f"Embedding-Dimensionen unterschiedlich: {a.shape} vs {b.shape}")
     return float(np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b) + 1e-8))
 
 

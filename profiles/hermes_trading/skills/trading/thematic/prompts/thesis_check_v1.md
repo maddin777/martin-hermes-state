@@ -5,16 +5,17 @@ URSPRUENGLICHE THESE: {thesis_text}
 THEMA: {theme_name} — {theme_description}
 ENTRY-DATUM: {entry_date}
 
-NEWS DER LETZTEN 24H:
+NEWS DER LETZTEN TAGE (bis zu 7):
 {news_snippets_with_urls}
 
-RELEVANTE PREDICTION MARKETS:
-{prediction_markets_with_prices_and_deltas}
-Format:
+Beispiel fuer das Format der Prediction-Market-Angaben (KEINE echten Daten, nicht in die Bewertung einbeziehen):
 - Polymarket "Will Israel-Iran ceasefire hold through 2026?": 
   Current 0.34, 7d ago 0.18 (+89% relative) → STRENGTHENING ceasefire scenario
 - Polymarket "Fed rate cut by July?": 
   Current 0.62, 7d ago 0.71 (-13% relative) → WEAKENING dovish expectations
+
+RELEVANTE PREDICTION MARKETS (echte Daten):
+{prediction_markets_with_prices_and_deltas}
 
 Beantworte strukturiert:
 1. Ist die Kernannahme der These noch gueltig? (ja/nein/teilweise)
@@ -32,7 +33,7 @@ Antworte NUR mit JSON:
 {
   "core_assumption_valid": "yes|no|partial",
   "contradicting_facts": "..." or null,
-  "pm_signal_assessment": "supporting|neutral|contradicting|not_applicable",
+  "pm_signal_assessment": "supporting|mixed|contradicting|no_data",
   "narrative_shift": "..." or null,
   "verdict": "INTACT|WEAKENING|BROKEN",
   "confidence": 0.85,

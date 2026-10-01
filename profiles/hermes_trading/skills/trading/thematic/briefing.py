@@ -16,8 +16,10 @@ DB_PATH = os.path.join(
     "data", "trading.db"
 )
 
-TELEGRAM_TOKEN = os.environ["TELEGRAM_BOT_TOKEN"]
+TELEGRAM_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
 TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_HOME_CHANNEL") or os.environ.get("TELEGRAM_CHAT_ID", "")
+# N13 (30.09.2026): _send_telegram nutzte TELEGRAM_HOME_CHANNEL, das hier nie definiert war (NameError)
+TELEGRAM_HOME_CHANNEL = TELEGRAM_CHAT_ID
 
 
 def _db_connect():
@@ -75,12 +77,15 @@ def _build_briefing_md(con, today: str) -> str:
                     (b["ticker"], b["llm_confidence_count"] or 0)
                 )
 
-            for pt in ["direct", "picks_and_shovels", "second_derivative", "loser"]:
+            # N13: die play_type-Werte der DB heissen direct_plays/picks_and_shovels/second_derivatives/losers
+            # (vorher direct/second_derivative/loser: 3 von 4 Kategorien fehlten im Briefing)
+            for pt in ["direct_plays", "picks_and_shovels", "second_derivatives", "losers"]:
                 items = by_type.get(pt, [])
                 if items:
                     names = ", ".join(f"{tick}" + ("⭐" if conf >= 3 else "")
                                      for tick, conf in items)
-                    sections.append(f"- **{pt.replace('_', ' ').title()}:** {names}\n")
+                    label = "Verlierer (nicht kaufen)" if pt == "losers" else pt.replace('_', ' ').title()
+                    sections.append(f"- **{label}:** {names}\n")
 
             sections.append("\n---\n")
 
@@ -167,6 +172,14 @@ def _build_briefing_md(con, today: str) -> str:
     return "".join(sections)
 
 
+def _count_from_md(md: str, pattern: str) -> int:
+    """Liest die Anzahl aus der Abschnittsueberschrift ('## RED ALERTS (3)'). N13: der alte Zaehler suchte das Wort
+    und ergab hoechstens 1 (bei 3 Alerts stand red_count 1)."""
+    import re
+    m = re.search(pattern, md)
+    return int(m.group(1)) if m else 0
+
+
 def main():
     con = _db_connect()
     today = date.today().isoformat()
@@ -174,9 +187,9 @@ def main():
     md_content = _build_briefing_md(con, today)
 
     # Zaehler
-    red_count = md_content.count("RED ALERT")
-    yellow_count = md_content.count("YELLOW")
-    new_theme_count = md_content.count("Neue Themen")
+    red_count = _count_from_md(md_content, r"RED ALERTS \((\d+)\)")
+    yellow_count = _count_from_md(md_content, r"YELLOW \((\d+)\)")
+    new_theme_count = _count_from_md(md_content, r"Neue Themen \((\d+)\)")
 
     # In DB speichern
     existing = con.execute(

@@ -896,7 +896,7 @@ def evaluate_exits(con):
     sie bildet weder den Live-Exit noch den Signal-Horizont ab.
     """
     from trade_paths import _download, entry_index
-    from exit_rules import replay_exit_path
+    from exit_rules import replay_exit_path, replay_fill_settings
     from utils import roundtrip_cost_pct
     from config import EXIT_PROFILES
     import strategy_optimizer as so
@@ -963,7 +963,8 @@ def evaluate_exits(con):
             bars, idx, entry, row["direction"], atr,
             sl_mult=sl_mult, partial_atr=ex["partial_atr"], partial_pct=0.0,
             profit_lock_atr=1e9, chandelier_mult=ex["chandelier_mult"],
-            donchian_primary=False, time_stop_bars=HOLD_BARS, tp_mult=None)
+            donchian_primary=False, time_stop_bars=HOLD_BARS, tp_mult=None,
+            **replay_fill_settings(cfg))   # M5/N9: gleiche Fills wie der Live-Exit-Zweig
         hold = (res["r_multiple"] * (sl_mult * atr / entry * 100) - cost
                 if res["r_multiple"] is not None else None)
 

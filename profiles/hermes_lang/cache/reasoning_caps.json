@@ -1,6 +1,6 @@
 {
 "https://openrouter.ai/api/v1/models":{
-"ts":1790729764.4391565,
+"ts":1790816188.7071028,
 "caps":{
 "openai/gpt-6.1-sol-pro":{
 "supports_reasoning":true,
@@ -69,7 +69,9 @@
 "mandatory":true
 },
 "typesafe/jev-router":{
-"supports_reasoning":false
+"supports_reasoning":true,
+"supported_efforts":null,
+"mandatory":false
 },
 "perceptron/perceptron-mk1.5":{
 "supports_reasoning":true,

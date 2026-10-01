@@ -44,6 +44,34 @@ THRESHOLDS = {
 }
 
 
+def _ensure_metric_columns(con):
+    """M8 (30.09.2026): Anzahl Trades im 90-Tage-Fenster und mittlere Rendite in % je Quelle."""
+    cols = {r[1] for r in con.execute("PRAGMA table_info(source_registry)").fetchall()}
+    if "trades_90d" not in cols:
+        con.execute("ALTER TABLE source_registry ADD COLUMN trades_90d INTEGER DEFAULT 0")
+    if "avg_pnl_pct" not in cols:
+        con.execute("ALTER TABLE source_registry ADD COLUMN avg_pnl_pct REAL")
+    if "avg_pnl_eur_90d" not in cols:      # P9 (30.09.2026)
+        con.execute("ALTER TABLE source_registry ADD COLUMN avg_pnl_eur_90d REAL")
+
+
+def _demotion_reasons(src, T=None):
+    """Gruende fuer eine Abstufung (leer = keine). P9 (30.09.2026): Win-Rate UND Durchschnittsrendite zaehlen nur im
+    90-Tage-Fenster und erst ab min_trades_for_eval Trades darin; die Verlustserie (letzte 10 Trades) bleibt."""
+    T = T or THRESHOLDS
+    keys = src.keys() if hasattr(src, "keys") else src
+    n90 = (src["trades_90d"] if "trades_90d" in keys else 0) or 0
+    reasons = []
+    if n90 >= T["min_trades_for_eval"] and (src["win_rate_90d"] or 0) < T["suspend_win_rate"]:
+        reasons.append(f"WR={src['win_rate_90d']:.0%}")
+    if (src["consecutive_losses"] or 0) >= T["suspend_consecutive_losses"]:
+        reasons.append(f"{src['consecutive_losses']} consec losses")
+    avg_pct = src["avg_pnl_pct"] if "avg_pnl_pct" in keys else None
+    if n90 >= T["min_trades_for_eval"] and avg_pct is not None and avg_pct < T["suspend_avg_pnl"]:
+        reasons.append(f"avg_pnl={avg_pct:+.1f}%")
+    return reasons
+
+
 def ensure_schema(con):
     con.executescript("""
         CREATE TABLE IF NOT EXISTS source_registry (
@@ -226,6 +254,7 @@ def evaluate_active_sources(con):
     idempotent – zweimal ausfuehren aendert nichts mehr.
     """
     print("📊 Evaluiere aktive Quellen...", flush=True)
+    _ensure_metric_columns(con)
     active = con.execute("""
         SELECT * FROM source_registry WHERE status IN ('active', 'probation')
     """).fetchall()
@@ -236,7 +265,7 @@ def evaluate_active_sources(con):
 
         # Alle jemals dieser Quelle zurechenbaren geschlossenen Trades (absolut).
         all_trades = con.execute(f"""
-            SELECT pnl_eur, exit_date FROM positions
+            SELECT pnl_eur, pnl_pct, exit_date FROM positions
             WHERE status='closed' AND ({trade_sql})
             ORDER BY exit_date DESC
         """, trade_params).fetchall()
@@ -253,6 +282,14 @@ def evaluate_active_sources(con):
         recent_90d = [t for t in all_trades if (t["exit_date"] or "") >= cutoff_90d]
         win_rate = (sum(1 for t in recent_90d if (t["pnl_eur"] or 0) > 0)
                     / len(recent_90d)) if recent_90d else 0.0
+        # M8: win_rate_90d ist bei leerem Fenster 0.0 (nicht "schlecht"). Demote/Remove prüfen deshalb zusätzlich
+        # trades_90d. avg_pnl_pct = mittlere Rendite je Trade in % (suspend_avg_pnl ist eine Prozent-Schwelle).
+        trades_90d = len(recent_90d)
+        # P9 (30.09.2026): Durchschnitt im selben 90-Tage-Fenster wie die Win-Rate (vorher alle Trades seit Start:
+        # eine Quelle mit alten Verlusten blieb dauerhaft unter -2 % und kam nie wieder von 0,3 hoch)
+        pct_values = [t["pnl_pct"] for t in recent_90d if t["pnl_pct"] is not None]
+        avg_pnl_pct = (sum(pct_values) / len(pct_values)) if pct_values else None
+        avg_pnl_eur_90d = (sum((t["pnl_eur"] or 0) for t in recent_90d) / trades_90d) if trades_90d else None
 
         # Verluststreak: letzte 10 Trades, neueste zuerst.
         consec = 0
@@ -273,35 +310,37 @@ def evaluate_active_sources(con):
                 total_mentions=?, total_bought=?, total_wins=?, total_losses=?,
                 win_rate_alltime=?, win_rate_90d=?, avg_pnl_per_trade=?,
                 consecutive_losses=?,
-                last_mention_date=COALESCE(?, last_mention_date)
+                last_mention_date=COALESCE(?, last_mention_date),
+                trades_90d=?, avg_pnl_pct=?, avg_pnl_eur_90d=?
             WHERE id=?
         """, (total_mentions, total_bought, total_wins, total_losses,
               round(wr_alltime, 3), round(win_rate, 3), round(avg_pnl, 2),
-              consec, mention_row["last_seen"], src["id"]))
+              consec, mention_row["last_seen"],
+              trades_90d, round(avg_pnl_pct, 2) if avg_pnl_pct is not None else None,
+              round(avg_pnl_eur_90d, 2) if avg_pnl_eur_90d is not None else None, src["id"]))
 
         icon = "🟢" if win_rate >= 0.5 else "🟡" if win_rate >= 0.35 else "🔴"
-        print(f"  {icon} {src['display_name']:30} WR90={win_rate:.0%} "
-              f"trades={total_bought} mentions={total_mentions} "
-              f"avg_pnl={avg_pnl:+.1f}€ consec_L={consec}")
+        _avg90 = f"{avg_pnl_eur_90d:+.1f}€" if avg_pnl_eur_90d is not None else "–"
+        print(f"  {icon} {src['display_name']:30} WR90={win_rate:.0%} n90={trades_90d} Ø90={_avg90} "
+              f"(gesamt {total_bought} Trades, Ø {avg_pnl:+.1f}€) mentions={total_mentions} consec_L={consec}")
 
 
 def demote_bad_sources(con):
     print("\n🔻 Prüfe Demotions...", flush=True)
     T = THRESHOLDS
     now = datetime.now().isoformat()
-    to_suspend = con.execute("""
+    _ensure_metric_columns(con)
+    # M8 (30.09.2026): (1) suspend_avg_pnl (-2.0) ist eine PROZENT-Schwelle, wurde aber gegen den Euro-Durchschnitt
+    # (avg_pnl_per_trade) verglichen: -2 EUR bei ~700 EUR Positionsgröße (-0,3 %) reichte zum Penalisieren.
+    # (2) win_rate_90d ist bei leerem 90-Tage-Fenster 0.0 und galt als "unter 30 %": Quellen ohne Trades im Fenster
+    # wurden penalisiert bzw. entfernt. Jetzt zählt die Win-Rate erst ab min_trades_for_eval Trades im Fenster.
+    candidates = con.execute("""
         SELECT * FROM source_registry WHERE status='active' AND total_bought >= ?
-        AND (win_rate_90d < ? OR consecutive_losses >= ? OR avg_pnl_per_trade < ?)
-    """, (T["min_trades_for_eval"], T["suspend_win_rate"],
-          T["suspend_consecutive_losses"], T["suspend_avg_pnl"])).fetchall()
-    for src in to_suspend:
-        reasons = []
-        if src["win_rate_90d"] < T["suspend_win_rate"]:
-            reasons.append(f"WR={src['win_rate_90d']:.0%}")
-        if src["consecutive_losses"] >= T["suspend_consecutive_losses"]:
-            reasons.append(f"{src['consecutive_losses']} consec losses")
-        if src["avg_pnl_per_trade"] < T["suspend_avg_pnl"]:
-            reasons.append(f"avg_pnl={src['avg_pnl_per_trade']:+.1f}%")
+    """, (T["min_trades_for_eval"],)).fetchall()
+    for src in candidates:
+        reasons = _demotion_reasons(src, T)      # P9: alle Kriterien im 90-Tage-Fenster
+        if not reasons:
+            continue
         # #20: NICHT mehr suspendieren/enabled=0 → stattdessen Gewicht auf Minimum
         # setzen und aktiv lassen. Sonst werden Kanäle blind aus dem Scan geworfen
         # obwohl sie täglich posten. Das minimale Gewicht sorgt dafür, dass ihre
@@ -313,10 +352,10 @@ def demote_bad_sources(con):
 
     to_remove = con.execute("""
         SELECT * FROM source_registry WHERE status IN ('active','suspended')
-        AND ((total_bought >= 10 AND win_rate_90d < ?)
+        AND ((total_bought >= 10 AND COALESCE(trades_90d, 0) >= ? AND win_rate_90d < ?)
              OR (last_mention_date < date('now', ? || ' days'))
              OR (last_mention_date IS NULL AND added_at < date('now', ? || ' days')))
-    """, (T["remove_win_rate"], f"-{T['remove_no_mention_days']}",
+    """, (T["min_trades_for_eval"], T["remove_win_rate"], f"-{T['remove_no_mention_days']}",
           f"-{T['remove_no_mention_days']}")).fetchall()
     for src in to_remove:
         con.execute("UPDATE source_registry SET status='removed', enabled=0, status_changed_at=?, rejection_reason=COALESCE(rejection_reason||'; ','')||'Auto-removed' WHERE id=?",
@@ -350,25 +389,44 @@ def promote_good_sources(con):
             print(f"  🚫 REJECTED: {src['display_name']} WR={wr:.0%}")
 
 
+REHAB_FACTOR = 1.25   # P9: Erholung einer abgestuften Quelle je Wochenlauf (0,3 -> 1,0 in ~6 Wochen)
+
+
 def adjust_weights(con):
-    print("\n⚖️  Gewichte anpassen (basierend auf avg_pnl_per_trade)...", flush=True)
+    """Gewichte nach der mittleren Rendite je Trade (EUR) im 90-Tage-Fenster, erst ab min_trades_for_eval Trades darin.
+
+    P9 (30.09.2026): vorher All-time-Durchschnitt (alte Verluste drueckten eine Quelle dauerhaft) und kein Weg zurueck:
+    eine auf 0,3 gesetzte Quelle blieb dort, solange ihr All-time-Schnitt unter +10 EUR lag. Jetzt steigt das Gewicht
+    einer Quelle unter 1,0 um REHAB_FACTOR je Lauf, solange sie im Fenster keine Abstufungsregel verletzt. Ohne Trades im
+    Fenster bleibt das Gewicht unveraendert (keine Evidenz)."""
+    print("\n⚖️  Gewichte anpassen (Ø P&L je Trade im 90-Tage-Fenster)...", flush=True)
     T = THRESHOLDS
-    for src in con.execute("SELECT * FROM source_registry WHERE status='active' AND total_bought >= ?",
+    _ensure_metric_columns(con)
+    for src in con.execute("SELECT * FROM source_registry WHERE status='active' AND COALESCE(trades_90d, 0) >= ?",
                             (T["min_trades_for_eval"],)).fetchall():
         old_w = src["weight"]
-        avg_pnl = src["avg_pnl_per_trade"] or 0.0
-        if avg_pnl >= T["boost_avg_pnl"]:
-            new_w = round(min(T["boost_max_weight"], old_w * 1.15), 2)
-            direction = "↑"
-        elif avg_pnl <= T["penalize_avg_pnl"]:
+        avg_pnl = src["avg_pnl_eur_90d"] or 0.0
+        demoted = bool(_demotion_reasons(src, T))
+        if avg_pnl <= T["penalize_avg_pnl"]:
             new_w = round(max(T["penalize_min_weight"], old_w * 0.80), 2)
             direction = "↓"
+        elif demoted:
+            new_w = old_w            # in diesem Lauf abgestuft: kein Anheben
+            direction = "="
+        elif avg_pnl >= T["boost_avg_pnl"]:
+            new_w = round(min(T["boost_max_weight"], old_w * 1.15), 2)
+            if old_w < 1.0:
+                new_w = max(new_w, round(min(1.0, old_w * REHAB_FACTOR), 2))
+            direction = "↑"
+        elif old_w < 1.0:
+            new_w = round(min(1.0, old_w * REHAB_FACTOR), 2)
+            direction = "↗"
         else:
             new_w = old_w
             direction = "="
         if new_w != old_w:
             con.execute("UPDATE source_registry SET weight=? WHERE id=?", (new_w, src["id"]))
-            print(f"  {direction} {src['display_name']:30} {old_w:.2f} → {new_w:.2f} (P&L={avg_pnl:+.0f}€)", flush=True)
+            print(f"  {direction} {src['display_name']:30} {old_w:.2f} → {new_w:.2f} (Ø90={avg_pnl:+.0f}€)", flush=True)
 
 
 def discover_new_sources(con):
@@ -532,7 +590,7 @@ def generate_source_report(con):
         print(f"  {icon} {status:12}: {cnt}")
     print("\n  🏆 Top 5 (nach WR, min 5 Trades):")
     for t in con.execute("SELECT display_name, win_rate_90d, total_bought, avg_pnl_per_trade, weight FROM source_registry WHERE status='active' AND total_bought >= 5 ORDER BY win_rate_90d DESC LIMIT 5").fetchall():
-        print(f"    {t['display_name']:30} WR={t['win_rate_90d']:.0%} n={t['total_bought']} pnl={t['avg_pnl_per_trade']:+.1f}% w={t['weight']:.1f}")
+        print(f"    {t['display_name']:30} WR={t['win_rate_90d']:.0%} n={t['total_bought']} pnl={t['avg_pnl_per_trade']:+.1f}€ w={t['weight']:.1f}")
 
 
 def main():

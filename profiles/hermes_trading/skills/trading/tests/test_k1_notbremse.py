@@ -1,0 +1,112 @@
+"""K1: Drawdown-Notbremse darf das Cash nicht vernichten.
+
+Beweis der Code-Pruefung (30.09.2026): _emergency_close_all setzte cash auf den
+Rueckfluss der geschlossenen Positionen statt cash + Rueckfluss
+(Sandbox: 7.863 -> 1.198 -> 0 EUR).
+"""
+import os
+import sqlite3
+import sys
+import unittest
+from unittest import mock
+
+ROOT = os.path.dirname(os.path.dirname(__file__))
+sys.path.insert(0, ROOT)
+sys.path.insert(0, os.path.join(ROOT, "scripts"))
+
+from scripts import signal_manager as sm
+
+
+def _make_db(cash=7863.0):
+    con = sqlite3.connect(":memory:")
+    con.row_factory = sqlite3.Row
+    # init_db migriert die Tabelle watchlist, legt sie aber nicht selbst an
+    con.execute("CREATE TABLE watchlist (id INTEGER PRIMARY KEY, ticker TEXT, status TEXT, conviction_score REAL)")
+    sm.init_db(con)
+    con.execute("DELETE FROM portfolio")
+    con.execute(
+        "INSERT INTO portfolio (id, cash, total_value, ath_value) VALUES (1, ?, ?, ?)",
+        (cash, cash + 1500.0, 11207.85),
+    )
+    con.commit()
+    return con
+
+
+def _add_position(con, ticker, direction, entry, size):
+    con.execute(
+        "INSERT INTO positions (ticker, name, direction, entry_price, entry_date, position_size, status) "
+        "VALUES (?, ?, ?, ?, '2026-09-20', ?, 'open')",
+        (ticker, ticker, direction, entry, size),
+    )
+    con.commit()
+
+
+def _cash(con):
+    return con.execute("SELECT cash, total_value FROM portfolio WHERE id=1").fetchone()
+
+
+class EmergencyCloseAllTests(unittest.TestCase):
+    PRICES = {"AAA": 110.0, "BBB": 55.0}
+
+    def _run_close(self, con, cfg):
+        with mock.patch.object(sm, "get_current_price_and_atr",
+                               side_effect=lambda t: (self.PRICES[t], 1.0)), \
+             mock.patch.object(sm, "save_config") as save:
+            sm._emergency_close_all(con, cfg)
+        return save
+
+    def test_cash_is_increased_by_recovery_not_replaced(self):
+        con = _make_db(cash=7863.0)
+        _add_position(con, "AAA", "LONG", 100.0, 1000.0)   # +10 % -> +100 - 1 Kommission
+        _add_position(con, "BBB", "SHORT", 50.0, 500.0)    # Kurs +10 % -> -50 - 1 Kommission
+        # je Position Exit-Slippage + Exit-Kommission (P13, wie jeder Exit) und (seit N12) Entry-Kommission
+        pnl_a, _ = sm.realized_pnl_from_effective_entry(100.0, 110.0, 1000.0, "LONG")
+        pnl_b, _ = sm.realized_pnl_from_effective_entry(50.0, 55.0, 500.0, "SHORT")
+        recovered = (1000.0 + pnl_a - sm.COMMISSION_EUR) + (500.0 + pnl_b - sm.COMMISSION_EUR)
+        self._run_close(con, {"drawdown_close_all_date": None})
+        row = _cash(con)
+        self.assertAlmostEqual(row["cash"], 7863.0 + recovered, places=2)
+        self.assertAlmostEqual(row["total_value"], row["cash"], places=2)
+        self.assertEqual(
+            con.execute("SELECT COUNT(*) FROM positions WHERE status='open'").fetchone()[0], 0)
+
+    def test_second_run_without_positions_changes_nothing(self):
+        con = _make_db(cash=7863.0)
+        _add_position(con, "AAA", "LONG", 100.0, 1000.0)
+        self._run_close(con, {"drawdown_close_all_date": None})
+        cash_after_first = _cash(con)["cash"]
+
+        cfg = {"drawdown_close_all_date": "2026-09-01T03:30:00"}
+        save = self._run_close(con, cfg)
+        self.assertEqual(_cash(con)["cash"], cash_after_first)
+        self.assertEqual(cfg["drawdown_close_all_date"], "2026-09-01T03:30:00")
+        save.assert_not_called()
+
+
+class NotbremseInEntryLoopTests(unittest.TestCase):
+    DD = (0.30, "close_all", {"size_factor": 0.0, "min_confidence": 1.0, "max_positions": 0})
+
+    def _run_entry_loop(self, con):
+        with mock.patch.object(sm, "check_drawdown", return_value=self.DD), \
+             mock.patch.object(sm, "_emergency_close_all") as close_all, \
+             mock.patch.object(sm, "save_config"), \
+             mock.patch.object(sm, "send_telegram") as tg:
+            sm.open_new_positions(con, {"drawdown_close_all_date": None})
+        return close_all, tg
+
+    def test_no_repeated_alarm_when_nothing_is_open(self):
+        con = _make_db()
+        close_all, tg = self._run_entry_loop(con)
+        close_all.assert_not_called()
+        tg.assert_not_called()
+
+    def test_close_all_still_fires_when_positions_are_open(self):
+        con = _make_db()
+        _add_position(con, "AAA", "LONG", 100.0, 1000.0)
+        close_all, tg = self._run_entry_loop(con)
+        close_all.assert_called_once()
+        tg.assert_called_once()
+
+
+if __name__ == "__main__":
+    unittest.main()

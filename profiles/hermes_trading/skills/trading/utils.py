@@ -99,7 +99,37 @@ _FX_FALLBACK = {
     "GBP": 0.85, "NOK": 11.5, "CHF": 0.95,
     "SEK": 11.2, "DKK": 7.46, "CAD": 1.47,
     "AUD": 1.65, "HKD": 8.43, "SGD": 1.44,
+    # P10 (30.09.2026): Naeherungswerte nur fuer den Notfall (Frankfurter und yfinance nicht erreichbar)
+    "TWD": 35.0, "SAR": 4.05, "AED": 3.97,
 }
+
+# P10 (30.09.2026): Die EZB (Frankfurter) fuehrt u. a. SAR und TWD nicht; die Umrechnung lief dann mit 1,0 (2222.SR
+# rund 4-fach, ein .TW-Titel rund 35-fach ueberbewertet). SAR/AED/QAR sind fest an den USD gebunden und werden aus dem
+# EUR/USD-Kurs abgeleitet; alle anderen fehlenden Waehrungen kommen einmal pro Tag ueber yfinance (EUR<XXX>=X).
+_FX_USD_PEGS = {"SAR": 3.75, "AED": 3.6725, "QAR": 3.64}
+_fx_extra_cache: dict = {}
+
+
+def _fx_rate_not_in_ecb(currency: str, rates: dict):
+    """EUR -> currency (Einheiten je EUR) fuer Waehrungen ohne EZB-Kurs, sonst None."""
+    peg, usd = _FX_USD_PEGS.get(currency), rates.get("USD")
+    if peg and usd and usd > 0:
+        return usd * peg
+    from datetime import date
+    key = (currency, date.today())
+    if key not in _fx_extra_cache:
+        rate = None
+        try:
+            df = yf.download(f"EUR{currency}=X", period="5d", interval="1d", progress=False, auto_adjust=True)
+            close = df["Close"]
+            close = close.iloc[:, 0] if getattr(close, "ndim", 1) > 1 else close
+            close = close.dropna()
+            if len(close) and float(close.iloc[-1]) > 0:
+                rate = float(close.iloc[-1])
+        except Exception as e:
+            get_logger("utils.fx").warning("FX %s ueber yfinance nicht abrufbar: %s", currency, e)
+        _fx_extra_cache[key] = rate
+    return _fx_extra_cache[key]
 
 
 def _fetch_fx_rates() -> dict:
@@ -135,6 +165,9 @@ def get_fx_rate_to_eur(currency: str) -> float:
     rates = _fetch_fx_rates()
     eur_per_unit = rates.get(currency)
     if not eur_per_unit or eur_per_unit <= 0:
+        extra = _fx_rate_not_in_ecb(currency, rates)     # P10: USD-Bindung bzw. yfinance
+        if extra:
+            return 1.0 / extra
         # #15: Unbekannte Währung nicht mehr still als 1:1 behandeln.
         # Frankfurter kennt ~30 Währungen; fehlt eine (z.B. KRW im Fallback),
         # wäre 1.0 grob falsch. Fallback-Tabelle prüfen, sonst laut warnen.
@@ -147,6 +180,9 @@ def get_fx_rate_to_eur(currency: str) -> float:
         return 1.0
     # rates ist EUR → currency, wir wollen currency → EUR
     return 1.0 / eur_per_unit
+
+
+_WARNED_SUFFIXES: set = set()
 
 
 def ticker_to_currency(ticker: str) -> str:
@@ -182,10 +218,19 @@ def ticker_to_currency(ticker: str) -> str:
         # Sonstige
         "TO": "CAD", "V": "CAD", "AX": "AUD", "T": "JPY",
         "KS": "KRW", "HK": "HKD", "SI": "SGD",
+        # N2 (30.09.2026): bisher fehlend, fielen still auf USD (11 Watchlist-Ticker, keiner gehandelt)
+        "MC": "EUR", "LS": "EUR", "IR": "EUR",
+        "OL": "NOK", "WA": "PLN", "NS": "INR", "BO": "INR",
+        "SZ": "CNY", "SS": "CNY", "SR": "SAR", "TW": "TWD", "NZ": "NZD",
+        # Tel Aviv: yfinance liefert Agorot (1/100 ILS), analog zu GBp -> "ILA"
+        "TA": "ILA",
     }
 
     if suffix in suffix_map:
         return suffix_map[suffix]
+    if suffix and suffix not in _WARNED_SUFFIXES:
+        _WARNED_SUFFIXES.add(suffix)
+        get_logger("utils.fx").warning("Unbekannter Börsensuffix '.%s' (%s): Währung wird als USD angenommen", suffix, ticker)
 
     # Kein Suffix → US-Börse
     if ticker.isalpha() and len(ticker) <= 5:
@@ -208,6 +253,9 @@ def price_to_eur(price: float, ticker: str) -> float:
         # London Preise kommen in Pence → erst in GBP umrechnen
         price_gbp = price / 100.0
         return price_gbp * get_fx_rate_to_eur("GBP")
+    if currency == "ILA":
+        # Tel Aviv: Agorot → ILS
+        return (price / 100.0) * get_fx_rate_to_eur("ILS")
     return price * get_fx_rate_to_eur(currency)
 
 
@@ -302,6 +350,34 @@ def open_positions_market_value_eur(positions) -> float:
         close, _, _ = get_price_data_cached(ticker) if ticker else (None, None, None)
         total += position_current_value_eur(pos, close)
     return total
+
+
+def atomic_write_json(path, obj, **dump_kwargs):
+    """JSON atomar schreiben (N3, 30.09.2026): temporäre Datei im selben Ordner, fsync, os.replace.
+
+    Ein Absturz oder ein paralleler Leser sieht nie eine halbe Datei. Rechte einer bestehenden Datei bleiben erhalten;
+    eine neue Datei bekommt 0644. Bei jedem Fehler bleibt die alte Datei unverändert und die Temp-Datei wird entfernt."""
+    import json as _json
+    import shutil as _shutil
+    import tempfile as _tempfile
+    directory = _os.path.dirname(_os.path.abspath(path)) or "."
+    fd, tmp = _tempfile.mkstemp(prefix=_os.path.basename(path) + ".", suffix=".tmp", dir=directory)
+    try:
+        with _os.fdopen(fd, "w", encoding="utf-8") as f:
+            _json.dump(obj, f, **dump_kwargs)
+            f.flush()
+            _os.fsync(f.fileno())
+        if _os.path.exists(path):
+            _shutil.copymode(path, tmp)
+        else:
+            _os.chmod(tmp, 0o644)
+        _os.replace(tmp, path)
+    except BaseException:
+        try:
+            _os.unlink(tmp)
+        except OSError:
+            pass
+        raise
 
 
 # ── Retry-Decorator ───────────────────────────────────────────────────────────

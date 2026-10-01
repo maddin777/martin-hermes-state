@@ -1,0 +1,324 @@
+"""Welle 9: N10 (Sektor-Sperrliste in der DB), M5/N9 (Fill-Schalter aus der Config), Donchian/5 Tage im Crabel-Shadow,
+Optimizer schreibt nur mit optimizer_apply_live, Config-Aufraeumen."""
+import json
+import os
+import sqlite3
+from datetime import datetime, timedelta
+from unittest import mock
+
+import pandas as pd
+import pytest
+
+import exit_rules
+from scripts import crabel_shadow_eval as cse
+from scripts import signal_manager as sm
+from scripts import strategy_optimizer as so
+from scripts import watchlist_manager as wm
+
+ROOT = os.path.dirname(os.path.dirname(__file__))
+
+
+# ── N10: Sektor-Sperrliste ───────────────────────────────────────────────────────────────────
+def _db():
+    con = sqlite3.connect(":memory:")
+    con.row_factory = sqlite3.Row
+    con.execute("CREATE TABLE watchlist (id INTEGER PRIMARY KEY, ticker TEXT, status TEXT, conviction_score REAL)")
+    sm.init_db(con)
+    con.execute("CREATE TABLE IF NOT EXISTS companies (ticker TEXT PRIMARY KEY, name TEXT, sector TEXT)")
+    con.commit()
+    return con
+
+
+def _closed(con, ticker, sector, pnl, days_ago=2, exit_date=None):
+    con.execute("INSERT OR IGNORE INTO companies (ticker, name, sector) VALUES (?,?,?)", (ticker, ticker, sector))
+    ed = exit_date or (datetime.now() - timedelta(days=days_ago)).isoformat()
+    cur = con.execute(
+        "INSERT INTO positions (ticker, name, direction, entry_price, entry_date, position_size, status, "
+        "exit_date, pnl_eur, pnl_pct) VALUES (?,?,?,?,?,?,?,?,?,?)",
+        (ticker, ticker, "LONG", 100.0, ed, 1000.0, "closed", ed, pnl, pnl / 10))
+    con.commit()
+    return cur.lastrowid
+
+
+def _losing_sector(con, sector="Energy", n=3):
+    for i in range(n):
+        _closed(con, f"{sector[:3].upper()}{i}", sector, -20.0)
+
+
+def _rows(con):
+    return {r["sector"]: dict(r) for r in con.execute("SELECT * FROM sector_blacklist")}
+
+
+def test_losing_sector_lands_in_the_db_and_not_in_the_json_config():
+    con, cfg = _db(), {"sector_cooldown_days": 14, "sector_blacklist": {}}
+    _losing_sector(con)
+    cfg = sm.update_sector_blacklist(con, cfg)
+    rows = _rows(con)
+    assert "Energy" in rows and rows["Energy"]["blocked_at"] == datetime.now().strftime("%Y-%m-%d")
+    assert rows["Energy"]["cooldown_days"] == 14 and "3 Trades" in rows["Energy"]["reason"]
+    assert cfg["sector_blacklist"] == {}          # nichts mehr in der JSON-Config, die der Nachtlauf leert
+
+
+def test_block_survives_the_nightly_json_cleanup_and_does_not_restart_each_run():
+    con, cfg = _db(), {"sector_cooldown_days": 14, "sector_blacklist": {}}
+    _losing_sector(con)
+    sm.update_sector_blacklist(con, cfg)
+    con.execute("UPDATE sector_blacklist SET blocked_at=? WHERE sector='Energy'",
+                ((datetime.now() - timedelta(days=5)).strftime("%Y-%m-%d"),))
+    con.commit()
+    sm.update_sector_blacklist(con, cfg)               # naechster stuendlicher Lauf
+    assert _rows(con)["Energy"]["blocked_at"] == (datetime.now() - timedelta(days=5)).strftime("%Y-%m-%d")
+    ok, prob, why = sm.is_sector_allowed("Energy", con, cfg)
+    assert ok is False and prob is False and "5/14d" in why
+
+
+def test_unlisted_sector_is_allowed():
+    con, cfg = _db(), {"sector_cooldown_days": 14}
+    assert sm.is_sector_allowed("Technology", con, cfg) == (True, False, "")
+
+
+def test_sector_with_fewer_than_three_trades_or_positive_pnl_is_not_blocked():
+    con, cfg = _db(), {"sector_cooldown_days": 14}
+    _closed(con, "A1", "Utilities", -20.0)
+    _closed(con, "A2", "Utilities", -20.0)
+    for i in range(3):
+        _closed(con, f"B{i}", "Technology", 30.0)
+    sm.update_sector_blacklist(con, cfg)
+    assert _rows(con) == {}
+
+
+def test_expired_sector_without_new_losses_is_released():
+    con, cfg = _db(), {"sector_cooldown_days": 14}
+    sm._ensure_sector_table(con)
+    old = (datetime.now() - timedelta(days=20)).strftime("%Y-%m-%d")
+    con.execute("INSERT INTO sector_blacklist (sector, blocked_at, cooldown_days) VALUES ('Industrials', ?, 14)", (old,))
+    con.commit()
+    sm.update_sector_blacklist(con, cfg)
+    assert _rows(con) == {}
+
+
+def test_legacy_json_entries_are_imported_once_with_their_real_date():
+    con = _db()
+    since = (datetime.now() - timedelta(days=3)).isoformat()
+    cfg = {"sector_cooldown_days": 14,
+           "sector_blacklist": {"Energy": {"blocked_since": since, "reason": "alt", "probation_done": False}}}
+    _losing_sector(con)
+    with mock.patch.object(sm, "save_config") as save:
+        cfg = sm.update_sector_blacklist(con, cfg)
+    row = _rows(con)["Energy"]
+    assert row["blocked_at"] == since[:10] and row["reason"] == "alt"
+    assert cfg["sector_blacklist"] == {} and save.called
+
+
+def test_probation_window_opens_after_the_cooldown_and_takes_a_single_trade():
+    con, cfg = _db(), {"sector_cooldown_days": 14, "sector_probation_size_pct": 0.5}
+    sm._ensure_sector_table(con)
+    old = (datetime.now() - timedelta(days=15)).strftime("%Y-%m-%d")
+    con.execute("INSERT INTO sector_blacklist (sector, blocked_at, cooldown_days) VALUES ('Energy', ?, 14)", (old,))
+    con.commit()
+    ok, prob, _ = sm.is_sector_allowed("Energy", con, cfg)
+    assert ok and prob
+    pid = _closed(con, "XOM", "Energy", 0.0)
+    con.execute("UPDATE positions SET status='open', exit_date=NULL, pnl_eur=NULL WHERE id=?", (pid,))
+    sm.mark_probation_started(con, "Energy", "XOM", pid)
+    row = _rows(con)["Energy"]
+    assert row["probation_status"] == "active" and row["probation_entry_ticker"] == "XOM"
+    ok, prob, why = sm.is_sector_allowed("Energy", con, cfg)        # Probation-Trade laeuft noch
+    assert ok is False and "laeuft" in why
+    assert _rows(con)["Energy"]["probation_status"] == "active"     # kein vorschneller Fehlschlag
+
+
+def _probation_case(pnl, threshold=0):
+    con, cfg = _db(), {"sector_cooldown_days": 14, "sector_reentry_threshold_pnl": threshold}
+    sm._ensure_sector_table(con)
+    old = (datetime.now() - timedelta(days=15)).strftime("%Y-%m-%d")
+    con.execute("INSERT INTO sector_blacklist (sector, blocked_at, cooldown_days) VALUES ('Energy', ?, 14)", (old,))
+    con.commit()
+    pid = _closed(con, "XOM", "Energy", pnl, days_ago=0)
+    sm.mark_probation_started(con, "Energy", "XOM", pid)
+    return con, cfg, sm.is_sector_allowed("Energy", con, cfg)
+
+
+def test_successful_probation_releases_the_sector():
+    con, cfg, res = _probation_case(pnl=25.0)
+    assert res[0] is True and res[1] is False
+    assert _rows(con) == {}
+
+
+def test_failed_probation_restarts_the_cooldown():
+    con, cfg, res = _probation_case(pnl=-10.0)
+    assert res[0] is False and "Probation fehlgeschlagen" in res[2]
+    row = _rows(con)["Energy"]
+    assert row["probation_status"] == "failed" and row["blocked_at"] == datetime.now().strftime("%Y-%m-%d")
+
+
+def test_reentry_threshold_from_config_is_used():
+    con, cfg, res = _probation_case(pnl=5.0, threshold=10.0)         # Gewinn, aber unter der Schwelle
+    assert res[0] is False
+    assert _rows(con)["Energy"]["probation_status"] == "failed"
+
+
+def test_nightly_json_migration_maps_blocked_since_and_reason():
+    con = _db()
+    sm._ensure_sector_table(con)
+    since = (datetime.now() - timedelta(days=4)).isoformat()
+    scfg = {"sector_cooldown_days": 14,
+            "sector_blacklist": {"Energy": {"blocked_since": since, "reason": "14d", "probation_done": False}}}
+    n = wm.migrate_sector_blacklist_json(con, scfg)
+    assert n == 1 and _rows(con)["Energy"]["blocked_at"] == since[:10] and scfg["sector_blacklist"] == {}
+
+
+# ── M5 / N9: Fill-Schalter aus der Config ────────────────────────────────────────────────────
+def test_fill_settings_default_is_the_old_behaviour():
+    assert exit_rules.replay_fill_settings({}) == {"stop_slippage_atr": 0.0, "protect_time_stop": True}
+
+
+def test_fill_settings_read_the_config_switches():
+    cfg = {"stop_slippage_atr": 0.35, "time_stop_protected_fill": False}
+    assert exit_rules.replay_fill_settings(cfg) == {"stop_slippage_atr": 0.35, "protect_time_stop": False}
+
+
+def test_live_config_has_the_fill_switches_on():
+    cfg = json.load(open(os.path.join(ROOT, "data", "strategy_config.json")))
+    assert exit_rules.replay_fill_settings(cfg) == {"stop_slippage_atr": 0.35, "protect_time_stop": False}
+
+
+def _stopout_trade():
+    bars = [{"high": 100, "low": 100, "close": 100}, {"high": 101, "low": 80, "close": 85}] + \
+           [{"high": 90, "low": 84, "close": 88}] * 8
+    return {"_bars": bars, "_entry_idx": 0, "_atr": 2.0, "entry_price": 100.0, "direction": "LONG",
+            "asset_type": "STANDARD", "position_size": 1000.0}
+
+
+@pytest.mark.parametrize("module", [so])
+def test_optimizer_replay_uses_the_switch(module):
+    trade = _stopout_trade()
+    with mock.patch.object(module, "load_config", return_value={"partial_tp_enabled": False}):
+        base = module.backtest_params([trade], "current", 5)[0]["pnl_pct"]
+    with mock.patch.object(module, "load_config",
+                           return_value={"partial_tp_enabled": False, "stop_slippage_atr": 0.35}):
+        slip = module.backtest_params([trade], "current", 5)[0]["pnl_pct"]
+    assert base - slip == pytest.approx(0.35 * 2.0 / 100.0 * 100, abs=0.01)     # 0,35 ATR = 0,7 % vom Entry
+
+
+def test_backtester_replay_uses_the_switch():
+    from scripts import backtester as bt
+    trade = _stopout_trade()
+    with mock.patch.object(bt, "load_config", return_value={"partial_tp_enabled": False}):
+        base = bt.backtest_params([trade], "current", 5)[0]["pnl_pct"]
+    with mock.patch.object(bt, "load_config",
+                           return_value={"partial_tp_enabled": False, "stop_slippage_atr": 0.35}):
+        slip = bt.backtest_params([trade], "current", 5)[0]["pnl_pct"]
+    assert base > slip
+
+
+def test_active_exit_check_reads_the_time_stop_switch():
+    src = open(os.path.join(ROOT, "scripts", "active_exit_check.py"), encoding="utf-8").read()
+    assert 'cfg.get("time_stop_protected_fill", True)' in src
+
+
+# ── Donchian / 5 Tage im Crabel-Shadow ───────────────────────────────────────────────────────
+def _b(h, l, c):
+    return {"high": h, "low": l, "close": c}
+
+
+def _live(bars, cfg, entry_idx=0, direction="LONG", sl=96.0):
+    base = {"donchian_exit_enabled": True, "donchian_exit_mode": "primary", "donchian_exit_period": 10,
+            "time_stop_trading_days": 5, "partial_tp_enabled": False}
+    base.update(cfg)
+    return cse.simulate_forward_live(bars, entry_idx, 100.0, sl, 2.0, direction, "STANDARD", base)
+
+
+def test_live_replay_uses_the_configured_time_stop_not_seven_days():
+    bars = [_b(100, 100, 100)] + [_b(101, 99, 100)] * 9
+    outcome, px, days = _live(bars, {})
+    assert outcome == "TIME_STOP" and days == 5 and px == pytest.approx(100.0)
+
+
+def test_live_replay_stop_hit_fills_at_the_stop_and_with_slippage_below():
+    bars = [_b(100, 100, 100), _b(100, 99, 99.5), _b(99, 95, 96)] + [_b(97, 96, 96)] * 4
+    outcome, px, days = _live(bars, {})
+    assert (outcome, days) == ("SL_HIT", 2) and px == pytest.approx(96.0)
+    outcome, px, days = _live(bars, {"stop_slippage_atr": 0.35})
+    assert px == pytest.approx(96.0 - 0.7)
+
+
+def test_live_replay_donchian_trail_uses_history_before_the_entry():
+    hist = [_b(103, 97.5, 101)] * 10                        # Vorgeschichte: Tiefs bei 97,5
+    fwd = [_b(105, 101, 104), _b(106, 103, 105), _b(105, 96.9, 97)]
+    bars = hist + [_b(101, 99, 100)] + fwd                  # Entry bei Index 10
+    outcome, px, days = _live(bars, {}, entry_idx=10, sl=96.0)
+    # Trail zieht auf das 10-Bar-Tief (>= 97,5) hoch, der Stop wird am 3. Tag gerissen — deutlich ueber dem Anfangs-Stop 96
+    assert outcome == "SL_HIT" and px > 96.5
+
+
+def test_live_replay_short_direction_is_mirrored():
+    bars = [_b(100, 100, 100), _b(105, 99, 104)] + [_b(104, 103, 104)] * 4
+    outcome, px, days = _live(bars, {}, direction="SHORT", sl=104.0)
+    assert outcome == "SL_HIT" and px == pytest.approx(104.0)
+
+
+def test_live_replay_none_without_usable_levels():
+    assert _live([_b(100, 100, 100)] * 4, {}, sl=100.0) is None
+
+
+def test_old_chandelier_simulation_is_still_available_and_switchable():
+    assert callable(cse.simulate_forward)
+    assert cse.use_live_replay({}) is True and cse.use_live_replay({"crabel_shadow_live_exits": False}) is False
+
+
+# ── Optimizer: nur Vorschlag, Live-Config nur mit optimizer_apply_live ────────────────────────
+def _eval_db(avg_sl=0.8):
+    con = sqlite3.connect(":memory:")
+    con.execute("""CREATE TABLE eval_metrics (date TEXT, metric_type TEXT, win_rate_7d REAL, profit_factor_7d REAL,
+                   exit_sl_pct REAL, exit_tp_pct REAL)""")
+    con.execute("INSERT INTO eval_metrics VALUES (?, 'daily', 0.4, 0.9, ?, 0.0)",
+                (datetime.now().strftime("%Y-%m-%d"), avg_sl))
+    return con
+
+
+def test_optimizer_only_proposes_the_wider_profile_by_default():
+    cfg, changes = so.adjust_from_eval_metrics(_eval_db(), {"exit_profile": "current"})
+    assert cfg["exit_profile"] == "current"
+    assert any("Vorschlag" in c and "nicht angewendet" in c for c in changes)
+
+
+def test_optimizer_applies_the_profile_when_explicitly_enabled():
+    cfg, changes = so.adjust_from_eval_metrics(_eval_db(), {"exit_profile": "current", "optimizer_apply_live": True})
+    assert cfg["exit_profile"] != "current"
+    assert any("Exit-Profil:" in c for c in changes)
+
+
+def test_apply_exit_params_gate():
+    off, on = {"exit_profile": "current", "time_stop_trading_days": 5}, {"optimizer_apply_live": True}
+    assert so.apply_exit_params(off, "wider_stop", 7) is False
+    assert off == {"exit_profile": "current", "time_stop_trading_days": 5}
+    on.update(off)
+    assert so.apply_exit_params(on, "wider_stop", 7) is True
+    assert on["exit_profile"] == "wider_stop" and on["time_stop_trading_days"] == 7
+
+
+def test_live_config_keeps_the_optimizer_switch_off():
+    cfg = json.load(open(os.path.join(ROOT, "data", "strategy_config.json")))
+    assert cfg.get("optimizer_apply_live") is False
+
+
+# ── N21: ungenutzte thematic-Schluessel geparkt, genutzte unangetastet ───────────────────────
+def _thematic_cfg():
+    return json.load(open(os.path.join(ROOT, "thematic", "config", "thematic_config.json")))
+
+
+def test_unwired_thematic_keys_are_parked_with_a_note():
+    cfg = _thematic_cfg()
+    parked = cfg["_not_wired"]
+    assert parked["thresholds"]["max_open_positions"] == 8 and parked["conviction_weights"]["timing"] == 0.2
+    assert "keinen Code" in cfg["_not_wired_note"] or "keiner" in cfg["_not_wired_note"] or "von keinem Code" in cfg["_not_wired_note"]
+    assert "max_open_positions" not in cfg["thresholds"] and "conviction_weights" not in cfg
+
+
+def test_keys_the_code_reads_stay_in_place():
+    cfg = _thematic_cfg()
+    for k in ("drawdown_soft_warning_pct", "drawdown_hard_restriction_pct", "drawdown_auto_pause_pct",
+              "reactivation_cooling_off_hours", "theme_merge_auto_similarity", "theme_merge_review_similarity"):
+        assert k in cfg["thresholds"], k
+    assert "model" in cfg["embedding"] and "factor_weights" in cfg

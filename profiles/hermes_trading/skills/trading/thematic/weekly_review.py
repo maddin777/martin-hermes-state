@@ -49,11 +49,12 @@ def _position_30day_review(con):
     model = llm_client.get_model("thesis_monitor")
 
     for pos in positions:
+        pos = dict(pos)     # N14: sqlite3.Row hat kein .get()
         thesis = pos.get("thesis_text") or "Keine These."
 
         # Thesis-Check-Historie
         checks = con.execute("""
-            SELECT status, confidence, rationale FROM thesis_status_log
+            SELECT check_date, status, confidence, rationale FROM thesis_status_log
             WHERE position_id = ? ORDER BY check_date DESC LIMIT 10
         """, (pos["id"],)).fetchall()
 
@@ -196,6 +197,11 @@ def run_exit_quality_review(con):
     Nur für Exits mit Grund THESIS_BROKEN oder TECH_BROKEN.
     """
     print("\n[Exit Quality Review] Starte...", flush=True)
+    have = {r[0] for r in con.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+    if not {"exit_quality_log", "exit_learnings"} <= have:
+        # N14: die Tabellen existieren nicht (keine Migration); ohne Pruefung scheiterte die Abfrage mit OperationalError
+        print("  ⚠ Tabellen exit_quality_log/exit_learnings fehlen: uebersprungen", flush=True)
+        return
     cutoff = (datetime.now() - timedelta(days=14)).strftime("%Y-%m-%d")
 
     exits = con.execute("""

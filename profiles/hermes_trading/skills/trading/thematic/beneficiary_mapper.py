@@ -177,6 +177,11 @@ def main():
 
     if not themes:
         print(f"[Beneficiary Mapper] Keine neuen/accelerating-Themen heute.")
+        # N17 (30.09.2026): der Lifecycle-Sync hing hinter diesem frueheren Return und lief an Tagen ohne neue Themen nie
+        try:
+            sync_beneficiary_status(con)
+        except Exception as e:
+            print(f"[Beneficiary Lifecycle] uebersprungen: {e}", flush=True)
         con.close()
         return
 

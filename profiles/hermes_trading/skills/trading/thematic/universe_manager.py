@@ -40,9 +40,13 @@ def main():
     if invalid:
         print(f"[Universe Manager] {len(invalid)} invalid: {', '.join(invalid[:10])}...")
 
-    # Update universe.json mit validen Tickern
-    with open(UNIVERSE_PATH, "w") as f:
-        json.dump(valid, f, indent=2)
+    # Update universe.json mit validen Tickern. N19: vorher ohne Backup ueberschrieben.
+    import shutil
+    from datetime import datetime as _dt
+    if os.path.exists(UNIVERSE_PATH):
+        shutil.copy2(UNIVERSE_PATH, f"{UNIVERSE_PATH}.bak-{_dt.now().strftime('%Y%m%d-%H%M%S')}")
+    from utils import atomic_write_json  # N3
+    atomic_write_json(UNIVERSE_PATH, valid, indent=2)
 
     print(f"[Universe Manager] DONE: {len(valid)} valid", flush=True)
 

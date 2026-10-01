@@ -108,7 +108,9 @@ def calc_portfolio_metrics(con):
         downside = [p for p in pnls if p < 0]
         if not downside: return 0
         dstd = math.sqrt(sum(p**2 for p in downside) / len(pnls))
-        return round((avg / dstd) * math.sqrt(252), 2) if dstd > 0 else 0
+        # P7 (30.09.2026): Sortino je TRADE, nicht annualisiert. Vorher * sqrt(252) auf Trade-Renditen (das ist die
+        # Annualisierung fuer Tagesrenditen) -> Werte um den Faktor ~16 aufgeblasen.
+        return round(avg / dstd, 2) if dstd > 0 else 0
 
     def max_drawdown(since):
         pnls = _portfolio_returns_pct(since)
@@ -129,11 +131,46 @@ def calc_portfolio_metrics(con):
         dd = max_drawdown(since)
         return round(total_ret / dd, 2) if dd > 0 else 0
 
+    _pos_cols = {r[1] for r in con.execute("PRAGMA table_info(positions)").fetchall()}
+
     def avg_r_multiple(since):
-        rows = con.execute("SELECT pnl_eur, position_size FROM positions WHERE status='closed' AND exit_date >= ?", (since,)).fetchall()
-        if not rows: return 0
-        mults = [(r[0] or 0) / r[1] for r in rows if r[1] and r[1] > 0]
-        return round(sum(mults) / len(mults), 2) if mults else 0
+        """P7 (30.09.2026): echtes R-Multiple = Ergebnis / Anfangsrisiko in EUR. Vorher pnl_eur / position_size, also die
+        Rendite je Position (bei 2,3 ATR Stop rund ein Zehntel des R-Werts). Das Anfangsrisiko braucht den Stop beim
+        Entry (positions.initial_stop_loss, gespeichert seit 30.09.2026) und die volle Groesse inkl. Teil-TP.
+        Ohne solche Trades: None."""
+        if "initial_stop_loss" not in _pos_cols:
+            return None
+        psize = "COALESCE(partial_size_eur, 0)" if "partial_size_eur" in _pos_cols else "0"
+        rows = con.execute(f"""
+            SELECT pnl_eur, position_size + {psize} AS full_size, entry_price, initial_stop_loss
+            FROM positions WHERE status='closed' AND exit_date >= ? AND initial_stop_loss IS NOT NULL
+        """, (since,)).fetchall()
+        mults = []
+        for r in rows:
+            entry, isl, size = r["entry_price"], r["initial_stop_loss"], r["full_size"]
+            if not entry or not size or isl is None or entry == isl:
+                continue
+            risk_eur = size * abs(entry - isl) / entry
+            mults.append((r["pnl_eur"] or 0) / risk_eur)
+        return round(sum(mults) / len(mults), 2) if mults else None
+
+    def avg_return_pct(since):
+        """Mittlere Rendite je geschlossenem Trade in % (positions.pnl_pct). Das zeigte bisher 'R-Multiple'."""
+        if "pnl_pct" not in _pos_cols:
+            return None
+        vals = [r[0] for r in con.execute(
+            "SELECT pnl_pct FROM positions WHERE status='closed' AND exit_date >= ? AND pnl_pct IS NOT NULL",
+            (since,)).fetchall()]
+        return round(sum(vals) / len(vals), 2) if vals else None
+
+    def dd_from_ath():
+        """Drawdown vom Allzeithoch in % (portfolio.total_value = Marktwert, ath_value), wie die Drawdown-Matrix."""
+        if "ath_value" not in {r[1] for r in con.execute("PRAGMA table_info(portfolio)").fetchall()}:
+            return None
+        row = con.execute("SELECT total_value, ath_value FROM portfolio WHERE id=1").fetchone()
+        if not row or not row[1] or row[1] <= 0 or row[0] is None:
+            return None
+        return round(max(0.0, (row[1] - row[0]) / row[1] * 100), 2)
 
     def exposure():
         rows = con.execute("SELECT direction, position_size FROM positions WHERE status='open'").fetchall()
@@ -156,13 +193,51 @@ def calc_portfolio_metrics(con):
         "open_positions": open_pos, "win_rate_7d": win_rate(d7), "win_rate_30d": win_rate(d30),
         "profit_factor_7d": profit_factor(d7), "sortino_30d": sortino_ratio(d30),
         "calmar_30d": calmar_ratio(d30), "max_drawdown_30d": max_drawdown(d30),
-        "avg_r_multiple": avg_r_multiple(d30), "exposure_long_pct": exp["long_pct"],
+        "avg_r_multiple": avg_r_multiple(d30), "avg_return_pct": avg_return_pct(d30),
+        "dd_from_ath_pct": dd_from_ath(), "exposure_long_pct": exp["long_pct"],
         "exposure_short_pct": exp["short_pct"], "exposure_net_pct": exp["net_pct"],
         "avg_holding_days": round(holding, 1),
         "exit_sl_pct": round(exit_map.get("SL_HIT", 0) / total_exits, 3),
         "exit_tp_pct": round(exit_map.get("TARGET_HIT", 0) / total_exits, 3),
         "exit_tech_pct": round(exit_map.get("TECH_BROKEN", 0) / total_exits, 3),
     }
+
+
+def _fmt(value, spec):
+    """Formatiert eine Kennzahl; None -> '–' (P7: fehlende Werte nicht als 0 ausweisen)."""
+    return "–" if value is None else spec.format(value)
+
+
+_RISK_COLUMNS = {
+    "sortino_30d": "REAL", "calmar_30d": "REAL", "max_drawdown_30d": "REAL", "avg_r_multiple": "REAL",
+    "exposure_long_pct": "REAL", "exposure_short_pct": "REAL", "exposure_net_pct": "REAL",
+    "avg_return_pct": "REAL", "dd_from_ath_pct": "REAL",   # P7 (30.09.2026)
+}
+
+
+def store_eval_metrics(con, today, metric_type, sm, pm, pipeline_state):
+    """Schreibt die Tageskennzahlen. M6 (30.09.2026): Sortino, Calmar, MaxDD, R-Multiple und Exposure wurden
+    berechnet (calc_portfolio_metrics), aber nie gespeichert; das Dashboard zeigte deshalb Max-DD 0 %."""
+    cols = {r[1] for r in con.execute("PRAGMA table_info(eval_metrics)").fetchall()}
+    for col, typ in _RISK_COLUMNS.items():
+        if col not in cols:
+            con.execute(f"ALTER TABLE eval_metrics ADD COLUMN {col} {typ} DEFAULT 0")
+    con.execute("""
+        INSERT OR REPLACE INTO eval_metrics
+        (date, metric_type, new_companies, confirmed, contradicted, avg_conviction, signals_bought,
+         open_positions, win_rate_7d, win_rate_30d, profit_factor_7d, avg_holding_days,
+         exit_sl_pct, exit_tp_pct, exit_tech_pct, created_at, notes,
+         sortino_30d, calmar_30d, max_drawdown_30d, avg_r_multiple,
+         exposure_long_pct, exposure_short_pct, exposure_net_pct, avg_return_pct, dd_from_ath_pct)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+    """, (today, metric_type, sm["new_companies"], sm["confirmed"], sm["contradicted"],
+          sm["avg_conviction"], sm["signals_bought"], pm["open_positions"], pm["win_rate_7d"],
+          pm["win_rate_30d"], pm["profit_factor_7d"], pm["avg_holding_days"],
+          pm["exit_sl_pct"], pm["exit_tp_pct"], pm["exit_tech_pct"], datetime.now().isoformat(),
+          None if pipeline_state in ("done", "weekend") else f"pipeline={pipeline_state}",
+          pm["sortino_30d"], pm["calmar_30d"], pm["max_drawdown_30d"], pm["avg_r_multiple"],
+          pm["exposure_long_pct"], pm["exposure_short_pct"], pm["exposure_net_pct"],
+          pm.get("avg_return_pct"), pm.get("dd_from_ath_pct")))
 
 
 def calc_top_band_metrics(con):
@@ -178,11 +253,13 @@ def calc_top_band_metrics(con):
         top = con.execute("""
             SELECT ticker, name, conviction_score
             FROM watchlist
-            WHERE status = 'watching'
+            WHERE status IN ('watching', 'bought')
               AND ticker IS NOT NULL
             ORDER BY conviction_score DESC
             LIMIT ?
         """, (n,)).fetchall()
+        # M6 (30.09.2026): vorher nur status='watching'. Gekaufte Titel stehen auf 'bought' und waren damit
+        # per Konstruktion nie im Top-Band: 'gekauft' blieb ~0 und die Metrik konnte nichts messen.
         bought = 0; wins = 0; losses = 0; sum_pnl = 0.0
         for t in top:
             pos = con.execute("""
@@ -198,7 +275,9 @@ def calc_top_band_metrics(con):
                     else: losses += 1
                     sum_pnl += pos["pnl_eur"]
         result[f"top{n}_bought"] = bought
-        result[f"top{n}_win_rate"] = round(wins / (wins + losses), 3) if (wins + losses) > 0 else 0
+        # P7 (30.09.2026): ohne geschlossenen Trade gibt es keine Win-Rate (vorher 0 -> "WR 0 %")
+        result[f"top{n}_win_rate"] = round(wins / (wins + losses), 3) if (wins + losses) > 0 else None
+        result[f"top{n}_open"] = bought - wins - losses
         result[f"top{n}_pnl"] = round(sum_pnl, 2)
     return result
 
@@ -765,10 +844,14 @@ def main():
         print(f"  Win Rate (7d): {pm['win_rate_7d']:.1%}", flush=True)
         print(f"  Win Rate (30d): {pm['win_rate_30d']:.1%}", flush=True)
         print(f"  Profit Factor (7d): {pm['profit_factor_7d']:.2f}", flush=True)
-        print(f"  Sortino (30d): {pm['sortino_30d']:.2f}", flush=True)
+        print(f"  Sortino (30d, je Trade): {pm['sortino_30d']:.2f}", flush=True)
         print(f"  Calmar (30d): {pm['calmar_30d']:.2f}", flush=True)
-        print(f"  Max Drawdown (30d): {pm['max_drawdown_30d']:.1f}%", flush=True)
-        print(f"  Ø R-Multiple: {pm['avg_r_multiple']:.2f}R", flush=True)
+        print(f"  Drawdown vom ATH: {_fmt(pm.get('dd_from_ath_pct'), '{:.1f}%')}", flush=True)
+        print(f"  Max Drawdown 30d (realisiert): {pm['max_drawdown_30d']:.1f}%", flush=True)
+        print(f"  Ø Rendite je Trade (30d): {_fmt(pm.get('avg_return_pct'), '{:+.2f}%')}", flush=True)
+        print(f"  Ø R-Multiple (30d): {_fmt(pm.get('avg_r_multiple'), '{:+.2f}R')}"
+              + ("" if pm.get("avg_r_multiple") is not None else " (noch kein Trade mit gespeichertem Anfangs-Stop)"),
+              flush=True)
         print(f"  Exposure: LONG {pm['exposure_long_pct']:.0f}% | SHORT {pm['exposure_short_pct']:.0f}% | Net {pm['exposure_net_pct']:.0f}%", flush=True)
         print(f"  Ø Haltedauer: {pm['avg_holding_days']} Tage", flush=True)
         print(f"  SL/TP/Tech Exits: {pm['exit_sl_pct']:.0%}/{pm['exit_tp_pct']:.0%}/{pm['exit_tech_pct']:.0%}", flush=True)
@@ -776,31 +859,21 @@ def main():
         # Benchmark-Vergleich
         bm = get_benchmark_data(con)
         if bm:
-            print(f"\n📈 Benchmark-Vergleich (YTD):", flush=True)
+            print(f"\n📈 Benchmark-Vergleich (seit Depotstart):", flush=True)
             print(f"  Portfolio:  {bm['portfolio_return_ytd']:+.1f}%", flush=True)
             print(f"  SPY:        {bm['spy_return_ytd']:+.1f}% | Alpha: {bm['alpha_spy']:+.1f}%", flush=True)
             print(f"  DAX:        {bm['dax_return_ytd']:+.1f}% | Alpha: {bm['alpha_dax']:+.1f}%", flush=True)
 
         metric_type = "weekly" if IS_SUNDAY else "daily"
-        con.execute("""
-            INSERT OR REPLACE INTO eval_metrics
-            (date, metric_type, new_companies, confirmed, contradicted, avg_conviction, signals_bought,
-             open_positions, win_rate_7d, win_rate_30d, profit_factor_7d, avg_holding_days,
-             exit_sl_pct, exit_tp_pct, exit_tech_pct, created_at, notes)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
-        """, (today, metric_type, sm["new_companies"], sm["confirmed"], sm["contradicted"],
-              sm["avg_conviction"], sm["signals_bought"], pm["open_positions"], pm["win_rate_7d"],
-              pm["win_rate_30d"], pm["profit_factor_7d"], pm["avg_holding_days"],
-              pm["exit_sl_pct"], pm["exit_tp_pct"], pm["exit_tech_pct"], datetime.now().isoformat(),
-              None if pipeline_state in ("done", "weekend") else f"pipeline={pipeline_state}"))
+        store_eval_metrics(con, today, metric_type, sm, pm, pipeline_state)
         con.commit()
 
         # Top-Band-Validierung (Top-3/5/10 der Watchlist)
         print("\n📊 Top-Band-Validierung...", flush=True)
         tb = calc_top_band_metrics(con)
         for n in [3, 5, 10]:
-            print(f"  Top {n}: {tb[f'top{n}_bought']} gekauft, "
-                  f"WR {tb[f'top{n}_win_rate']:.0%}, "
+            print(f"  Top {n}: {tb[f'top{n}_bought']} gekauft ({tb.get(f'top{n}_open', 0)} offen), "
+                  f"WR {_fmt(tb[f'top{n}_win_rate'], '{:.0%}')}, "
                   f"P&L {tb[f'top{n}_pnl']:+.0f}€", flush=True)
 
         # Migration: eval_metrics top_N Spalten (idempotent)
@@ -878,7 +951,7 @@ def main():
             a_spy_icon = "✅" if bm["alpha_spy"] >= 0 else "❌"
             a_dax_icon = "✅" if bm["alpha_dax"] >= 0 else "❌"
             bm_line = (
-                f"\n📈 Benchmark (YTD):\n"
+                f"\n📈 Benchmark (seit Depotstart):\n"
                 f"  Portfolio: {bm['portfolio_return_ytd']:+.1f}%\n"
                 f"  vs SPY: {bm['alpha_spy']:+.1f}% {a_spy_icon} | vs DAX: {bm['alpha_dax']:+.1f}% {a_dax_icon}\n"
             )
@@ -893,8 +966,9 @@ def main():
                 "Portfolio:\n"
                 f"  Win Rate (7d): {pm['win_rate_7d']:.0%} {wr_ok}\n"
                 f"  Profit Factor: {pm['profit_factor_7d']:.2f}\n"
-                f"  Sortino: {pm['sortino_30d']:.2f} | Calmar: {pm['calmar_30d']:.2f}\n"
-                f"  Max DD: {pm['max_drawdown_30d']:.1f}% | Ø R: {pm['avg_r_multiple']:.2f}R\n"
+                f"  Sortino/Trade: {pm['sortino_30d']:.2f} | Calmar: {pm['calmar_30d']:.2f}\n"
+                f"  DD vom ATH: {_fmt(pm.get('dd_from_ath_pct'), '{:.1f}%')} | "
+                f"Max DD 30d (real.): {pm['max_drawdown_30d']:.1f}% | Ø R: {_fmt(pm.get('avg_r_multiple'), '{:+.2f}R')}\n"
                 f"  Exposure: LONG {pm['exposure_long_pct']:.0f}% SHORT {pm['exposure_short_pct']:.0f}%\n"
                 f"  SL/TP/Tech: {pm['exit_sl_pct']:.0%}/{pm['exit_tp_pct']:.0%}/{pm['exit_tech_pct']:.0%}\n"
                 f"{bm_line}"
@@ -917,7 +991,8 @@ def main():
                 f"  Offene Pos.: {pm['open_positions']}/8\n"
                 f"  Win Rate (7d): {pm['win_rate_7d']:.0%} {wr_ok}\n"
                 f"  Profit Factor: {pm['profit_factor_7d']:.2f}\n"
-                f"  Sortino: {pm['sortino_30d']:.2f} | Calmar: {pm['calmar_30d']:.2f}\n"
+                f"  Sortino/Trade: {pm['sortino_30d']:.2f} | Calmar: {pm['calmar_30d']:.2f}\n"
+                f"  DD vom ATH: {_fmt(pm.get('dd_from_ath_pct'), '{:.1f}%')}\n"
                 f"  Exposure: LONG {pm['exposure_long_pct']:.0f}% SHORT {pm['exposure_short_pct']:.0f}%\n"
                 f"{bm_line}"
                 f"{committee_line}\n"

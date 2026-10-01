@@ -25,7 +25,13 @@ MERGE_COLS = [
     "mention_count", "bullish_count", "bearish_count", "neutral_count",
 ]
 
-def merge_group(con, rows, key, key_label):
+def _iso_day(value):
+    """'20260621' -> '2026-06-21' (M11); alles andere unverändert."""
+    s = str(value or "")
+    return f"{s[:4]}-{s[4:6]}-{s[6:8]}" if len(s) == 8 and s.isdigit() else s
+
+
+def merge_group(con, rows, key, key_label, preferred_ticker=None):
     """Merge eine Gruppe von Duplikaten in einen kanonischen Eintrag.
     rows: Liste von sqlite3.Row-Dicts (alle mit status='watching')
     key: Beschriftung für Logging
@@ -67,15 +73,32 @@ def merge_group(con, rows, key, key_label):
         chans = json.loads(r["channels"]) if r["channels"] else []
         all_channels.update(chans)
     merged["channels"] = json.dumps(sorted(all_channels))
-    merged["first_seen"] = min(r["first_seen"] for r in rows if r["first_seen"])
-    merged["last_seen"]  = max(r["last_seen"] for r in rows if r["last_seen"])
+    merged["first_seen"] = min(_iso_day(r["first_seen"]) for r in rows if r["first_seen"])
+    merged["last_seen"]  = max(_iso_day(r["last_seen"]) for r in rows if r["last_seen"])
     tickers = [r["ticker"] for r in rows if r["ticker"]]
-    merged["ticker"] = tickers[0] if tickers else None
+    # M12 (30.09.2026): der ermittelte Ticker mit der besten Börsen-Priorität gewinnt (vorher der erste der Liste)
+    merged["ticker"] = (preferred_ticker if preferred_ticker in tickers
+                        else (tickers[0] if tickers else None))
     merged["conviction_score"]      = max(r["conviction_score"]      or 0 for r in rows)
     merged["conviction_score_bear"] = max(r["conviction_score_bear"] or 0 for r in rows)
     merged["conviction_score_aged"] = max(r["conviction_score_aged"] or 0 for r in rows)
 
-    # 3. Canonical per rowid updaten (robust gegen id=NULL)
+    # 3. M12 (30.09.2026): Duplikate ZUERST droppen. Sonst hielt eine noch nicht gedroppte Zeile den Ziel-Ticker,
+    #    und das UPDATE des kanonischen Eintrags verletzte UNIQUE(ticker) (Abbrüche 12./13./14./17.08.).
+    #    Die gedroppte Zeile gibt den Ziel-Ticker frei (Vermerk in notes).
+    target_ticker = merged["ticker"]
+    dropped = 0
+    for r in rows:
+        rid = r["rowid"] or r["id"]
+        if not rid or rid == canon_rowid:
+            continue
+        frees = bool(target_ticker) and r["ticker"] == target_ticker
+        note = f"merged into '{canon}' (watchlist_dedup)" + (f"; Ticker {r['ticker']} auf Ziel übertragen" if frees else "")
+        con.execute("UPDATE watchlist SET status='dropped', notes=?" + (", ticker=NULL" if frees else "")
+                    + " WHERE rowid=?", (note, rid))
+        dropped += 1
+
+    # 4. Canonical per rowid updaten (robust gegen id=NULL)
     update_cols = MERGE_COLS + [
         "conviction_score", "conviction_score_bear", "conviction_score_aged",
         "channels", "first_seen", "last_seen", "ticker",
@@ -94,19 +117,6 @@ def merge_group(con, rows, key, key_label):
     else:
         con.execute(f"UPDATE watchlist SET {', '.join(set_parts)} WHERE name=? AND ticker=?",
                     params[:-1] + [canon_row["ticker"]])
-
-    # 4. Duplikate per rowid droppen
-    dropped = 0
-    for r in rows:
-        rid = r["rowid"] or r["id"]
-        if rid == canon_rowid:
-            continue
-        if rid:
-            con.execute(
-                "UPDATE watchlist SET status='dropped', notes=? WHERE rowid=?",
-                (f"merged into '{canon}' (watchlist_dedup)", rid)
-            )
-            dropped += 1
 
     print(f"  🔗 {len(rows)} → '{canon}'  ({key_label}: {key})  "
           f"Conv:{merged['conviction_score']:.2f} Mentions:{merged['mention_count']} "
@@ -168,26 +178,34 @@ def _ticker_priority(ticker):
     """
     Bewertet einen Ticker nach Börsen-Herkunft.
     Rückgabe: Zahl (niedriger = besser)
-    0 = US-Primär (kein Suffix, kurz)
-    1 = US-ADR (endet auf Y)
+    0 = US-Primär (kein Suffix, bis 5 Buchstaben)
+    1 = US ohne reine Buchstaben (z. B. BRK-B)
     2 = EU-Primär (.DE, .PA, .AS, .HE etc.)
     3 = London (.L, .IL)
-    4 = Sonstige (.MU, .F, .SG, .BE etc.)
-    5 = Strukturierte Produkte / ISIN-WKN-Konstrukte
+    4 = Sonstige (.MU, .F, .SG, .BE, .T, .HK etc.)
+    5 = US-OTC-ADR / Foreign Ordinary (5 Buchstaben, Endung Y oder F: DLAKY, BAYRY, NSRGF)
+    6 = Strukturierte Produkte / ISIN-WKN-Konstrukte
+
+    P3 (30.09.2026): OTC-ADRs liefen vorher als US-Primär (0) und verdrängten die Heimatbörse (LHA.DE -> DLAKY,
+    rund ein Zehntel des Umsatzes, USD, US-Handelszeiten). Die frühere ADR-Stufe prüfte die Börsen-Endung '.Y' und
+    griff nie. Jetzt stehen OTC-ADRs hinter jeder echten Börsennotiz.
     """
     if not ticker:
         return 99
     import re
     # Strukturierte Produkte: ISIN-ähnlich (2 Buchstaben + 10+ Zeichen) + Exchange-Suffix
     if re.match(r'^[A-Z]{2}[0-9A-Z]{10,}\.(SG|MU|F|DE|L|PA|SW|VI|AS)$', ticker):
-        return 5
+        return 6
     # ISIN-ähnlich ohne Punkt
     if re.match(r'^[A-Z]{2}[0-9A-Z]{10,}$', ticker):
-        return 5
+        return 6
     # Exchange-Suffix erkennen
     suffix = ticker.split('.')[-1] if '.' in ticker else ''
     if not suffix:
         # Kein Suffix → US-Primär (TRI, TGT, BLK) oder japanisch/koreanisch (.T/.KS ohne Punkt?)
+        # P3: 5. Buchstabe Y (ADR) oder F (Foreign Ordinary) = OTC-Nebenwert
+        if ticker.isalpha() and len(ticker) == 5 and ticker[-1] in "YF":
+            return 5
         if ticker.isalpha() and len(ticker) <= 5:
             return 0
         # Zahlen-Dominiert (006400.KS, 6752.T) — asiatisch
@@ -195,9 +213,6 @@ def _ticker_priority(ticker):
             return 4
         return 1
     suffix = suffix.upper()
-    # US ADRs enden oft auf Y
-    if suffix == 'Y' and len(ticker) <= 5:
-        return 1
     # EU-Primärbörsen
     if suffix in ('DE', 'PA', 'AS', 'HE', 'BR', 'VI', 'SW', 'ST', 'CO'):
         return 2
@@ -244,7 +259,7 @@ def dedup_by_name(con):
 
         print(f"  🔗 {key}: {[r['ticker'] for r in group]} → {best['ticker']} "
               f"(Prio:{_ticker_priority(best['ticker'])})", flush=True)
-        dropped = merge_group(con, group, key[:40], "name")
+        dropped = merge_group(con, group, key[:40], "name", preferred_ticker=best["ticker"])
         total_dropped += dropped
     con.commit()
     return total_dropped

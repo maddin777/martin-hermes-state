@@ -38,8 +38,8 @@ def load_thematic_config():
 
 def save_thematic_config(cfg):
     os.makedirs(os.path.dirname(CONFIG_PATH), exist_ok=True)
-    with open(CONFIG_PATH, "w") as f:
-        json.dump(cfg, f, indent=2, ensure_ascii=False)
+    from utils import atomic_write_json  # N3
+    atomic_write_json(CONFIG_PATH, cfg, indent=2, ensure_ascii=False)
 
 
 # ─── Data Queries ─────────────────────────────────────────────────────────

@@ -26,6 +26,8 @@ TELEGRAM_CHANNEL  = os.environ.get("TELEGRAM_HOME_CHANNEL") or os.environ.get("T
 OPENROUTER_KEY    = os.environ.get("OPENROUTER_API_KEY")
 
 NEWS_NEGATIVE_THRESHOLD = 0.65   # Tavily-Score: ab hier als negativ werten
+# M17 (30.09.2026): `days` wirkt nur mit topic="news"; 3 Tage + Namensfilter statt "days=1" ohne topic (nur Kursseiten)
+BREAKING_NEWS_DAYS = 3
 PRICE_MOVE_THRESHOLD    = 0.05   # 5% Pre/After-Hours Bewegung → Alert
 
 
@@ -40,13 +42,20 @@ def _fetch_news(company_name: str, ticker: str) -> list:
                 "api_key": TAVILY_KEY,
                 "query": f"{company_name} {ticker} news",
                 "search_depth": "basic",
-                "max_results": 5,
-                "days": 1,
+                "max_results": 8,
+                "topic": "news",
+                "days": BREAKING_NEWS_DAYS,
             },
             timeout=15,
         )
         data = r.json()
-        return data.get("results", [])
+        results = data.get("results", [])
+        try:
+            from thematic.lib import tavily_client
+            results = tavily_client.filter_relevant(results, [company_name], ticker)
+        except Exception as e:
+            log.warning("Relevanzfilter nicht verfügbar: %s", e)
+        return results[:5]
     except Exception as e:
         log.warning("Tavily-Fehler für %s: %s", ticker, e)
         return []
@@ -103,6 +112,20 @@ def _score_news_sentiment(news_items: list, company_name: str) -> tuple:
     except Exception as e:
         log.warning("LLM-Sentiment-Fehler: %s", e)
         return 0.5, ""
+
+
+def _premarket_alert(name, pm_price, regular):
+    """Pre/After-Hours-Hinweis ab PRICE_MOVE_THRESHOLD, sonst None.
+    P13 (30.09.2026): Vorzeichen stimmt jetzt (vorher abs() -> auch Kursverluste als '+5,0 %')."""
+    if not pm_price or not regular:
+        return None
+    move = (pm_price - regular) / regular
+    if abs(move) < PRICE_MOVE_THRESHOLD:
+        return None
+    emoji = "📈" if move > 0 else "📉"
+    return (f"{emoji} <b>Pre/After-Hours: {name}</b>\n"
+            f"Bewegung: {move:+.1%} ({regular:.2f} → {pm_price:.2f})\n"
+            f"Bitte Position manuell prüfen!")
 
 
 def _send_telegram(msg: str):
@@ -192,15 +215,9 @@ def main():
             pm_price = getattr(fast, 'pre_market_price', None) or \
                        getattr(fast, 'post_market_price', None)
             regular  = getattr(fast, 'last_price', entry)
-            if pm_price and regular:
-                move = abs(pm_price - regular) / regular
-                if move >= PRICE_MOVE_THRESHOLD:
-                    direction_emoji = "📈" if pm_price > regular else "📉"
-                    alerts.append(
-                        f"{direction_emoji} <b>Pre/After-Hours: {name}</b>\n"
-                        f"Bewegung: {move:+.1%} ({regular:.2f} → {pm_price:.2f})\n"
-                        f"Bitte Position manuell prüfen!"
-                    )
+            alert = _premarket_alert(name, pm_price, regular)
+            if alert:
+                alerts.append(alert)
         except Exception:
             pass
 

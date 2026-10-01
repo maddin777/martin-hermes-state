@@ -4,6 +4,14 @@
 
 set -e
 
+# N20 (30.09.2026): NICHT ohne Freigabe ausfuehren. Das Skript schreibt die Crontab um (`grep -v "thematic/"` entfernt
+# auch die aktive factor_ranker- und drawdown_monitor-Zeile), plant Jobs fuer fehlende Dateien (tax_tracker.py,
+# news_cleanup.py) und eine zweite Pipeline um 03:00 und kopiert die WAL-DB per cp. Nur mit FORCE_THEMATIC_SETUP=1.
+if [ "${FORCE_THEMATIC_SETUP:-}" != "1" ]; then
+    echo "ABBRUCH: setup_thematic.sh ist gesperrt (Befund N20: ueberschreibt die Crontab). Nur mit FORCE_THEMATIC_SETUP=1." >&2
+    exit 1
+fi
+
 SKILL_DIR="/root/.hermes/profiles/hermes_trading/skills/trading"
 THEMATIC_DIR="$SKILL_DIR/thematic"
 DB_PATH="$SKILL_DIR/data/trading.db"

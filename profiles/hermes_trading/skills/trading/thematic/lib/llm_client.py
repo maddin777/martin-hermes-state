@@ -51,6 +51,7 @@ def call_llm(
     max_tokens: int = 2000,
     json_mode: bool = False,
     timeout: int = 60,
+    reasoning: Optional[dict] = None,
 ) -> dict:
     """
     Einheitlicher LLM-Call via OpenRouter oder Grok Lite.
@@ -68,10 +69,12 @@ def call_llm(
         return _call_grok(messages, model, temperature, max_tokens, timeout)
 
     # OpenRouter (default)
-    return _call_openrouter(messages, model, temperature, max_tokens, json_mode, timeout)
+    # P6 (30.09.2026): reasoning={"enabled": False} schaltet das Reasoning ab. Reasoning-Modelle (deepseek-v4-pro)
+    # verbrauchten sonst das Token-Limit, content blieb leer oder abgeschnitten.
+    return _call_openrouter(messages, model, temperature, max_tokens, json_mode, timeout, reasoning)
 
 
-def _call_openrouter(messages, model, temperature, max_tokens, json_mode, timeout):
+def _call_openrouter(messages, model, temperature, max_tokens, json_mode, timeout, reasoning=None):
     if not OPENROUTER_KEY:
         return {"ok": False, "error": "OPENROUTER_API_KEY nicht gesetzt"}
 
@@ -83,6 +86,8 @@ def _call_openrouter(messages, model, temperature, max_tokens, json_mode, timeou
     }
     if json_mode:
         payload["response_format"] = {"type": "json_object"}
+    if reasoning is not None:
+        payload["reasoning"] = reasoning
 
     headers = {
         "Authorization": f"Bearer {OPENROUTER_KEY}",
@@ -100,9 +105,18 @@ def _call_openrouter(messages, model, temperature, max_tokens, json_mode, timeou
             resp.raise_for_status()
             data = resp.json()
             choice = data["choices"][0]
+            content = choice["message"].get("content")
+            finish = choice.get("finish_reason")
+            # N19 (30.09.2026): leere Antwort (Reasoning-Modelle) oder abgeschnittenes JSON waren "ok" und scheiterten erst
+            # spaeter beim Parsen ohne erkennbare Ursache
+            if not content:
+                return {"ok": False, "error": f"leere Antwort (finish_reason={finish})"}
+            if json_mode and finish == "length":
+                return {"ok": False, "error": "Antwort abgeschnitten (finish_reason=length)"}
             return {
                 "ok": True,
-                "content": choice["message"]["content"],
+                "content": content,
+                "truncated": finish == "length",
                 "model": data.get("model", model),
                 "tokens": {
                     "input": data.get("usage", {}).get("prompt_tokens", 0),

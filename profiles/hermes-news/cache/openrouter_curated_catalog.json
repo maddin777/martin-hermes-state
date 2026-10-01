@@ -1,5 +1,5 @@
 {
-  "fetched_at": 1790662438.729081,
+  "fetched_at": 1790748839.0071166,
   "curated": [
     [
       "anthropic/claude-fable-5.1",
@@ -39,6 +39,14 @@
     ],
     [
       "openai/gpt-6-astra-pro",
+      ""
+    ],
+    [
+      "openai/gpt-6.1-sol",
+      ""
+    ],
+    [
+      "openai/gpt-6.1-sol-pro",
       ""
     ],
     [
@@ -215,6 +223,10 @@
     ],
     [
       "nvidia/nemotron-3.5-lightning:free",
+      "free"
+    ],
+    [
+      "stealth/space-bunny-alpha",
       "free"
     ]
   ]

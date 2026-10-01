@@ -13,6 +13,7 @@ Result Dict:
         "details": dict mit Zusatzinfos (yahoo_name, quote_type, volume, etc.)
     }
 """
+import re
 import sqlite3
 import time
 from datetime import datetime
@@ -66,6 +67,41 @@ def _name_threshold(name: str) -> float:
     if n <= 3:  return 0.6
     if n <= 8:  return 0.4
     return 0.25
+
+
+# M10 (30.09.2026): Die Schwelle 0,25 ab 9 Zeichen ließ Yahoo-Namen mit gemeinsamen Füllwörtern durch
+# (31 falsche Aliase, z. B. Nissan/Capcom -> ZIM, Champions Oncology -> QBTS). Unter STRONG_NAME_SIMILARITY
+# muss zusätzlich mindestens ein aussagekräftiges Namenswort gemeinsam sein.
+STRONG_NAME_SIMILARITY = 0.5
+_NAME_STOPWORDS = {
+    "inc", "corp", "corporation", "co", "ltd", "limited", "plc", "llc", "lp", "ag", "se", "sa", "nv", "bv", "gmbh",
+    "company", "companies", "holding", "holdings", "group", "the", "and", "of", "de", "class", "adr", "ord", "shares",
+    "international", "global", "services", "systems", "technologies", "technology", "industries", "partners",
+}
+
+
+def _name_tokens(n: str) -> set:
+    return {t for t in re.findall(r"[a-z0-9]+", (n or "").lower()) if len(t) >= 3 and t not in _NAME_STOPWORDS}
+
+
+def _shares_name_token(a: str, b: str) -> bool:
+    ta, tb = _name_tokens(a), _name_tokens(b)
+    if ta & tb:
+        return True
+    # Präfix-Treffer ab 4 Zeichen: 'moodys' ~ 'moody', 'citi' ~ 'citigroup'
+    return any(len(x) >= 4 and len(y) >= 4 and (x.startswith(y) or y.startswith(x)) for x in ta for y in tb)
+
+
+def _name_plausible(name: str, yahoo_name: str, sim: float = None, threshold: float = None, ticker: str = None) -> bool:
+    if ticker and (name or "").strip().upper() in (ticker.upper(), ticker.upper().split(".")[0]):
+        return True          # der Name IST das Tickersymbol (z. B. 'AAPL', 'COK.DE')
+    sim = _name_similarity(name, yahoo_name) if sim is None else sim
+    threshold = _name_threshold(name) if threshold is None else threshold
+    if sim < threshold:
+        return False
+    if sim >= STRONG_NAME_SIMILARITY:
+        return True
+    return _shares_name_token(name, yahoo_name)
 
 
 # --- Helper ---
@@ -347,7 +383,7 @@ def validate(name: str, con=None) -> dict:
             continue
         sim = _name_similarity(name, yahoo_name)
         threshold = _name_threshold(name)
-        if sim < threshold:
+        if not _name_plausible(name, yahoo_name, sim, threshold, ticker):
             if rejection_reason is None or rejection_reason == "not_equity":
                 rejection_reason = "name_mismatch"
                 rejection_ticker = ticker

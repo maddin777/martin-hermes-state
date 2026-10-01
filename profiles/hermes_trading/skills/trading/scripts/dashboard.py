@@ -1,7 +1,7 @@
 """Trading Dashboard v4.1 - Mit Thematic Investing Interface"""
-import sqlite3, json, os, subprocess, html, re, sys
+import sqlite3, json, os, subprocess, html, re, sys, hmac, hashlib, time, threading
 from collections import deque
-from http.server import HTTPServer, BaseHTTPRequestHandler
+from http.server import HTTPServer, ThreadingHTTPServer, BaseHTTPRequestHandler
 from urllib.parse import parse_qs, urlparse
 from datetime import datetime, timedelta
 import sys, os
@@ -36,9 +36,14 @@ def load_sources():
             return json.load(f)
     return {"rss_feeds": [], "twitter_accounts": [], "fred_indicators": []}
 
+def _fmt_metric(value, spec):
+    """P7 (30.09.2026): fehlende Kennzahl als '–' statt 0 bzw. Formatfehler bei None."""
+    return "–" if value is None else spec.format(value)
+
+
 def save_sources(sources):
-    with open(SOURCES_PATH, "w", encoding="utf-8") as f:
-        json.dump(sources, f, indent=2, ensure_ascii=False)
+    from utils import atomic_write_json  # N3
+    atomic_write_json(SOURCES_PATH, sources, indent=2, ensure_ascii=False)
 
 def get_yt_channels():
     """Liest YouTube-Kanäle aus source_registry (DB), Fallback statische Liste.
@@ -701,10 +706,12 @@ def build_html(data):
             Win Rate (7d): <b style="{wr_c}">{wr7:.0%}</b><br>
             Win Rate (30d): <b>{latest.get('win_rate_30d',0):.0%}</b><br>
             Profit Factor (7d): <b>{pf7:.2f}</b><br>
-            Sortino (30d): <b>{latest.get('sortino_30d',0):.2f}</b> |
-            Calmar: <b>{latest.get('calmar_30d',0):.2f}</b><br>
-            Max DD (30d): <b style="color:#ff5252">{latest.get('max_drawdown_30d',0):.1f}%</b> |
-            Ø R-Mult: <b>{latest.get('avg_r_multiple',0):.2f}R</b><br>
+            Sortino (30d, je Trade): <b>{(latest.get('sortino_30d') or 0):.2f}</b> |
+            Calmar: <b>{(latest.get('calmar_30d') or 0):.2f}</b><br>
+            DD vom ATH: <b style="color:#ff5252">{_fmt_metric(latest.get('dd_from_ath_pct'), '{:.1f}%')}</b> |
+            Max DD 30d (realisiert): <b style="color:#ff5252">{(latest.get('max_drawdown_30d') or 0):.1f}%</b><br>
+            Ø Rendite/Trade: <b>{_fmt_metric(latest.get('avg_return_pct'), '{:+.2f}%')}</b> |
+            Ø R-Mult: <b>{_fmt_metric(latest.get('avg_r_multiple'), '{:+.2f}R')}</b><br>
             Exposure: <b style="color:#00e676">LONG {latest.get('exposure_long_pct',0):.0f}%</b> /
             <b style="color:#ff5252">SHORT {latest.get('exposure_short_pct',0):.0f}%</b><br>
             Ø Haltedauer: <b>{latest.get('avg_holding_days',0):.1f} Tage</b><br>
@@ -831,7 +838,7 @@ def build_html(data):
         benchmark_html = f"""
         <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin-bottom:20px">
             <div style="background:#111;padding:15px;border-radius:8px;text-align:center">
-                <div style="color:#888;font-size:0.75em;margin-bottom:5px">PORTFOLIO YTD</div>
+                <div style="color:#888;font-size:0.75em;margin-bottom:5px">PORTFOLIO SEIT DEPOTSTART</div>
                 <div style="{prc};font-size:1.8em;font-weight:bold">{port_ret:+.1f}%</div>
             </div>
             <div style="background:#111;padding:15px;border-radius:8px;text-align:center">
@@ -1330,7 +1337,7 @@ wlRender();
     <div style="background:#151525;border:1px solid #2a2a4a;border-radius:8px;padding:15px">
         {sector_blacklist_html}
     </div>
-    <h2>📈 Benchmark-Vergleich (YTD)</h2>
+    <h2>📈 Benchmark-Vergleich (seit Depotstart)</h2>
     <div style="background:#151525;border:1px solid #2a2a4a;border-radius:8px;padding:15px">
         {benchmark_html}
         {equity_chart_html}
@@ -1765,19 +1772,174 @@ def build_thematic_section():
 
 # ─── HTTP Handler ─────────────────────────────────────────────────────────────
 
+# ─── Zugriffsschutz (K2, 30.09.2026) ──────────────────────────────────────────
+# Früher stand das DASHBOARD_TOKEN als verstecktes Feld in jedem POST-Formular jeder GET-Seite,
+# also für jeden lesbar, der die Seite abruft. Jetzt: Anmeldung über /login, danach ein HttpOnly-
+# SameSite=Strict-Cookie mit einem vom Token abgeleiteten Wert (nicht das Token selbst). POSTs
+# brauchen Cookie oder den Header X-Dashboard-Token; ein gesetzter Origin-Header muss zum Host passen.
+AUTH_COOKIE = "dash_auth"
+_LABEL_RE = re.compile(r"^[^\x00-\x1f<>]{1,100}$")
+_HANDLE_RE = re.compile(r"^[A-Za-z0-9_]{1,15}$")
+_CATEGORY_RE = re.compile(r"^[\w -]{1,30}$")
+_LANG_RE = re.compile(r"^[a-z]{2}$")
+_IDX_RE = re.compile(r"^\d{1,4}$")
+
+
+def _session_value(token):
+    return hmac.new(token.encode("utf-8"), b"hermes-dashboard-session-v1", hashlib.sha256).hexdigest()
+
+
+def _cookie_value(headers):
+    for part in (headers.get("Cookie") or "").split(";"):
+        k, _, v = part.strip().partition("=")
+        if k == AUTH_COOKIE:
+            return v
+    return ""
+
+
+def _is_authorized(headers, token):
+    if not token:
+        return False
+    supplied = headers.get("X-Dashboard-Token") or ""
+    if supplied and hmac.compare_digest(supplied, token):
+        return True
+    cookie = _cookie_value(headers)
+    return bool(cookie) and hmac.compare_digest(cookie, _session_value(token))
+
+
+def _origin_ok(headers):
+    origin = headers.get("Origin")
+    return True if not origin else urlparse(origin).netloc == (headers.get("Host") or "")
+
+
+def _login_page(err=""):
+    note = '<p style="color:#ff5252">Token falsch.</p>' if err else ""
+    return ('<!doctype html><html><head><meta charset="utf-8"><title>Anmelden</title></head>'
+            '<body style="font-family:sans-serif;background:#0b0b12;color:#ddd;padding:40px">'
+            '<h2>Dashboard anmelden</h2>' + note +
+            '<form method="POST" action="/login"><input type="password" name="token" autofocus '
+            'placeholder="Dashboard-Token" style="padding:8px;width:320px"> '
+            '<button type="submit" style="padding:8px 16px">Anmelden</button></form></body></html>')
+
+
+def _valid_url(u):
+    p = urlparse(u or "")
+    return (p.scheme in ("http", "https") and bool(p.netloc) and len(u) <= 500
+            and not re.search(r"[\s<>\"']", u))
+
+
+def _num_in(v, lo, hi):
+    try:
+        x = float(v)
+    except (TypeError, ValueError):
+        return False
+    return lo <= x <= hi          # NaN besteht keinen Vergleich
+
+
+def _validate_post(path, params):
+    """Prüft Eingaben der Mutations-Routen. Gibt eine Fehlermeldung oder None zurück."""
+    g = lambda k, d="": (params.get(k, d) or "").strip()
+    if path == "/sources/yt/add":
+        if not _LABEL_RE.match(g("name")) or not _valid_url(g("url")):
+            return "Ungültiger Kanalname oder ungültige URL (nur http/https)"
+    elif path == "/sources/yt/remove":
+        if not _LABEL_RE.match(g("name")):
+            return "Ungültiger Kanalname"
+    elif path == "/sources/rss/add":
+        if not (_LABEL_RE.match(g("name")) and _valid_url(g("url")) and _num_in(g("weight", "1.0"), 0, 5)
+                and _LANG_RE.match(g("language", "de"))):
+            return "Ungültiger Feed (Name, http/https-URL, Gewicht 0-5, Sprache 2 Buchstaben)"
+    elif path == "/sources/twitter/add":
+        if not (_HANDLE_RE.match(g("handle").lstrip("@")) and _LABEL_RE.match(g("name"))
+                and _CATEGORY_RE.match(g("category", "investor")) and _num_in(g("weight", "1.0"), 0, 5)):
+            return "Ungültiger Account (Handle, Name, Kategorie, Gewicht 0-5)"
+    elif path.startswith("/sources/rss/") or path.startswith("/sources/twitter/"):
+        if not _IDX_RE.match(g("idx", "-1")) and g("idx", "-1") != "-1":
+            return "Ungültiger Index"
+        if path.endswith("/weight") and not _num_in(g("weight", "1.0"), 0, 5):
+            return "Ungültiges Gewicht (0-5)"
+    elif path == "/thematic/config/save":
+        try:
+            from dashboard_thematic import load_thematic_config
+        except Exception:
+            return None
+        cfg = load_thematic_config()
+        models = cfg.get("llm_models") or {}
+        allowed = set(models.values()) | set(cfg.get("allowed_llm_models") or [])
+        thresholds = cfg.get("thresholds") or {}
+        for key, val in params.items():
+            if key.startswith("llm_"):
+                if key[4:] not in models:
+                    return f"Unbekannte Modell-Rolle: {key[4:]}"
+                if val not in allowed:
+                    return f"Modell nicht erlaubt: {val[:60]}"
+            elif key.startswith("thresh_"):
+                if key[7:] not in thresholds:
+                    return f"Unbekannter Schwellwert: {key[7:]}"
+                if not _num_in(val, -1e6, 1e6):
+                    return f"Ungültiger Wert für {key[7:]}"
+    return None
+
+
+# ─── Belastbarkeit (P11, 30.09.2026) ──────────────────────────────────────────
+# Vorher: ein einziger Server-Thread, jeder POST-Body wurde vor der Anmeldeprüfung vollständig gelesen, ein
+# Login-Fehlversuch schlief 1 s im einzigen Thread, und jeder Seitenaufruf baute die ~1-MB-Seite neu (4,4 s). Ein
+# einzelner anonymer Client konnte das Dashboard damit lahmlegen. Jetzt: ein Thread je Anfrage, Socket-Timeout,
+# Anmeldung vor dem Body, Größenlimits, Login-Sperre je IP und ein kurzer Seiten-Cache.
+MAX_POST_BYTES = 64 * 1024
+LOGIN_MAX_BYTES = 4 * 1024
+LOGIN_MAX_FAILS = 5
+LOGIN_FAIL_WINDOW = 15 * 60
+LOGIN_FAIL_DELAY = 1.0
+PAGE_CACHE_TTL = 30
+_LOCK = threading.Lock()
+_LOGIN_FAILS = {}
+_PAGE_CACHE = {"ts": 0.0, "html": None}
+
+
+def _cached_page():
+    with _LOCK:
+        if _PAGE_CACHE["html"] is not None and time.time() - _PAGE_CACHE["ts"] < PAGE_CACHE_TTL:
+            return _PAGE_CACHE["html"]
+    page = build_html(get_data())
+    with _LOCK:
+        _PAGE_CACHE["ts"], _PAGE_CACHE["html"] = time.time(), page
+    return page
+
+
+def _invalidate_page_cache():
+    with _LOCK:
+        _PAGE_CACHE["html"] = None
+
+
+def _login_locked(ip):
+    now = time.time()
+    with _LOCK:
+        recent = [t for t in _LOGIN_FAILS.get(ip, []) if now - t < LOGIN_FAIL_WINDOW]
+        _LOGIN_FAILS[ip] = recent
+        return len(recent) >= LOGIN_MAX_FAILS
+
+
+def _note_login_fail(ip):
+    with _LOCK:
+        _LOGIN_FAILS.setdefault(ip, []).append(time.time())
+
+
 class Handler(BaseHTTPRequestHandler):
+    timeout = 15          # P11: Socket-Timeout, ein hängender Client hält seinen Thread höchstens 15 s
+
     def do_GET(self):
         try:
-            page = build_html(get_data())
-            # #1: Wenn ein DASHBOARD_TOKEN gesetzt ist, in jedes POST-Formular ein
-            # verstecktes _token-Feld einfügen, damit die Dashboard-Buttons (same-
-            # origin) weiter funktionieren. Eine fremde Website kann die Seite wegen
-            # Same-Origin-Policy nicht auslesen → blinde CSRF-POSTs schlagen fehl.
-            token = os.environ.get("DASHBOARD_TOKEN", "")
-            if token:
-                tok_field = f'<input type="hidden" name="_token" value="{html.escape(token)}">'
-                page = re.sub(r'(<form\b[^>]*\bmethod="POST"[^>]*>)',
-                              r'\1' + tok_field, page, flags=re.IGNORECASE)
+            gpath = urlparse(self.path)
+            if gpath.path == "/login":
+                page = _login_page(parse_qs(gpath.query).get("err", [""])[0])
+            else:
+                page = _cached_page()
+                token = os.environ.get("DASHBOARD_TOKEN", "")
+                if token and not _is_authorized(self.headers, token):
+                    banner = ('<div style="background:#3a2a00;color:#ffd740;padding:6px 14px;font-size:0.85em">'
+                              'Nicht angemeldet: Änderungen sind gesperrt. <a href="/login" style="color:#fff">Anmelden</a></div>')
+                    page = re.sub(r"(<body[^>]*>)", lambda m: m.group(1) + banner, page, count=1, flags=re.I)
             content = page.encode("utf-8")
             self.send_response(200)
             self.send_header("Content-Type","text/html; charset=utf-8")
@@ -1790,10 +1952,16 @@ class Handler(BaseHTTPRequestHandler):
             self.wfile.write(str(e).encode())
 
     def do_POST(self):
-        length  = int(self.headers.get("Content-Length", 0))
-        body    = self.rfile.read(length).decode("utf-8")
-        params  = {k: v[0] for k, v in parse_qs(body).items()}
+        # P11 (30.09.2026): Länge prüfen und Zugriff klären, BEVOR der Body gelesen wird
         path    = urlparse(self.path).path
+        try:
+            length = int(self.headers.get("Content-Length", 0) or 0)
+        except ValueError:
+            length = -1
+        if length < 0:
+            self._reply(400, "ungültige Content-Length")
+            return
+        params  = {}
         success = False
         msg     = ""
 
@@ -1806,12 +1974,17 @@ class Handler(BaseHTTPRequestHandler):
         #   3) Kein Token + Bind 127.0.0.1 → erlaubt (nur lokal erreichbar).
         required = os.environ.get("DASHBOARD_TOKEN", "")
         bind_local = os.environ.get("DASHBOARD_BIND", "127.0.0.1") == "127.0.0.1"
+        if path == "/login":
+            if length > LOGIN_MAX_BYTES:
+                self._reply(413, "Anfrage zu groß")
+                return
+            self._handle_login(self._read_params(length), required)
+            return
         if required:
-            supplied = self.headers.get("X-Dashboard-Token") or params.get("_token", "")
-            if supplied != required:
+            if not (_origin_ok(self.headers) and _is_authorized(self.headers, required)):
                 self.send_response(403)
                 self.end_headers()
-                self.wfile.write(b"forbidden: invalid or missing token")
+                self.wfile.write("forbidden: bitte unter /login anmelden".encode("utf-8"))
                 return
         elif not bind_local:
             self.send_response(403)
@@ -1821,6 +1994,16 @@ class Handler(BaseHTTPRequestHandler):
                 "erreichbar, aber kein DASHBOARD_TOKEN gesetzt. Bitte Token setzen."
                 .encode("utf-8")
             )
+            return
+
+        if length > MAX_POST_BYTES:
+            self._reply(413, "Anfrage zu groß")
+            return
+        params = self._read_params(length)
+
+        err = _validate_post(path, params)
+        if err:
+            self._reply(400, err)
             return
 
         try:
@@ -1927,7 +2110,7 @@ class Handler(BaseHTTPRequestHandler):
                     if key.startswith("llm_"):
                         cfg.setdefault("llm_models", {})[key[4:]] = val
                     elif key.startswith("thresh_"):
-                        cfg.setdefault("thresholds", {})[key[4:]] = float(val)
+                        cfg.setdefault("thresholds", {})[key[7:]] = float(val)
                 save_thematic_config(cfg)
                 msg = "LLM-Konfiguration gespeichert"; success = True
 
@@ -1967,11 +2150,49 @@ class Handler(BaseHTTPRequestHandler):
         if msg:
             import urllib.parse
             redirect_url += f"&msg={urllib.parse.quote(msg)}"
+        _invalidate_page_cache()            # P11: Änderung sofort sichtbar
         self.send_response(303)
         self.send_header("Location", redirect_url)
         self.end_headers()
 
+    def _reply(self, code, text):
+        body = text.encode("utf-8")
+        self.send_response(code)
+        self.send_header("Content-Type", "text/plain; charset=utf-8")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+    def _read_params(self, length):
+        body = self.rfile.read(length).decode("utf-8", errors="replace") if length else ""
+        return {k: v[0] for k, v in parse_qs(body).items()}
+
+    def _handle_login(self, params, required):
+        ip = self.client_address[0] if self.client_address else "?"
+        if _login_locked(ip):
+            self._reply(429, "Zu viele Fehlversuche, bitte später erneut versuchen")
+            return
+        if required and hmac.compare_digest(params.get("token", ""), required):
+            self.send_response(303)
+            self.send_header("Set-Cookie", f"{AUTH_COOKIE}={_session_value(required)}; Path=/; HttpOnly; "
+                                           f"SameSite=Strict; Max-Age=2592000")
+            self.send_header("Location", "/")
+            self.end_headers()
+            return
+        _note_login_fail(ip)
+        time.sleep(LOGIN_FAIL_DELAY)        # bremst Raten (blockiert nur diesen Thread)
+        self.send_response(303)
+        self.send_header("Location", "/login?err=1")
+        self.end_headers()
+
     def log_message(self, *args): pass
+
+
+def make_server(bind, port):
+    """P11: ein Thread je Anfrage (Daemon-Threads, ein hängender Client blockiert niemanden sonst)."""
+    srv = ThreadingHTTPServer((bind, port), Handler)
+    srv.daemon_threads = True
+    return srv
 
 
 if __name__ == "__main__":
@@ -1985,4 +2206,4 @@ if __name__ == "__main__":
         print("⚠ WARNUNG: Dashboard bindet auf", bind,
               "ohne DASHBOARD_TOKEN – Mutationen (POST) sind gesperrt.", flush=True)
     print(f"🌐 Dashboard läuft auf http://{bind}:{port}")
-    HTTPServer((bind, port), Handler).serve_forever()
+    make_server(bind, port).serve_forever()

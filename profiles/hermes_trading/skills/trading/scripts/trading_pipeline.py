@@ -31,6 +31,20 @@ PYTHON = "/usr/bin/python3"
 _log = get_logger("trading_pipeline")
 
 
+def _validator_enabled() -> bool:
+    """N1 (30.09.2026): technical_validator.py braucht ~8 Minuten pro Nacht und schreibt nur
+    trading_signals_validated.json, die kein Modul liest (nur der Pfad wird importiert; keine DB-Schreibzugriffe,
+    der tech_score kommt aus watchlist_manager/refresh_tech_scores). Schalter `technical_validator_enabled` in
+    strategy_config.json, Voreinstellung AUS."""
+    try:
+        import json
+        from config import STRATEGY_CONFIG_PATH
+        with open(STRATEGY_CONFIG_PATH, encoding="utf-8") as f:
+            return bool(json.load(f).get("technical_validator_enabled", False))
+    except Exception:
+        return False
+
+
 def _print(msg):
     """Schreibt gleichzeitig nach cron.log und stdout."""
     print(msg, flush=True)
@@ -101,6 +115,10 @@ def main():
         script = step[0]
         label  = step[1]
         args   = step[2] if len(step) > 2 else ""
+        if script == "technical_validator.py" and not _validator_enabled():
+            _print(f"⏭ {label} übersprungen (technical_validator_enabled=false)")
+            results.append((f"{label} (übersprungen)", True))
+            continue
         ok     = run(script, label, args)
         results.append((label, ok))
         if not ok:

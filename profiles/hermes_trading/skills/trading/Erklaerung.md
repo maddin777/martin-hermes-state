@@ -1,6 +1,6 @@
 # Änderungshistorie — Trading Skill
 
-**Stand:** Paketen A–D + Sprints 1–7 + Bugfix-Sprint + Screener-Source + Watchlist-Performance-Fix + Rollen-Sprint R1–R4 + **Turtle-Konfluenz-Sprint** + **Phase 1+2 Fix (09.08.2026)** + **Watchlist-Cleanup-Archivierung (09.08.2026)** + **UK-Microcap-Gate (14.08.2026)** + **DQ-Isolation + Alarm-Crons (16.08.2026)** + **Drawdown-15-25-Zone auf 6 Pos (17.08.2026)** + **DQ-.L-Aufräumung im Cleanup + täglicher Cleanup (19.08.2026)** + **DQ-Deaktivierungs-Verifikation + Cleanup 1c (24.08.2026)** + **DQ-Root-Clause-Fix: keine Reaktivierung gedroppter .L + Dry-Run read-only (26.08.2026)** + **Selection Momentum-/Liquiditäts-Gate (27.08.2026)** + **Drawdown-Heilungs-Beschleunigung 15-25%: Size 65% + Conf 75% (01.09.2026)** + **Grok entfernt, twitterapi.io Standard (01.09.2026)** + **Alternative Momentum-Swing-Strategie dokumentiert (06.09.2026)** + **Volume-Backtest: NICHT übernommen (06.09.2026)** + **Sektor-abhängige Regime (07.09.2026)** + **Overlay-Bug Fix (07.09.2026)** + **Analyse-Sprint: 7 Defekte behoben (08.09.2026)** + **Messbarkeit: Gates, Quellen-Taxonomie, Beneficiary-Lifecycle, Video-Retry (08.09.2026)** + **Sizing entkoppelt, Momentum-Faktor repariert, Schattenbuecher (08.09.2026)** + **Kanonik-Mirror-Fix (.SG/.MU/ISIN) + Attributions-Oszillation Root-Cause (10.09.2026)** + **Pre-Delivery-Verification-Gate (14.09.2026)** + **Pfadgenaue Exit-Simulation + Optimizer-Fix + Exit-Profil-Leiter (18.09.2026)** + **Mentions-Gate + Factor-Ranker US-only (19.09.2026)** + **Pipeline-Kopplung + LLM-Abschneidungs-Fix (21.09.2026)** + **Reasoning-Tuning Scout/Analyst, gemessen (22.09.2026)** + **Robustheits-Gate, Vorab-Kriterien Schattenbuch, YT-Fade (28.09.2026)** + **Jobs wieder eingeplant + LLM-/Polymarket-Reparaturen (28.09.2026)** + **DB-Backup wieder eingeplant (29.09.2026)** + **Schattenspur h_tv_screener (29.09.2026)** + **Jev-Veto-Probe TV-Screener (29.09.2026)** + **Jev-Veto-Annotation h_tv_screener (29.09.2026)**
+**Stand:** Paketen A–D + Sprints 1–7 + Bugfix-Sprint + Screener-Source + Watchlist-Performance-Fix + Rollen-Sprint R1–R4 + **Turtle-Konfluenz-Sprint** + **Phase 1+2 Fix (09.08.2026)** + **Watchlist-Cleanup-Archivierung (09.08.2026)** + **UK-Microcap-Gate (14.08.2026)** + **DQ-Isolation + Alarm-Crons (16.08.2026)** + **Drawdown-15-25-Zone auf 6 Pos (17.08.2026)** + **DQ-.L-Aufräumung im Cleanup + täglicher Cleanup (19.08.2026)** + **DQ-Deaktivierungs-Verifikation + Cleanup 1c (24.08.2026)** + **DQ-Root-Clause-Fix: keine Reaktivierung gedroppter .L + Dry-Run read-only (26.08.2026)** + **Selection Momentum-/Liquiditäts-Gate (27.08.2026)** + **Drawdown-Heilungs-Beschleunigung 15-25%: Size 65% + Conf 75% (01.09.2026)** + **Grok entfernt, twitterapi.io Standard (01.09.2026)** + **Alternative Momentum-Swing-Strategie dokumentiert (06.09.2026)** + **Volume-Backtest: NICHT übernommen (06.09.2026)** + **Sektor-abhängige Regime (07.09.2026)** + **Overlay-Bug Fix (07.09.2026)** + **Analyse-Sprint: 7 Defekte behoben (08.09.2026)** + **Messbarkeit: Gates, Quellen-Taxonomie, Beneficiary-Lifecycle, Video-Retry (08.09.2026)** + **Sizing entkoppelt, Momentum-Faktor repariert, Schattenbuecher (08.09.2026)** + **Kanonik-Mirror-Fix (.SG/.MU/ISIN) + Attributions-Oszillation Root-Cause (10.09.2026)** + **Pre-Delivery-Verification-Gate (14.09.2026)** + **Pfadgenaue Exit-Simulation + Optimizer-Fix + Exit-Profil-Leiter (18.09.2026)** + **Mentions-Gate + Factor-Ranker US-only (19.09.2026)** + **Pipeline-Kopplung + LLM-Abschneidungs-Fix (21.09.2026)** + **Reasoning-Tuning Scout/Analyst, gemessen (22.09.2026)** + **Robustheits-Gate, Vorab-Kriterien Schattenbuch, YT-Fade (28.09.2026)** + **Jobs wieder eingeplant + LLM-/Polymarket-Reparaturen (28.09.2026)** + **DB-Backup wieder eingeplant (29.09.2026)** + **Schattenspur h_tv_screener (29.09.2026)** + **Jev-Veto-Probe TV-Screener (29.09.2026)** + **Jev-Veto-Annotation h_tv_screener (29.09.2026)** + **Drawdown-Notbremse: Cash-Fix K1 (30.09.2026)** + **Depotwert einheitlich Cash + Marktwert, N11 (30.09.2026)** + **Wiedereinstieg nach Notbremse mit neuem Referenzwert, K1b (30.09.2026)** + **Teil-TP-Gewinne im Ledger, K3 (30.09.2026)** + **Teil-TP-Altfälle nachgebucht, K3b (30.09.2026)** + **Entry-Kommission und Teil-TP-Kosten verbucht, N12 (30.09.2026)** + **Dashboard-Zugriffsschutz, K2 Code-Teil (30.09.2026)** + **Social Scanner, Quellen-Gewichte, Extraktor (K5, K6, M16, M9, M13, M14, N5, N6; 30.09.2026)** + **Watchlist-Status, Dedup, Alias-Prüfung, PEAD, Alias-Bereinigung (K4, M11, M12, M10, M15; 30.09.2026)** + **Gates repariert: VIX, SHORT-Thesis, Overnight-Gap 0,8 ATR, Conviction beim Entry (M1, M3, M2, M4; 30.09.2026)** + **Auswertung: nightly_eval, Benchmark, Quellen-Lifecycle, Replay-/Time-Stop-Schalter (M6, M7, M8, M5, N9, N4; 30.09.2026)** + **Externe Datenquellen: Tavily, Polymarket, thesis_monitor, factor_ranker (M17, M18, M19, M20; 30.09.2026)** + **Hygiene: atomare Writes, technical_validator abschaltbar, Währungen, Rauchtest (N3, N1, N2, N7, N8, N21; 30.09.2026)** + **thematic und Randbereiche: setup_thematic.sh gesperrt, briefing, Theme-Merge, Lifecycle, Screener (N13–N20; 30.09.2026)** + **Restpunkte: Sektor-Sperrliste in der DB, Fill-Schalter an, Crabel-Shadow mit Live-Exit, Optimizer nur Vorschlag (N10, M5, N9, N21; 30.09.2026)** + **Nachprüfung: Positionslimits im Entry-Loop, ein Regime für Größe und Stop, Heimatbörse vor OTC-ADR (P1–P3; 30.09.2026)** + **Nachprüfung: LLM-Validator wirksam, Committee ohne Token-Abbrüche, ehrliche Kennzahlen, Sektor-Probation erreichbar, Quellen-Bewertung im 90-Tage-Fenster (P5–P9; 30.09.2026)** + **Nachprüfung: Wechselkurse SAR/TWD, belastbares Dashboard, Drawdown-Monitor mit echtem ATH, Notbremse mit Slippage/Teil-TP (P10–P13; 30.09.2026)**
 
 ## 10.09.2026 — Kanonik-Mirror-Fix + Attributions-Oszillation (Vault-Insights-Vorschläge 1–3)
 
@@ -2410,3 +2410,662 @@ Frage: Wie oft liegt P(Veto) ≥ 0,5 bei einem Pick, und laufen markierte Picks 
 genügend markierten Picks (Richtwert ≥ 10 unabhängige) lohnt eine eigene Schattenspur mit Nachrücken.
 
 Backups: `scripts/shadow_selection.py.bak-20260929-112434-pre-jev-tv-veto`.
+
+## 30.09.2026 — Drawdown-Notbremse: Cash wird nicht mehr überschrieben (Befund K1)
+<!-- k1-notbremse-20260930 -->
+
+Umgesetzt als Ralph-Loop K1 (Plan und Log: `/root/ralph/`), getestet in einer Sandbox-Kopie, mit Freigabe von Martin live übernommen.
+
+### Fund (Code-Prüfung 29./30.09.)
+`_emergency_close_all` (Drawdown ≥ 25 % vom ATH) setzte `portfolio.cash` auf den Rückfluss der geschlossenen Positionen
+statt auf `cash + Rückfluss`. Damit wäre das gesamte freie Cash vernichtet worden (Sandbox mit Kopie der Live-DB:
+7.863 € → 1.198 €, in der Folgenacht → 0 €). Zusätzlich löste die Notbremse in jeder Folgenacht erneut aus, solange der
+Drawdown ≥ 25 % blieb (Alarm, `close_all`, Cooldown-Datum neu gesetzt). Live ist sie bisher nie ausgelöst worden
+(0 Positionen mit `DRAWDOWN_EMERGENCY`, `drawdown_close_all_date` leer, Drawdown zuletzt ≈ −19 %); es ist daher keine
+Datenreparatur nötig.
+
+### Änderung (`scripts/signal_manager.py`)
+- `_emergency_close_all`: Cash und `total_value` = Cash vorher + Rückfluss (nicht mehr = Rückfluss). Ohne offene
+  Positionen kehrt die Funktion sofort zurück und ändert weder Cash noch Cooldown-Datum noch die Config.
+- `open_new_positions`: bei `close_all` ohne offene Positionen kein Telegram-Alarm und kein erneutes `close_all`; es gibt
+  keine neuen Entries, der Cooldown-Stand (`_is_drawdown_cooldown_active`) wird nur ins Log geschrieben. Mit offenen
+  Positionen verhält sich die Notbremse wie bisher (Alarm, alle schließen).
+
+### Verifikation
+- Neu `tests/test_k1_notbremse.py` (4 Tests; vor dem Fix 3 rot): Cash wird addiert, zweiter Lauf ohne Positionen ändert
+  nichts, kein Wiederholalarm, Notbremse feuert mit offenen Positionen weiterhin. Suite **138 passed** (vorher 134),
+  auch nach der Übernahme in einer frischen Kopie des Live-Stands.
+
+### Backups
+`scripts/signal_manager.py.bak_ralph_K1_20260930_0817`, `tests/test_k1_notbremse.py.bak_ralph_K1_20260930_0817` (Datei neu, kein Vorgänger).
+
+### Offen
+- Nach einer Notbremse bleibt der Drawdown dauerhaft ≥ 25 % (ATH fest, nur Cash), der Agent würde nie wieder handeln.
+  Wiedereinstieg nach dem Cooldown (neuer Referenzwert oder manuelle Freigabe) ist nicht definiert — Entscheidung Martin.
+
+## 30.09.2026 (2) — Depotwert einheitlich als Cash + Marktwert (Befund N11)
+<!-- n11-total-value-20260930 -->
+
+Ralph-Loop N11 (Plan und Log: `/root/ralph/`), in der Sandbox getestet, mit Freigabe von Martin live übernommen.
+
+### Fund (Code-Prüfung 29./30.09.)
+`portfolio.total_value` hatte je nach letztem Schreiber eine andere Bedeutung: `check_drawdown()` schreibt Cash + Marktwert,
+die Pfade YT-Fade-Exit, Time-Stop, regulärer Exit und Entry schrieben Cash + Σ `position_size` (Buchwert). Dashboard und
+Entry-Sizing (`portfolio_value`) sahen dadurch abwechselnd zwei verschiedene Werte.
+
+### Änderung (`scripts/signal_manager.py`)
+- Neu `compute_total_value(con, cash)`: Cash + Mark-to-Market der offenen Positionen über
+  `open_positions_market_value_eur` (fehlender Kurs → Einstand der Position).
+- Die vier Buchwert-Schreiber rufen den Helper auf. `check_drawdown()` bleibt unverändert und rechnet gleich
+  (per Test abgesichert). Der Teil-TP-Zweig schreibt weiterhin nur Cash (Thema K3).
+- Kurse kommen aus dem 5-Minuten-Cache; in den Exit-Läufen ist er durch die Positionsprüfung warm, sonst gibt es einen
+  Einzel-Download je Position.
+
+### Verifikation
+- Neu `tests/test_n11_total_value.py` (6 Tests; vor dem Fix rot): Long/Short-Marktwert, kein Buchwert, Fallback ohne Kurs,
+  keine Positionen, gleiche Definition wie `check_drawdown`, kein Buchwert-Schreiber mehr im Quelltext.
+  Suite **144 passed**, ebenso in einer frischen Kopie des Live-Stands.
+- Snapshot: Depotwert 9.063,02 € → 9.048,86 € (Marktwert), Drawdown 19,14 % → 19,26 % (+0,12 Prozentpunkte).
+
+### Backups
+`scripts/signal_manager.py.bak_ralph_N11_20260930_0823`.
+
+## 30.09.2026 (3) — Wiedereinstieg nach der Notbremse mit neuem Referenzwert (Befund K1b)
+<!-- k1b-wiedereinstieg-20260930 -->
+
+Ralph-Loop K1b, Entscheidung und Freigabe von Martin (30.09.). Baut auf K1 auf.
+
+### Fund
+Nach `close_all` besteht das Depot nur aus Cash. Das ATH (11.207,85 € vom 05.06.) bleibt fest, der Drawdown deshalb dauerhaft
+≥ 25 %. Der Entry-Loop kehrt dann jede Nacht vor den Entries zurück, der Agent hätte nie wieder gehandelt; der Cooldown
+(`drawdown_cooldown_days`, 7) hatte keine Wirkung.
+
+### Änderung (`scripts/signal_manager.py`)
+- Neu `_maybe_reset_drawdown_reference(con, cfg)`, aufgerufen im Entry-Loop bei `close_all` ohne offene Positionen:
+  - kein Cooldown-Datum (Positionen wurden anders geschlossen): Cooldown startet jetzt;
+  - Cooldown läuft: nichts, keine neuen Entries;
+  - Cooldown abgelaufen: `portfolio.ath_value` und `total_value` werden auf den aktuellen Depotwert gesetzt, das alte ATH
+    steht in `strategy_config.json` (`drawdown_ath_before_reset`, `drawdown_reference_reset_date`), das Cooldown-Datum wird
+    gelöscht, Telegram-Meldung, der Entry-Loop läuft normal weiter (Drawdown-Matrix ab dem neuen Referenzwert).
+- Nebenwirkung: Das Dashboard zeigt nach einem Reset das neue, niedrigere „Allzeithoch“.
+
+### Verifikation
+- Neu `tests/test_k1b_wiedereinstieg.py` (5 Tests; vor dem Fix 4 rot). `tests/test_k1_notbremse.py` fängt jetzt
+  `save_config` ab (sonst hätte der Test die echte Config beschrieben). Suite **149 passed**, nach K3 **154 passed**.
+
+### Backups
+`scripts/signal_manager.py.bak_ralph_K1b_20260930_0838`, `tests/test_k1_notbremse.py.bak_ralph_K1b_20260930_0838`
+(`tests/test_k1b_wiedereinstieg.py` neu).
+
+## 30.09.2026 (4) — Teil-TP-Gewinne im Ledger (Befund K3)
+<!-- k3-teil-tp-ledger-20260930 -->
+
+Ralph-Loop K3, mit Freigabe von Martin live übernommen. Die Nachbuchung der Altfälle (K3b) folgt als eigener Abschnitt.
+
+### Fund
+Der Teil-TP (50 % bei `partial_atr`) buchte seinen Gewinn nur ins Cash (`cash_return`). Beim Rest-Exit stand nur der Gewinn
+der restlichen Hälfte in `positions.pnl_eur`. Cash − Ledger = +380,55 € (21 Trades mit Teil-TP, 4 davon standen vermutlich zu
+Unrecht als Verlust). Win-Rate (40 %) und Gesamt-P&L (−1.317,53 €) waren zu pessimistisch.
+
+### Änderung (`scripts/signal_manager.py`)
+- `init_db`: zwei neue Spalten `positions.partial_pnl_eur` und `positions.partial_size_eur` (additive Migration, DEFAULT 0;
+  wird beim nächsten Lauf eines Signal-Manager-Modus angelegt).
+- Teil-TP-Zweig merkt sich Gewinn und verkauften Anteil an der Position.
+- Neu `_ledger_with_partial(...)`; Time-Stop und regulärer Exit buchen den Gesamt-P&L (Teil-TP + Rest) in `pnl_eur` und
+  `pnl_pct` (Anteil an Gesamtgröße) und nutzen ihn für Gewinner-Zählung und Meldung. Das Cash wird unverändert nur mit dem
+  Rest gebucht (der Teil-TP-Anteil kam schon zurück). Trades ohne Teil-TP: unverändert. YT-Fade kennt keinen Teil-TP.
+- Nicht angefasst: Teil-TP läuft weiter ohne Slippage und Kommission (Thema N12).
+
+### Verifikation
+- Neu `tests/test_k3_teil_tp.py` (5 Tests; vor dem Fix 4 rot): Teil-TP wird gemerkt, Ledger = Teil-TP + Rest, Invariante
+  Δcash = Ledger (auf 2 Cent), Gewinn-Zählung bei Teilgewinn > Restverlust (+20 € − 6,50 € = +13,50 € zählt als Gewinn),
+  Time-Stop nach Teil-TP, Trade ohne Teil-TP unverändert. Suite **154 passed**, ebenso in frischer Kopie des Live-Stands.
+
+### Backups
+`scripts/signal_manager.py.bak_ralph_K3_20260930_0839` (`tests/test_k3_teil_tp.py` neu).
+
+### Offen
+- Altfälle: K3b (nächster Abschnitt). Bis dahin fehlen im Ledger 380,55 €.
+
+## 30.09.2026 (5) — Teil-TP-Gewinne der Alt-Trades nachgebucht (Befund K3b, Datenkorrektur)
+<!-- k3b-nachbuchung-20260930 -->
+
+Einmalige Datenkorrektur zu K3, Variante B mit Freigabe von Martin. Skript `/root/ralph/checks/k3_backfill.py`
+(Trockenlauf und `--apply`, Test `test_k3_backfill.py`, 7 Tests).
+
+### Vorgehen
+Der Ausführungskurs der 21 Alt-Teil-TPs ist nirgends gespeichert; bekannt ist nur die Summe: Cash − (Startkapital −
+Σ offene Positionsgrößen + Σ `pnl_eur` geschlossen) = **380,55 €**. Diese Summe wurde im Verhältnis
+`position_size × atr_at_entry / entry_price` auf die 21 geschlossenen Trades mit Teil-TP verteilt (Summe exakt auf den
+Cent, **Einzelwerte sind Schätzungen**). Je Trade: `partial_pnl_eur` = Anteil, `partial_size_eur` = Positionsgröße
+(Annahme 50/50), `pnl_eur` += Anteil, `pnl_pct` = neuer P&L / (2 × Größe).
+
+### Ergebnis (live, 08:41)
+- Cash − Ledger: +380,55 € → **0,00 €**. Gesamt-P&L: −1.317,53 € → **−936,98 €**.
+- Gewinner: 39 → **40 von 98** geschlossenen Trades (Win-Rate 40,8 %). Nur VOD wechselt von Verlust auf Gewinn
+  (nicht vier wie zuvor vermutet). FRA.DE, AAPL, CFR.SW bleiben Verluste (−2,89 / −1,37 / −2,15 €).
+- Zählerstände `total_trades`/`winning_trades` in `strategy_config.json` sind inkrementell und wurden nicht angepasst
+  (Reports lesen Win-Rate aus der DB).
+- Auswertungen, die auf `pnl_eur` der Alt-Trades aufsetzen (Quellen-Lifecycle, Backtests), sehen jetzt die höheren Werte;
+  die Aufteilung auf einzelne Trades bleibt eine Näherung.
+
+### Backups und Nachweis
+`/root/ralph/backups/trading.db.bak-20260930-084126-k3b` (komplette DB vor der Änderung),
+`/root/ralph/backups/k3b_before_after-20260930-084126.csv` (alt/neu je Trade). `PRAGMA integrity_check`: ok.
+Ein zweiter Lauf des Skripts schreibt nichts (Ziel 0 € liegt außerhalb der Plausibilitätsgrenze, keine Kandidaten).
+
+## 30.09.2026 (6) — Entry-Kommission und Teil-TP-Kosten werden verbucht (Befund N12)
+<!-- n12-kosten-20260930 -->
+
+Ralph-Loop N12, mit Freigabe von Martin live übernommen (08:50). Gilt ab Deploy, geschlossene Trades werden nicht rückwirkend geändert.
+
+### Fund (Code-Prüfung 29./30.09.)
+- Die Entry-Kommission (1 €) senkte beim Kauf nur die Stückzahl (`position_size − COMMISSION_EUR`), wurde aber nirgends von
+  Cash oder Ledger abgezogen: beim Exit kam `position_size` voll zurück, der P&L enthielt nur die Exit-Kommission.
+- Der Teil-TP rechnete den Gewinn roh (`pnl_pct × Anteil`), ohne Exit-Slippage und ohne Kommission.
+- Größenordnung: rund 1 € pro Trade beziehungsweise 1 € plus Slippage pro Teil-TP.
+
+### Änderung (`scripts/signal_manager.py`)
+- Beim Schließen wird die Entry-Kommission einmal vom Rest-P&L abgezogen (YT-Fade, Time-Stop, regulärer Exit); Cash und
+  Ledger bleiben identisch (Invariante Δcash = Ledger). Notbremse: `−2 × COMMISSION_EUR` je Position (Exit + Entry).
+- Teil-TP: `realized_pnl_from_effective_entry` auf den verkauften Anteil (Exit-Slippage + Kommission wie beim Voll-Exit).
+  Ein Trade mit Teil-TP trägt damit drei Kommissionen (Entry, Teil-TP, Rest-Exit).
+- Die drei offenen Positionen (QLYS, P, EXEL) bekommen den Abzug beim Schließen (ihre Stückzahl war schon reduziert).
+- Nicht angefasst: `active_exit_check.py` (läuft nicht), Anzeige des laufenden unrealisierten P&L bei offenen Positionen.
+
+### Verifikation
+- Neu `tests/test_n12_kosten.py` (3 Tests, vor dem Fix rot): Voll-Exit ohne Teil-TP, Teil-TP mit Kosten, drei Kommissionen
+  mit Teil-TP und Cash = Ledger. Angepasst: `tests/test_k1_notbremse.py`, `tests/test_k3_teil_tp.py` (erwartete Beträge).
+  Suite **157 passed** in der Sandbox, **171 passed** (mit K2) im Live-Stand.
+
+### Backups
+`scripts/signal_manager.py.bak_ralph_N12_20260930_0850`, `tests/test_k1_notbremse.py.bak_ralph_N12_20260930_0850`,
+`tests/test_k3_teil_tp.py.bak_ralph_N12_20260930_0850` (`tests/test_n12_kosten.py` neu).
+
+## 30.09.2026 (7) — Dashboard: Anmeldung per Cookie statt Token in den Seiten, Whitelist, Eingabeprüfung (Befund K2, Code-Teil)
+<!-- k2-dashboard-20260930 -->
+
+Ralph-Loop K2, mit Freigabe von Martin live übernommen (08:50), Dienst `trading-dashboard` neu gestartet. Der Betriebsteil
+(Token rotieren, Firewall oder Bindung an 127.0.0.1) liegt bei Martin und ist noch offen.
+
+### Fund (Code-Prüfung 29./30.09.)
+`dashboard.py` bindet auf `0.0.0.0:8081` (ohne Firewall) und bettete das `DASHBOARD_TOKEN` als verstecktes Feld in jedes
+POST-Formular jeder GET-Seite ein (252 Felder), für jeden lesbar, der die Seite abruft. Die POST-Routen ändern
+`config/sources.json` und über `/thematic/config/save` beliebige LLM-Modellnamen (`get_model()` speist Committee, Devil's
+Advocate, Thesis-Monitor und Extraktor-Analyst, also ein Kostenpfad). Zusätzlich speicherte der Thematic-Speicherpfad
+Schwellwerte unter falschem Schlüssel (`key[4:]` statt `key[7:]`, „esh_…“).
+
+### Änderung (`scripts/dashboard.py`)
+- Kein Token mehr in Seiten. Neu `GET /login` (Formular) und `POST /login`: bei richtigem Token setzt der Server ein
+  Cookie `dash_auth` (HttpOnly, SameSite=Strict, 30 Tage) mit einem aus dem Token abgeleiteten HMAC-Wert (nicht das Token);
+  falsches Token bremst 1 s. Ohne Anmeldung zeigt das Dashboard einen Hinweis-Balken mit Link.
+- POSTs verlangen Cookie oder Header `X-Dashboard-Token` (für Skripte, konstante Vergleichszeit) und einen zum Host passenden
+  Origin-Header (falls gesetzt). Das alte Formfeld `_token` wird nicht mehr akzeptiert.
+- Eingaben: LLM-Modellnamen nur aus den in `thematic_config.json` bereits verwendeten Modellen plus optionaler Liste
+  `allowed_llm_models`; unbekannte Rollen und Schwellwerte werden abgelehnt (HTTP 400). Quellen: nur http/https-URLs,
+  Gewicht 0–5, Handle/Name/Kategorie/Sprache per Muster, Index numerisch.
+- Fix: Schwellwerte werden unter dem echten Namen gespeichert (`key[7:]`).
+
+### Verifikation
+- Neu `tests/test_k2_dashboard.py` (14 Tests gegen einen lokal gestarteten Handler, alle Schreibzugriffe abgefangen; 12
+  davon rot auf dem alten Code): Token nicht in den Seiten, POST ohne Auth 403, Header-Token, Login/Cookie, falscher
+  Token, fremder Origin, Modell-Whitelist, Rollen, Schwellwerte, Quellen-Validierung. Suite **168 passed** (Sandbox).
+- Live nach dem Neustart: `GET /` 200 ohne Token und ohne `_token`-Felder, `GET /login` 200, POST ohne Anmeldung und mit
+  dem alten `_token`-Feld je 403.
+
+### Zu wissen
+- Änderungen im Dashboard (Quellen, Thematic-Config) erfordern jetzt einmal Anmeldung unter `/login` (Token aus
+  `override.conf`). Das Token geht dabei weiter unverschlüsselt über HTTP (Firewall/Tunnel offen, siehe K2m).
+- Neue LLM-Modelle: in `thematic/config/thematic_config.json` unter `allowed_llm_models` eintragen.
+
+### Backups
+`scripts/dashboard.py.bak_ralph_K2_20260930_0850` (`tests/test_k2_dashboard.py` neu).
+
+## 30.09.2026 (8) — Social Scanner, Quellen-Gewichte und Extraktor repariert (Befunde K5, K6, M16, M9, M13, M14, N5, N6)
+<!-- ss-welle2-20260930 -->
+
+Ralph-Loops (Sandbox `/root/ralph/sb/SS`), mit Freigabe von Martin live übernommen (09:02). Suite 219 passed (vorher 171).
+
+### Social Scanner (`scripts/social_scanner.py`)
+- **K5:** `parse_tweet_date` liest `created_at` im twitterapi.io-Format (`Tue Dec 10 07:00:30 +0000 2024`) mit Jahr, in UTC,
+  ohne Locale; unlesbares Datum → jetzt (nie 1900). Vorher hatten 4.748 von 4.751 Tweets `published_at` = 1900, das
+  2-Tage-Fenster nahm keinen auf. Die Altzeilen wurden nicht angefasst.
+- **K6:** `extract_companies` gibt immer ein Dict zurück (`[]`, Liste von Firmenobjekten und ```json-Umrandung werden
+  verstanden); Fehler tragen `error=True`, der Artikel wird dann NICHT als erledigt gespeichert und im nächsten Lauf erneut
+  versucht. Jeder Artikel/Tweet läuft in eigenem try (vorher beendete ein leeres Ergebnis den ganzen Feed).
+- **M16:** RSS-Feeds kommen über `requests.get(timeout=20)`, feedparser parst nur den Inhalt (vorher ohne Timeout).
+
+### Quellen-Gewichte (`scripts/watchlist_manager.py`, M9)
+`get_channel_weights` und `get_channel_calibration` liefern Schlüssel in allen Schreibweisen (Original, lower, `rss:`+lower);
+exakte Namen haben Vorrang. Mentions ohne Gewicht (14 Tage): 15,8 % → 2,9 % (Rest: `techaktien`, nicht in der Registry).
+Dadurch wirken Probation (0,5), Lifecycle-Gewichte und Kalibrierung jetzt auch für RSS- und Mixed-Case-Quellen.
+
+### Extraktor (`scripts/signal_extractor.py`)
+- **M13:** `_try_parse` rettet bei abgeschnittenem JSON nur vollständige Firmenobjekte (nie ein Einzelobjekt als Ergebnis);
+  `merge_scout_results` und `call_analyst` akzeptieren Listen-Antworten (vorher AttributeError → Video error → failed).
+- **M14:** `_rolling_filter` vergleicht echte Daten (`YYYY-MM-DD` und `YYYYMMDD`) und normiert `source.date`. Echte
+  `trading_signals.json`: 867 → 288 Einträge, kompakte Daten 579 → 0, Nennungen 8.222 → 1.630 (der erste Lauf danach
+  verkleinert die Datei entsprechend; das Mention-Churn von ~3.700 Einträgen pro Nacht entfällt).
+- **N5:** Ergebnis-JSON wird atomar (tmp + fsync + `os.replace`) und pro Video VOR dem Status `done` geschrieben; doppelte
+  Einträge (Abbruch zwischen Write und Status) werden über die `video_id` bereinigt.
+- **N6:** kein redundanter letzter Chunk mehr (15.500 Zeichen → 1 Chunk); `_scout_fallback` prüft das Sentiment. Die
+  Prompt-Regel „Namen unter 4 Zeichen nicht aufnehmen“ bleibt unangetastet (würde AMD/SAP/BMW verwerfen).
+
+### Verifikation
+`tests/test_social_scanner.py` (14, alle vorher rot), `tests/test_m9_gewichte.py` (6), `tests/test_extractor_befunde.py`
+(28, 21 vorher rot). feedparser 6.0.12 des Cron-Interpreters (`/usr/bin/python3`) parst Bytes; das Projekt-venv hat kein
+feedparser, der Test stubbt es.
+
+### Backups
+`scripts/{social_scanner,watchlist_manager,signal_extractor}.py.bak_ralph_SS_20260930_0902`.
+
+## 30.09.2026 (9) — Watchlist-Status, Dedup, Alias-Prüfung, PEAD und Alias-Bereinigung (Befunde K4, M11, M12, M10, M15)
+<!-- w3-watchlist-20260930 -->
+
+Ralph-Loops (Sandbox `/root/ralph/sb/W3`), mit Freigabe von Martin live übernommen (09:17). Suite 247 passed (vorher 219).
+N10 (Sektor-Sperrliste) bewusst zurückgestellt (siehe Offen).
+
+### K4 — `bought` ist kein Endstatus mehr (`scripts/watchlist_manager.py`)
+Vorher blieb ein Titel nach dem Kauf für immer `bought` (91 Titel ohne offene Position, 11 mit frischen Mentions, u. a.
+AMD, MSFT, INGA.AS, LHA.DE). Neu `reactivate_closed_bought()`: `bought` → `watching`, wenn keine Position (Ticker oder Name)
+mehr offen ist und der letzte Exit länger als 24 h her ist. Läuft in echten Läufen (nicht im Dry-Run) VOR Stale-Drop und
+Mention-Update, damit die Conviction im selben Lauf neu berechnet wird. Snapshot: 91 von 94 werden reaktiviert; nur die 12
+mit `last_seen` innerhalb 14 Tagen bleiben, der Rest fällt sofort wieder durch den Stale-Drop. Entscheidung Martin: Wiedereinstieg
+erlaubt (Empfehlung übernommen).
+
+### M11 — kompakte Datumswerte (`scripts/watchlist_manager.py`)
+Neu `normalize_compact_dates()`: `YYYYMMDD` → `YYYY-MM-DD` in `first_seen`/`last_seen` (14 Zeilen, 12 davon `watching`, nie gedroppt, weil
+der String-Vergleich `'20260621' < '2026-09-01'` falsch ausfällt). Der Fehler lag im Stale-Drop des `watchlist_manager`, nicht in `watchlist_dedup`.
+
+### M12 — Dedup (`scripts/watchlist_dedup.py`)
+`merge_group(..., preferred_ticker)`: der ermittelte Ticker mit der besten Börsen-Priorität gewinnt (vorher der erste der Liste).
+Duplikate werden ZUERST gedroppt (die gedroppte Zeile gibt den Ziel-Ticker frei, Vermerk in `notes`), danach wird der kanonische
+Eintrag aktualisiert. Das behebt die UNIQUE(ticker)-Verletzung (Abbrüche 12./13./14./17.08.). Gemischte Datumsformate werden beim
+Zusammenführen normalisiert.
+
+### M10 — Alias-Plausibilität (`scripts/company_validator.py`)
+`_name_plausible()`: unter Ähnlichkeit 0,5 muss ein aussagekräftiges Namenswort gemeinsam sein (Präfix ab 4 Zeichen genügt,
+Füllwörter wie `Ltd`/`Inc`/`Co` zählen nicht); ist der Name das Tickersymbol selbst, gilt er als plausibel. Die Grundschwellen
+(0,6 / 0,4 / 0,25) bleiben. Nissan, Capcom, Champions Oncology werden abgelehnt.
+
+### M15 — PEAD (`scripts/pead_signal.py`)
+NaN/fehlende EPS-Werte sind kein MISS mehr (`_surprise_pct` und Schleife prüfen `isfinite`); Cache-Einträge mit NaN werden neu
+berechnet. Vorher: 4 von 13 Boosts im Cache waren NaN-MISS mit Short-Boost +0,05 (u. a. MU am Meldetag).
+
+### Datenschritt: Alt-Aliase bereinigt (09:18)
+`/root/ralph/checks/alias_cleanup.py`: 26 falsche Aliase aus `company_aliases` gelöscht (ZIM 11, MU 5, CCL 3, GHXIU 2, BUR, TRIN,
+QBTS, NXH, VRT je 1; z. B. Nissan/Capcom/Aeon → ZIM, Champions Oncology → QBTS). 3.181 → 3.155 Aliase. Von Hand als gültig
+belassen: moodys, schlumberger, general electric, e.l.f., pg&e, citi, f5 networks, beidou (Schreibweisen derselben Firma).
+Backup `/root/ralph/backups/trading.db.bak-20260930-091832-alias-cleanup`, Audit `/root/ralph/backups/alias_cleanup-20260930-091832.csv`.
+`PRAGMA integrity_check`: ok. Mentions dieser Namen werden nicht mehr auf die falschen Ticker aggregiert.
+
+### Verifikation
+`tests/test_welle3.py` (28 Tests, 23 vorher rot): K4-Fälle (offene Position, Cooldown, danach, ohne Position, Name-Match,
+Snapshot), M11 (Normalisierung + Stale-Abfrage), M12 (bester Ticker, Datum, bought-Vorrang), M10 (Negativ- und Positivfälle),
+M15 (NaN, Beat/Miss, Cache). Live-Suite 247 passed.
+
+### Backups
+`scripts/{watchlist_manager,watchlist_dedup,company_validator,pead_signal}.py.bak_ralph_W3_20260930_0917`.
+
+### Offen
+- **N10:** Der Zustand der Sektor-Sperrliste liegt in `strategy_config.json` (Signal Manager), der `watchlist_manager` verschiebt
+  ihn nachts in die Tabelle `sector_blacklist`. Sauber lösen heißt, den Signal Manager auf die DB umzustellen (eigene Entscheidung).
+
+## 30.09.2026 (10) — Gates repariert: VIX-Halbierung, SHORT-Thesis, Overnight-Gap, Conviction beim Entry (Befunde M1, M3, M2, M4)
+<!-- w4-gates-20260930 -->
+
+Ralph-Loops (Sandbox `/root/ralph/sb/W4`), mit Freigabe von Martin live übernommen (09:26). Alle Änderungen in `scripts/signal_manager.py`.
+Suite 273 passed (vorher 247). Entscheidung Martin: Gap-Schwelle 0,8 ATR.
+
+### M1 — VIX-Halbierung war nie aktiv
+Die Abfrage nutzte `macro_data.indicator_id` (Spalte existiert nicht) und schluckte den Fehler. Neu `get_current_vix()` /
+`vix_size_factor()`: VIX aus `regime_history` (täglich), sonst `macro_data.indicator='VIXCLS'` (FRED); Fehler werden geloggt.
+Bei VIX > 30 (strikt) halbiert sich die Positionsgröße (Bremse „VIX“ in `combine_size_brakes`). Aktueller VIX 16,0, Faktor 1,0.
+
+### M3 — SHORT-Thesis Kriterien 2 und 3
+Kriterium 2 (Bewertung) nutzt die echten Spalten `pe_ttm`, `pe_sector_median`, `date` von `fundamentals_snapshot`; Snapshots älter als
+30 Tage (`FUNDAMENTALS_MAX_AGE_DAYS`) setzen es sichtbar aus (Logzeile). Kriterium 3 (Analysten-Empfehlung) hat keine Datenquelle
+(die Tabelle enthält nur `analyst_count`); es bleibt ausgesetzt, statt still per Exception auf 0 zu fallen. Schwelle „2 von 4“
+unverändert. `fundamentals_snapshot` wird seit 13.07. nicht mehr befüllt (thematic läuft ohne Cron), beide Kriterien bleiben
+daher praktisch aus, bis die Quelle wieder läuft.
+
+### M2 — Overnight-Gap
+Neu `get_overnight_gap_inputs()`: |Open der letzten Kerze − Close der Vorkerze| statt Close[-1] gegen Close[-2]. Schwelle
+`GAP_ATR_THRESHOLD = 0,8` ATR (vorher 0,6). Messung an 20 Titeln / 9.441 Ticker-Tagen: alte Definition blockte 36,3 % der Tage,
+neue Definition bei 0,6 ATR 15,5 %, bei 0,8 ATR 8,9 % (Ziel < 10 %), bei 1,0 ATR 5,2 %.
+
+### M4 — Conviction beim Entry, Segment-Gate nur Hinweis
+`entry_conviction_score` und `entry_conviction_tier` (HIGH ≥ 0,8, NORMAL ≥ 0,6, sonst LOW; `conviction_tier()` gemeinsam mit
+`check_segment_performance`) werden im Positions-INSERT gespeichert; `segment_performance` (nightly_eval) füllt sich damit.
+Das Segment-Gate blockt nur, wenn `cfg["segment_gate_enforce"]` ausdrücklich True ist (Voreinstellung: nur Hinweis), weil die
+Conviction laut Probe vom 25.09. keine Vorhersagekraft hat.
+
+### Verifikation
+`tests/test_welle4.py` (26 Tests, 24 vorher rot): VIX-Faktor (35/16/30/Fallback/beides fehlt), Quelle ohne `WHERE indicator_id`,
+Log bei Abfragefehler, SHORT-Thesis (frisch/stale/kein Aufschlag/Tabelle fehlt), Gap (Momentum-Tag nicht, echte Lücke ja,
+Schwelle 0,8, keine Daten/NaN), Tier-Schwellen, Struktur des Positions-INSERT (Spalten = Platzhalter = Werte), Gate-Schalter.
+
+### Backups
+`scripts/signal_manager.py.bak_ralph_W4_20260930_0926` (`tests/test_welle4.py` neu).
+
+## 30.09.2026 (11) — Auswertung und Kennzahlen: nightly_eval, Benchmark, Quellen-Lifecycle, Replay/Time-Stop-Schalter, adapt_strategy (Befunde M6, M7, M8, M5, N9, N4)
+<!-- w5-auswertung-20260930 -->
+
+Ralph-Loops (Sandbox `/root/ralph/sb/W5`), mit Freigabe von Martin live übernommen (09:36). Suite 295 passed (vorher 273).
+
+### M6 — `scripts/nightly_eval.py`
+Neu `store_eval_metrics()`: `sortino_30d`, `calmar_30d`, `max_drawdown_30d`, `avg_r_multiple` und `exposure_long/short/net_pct` werden
+mitgespeichert (vorher berechnet, aber nie im INSERT; das Dashboard zeigte Max-DD 0 %). Es sind 30-Tage-Werte aus den geschlossenen
+Trades, nicht der Drawdown vom Allzeithoch. Das Top-Band (Top 3/5/10 nach Conviction) zählt jetzt `watching` UND `bought`; vorher fielen
+gekaufte Titel per Konstruktion heraus (`gekauft` ~0).
+
+### M7 — `scripts/fundamental_data.py`
+`portfolio_start_date()` (frühester Positions-Entry, 25.04.): SPY und DAX starten am Depotstart statt am 1. Januar; der Alpha
+vergleicht damit dasselbe Zeitfenster. Spalten `*_ytd` heißen unverändert, bedeuten aber „seit Depotstart“. Die drei Alt-Zeilen mit
+`portfolio_value` 263,34 (Mai) bleiben unangetastet. Regime-Ausgabe: „Übergang Folgetag“ statt „Nächste Woche“ (N4).
+
+### M8 — `scripts/source_lifecycle.py`
+Neue Spalten `source_registry.trades_90d` und `avg_pnl_pct` (additive Migration). `suspend_avg_pnl` (−2,0) ist eine Prozent-Schwelle und wird
+jetzt gegen `avg_pnl_pct` verglichen (vorher gegen den Euro-Durchschnitt). `win_rate_90d` zählt erst ab `min_trades_for_eval` (3) Trades im
+90-Tage-Fenster, ein leeres Fenster bestraft oder entfernt keine Quelle mehr. Ausgabe der Top-Quellen mit €-Einheit. Snapshot: keine
+Statusänderung; Gewichte 0,3 bleiben bei screener, tipp checker, beating beta, der aktionaer.
+
+### Datenschritt: Gewichte zurückgesetzt (09:37)
+`grey x capital` (1 Trade im Fenster, avg −0,8 %) und `ohne aktien wird schwer` (WR 37,5 %, avg −0,5 %) von 0,3 auf 1,0 zurückgesetzt, weil die
+alte Penalisierung nach der korrigierten Regel nicht mehr zutrifft (Vermerk in `rejection_reason`). Backup
+`/root/ralph/backups/trading.db.bak-20260930-093653-source-weights`, Integritätscheck ok.
+
+### M5 und N9 — Schalter, Voreinstellung unverändert
+- `exit_rules.py`: `LIVE_STOP_SLIPPAGE_ATR = 0.35` (gemessen an 64 SL-Trades), `stop_fill_price()`, `replay_exit_path(stop_slippage_atr=0.0,
+  protect_time_stop=True)`; `crabel_shadow_eval.simulate_forward(stop_slippage_atr=0.0)`. Nichts davon ist aktiv, damit die Vorab-Kriterien der
+  Shadow-Selection (seit 28.09.) nicht verschoben werden. Nicht umgesetzt: Donchian/5 Tage statt Chandelier/7 Tage in `simulate_forward`.
+- `signal_manager.py` (Live-Time-Stop): `cfg["time_stop_protected_fill"]` (Voreinstellung True = Fill nicht schlechter als der Anfangs-Stop);
+  False bucht zum tatsächlichen Kurs. In den 13 bisherigen Time-Stops nie relevant.
+
+### N4 — `scripts/signal_manager.py` (`adapt_strategy`)
+Die Meldung nennt die tatsächliche Richtung („TP erhöht/gesenkt auf … (Obergrenze 3.5)“, „SL enger/weiter …“) und schweigt bei unverändertem Wert.
+Vorher hieß es „TP erhöht“, obwohl die Obergrenze 3.5 den Wert senkte.
+
+### Verifikation
+`tests/test_m6_eval.py` (3), `tests/test_m7_benchmark.py` (2), `tests/test_m8_lifecycle.py` (5), `tests/test_w5_exits.py` (12). Live-Suite 295 passed.
+
+### Backups
+`{scripts/nightly_eval,scripts/fundamental_data,scripts/source_lifecycle,scripts/crabel_shadow_eval,scripts/signal_manager}.py` und `exit_rules.py` je als
+`.bak_ralph_W5_20260930_0936`.
+
+## 30.09.2026 (12) — Externe Datenquellen: Tavily, Polymarket, thesis_monitor, factor_ranker (Befunde M17, M18, M19, M20)
+<!-- w6-datenquellen-20260930 -->
+
+Ralph-Loops (Sandbox `/root/ralph/sb/W6`), mit Freigabe von Martin live übernommen (13:03). Suite 324 passed (vorher 295).
+Entscheidungen Martin: `thesis_monitor` bleibt im Cron (15:30), Tavily-Fenster 7 Tage (Breaking News 3 Tage), Alarme beobachten.
+
+### M17 — Tavily (`thematic/lib/tavily_client.py`, `scripts/breaking_news_monitor.py`)
+`days` wirkt bei Tavily nur zusammen mit `topic: "news"`; ohne topic lieferte die Suche Kursseiten ohne Datum (Probe „Qualys QLYS news“).
+Neu: `search_news` sendet `topic: "news"` und `days` (Standard `NEWS_DAYS` = 7, per `TAVILY_NEWS_DAYS` änderbar); `filter_relevant()` behält nur
+Treffer, in deren Titel/Text ein Namenswort (≥ 5 Zeichen) oder das Tickersymbol (≥ 3 Zeichen, ganzes Wort) vorkommt.
+`fetch_ticker_news(ticker, days=None, company_name=None)` sucht mit Firmenname und filtert. `breaking_news_monitor._fetch_news` nutzt
+`topic: "news"`, `BREAKING_NEWS_DAYS = 3`, 8 Ergebnisse und denselben Filter. Beide `thesis_monitor` (scripts/ und thematic/) rufen mit
+`company_name` auf. **Hinweis:** Der Breaking-News-Monitor zieht bei Score ≥ 0,65 den Stop auf 0,5 × ATR enger; mit echten, relevanten
+Nachrichten kann das häufiger passieren als bisher (Schwelle unverändert, beobachten).
+
+### M19 — `scripts/thesis_monitor.py`
+Der Alert „SL wurde automatisch auf 0.5×ATR enger gezogen“ war falsch (`active_exit_check` läuft nicht) und lautet jetzt „kein automatischer
+Eingriff“. Neu `thesis_coverage()`: der Lauf meldet „N Positionen, M mit These“ und warnt einmal, wenn keine offene Position eine These hat (aktuell 0 von 101).
+
+### M18 — Polymarket (`thematic/lib/polymarket_client.py`, `thematic/prediction_market_scanner.py`)
+- `fetch_trending_markets` liefert zusätzlich `token_id` (CLOB-YES-Token); `fetch_market_history` nimmt die Token-ID (mit der conditionId lieferte die
+  History 0 Datenpunkte). `price_days_ago()` nimmt den Preis von vor 7/30 Tagen (vorher `history[-2]`, bei stündlichen Punkten der Preis von vor einer
+  Stunde); zu kurze Historie ergibt None. `enrich_with_history()` setzt `price_7d_ago`, `price_30d_ago`, `delta_7d` (None statt 0 ohne Historie).
+- Scanner-Fehler nebenbei behoben: `prediction_market_scanner` las Schlüssel, die `fetch_trending_markets` nicht liefert (`probability`/`price`, `volume`,
+  `price_change_7d`); alle 812 gespeicherten Märkte standen auf Preis 0,5, Volumen 0, delta 0. Neu `_normalize_market()` mit `current_yes_price` und
+  `total_volume_usd`. Der Scanner hat weiterhin keinen Cron (letzter Lauf 13.07.).
+- Live-Probe gegen die öffentliche API (nur lesend): 6/6 Märkte mit Token-ID, History liefert 7d-/30d-Preise.
+
+### M20 — `thematic/factor_ranker.py` (Cron 05:10)
+`_compute_momentum_score` verwirft NaN-Kerzen und gibt bei nicht endlichen Werten None zurück (der Lauf vom 23.09. hatte Momentum 0,0 für alle 398
+Ticker, das Schattenbuch h1 war am 24.09. leer); `_percentile` behandelt NaN wie fehlend. Ein Lauf mit weniger als 80 % gültigen Tickern
+(`factor_min_valid_share`) oder ohne Momentum-Streuung wird verworfen und NICHT gespeichert (ohne DONE-Zeile, cron_health erkennt das). Quality und
+Value werden nur berechnet, wenn ihr Gewicht > 0 ist (zwei von drei Finnhub-Calls je Ticker weniger).
+
+### Verifikation
+`tests/test_m17_m19.py` (11), `tests/test_m18_polymarket.py` (10), `tests/test_m20_factor.py` (8), alle Antworten synthetisch. Live-Suite 324 passed.
+
+### Backups
+Alle sieben Skripte als `.bak_ralph_W6_20260930_1303` neben der Datei.
+
+## 30.09.2026 (13) — Hygiene: atomare Schreibzugriffe, technical_validator abschaltbar, Währungen, Rauchtest, Berichte (Befunde N3, N1, N2, N7, N8, N21)
+<!-- w7-hygiene-20260930 -->
+
+Ralph-Loops (Sandbox `/root/ralph/sb/W7`), mit Freigabe von Martin live übernommen (13:11), Dashboard-Dienst neu gestartet
+(`GET /` 200, `/login` 200, POST ohne Anmeldung 403). Suite 539 passed (vorher 324).
+
+### N3 — atomare Schreibzugriffe (`utils.py` und zehn Schreibstellen)
+Neu `utils.atomic_write_json(path, obj, **json_kwargs)`: temporäre Datei im selben Ordner, `fsync`, `os.replace`; Rechte einer bestehenden Datei bleiben
+erhalten (die `strategy_config.json` behält ihre 666), neue Dateien bekommen 0644; bei jedem Fehler bleibt die alte Datei unverändert und die Temp-Datei
+wird entfernt. Umgestellt: `signal_manager.save_config`, `dashboard.save_sources`, `dashboard_thematic.save_thematic_config`, Makro-Signal (zwei Stellen in
+`fundamental_data`), `strategy_optimizer` (Config zweimal, Quellen), Sektor-Migration im `watchlist_manager`, Ausgabe des `technical_validator`,
+`universe_manager`. Nicht Teil davon (Entscheidung Martin offen): ob der Optimizer `exit_profile`/Time-Stop weiter selbst in die Live-Config schreiben darf;
+Dateirechte 666 der `strategy_config.json` manuell auf 644.
+
+### N1 — technical_validator (`scripts/trading_pipeline.py`, `scripts/technical_validator.py`)
+Der Schritt braucht ~8 Minuten pro Nacht, schreibt nur `trading_signals_validated.json` (kein Modul liest sie, nur der Pfad wird importiert) und keine DB.
+Neu `technical_validator_enabled` in `strategy_config.json`, Voreinstellung AUS: die Pipeline überspringt den Schritt mit Logzeile. LLM-Validator und Reihenfolge
+der übrigen Schritte unverändert. `_strength_val` versteht strong/moderate/weak (vorher -1 für alle, der „stärkste“ Eintrag war der erste).
+
+### N2 — Währungszuordnung (`utils.ticker_to_currency`, `price_to_eur`)
+Neu: `.OL` NOK, `.WA` PLN, `.NS`/`.BO` INR, `.SZ`/`.SS` CNY, `.SR` SAR, `.MC`/`.LS`/`.IR` EUR, `.TW` TWD, `.NZ` NZD, `.TA` „ILA“ (Agorot, ÷100 auf ILS).
+Ein unbekannter Suffix loggt einmal eine Warnung und fällt weiter auf USD. Bestehende Zuordnungen unverändert.
+
+### N7 — Rauchtest (`tests/test_n7_smoke.py`)
+Alle 92 Projektdateien kompilieren; die 58 Module mit `__main__`-Guard und harmlosem Modul-Level werden importiert (Module mit Modul-Level-Aufrufen werden
+nicht importiert, damit der Test nichts auslöst). `feedparser` darf im venv fehlen (Skip). 161 Tests in den drei neuen Dateien.
+
+### N8 und N21 — Berichte (nur lesend, nichts installiert oder gelöscht)
+- `/root/ralph/checks/drift.md`: Der Cron-Interpreter `/usr/bin/python3` hat alle Module; dem Projekt-`venv` fehlt nur `feedparser` (betrifft nur Tests).
+- `/root/ralph/checks/unused_config.md`: ohne Fundstelle im Code: 24 Schlüssel in `thematic_config.json` (davon 13 Schwellen), 4 in `news_sources.json`
+  (die Datei wird nirgends referenziert), 2 in `strategy_config.json` (`operating_mode`, `sector_reentry_threshold_pnl`). Entscheidung je Schlüssel offen.
+
+### Verifikation
+`tests/test_n3_atomic.py` (15, parallele Leser sehen nie eine halbe Datei), `tests/test_n1_n2.py` (39), `tests/test_n7_smoke.py` (161 inkl. Kompilier-Tests). Live-Suite 539 passed.
+
+### Backups
+Alle zehn Skripte als `.bak_ralph_W7_20260930_1311` neben der Datei.
+
+## 30.09.2026 (14) — thematic und Randbereiche: setup_thematic.sh gesperrt, briefing, weekly_review, Theme-Merge, Lifecycle, Screener, Kleinkram (Befunde N13–N20)
+<!-- w8-thematic-20260930 -->
+
+Ralph-Loop (Sandbox `/root/ralph/sb/W8`), mit Freigabe von Martin live übernommen (13:20). Suite 563 passed (vorher 539). Die thematische Pipeline
+läuft weiterhin ohne Cron; im Betrieb wirken nur die Änderungen in `watchlist_manager` (N15), `thematic/lib/finnhub_client` und `thematic/universe_manager`.
+
+### N20 — `thematic/setup_thematic.sh`
+Ohne `FORCE_THEMATIC_SETUP=1` bricht das Skript vor dem ersten Befehl mit Exit 1 ab. Grund: es schreibt die Crontab um (`grep -v "thematic/"` entfernt
+auch die aktive `factor_ranker`- und `drawdown_monitor`-Zeile), plant Jobs für fehlende Dateien und eine zweite Pipeline um 03:00 und kopiert die WAL-DB per `cp`.
+Crontab nach dem Deploy unverändert (40 Zeilen, `factor_ranker`/`drawdown_monitor` vorhanden).
+
+### N13 — `thematic/briefing.py`
+`TELEGRAM_HOME_CHANNEL` war nie definiert (NameError beim Senden) und ist jetzt an `TELEGRAM_CHAT_ID` gebunden; fehlendes Token wirft beim Import keinen KeyError mehr.
+Die play_type-Schlüssel heißen `direct_plays`, `picks_and_shovels`, `second_derivatives`, `losers` (vorher drei falsche, drei von vier Kategorien fehlten);
+Verlierer stehen als „Verlierer (nicht kaufen)“. Die Alarm-Zähler lesen die Anzahl aus der Überschrift (`RED ALERTS (3)` → 3, vorher höchstens 1).
+
+### N14 — `thematic/weekly_review.py`
+`sqlite3.Row.get` (Row wird in dict gewandelt), `check_date` wird mitselektiert; `run_exit_quality_review` überspringt fehlende Tabellen
+(`exit_quality_log`, `exit_learnings`) mit Hinweis.
+
+### N15 — `scripts/watchlist_manager.py`
+`get_thesis_conviction_boost` schließt `play_type` `losers` aus (68 von 220 Beneficiaries bekamen sonst einen positiven Boost).
+
+### N16 — `thematic/theme_merge_engine.py`
+Ein dormantes Thema, das unter demselben Namen wieder auftaucht, wird reaktiviert (vorher IntegrityError wegen `UNIQUE(name)`). Neu `apply_merge_decisions()`:
+Dashboard-Entscheidungen `merged` (→ `auto_merge_theme`) und `kept_separate` (→ neues Thema) werden je einmal ausgeführt (Spalte `applied`, additive Migration),
+beim ersten Pipeline-Lauf auch ältere. Dasselbe Thema wird nur einmal als `pending` in die Queue gestellt. Nicht lesbare/abweichende Embeddings werden gezählt und gemeldet.
+
+### N17 — Lifecycle
+`beneficiary_mapper.main` führt `sync_beneficiary_status` auch an Tagen ohne neue Themen aus (lag hinter einem frühen Return). `fundamental_screener` und
+`timing_validator` berücksichtigen den Status `active`.
+
+### N18 — `thematic/fundamental_screener.py`, `thematic/lib/finnhub_client.py`
+`_sector_median_pe` rechnet über die Peers des Sektors (Join `companies.sector`, mindestens 5 Peers, sonst Gesamtmedian); `_fcf_yield` trennt `freeCashFlowTTM`
+(Mio USD) und `fcfPerShareTTM` (je Aktie, über Marktkapitalisierung/Aktienzahl); `get_short_interest` liefert `None` statt 0,0, wenn keine Daten vorliegen (301 von 301 Zeilen standen auf 0,0).
+
+### N19 — Kleinkram
+`timing_validator`: Überkauft-Warnung auch bei EMA50-Abstand > 30 % und RSI ≤ 75. `finnhub_client`: HTTP 403 (Endpunkt im Tarif nicht freigegeben) gibt sofort
+auf statt ~9 s zu warten. `embedding_client.cosine_similarity`: abweichende Dimensionen sind ein ValueError mit Klartext. `universe_manager`: Backup
+`universe.json.bak-…` vor dem Überschreiben. `llm_client`: leere Antwort ist ein Fehler, abgeschnittenes JSON (`finish_reason=length` mit `json_mode`) ebenfalls,
+sonst Flag `truncated`. `prompts/thesis_check_v1.md`: Beispielmärkte stehen getrennt vor den echten Daten, „letzte Tage (bis zu 7)“ statt „24H“, `pm_signal_assessment`
+mit den Config-Schlüsseln `supporting|mixed|contradicting|no_data`.
+
+### Verifikation
+`tests/test_w8_thematic.py` (24 Tests, alle Datenbanken im Speicher, keine Netzaufrufe). Live-Suite 563 passed.
+
+### Backups
+Alle Dateien als `.bak_ralph_W8_20260930_1320` neben dem Original.
+
+### Offen
+- N10 (Sektor-Sperrliste), Donchian/5 Tage in `crabel_shadow_eval.simulate_forward`, K2m (Token/Zugriffsweg), Optimizer-Config-Schreiben, chmod `strategy_config.json`,
+  ungenutzte Config-Schlüssel (`/root/ralph/checks/unused_config.md`).
+
+## 30.09.2026 (15) — Restpunkte: Sektor-Sperrliste in der DB (N10), Fill-Schalter an (M5/N9), Crabel-Shadow mit Live-Exit, Optimizer nur Vorschlag, Config-Aufräumen (N21)
+<!-- w9-restpunkte-20260930 -->
+
+Ralph-Loops (Sandbox `/root/ralph/sb/W9`), auf Anweisung von Martin live übernommen. Suite 592 passed (vorher 563, dazu `tests/test_w9.py` mit 29 Tests, alle vor der Änderung rot).
+
+### N10 — Sektor-Sperrliste (`scripts/signal_manager.py`, `scripts/watchlist_manager.py`)
+Vorher gab es zwei Speicherorte: der Signal Manager schrieb die Sperre in `strategy_config.json`, der Watchlist-Manager verschob sie nachts in die DB-Tabelle
+`sector_blacklist` (und las dabei den falschen Schlüssel `blocked_at` statt `blocked_since`) und leerte das JSON. Folge: die Sperre verschwand jede Nacht, der
+Cooldown startete bei jedem Lauf neu, und die DB hielt einen wirkungslosen Alt-Eintrag (Industrials seit 11.07., von Dashboard und Export als „Probation-Fenster offen“ gezeigt).
+Jetzt ist die DB die einzige Quelle:
+- `update_sector_blacklist` und `is_sector_allowed` lesen und schreiben `sector_blacklist` (additive Spalte `reason`, Tabelle wird bei Bedarf angelegt). Alt-Einträge aus dem JSON werden einmal übernommen, das JSON wird geleert.
+- Regeln unverändert: ≥ 3 geschlossene Trades in 14 Tagen mit negativer Summe → 14 Tage Cooldown; danach ein Probation-Trade mit 50 % Größe.
+- Probation-Trade wird mit `mark_probation_started` vermerkt (Status `active`, Positions-ID). Solange er offen ist, sind keine weiteren Entries im Sektor erlaubt (vorher galt ein noch offener Trade als „nicht bestanden“). Nach dem Schließen: Gewinn über `sector_reentry_threshold_pnl` (Config, bisher ohne Wirkung) → Sektor frei; sonst Status `failed` und neuer Cooldown.
+- `watchlist_manager.migrate_sector_blacklist_json` liest `blocked_since` und `reason` (Migration nur noch für Altbestände).
+- **Wirkung ab sofort:** Consumer Cyclical (3 Trades, −46 €) und Financial Services (3 Trades, −37 €) erfüllen die Regel und sind für neue Entries gesperrt; der Alt-Eintrag Industrials wird entfernt.
+
+### M5 / N9 — Fill-Schalter aktiv (`exit_rules.py`, Config)
+`replay_fill_settings(cfg)` liefert `stop_slippage_atr` und `time_stop_protected_fill` aus der Config. Alle Replays nutzen es: `strategy_optimizer`, `backtester`, `verify_exit_profile`, `shadow_selection` (Halten-Zweig), `crabel_shadow_eval`; der Live-Time-Stop in `signal_manager` und `active_exit_check` liest `time_stop_protected_fill`.
+In `strategy_config.json` gesetzt: `stop_slippage_atr = 0.35`, `time_stop_protected_fill = false` (Stichtag 30.09.2026). Die Shadow-Selection hatte zu diesem Zeitpunkt noch keine Exit-Bewertung (`pnl_live_net` bei allen 573 Einträgen leer), die Vorab-Kriterien sind damit nicht verschoben: beide Arme und alle Zeilen werden unter denselben Fills bewertet.
+
+### Crabel-Shadow mit Live-Exit (`scripts/crabel_shadow_eval.py`)
+`simulate_forward_live` rechnet über `replay_exit_path`: Donchian-Trail (mit Vorlauf vor dem Entry), Time-Stop aus `time_stop_trading_days` (5 Tage), Teil-TP, Stop-Durchrutschen. Das Anfangsrisiko kommt aus dem gespeicherten `would_sl`. Neue Spalte `blocked_entries.sim_mode` (`live_replay` oder `chandelier7`); `crabel_shadow_live_exits=false` schaltet auf die alte Chandelier/7-Tage-Simulation zurück. Die 30 bisher ausgewerteten Zeilen bleiben unverändert (`sim_mode` leer = alte Simulation).
+
+### Optimizer schreibt nur noch Vorschläge (`scripts/strategy_optimizer.py`)
+`exit_profile` und `time_stop_trading_days` werden nur mit `optimizer_apply_live = true` in die Live-Config geschrieben (neuer Schalter, in der Config `false`). Das betrifft alle drei Schreibpfade (Eval-Metrics-Leiter, Walk-Forward, Grid Search). Ohne den Schalter steht der Kandidat als „Vorschlag (nicht angewendet)“ im Bericht (`optimization_report`: `proposal_only`) und im Telegram-Text. Grund: beide Werte sind die Messgrößen von Shadow-Selection und Live-Auswertung; ein wöchentlich wechselnder Wert unter laufender Messung verschiebt die Vergleichsbasis. Quellen-Gewichte werden weiter automatisch angepasst.
+
+### N21 — Config-Aufräumen
+`sector_reentry_threshold_pnl` ist jetzt verdrahtet (N10). `operating_mode` bleibt als reine Beschriftung. In `thematic/config/thematic_config.json` liegen 23 Schlüssel ohne Fundstelle im Code (Embedding-Fallbacks, Positionslimits, Trailing-Stops, Conviction-Gewichte, PM-Volumen) jetzt unter `_not_wired` mit Hinweis; die von Code gelesenen Werte (Drawdown-Schwellen, Merge-Ähnlichkeit, Faktor-Gewichte, Embedding-Modell) bleiben an ihrem Platz.
+
+### Verifikation
+`tests/test_w9.py` (29 Tests). Sandbox-Läufe gegen die DB-Kopie: Sektorsperre (Consumer Cyclical und Financial Services gesperrt, Industrials entfernt), Crabel-Shadow mit vier künstlich gealterten Zeilen (SL-Fill mit 0,35 ATR Durchrutschen, Time-Stop nach 5 Tagen), `check_only` und Optimizer `--dry-run` ohne Fehler. Live-Suite siehe Loop-Log.
+
+### Backups
+Alle Dateien als `.bak_ralph_W9_<Zeit>` neben dem Original, `strategy_config.json` und `thematic_config.json` ebenso.
+
+## 30.09.2026 (16) — Nachprüfung: Positionslimits im Entry-Loop (P1), ein Regime für Größe und Stop (P2), Heimatbörse vor OTC-ADR im Dedup (P3)
+<!-- p123-nachpruefung-20260930 -->
+
+Befunde aus der Nachprüfung am Nachmittag des 30.09. (nach den 15 Deploys des Tages), auf Anweisung von Martin vor dem Nachtlauf umgesetzt. Ralph-Muster, Sandbox `/root/ralph/sb/P123`. Neue Tests in `tests/test_p123.py` (18 Tests, 12 davon vor der Änderung rot), Suite 610 passed (vorher 592). P4 (News-Stop des Breaking-News-Monitors) bleibt auf Entscheidung von Martin unverändert.
+
+### P1 — Positionslimits gelten auch innerhalb eines Laufs (`scripts/signal_manager.py`, `open_new_positions`)
+Vorher prüfte der Entry-Loop die Grenzen nur, bevor er die Kandidaten lud. In der Schleife galten `cfg["max_positions"]` (8) freie Plätze statt des Limits aus der Drawdown-Matrix (aktuell 6), und die Slots je Richtung (seitwärts 6 LONG / 3 SHORT, Bear 4 / 4, Bull Drawdown-Limit / 2) wurden nie mitgezählt. Bei 3 offenen Positionen hätte ein Lauf bis zu 5 weitere eröffnen können (Test: 8 statt 6 Positionen, 4 statt 3 SHORTs, 8 statt 6 LONGs). Bisher verhinderten das nur knappe Kandidatenlisten.
+- `slots_available = min(max_positions, Drawdown-Limit) − offene Positionen`.
+- Der Loop zählt LONG und SHORT nach jedem Entry hoch; ist eine Richtung voll, werden ihre restlichen Kandidaten übersprungen (Hinweis im Log, kein `blocked_entries`-Eintrag, wie früher beim Abbruch), die andere Richtung kommt weiter dran.
+- YT-Fade bleibt wie gehabt: eigene Slots und eigenes Budget, zählt nicht gegen die Richtungs-Slots, verbraucht aber innerhalb eines Laufs weiter einen der freien Plätze.
+
+### P2 — Größe, Anfangs-Stop, `would_sl` und Exit-Check rechnen mit demselben Regime
+Seit 06.09. nutzen das Sizing und der Exit-Check (`check_open_positions`, `active_exit_check`: `pos_regime`) das Sektor-Regime der Position. Der Anfangs-Stop beim Entry (`compute_sl_tp`) und `blocked_entries.would_sl` rechneten aber weiter mit dem globalen Regime aus `regime_history`. Wo beide abwichen, lag das Ist-Risiko neben `risk_pct_per_trade`: SHORT in einem Bear-Sektor bei seitwärts laufendem Markt rund 20 % darunter (TECH: Größe für 2,88 ATR, Stop bei 2,3 ATR), LONG bei globalem Bear rund 25 % darüber (Größe für 2,3 ATR, Stop bei 2,88 ATR).
+- Neue Funktion `entry_regime(sector_regime, global_regime)`: Sektor-Regime, sonst globales Regime (dieselbe Regel wie `pos_regime` im Exit-Check).
+- Sizing und `compute_sl_tp` beim Entry nutzen sie gemeinsam; `log_blocked_entry` bekommt das Sektor-Regime übergeben, damit die Shadow-Auswertung denselben Stop simuliert wie live.
+- Bei gleichem globalen und Sektor-Regime ändert sich nichts. Für LONGs sind Bull und Seitwärts in der Matrix identisch, der Unterschied betrifft LONGs nur bei globalem Bear.
+
+### P3 — Dedup bevorzugt die Heimatbörse vor OTC-ADRs (`scripts/watchlist_dedup.py`, `_ticker_priority`)
+Jedes Kürzel mit bis zu 5 Buchstaben galt als US-Primärlisting (Priorität 0). Die vorgesehene ADR-Stufe prüfte die Börsen-Endung `.Y` und griff nie. Seit M12 (heute Vormittag) wirkt die Priorität tatsächlich: im Sandbox-Nachtlauf wurde aus Lufthansa `LHA.DE` das OTC-ADR `DLAKY` (2,2 statt 25,5 Mio. € Tagesumsatz, USD, US-Handelszeiten).
+- 5 Buchstaben mit Endung Y (ADR) oder F (Foreign Ordinary), z. B. DLAKY, BAYRY, NSRGF → Priorität 5, hinter jeder echten Börsennotiz (EU, London, Nebenbörsen, Asien); strukturierte Produkte → 6.
+- Unverändert: US-Kürzel bis 4 Buchstaben und 5-Buchstaben-Kürzel ohne Y/F-Endung (GOOGL) bleiben 0; `ING` (NYSE-ADR) gewinnt weiter gegen `INGA.AS`.
+- Sandbox-Nachtlauf mit Patch: `LHA.DE` bleibt, `DLAKY` wird gedroppt.
+
+### Verifikation
+`tests/test_p123.py`: drei Loop-Szenarien für P1 (Drawdown-Limit, SHORT-Slots, volle LONG-Seite blockiert die SHORTs nicht), Ist-Risiko = Zielrisiko und Stop-Abstand = Matrix-Zelle des Sektor-Regimes für P2 (je SHORT und LONG), `would_sl` in `blocked_entries`, Prioritäten und Dedup-Merge für P3. Sandbox-Lauf der Nachtkette (Watchlist-Manager, Dedup, Signal Manager `full` und `check_only`) gegen eine frische DB-Kopie ohne Fehler.
+
+### Backups
+`scripts/signal_manager.py` und `scripts/watchlist_dedup.py` als `.bak_ralph_P123_<Zeit>` neben dem Original.
+
+## 30.09.2026 (17) — Nachprüfung: LLM-Validator wirksam (P5), Committee ohne Token-Abbrüche (P6), ehrliche Kennzahlen (P7), Sektor-Probation erreichbar (P8), Quellen-Bewertung im 90-Tage-Fenster (P9)
+<!-- p59-nachpruefung-20260930 -->
+
+Befunde P5–P9 aus der Nachprüfung vom 30.09. nachmittags, auf Anweisung von Martin umgesetzt. Ralph-Muster, Sandbox `/root/ralph/sb/P59`. Neue Tests in `tests/test_p5_p9.py` (17 Tests, 15 davon vor der Änderung rot; 2 Schutztests für bleibendes Verhalten), ein Welle-9-Test an P8 angepasst. Suite 627 passed (vorher 610).
+
+### P5 — LLM-Validator bekommt etwas zu bewerten (`scripts/llm_validator.py`, neu gefasst)
+In den ersten beiden Läufen (29./30.09.) kamen 19 von 19 Kandidaten als UNCERTAIN zurück, ohne Fehler. Ursache waren die Eingaben: 6 von 8 Kandidaten am 30.09. waren Monate alt (`last_seen` im Kompaktformat galt beim String-Vergleich als frisch) und hatten keine gespeicherten Begründungen mehr; der Validator suchte Begründungen nur unter dem exakten Watchlist-Namen, die Mentions stehen aber unter Varianten (`AMD`, `Deutsche Lufthansa`); die frischen Kandidaten hatten nur eine Screener-Zeile („Tech LONG conf=0.80 …“), also keine Meinung.
+- Nur Kandidaten mit Mention in den letzten 14 Tagen (Datumsvergleich formatunabhängig).
+- `collect_reasons`: Begründungen der letzten 30 Tage über Watchlist-Name, Tickersymbol, `company_aliases` und den Namens-Key aus `watchlist_dedup`.
+- Kandidaten ohne Meinungs-Begründung (nur `screener`/`screener_nasdaq`) werden ohne LLM-Call übersprungen (`llm_verdict = 'SKIPPED (keine Meinungs-Begründung)'`, Conviction unverändert).
+- Prompt mit Kanal je Aussage, Technik (Richtung, Score) und Entscheidungsregeln; UNCERTAIN nur bei ausgeglichenem Für und Wider oder unbekanntem Unternehmen, beiläufige Erwähnungen ohne Bewertung gelten als nicht gedeckt. Zählzeile am Ende.
+- Probe mit dem echten Modell auf dem Kandidatenstand der kommenden Nacht: alter Code 10 × UNCERTAIN; neuer Code 2 CONFIRMED (Amazon, Alphabet), 1 CONTRADICTED (Intel, überwiegend beiläufige Erwähnungen), 4 UNCERTAIN mit Begründung, 3 übersprungen (nur Screener).
+- Nebenwirkung: CONTRADICTED senkt die Conviction um 0,15; Intel fiel in der Probe auf 0,60 und damit unter `min_conviction` (0,65).
+
+### P6 — Committee ohne Reasoning-Abbrüche (`thematic/lib/llm_client.py`, `roles/committee.py`)
+8 von 26 Committee-Prüfungen endeten als ERROR_FAIL_OPEN. Die Bull-Rolle (`deepseek/deepseek-v4-pro`) lief mit Reasoning ins Limit (leere oder abgeschnittene Antwort bei genau 1.600 Output-Tokens, z. B. WU, MEDP), die Risk-Rolle lieferte bei EXEL nur 12 Zeichen.
+- `llm_client.call_llm(..., reasoning=None)`: neuer optionaler Parameter, wird als `reasoning` an OpenRouter durchgereicht (Standard unverändert: nicht gesetzt).
+- Committee-Rollen mit `reasoning={"enabled": false}`, Token-Limits Bull 2.500, Bear/Risk 1.600, ein Wiederholversuch je Rolle bei Fehler oder Parse-Fehler (Budget wird je Versuch gebucht).
+- Probe mit echten Modellen (AMD, MEDP, WU, EXEL): 4 von 4 Prüfungen vollständig (2 APPROVE, 2 REDUCE), 500–630 Output-Tokens je Prüfung. Das Committee bleibt im Schattenmodus.
+
+### P7 — Kennzahlen, die messen, was draufsteht (`scripts/nightly_eval.py`, `scripts/dashboard.py`, `scripts/signal_manager.py`)
+- **R-Multiple:** war `pnl_eur / position_size`, also die Rendite je Position (bei 2,3 ATR Stop etwa ein Zehntel des R-Werts). Jetzt Ergebnis ÷ Anfangsrisiko in EUR, mit voller Positionsgröße inkl. Teil-TP. Dafür speichert der Signal Manager beim Entry `positions.initial_stop_loss` (neue Spalte, Migration in `init_db`; `stop_loss` wird später nachgezogen). Ältere Trades haben keinen Anfangs-Stop, bis zum ersten geschlossenen neuen Trade steht „–“.
+- **Neu:** `avg_return_pct` (Ø Rendite je Trade in %, das bisher als R angezeigte Maß) und `dd_from_ath_pct` (Drawdown vom Allzeithoch aus `portfolio`, wie die Drawdown-Matrix), beide in `eval_metrics`.
+- **Sortino:** je Trade, ohne √252 (das ist die Annualisierung für Tagesrenditen; die Werte waren etwa 16-fach überzeichnet).
+- **Max DD 30d** heißt jetzt „realisiert“ (nur geschlossene Trades) und steht neben dem Drawdown vom ATH (Sandbox 30.09.: 2,3 % gegen 19,1 %).
+- **Top-Band:** ohne geschlossenen Trade keine Win-Rate („–“ statt „0 %“), offene Positionen werden ausgewiesen.
+- **Benchmark:** Beschriftung „seit Depotstart“ statt „YTD“ (Bericht, Telegram, Dashboard), passend zu M7.
+- Fehlende Werte werden als „–“ angezeigt (vorher hätte ein fehlender R-Wert die Wochen-Telegram-Zeile mit einem Formatfehler abgebrochen).
+
+### P8 — Sektor-Probation wird erreicht (`scripts/signal_manager.py`, `update_sector_blacklist`)
+Nach dem Cooldown löschte `update_sector_blacklist` die Sperre, sobald das 14-Tage-Fenster keine 3 Verlusttrades mehr zeigte; im gesperrten Sektor entstehen keine neuen Trades, das Fenster war also fast immer leer. Folge: volle Freigabe statt des dokumentierten Probation-Trades mit 50 %. Jetzt bleibt die Zeile stehen, `is_sector_allowed` bietet nach dem Cooldown einen Probation-Trade an; erst ein Gewinn über `sector_reentry_threshold_pnl` gibt frei, ein Verlust startet den Cooldown neu. `tests/test_w9.py`: der Test „abgelaufener Sektor wird freigegeben“ beschreibt jetzt die Probation. Wirkung: die Alt-Zeile Industrials (seit 11.07.) bleibt und erlaubt den nächsten Industrials-Entry als Probation-Trade.
+
+### P9 — Quellen-Bewertung in einem Zeitfenster, mit Weg zurück (`scripts/source_lifecycle.py`)
+Die Win-Rate zählte 90 Tage, die Durchschnittsrendite und die Gewichtsanpassung alle Trades seit Start. Eine Quelle mit alten Verlusten blieb dauerhaft unter der Schwelle, und eine auf 0,3 gesetzte Quelle kam nur bei einem All-time-Schnitt ≥ +10 EUR wieder hoch.
+- `avg_pnl_pct` und neue Spalte `avg_pnl_eur_90d` im 90-Tage-Fenster; Win-Rate- und Renditeregel erst ab `min_trades_for_eval` (3) Trades darin (`_demotion_reasons`), die Verlustserie (letzte 10 Trades) bleibt.
+- `adjust_weights` nach `avg_pnl_eur_90d`; eine Quelle unter 1,0 steigt je Wochenlauf um ×1,25 (0,3 → 1,0 in etwa sechs Wochen), solange sie im Fenster keine Abstufungsregel verletzt; im selben Lauf abgestufte Quellen werden nicht angehoben; ohne Trades im Fenster bleibt das Gewicht.
+- Messung Sonntagslauf auf der DB-Kopie (alt → neu): `grey x capital` 0,8 → 1,0 (alte Verluste zählen nicht mehr), `ohne aktien wird schwer` 1,0 → 0,8 (Ø der letzten 90 Tage unter −10 EUR je Trade); `screener`, `tipp checker`, `beating beta`, `der aktionaer` bleiben 0,3 (verletzen die Regeln auch im 90-Tage-Fenster).
+
+### Verifikation
+`tests/test_p5_p9.py` (17 Tests), Suite 627 passed. Sandbox-Nachtkette gegen eine frische DB-Kopie (Watchlist-Manager, Dedup, LLM-Validator mit echtem Modell, Signal Manager `full`, nightly_eval, Dashboard-Rendering) ohne Fehler; neue Positionen tragen `initial_stop_loss`. Committee-Probe mit echten Modellen siehe P6. Dashboard nach dem Deploy neu gestartet.
+
+### Backups
+Alle geänderten Dateien als `.bak_ralph_P59_20260930_1609` neben dem Original.
+
+## 30.09.2026 (18) — Nachprüfung: Wechselkurse für SAR/TWD (P10), belastbares Dashboard (P11), Drawdown-Monitor mit echtem ATH und ohne Dauermeldung (P12), Kleinkram (P13)
+<!-- p1013-nachpruefung-20260930 -->
+
+Befunde P10–P13 aus der Nachprüfung vom 30.09. nachmittags, auf Anweisung von Martin umgesetzt. Ralph-Muster, Sandbox `/root/ralph/sb/P1013`. Neue Tests in `tests/test_p10_p13.py` (17 Tests, 16 davon vor der Änderung rot oder mangels neuer Funktion nicht lauffähig; 1 Schutztest), K1-Test an P13 angepasst. Suite 644 passed (vorher 627). Dashboard nach dem Deploy neu gestartet.
+
+### P10 — Wechselkurse für Währungen ohne EZB-Kurs (`utils.py`)
+Die EZB (Frankfurter-API) führt u. a. Saudi-Riyal und Taiwan-Dollar nicht; `get_fx_rate_to_eur` fiel dann auf 1,0 (Warnung im Log). Aramco (`2222.SR`, Watchlist) zu 25 SAR galt als 25 EUR statt rund 5,90 EUR; betroffen war vor allem der Liquiditätsfilter.
+- An den USD gebundene Währungen (SAR 3,75, AED 3,6725, QAR 3,64) werden aus dem EUR/USD-Kurs abgeleitet.
+- Alle anderen fehlenden Währungen kommen einmal pro Tag über yfinance (`EUR<XXX>=X`), tages-gecacht.
+- Notfall-Näherungswerte in `_FX_FALLBACK` (TWD, SAR, AED), falls Frankfurter und yfinance ausfallen; 1,0 bleibt nur noch für völlig unbekannte Währungen (mit Warnung).
+- Messung 30.09.: 1 EUR = 4,26 SAR (Bindung), 36,2 TWD (yfinance); 25 SAR = 5,87 EUR.
+
+### P11 — Dashboard lässt sich nicht mehr von einem Client lahmlegen (`scripts/dashboard.py`)
+Vorher lief das Dashboard in einem einzigen Thread; jeder POST-Body wurde vor der Anmeldeprüfung vollständig gelesen (ein anonymer Client mit großer `Content-Length` blockierte alles), ein Login-Fehlversuch schlief 1 s im einzigen Thread, und jeder Seitenaufruf baute die rund 1 MB große Seite neu (3–5 s).
+- `make_server`: `ThreadingHTTPServer` mit Daemon-Threads; Socket-Timeout 15 s je Verbindung.
+- POST: `Content-Length` wird geprüft, Anmeldung und Origin **vor** dem Lesen des Bodys; Limits 64 KB (Login 4 KB), sonst 413.
+- Login-Sperre je IP: nach 5 Fehlversuchen in 15 Minuten 429; die 1-s-Bremse blockiert nur noch den eigenen Thread.
+- Seiten-Cache 30 s (nach jeder Änderung per POST sofort verworfen); der Hinweis „Nicht angemeldet“ wird weiter je Anfrage eingefügt.
+- Messung nach dem Neustart: erster Aufruf 5,7 s, danach 0,015 s; anonymer POST sofort 403.
+- Offen bleibt der Netzzugang selbst (K2m, Entscheidung Martin): Das Dashboard lauscht weiter auf 0.0.0.0:8081 ohne Firewall, die Anmeldung läuft unverschlüsselt über HTTP.
+
+### P12 — Drawdown-Monitor mit dem ATH der Drawdown-Matrix, Telegram nur bei Stufenwechsel (`thematic/drawdown_monitor.py`)
+- ATH aus `portfolio.ath_value` (führt `signal_manager.check_drawdown`, inkl. Neusetzen nach der Notbremse, K1b), `MAX(drawdown_log)` nur noch als Fallback. Vorher ignorierte der Monitor den Reset und zählte die bis 28.09. doppelt gezählten Log-Werte mit.
+- Telegram nur, wenn sich die Stufe gegenüber dem letzten Log-Eintrag ändert (auch Entwarnung unter −10 %); vorher kam jeden Werktag dieselbe „−15 %“-Meldung. Das Log schreibt weiter täglich.
+
+### P13 — Kleinkram
+- **Notbremse** (`_emergency_close_all`): bucht wie jeder andere Exit mit Exit-Slippage und Kommission, Entry-Kommission (N12) und Teil-TP-Gewinn im Ledger (K3); bei YT-Fade-Positionen gilt der Totalverlust-Deckel des 1x-Shorts (Fill höchstens doppelter Einstand). Vorher Rohrendite, Teil-TP fehlte im Ledger, ein Fade hätte über 100 % verlieren können (Test: −752 statt −503 EUR bei 500 EUR Einsatz). `tests/test_k1_notbremse.py` rechnet die erwartete Gutschrift jetzt mit Slippage.
+- **Pre/After-Hours-Hinweis** (`breaking_news_monitor._premarket_alert`): Vorzeichen stimmt (vorher `abs()`, auch Kursverluste als „+5,0 %“).
+- **Cooldown-Meldung** der Notbremse: „Tage (Kalendertage)“ statt „Handelstage“ (gezählt wurden immer Kalendertage).
+- **Trade-Zähler** in `strategy_config.json`: `total_trades`/`winning_trades` werden am Ende von `check_open_positions` aus der DB übernommen (vorher 56/19 gegen 98/40, nur im SL/TP- und Fade-Pfad hochgezählt); `consecutive_*` bleiben unverändert.
+- `thematic/timing_validator.py`: toter Zweig `if True:` entfernt (Verhalten unverändert).
+
+### Verifikation
+`tests/test_p10_p13.py` (17 Tests), Suite 644 passed. Sandbox mit echten Daten: FX-Kurse (s. P10), gepatchtes Dashboard auf Testport (3,0 s → 0,02 s, anonymer POST 403 in 0,0 s), Drawdown-Monitor (Stufe hard wie am Vortag, keine erneute Meldung), `check_only` (Zähler 98/40). Nach dem Deploy: Dashboard aktiv, Seite 200, anonymer POST 403. Die stündlichen Läufe seit dem P5–P9-Deploy (16:15–18:00) liefen fehlerfrei; `positions.initial_stop_loss` ist in der Live-DB angelegt.
+
+### Backups
+Alle geänderten Dateien als `.bak_ralph_P1013_20260930_1823` neben dem Original.

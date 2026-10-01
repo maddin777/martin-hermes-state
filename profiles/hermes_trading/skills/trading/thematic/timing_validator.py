@@ -96,16 +96,18 @@ def _check_setups(data: dict) -> list:
             })
 
     # Overbought Warning (Negativ-Setup)
-    if rsi > 75:
-        distance_ema = (close - ema50) / ema50 if ema50 > 0 else 0
-        if rsi > 75 or distance_ema > 0.30:
-            strength = -(rsi - 75) / 25
-            setups.append({
-                "type": "OVERBOUGHT_WARNING",
-                "strength": round(strength, 3),
-                "distance_pct": round(distance_ema * 100, 2),
-                "notes": f"RSI={rsi:.1f}, +{distance_ema:.0%} vs EMA50",
-            })
+    distance_ema = (close - ema50) / ema50 if ema50 > 0 else 0
+    # N19 (30.09.2026): die aeussere Bedingung `if rsi > 75` machte `or distance_ema > 0.30` unerreichbar; der Abstand
+    # zur EMA50 von mehr als 30 % loest die Warnung jetzt auch bei RSI <= 75 aus.
+    if rsi > 75 or distance_ema > 0.30:
+        over = max((rsi - 75) / 25, (distance_ema - 0.30) / 0.30, 0.05)
+        strength = -min(over, 1.0)
+        setups.append({
+            "type": "OVERBOUGHT_WARNING",
+            "strength": round(strength, 3),
+            "distance_pct": round(distance_ema * 100, 2),
+            "notes": f"RSI={rsi:.1f}, +{distance_ema:.0%} vs EMA50",
+        })
 
     return setups
 
@@ -130,7 +132,7 @@ def main():
     # Alle Candidate/Watching-Beneficiaries
     candidates = con.execute("""
         SELECT DISTINCT ticker FROM theme_beneficiaries
-        WHERE status IN ('candidate', 'watching', 'in_position')
+        WHERE status IN ('candidate', 'watching', 'active', 'in_position')
     """).fetchall()
 
     if not candidates:

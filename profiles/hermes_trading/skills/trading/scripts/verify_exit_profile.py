@@ -21,7 +21,7 @@ import statistics
 import sys
 
 from config import db_connect, get_exit_config, EXIT_PROFILES
-from exit_rules import replay_exit_path
+from exit_rules import replay_exit_path, replay_fill_settings
 from trade_paths import attach_paths
 
 
@@ -55,6 +55,7 @@ def run(trades, sl_scale, time_stop, cfg):
             donchian_period=cfg.get("donchian_exit_period", 10),
             time_stop_bars=time_stop,
             tp_mult=None,
+            **replay_fill_settings(cfg),   # M5/N9
         )
         if res["r_multiple"] is not None:
             out.append(res["r_multiple"])

@@ -93,7 +93,7 @@ def main(intraday: bool = False):
         thesis = thesis_raw if has_thesis else "Keine explizite These – Bewertung auf Basis des Themas."
 
         # News holen
-        news = tavily_client.fetch_ticker_news(ticker, days=1)
+        news = tavily_client.fetch_ticker_news(ticker, company_name=pos["name"])
         news_text = "\n".join(
             f"- [{a.get('title', '')}]({a.get('url', '')}): {a.get('content', '')[:200]}"
             for a in news[:8]
@@ -185,7 +185,7 @@ def main(intraday: bool = False):
                 f"Thema: {theme_name}\n"
                 f"Confidence: {confidence:.0%}\n"
                 f"Rationale: {rationale}\n\n"
-                f"<i>SL wurde automatisch auf 0.5×ATR enger gezogen.</i>"
+                f"<i>Hinweis: kein automatischer Eingriff (der Stop wird durch diese Meldung nicht verändert).</i>"
             )
         elif verdict == "WEAKENING":
             weakening_count += 1

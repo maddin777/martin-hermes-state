@@ -7,7 +7,7 @@ from statistics import median
 from collections import Counter
 from config import (DB_PATH, BACKTEST_REPORT_PATH, STRATEGY_CONFIG_PATH, db_connect,
                     get_exit_config, EXIT_PROFILES)
-from exit_rules import replay_exit_path
+from exit_rules import replay_exit_path, replay_fill_settings
 from trade_paths import attach_paths
 from utils import roundtrip_cost_pct
 
@@ -165,6 +165,7 @@ def backtest_params(trades, profile, time_stop_bars, min_conf=None, cost_mult=1.
             donchian_period=cfg.get("donchian_exit_period", 10),
             time_stop_bars=time_stop_bars,
             tp_mult=None,
+            **replay_fill_settings(cfg),   # M5/N9
         )
         if res["r_multiple"] is None:
             continue

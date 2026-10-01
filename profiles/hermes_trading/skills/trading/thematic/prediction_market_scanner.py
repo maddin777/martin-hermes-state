@@ -28,6 +28,34 @@ def _db_connect():
     return con
 
 
+def _normalize_market(m: dict, market_id: str, today: str) -> dict:
+    """Übernimmt einen Markt aus polymarket_client.fetch_trending_markets.
+
+    M18 (30.09.2026): Der Scanner las die Schlüssel "probability"/"price" (Preis), "volume" (Volumen) und
+    "price_change_7d", die fetch_trending_markets gar nicht liefert. Alle 812 gespeicherten Märkte standen deshalb
+    auf Preis 0,5, Volumen 0 und delta_7d 0. Richtig: current_yes_price, total_volume_usd; die Deltas kommen aus der
+    Preishistorie (enrich_with_history) und bleiben ohne Historie None."""
+    yes_price = m.get("current_yes_price")
+    total_vol = m.get("total_volume_usd", 0) or 0
+    return {
+        "market_id": market_id,
+        "token_id": m.get("token_id", ""),
+        "platform": "polymarket",
+        "question": m.get("question", ""),
+        "category": m.get("category", "other"),
+        "resolution_date": m.get("resolution_date", ""),
+        "current_yes_price": yes_price,
+        "price_7d_ago": None,
+        "price_30d_ago": None,
+        "delta_7d": None,
+        "delta_24h": 0,
+        "volume_24h_usd": m.get("volume_24h_usd", 0) or 0,
+        "total_volume_usd": total_vol,
+        "liquidity_score": min(total_vol / 1_000_000, 1.0),
+        "last_updated": today,
+    }
+
+
 def _get_active_theme_list(con) -> str:
     """Erstellt Liste aktiver Themen fuer LLM-Klassifikation."""
     themes = con.execute("""
@@ -72,26 +100,9 @@ def main():
         if category in ("other", "sport"):
             continue
 
-        question = m.get("question", "")
-        yes_price = m.get("probability") or m.get("price", 0.5)
-        delta_7d = m.get("price_change_7d", 0)
-        total_vol = m.get("volume", 0)
+        filtered.append(_normalize_market(m, market_id, today))
 
-        filtered.append({
-            "market_id": market_id,
-            "platform": "polymarket",
-            "question": question,
-            "category": category,
-            "resolution_date": res_date,
-            "current_yes_price": yes_price,
-            "price_7d_ago": yes_price - delta_7d,
-            "delta_7d": delta_7d,
-            "delta_24h": 0,
-            "volume_24h_usd": volume_24h,
-            "total_volume_usd": total_vol,
-            "liquidity_score": min(total_vol / 1_000_000, 1.0),
-            "last_updated": today,
-        })
+    polymarket_client.enrich_with_history(filtered)
 
     print(f"[PM Scanner] {len(filtered)} Markets nach Filter.", flush=True)
 
@@ -105,12 +116,12 @@ def main():
         if existing:
             con.execute("""
                 UPDATE prediction_markets SET
-                    current_yes_price = ?, price_7d_ago = ?, delta_7d = ?,
+                    current_yes_price = ?, price_7d_ago = ?, price_30d_ago = ?, delta_7d = ?,
                     delta_24h = ?, volume_24h_usd = ?, total_volume_usd = ?,
                     liquidity_score = ?, last_updated = ?
                 WHERE id = ?
             """, (
-                m["current_yes_price"], m["price_7d_ago"], m["delta_7d"],
+                m["current_yes_price"], m["price_7d_ago"], m["price_30d_ago"], m["delta_7d"],
                 m["delta_24h"], m["volume_24h_usd"], m["total_volume_usd"],
                 m["liquidity_score"], m["last_updated"], existing["id"],
             ))
@@ -125,7 +136,7 @@ def main():
             """, (
                 m["platform"], m["market_id"], m["question"], m["category"],
                 m["resolution_date"], m["current_yes_price"], m["price_7d_ago"],
-                m["current_yes_price"], m["delta_7d"], m["delta_24h"],
+                m["price_30d_ago"], m["delta_7d"], m["delta_24h"],
                 m["volume_24h_usd"], m["total_volume_usd"],
                 m["liquidity_score"], m["last_updated"],
             ))

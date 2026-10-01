@@ -26,7 +26,7 @@ log = get_logger("signal_manager")
 from config import DB_PATH, SIGNALS_VALIDATED_PATH, STRATEGY_CONFIG_PATH, MACRO_SIGNAL_PATH, db_connect, get_asset_type, get_exit_config, get_sector_regime, sector_regime_key, drawdown_params
 from config import DETERMINISTIC_CHANNELS, MIN_MENTIONS_DETERMINISTIC
 from exit_rules import initial_stop, peak_chandelier_stop, protected_time_stop_price, time_stop_due
-from exit_rules import YT_FADE_MODE, fade_exit_decision
+from exit_rules import YT_FADE_MODE, fade_exit_decision, FADE_MAX_LOSS_MULT
 CONFIG_PATH = STRATEGY_CONFIG_PATH
 
 
@@ -156,8 +156,8 @@ def load_config():
 
 def save_config(cfg):
     os.makedirs(os.path.dirname(CONFIG_PATH), exist_ok=True)
-    with open(CONFIG_PATH, "w") as f:
-        json.dump(cfg, f, indent=2)
+    from utils import atomic_write_json  # N3: atomar schreiben (Config wird vom Optimizer/Dashboard parallel gelesen)
+    atomic_write_json(CONFIG_PATH, cfg, indent=2)
 
 def init_db(con):
     con.execute("""
@@ -224,6 +224,15 @@ def init_db(con):
         con.execute("ALTER TABLE positions ADD COLUMN lowest_price REAL DEFAULT 0")
     if "partial_exit_done" not in cols:
         con.execute("ALTER TABLE positions ADD COLUMN partial_exit_done INTEGER DEFAULT 0")
+    # K3 (30.09.2026): realisierter Teil-TP-Gewinn und verkaufter Anteil, damit der Rest-Exit
+    # den Gesamt-P&L der Position ins Ledger (pnl_eur) schreiben kann.
+    if "partial_pnl_eur" not in cols:
+        con.execute("ALTER TABLE positions ADD COLUMN partial_pnl_eur REAL DEFAULT 0")
+    if "partial_size_eur" not in cols:
+        con.execute("ALTER TABLE positions ADD COLUMN partial_size_eur REAL DEFAULT 0")
+    # P7 (30.09.2026): Stop beim Entry, Basis fuer das R-Multiple (stop_loss wird spaeter nachgezogen)
+    if "initial_stop_loss" not in cols:
+        con.execute("ALTER TABLE positions ADD COLUMN initial_stop_loss REAL")
     if "thesis_current_status" not in cols:
         con.execute("ALTER TABLE positions ADD COLUMN thesis_current_status TEXT DEFAULT 'no_thesis'")
     if "thesis_theme_id" not in cols:
@@ -381,6 +390,26 @@ def get_prev_close_ratio(ticker):
         return None, None
 
 
+def get_overnight_gap_inputs(ticker):
+    """(Open der letzten Kerze, Close der Vorkerze) oder (None, None).
+
+    M2 (30.09.2026): Der Gap-Filter verglich Close[-1] mit Close[-2] und blockte damit jeden großen
+    Tagesschritt (35 % aller Handelstage, v. a. Momentum-Tage). Ein Overnight-Gap ist die Lücke zwischen
+    Vortagesschluss und Eröffnung: |Open[-1] - Close[-2]|."""
+    try:
+        _close, _atr, df = get_price_data_cached(ticker)
+        if df is None or len(df) < 2:
+            return None, None
+        close_s = df["Close"].iloc[:, 0] if df["Close"].ndim > 1 else df["Close"]
+        open_s = df["Open"].iloc[:, 0] if df["Open"].ndim > 1 else df["Open"]
+        last_open, prev_close = float(open_s.iloc[-1]), float(close_s.iloc[-2])
+        if last_open != last_open or prev_close != prev_close:      # NaN
+            return None, None
+        return last_open, prev_close
+    except Exception:
+        return None, None
+
+
 def send_telegram(message):
     if not TELEGRAM_TOKEN or not TELEGRAM_HOME_CHANNEL:
         print(f"\n{message}")
@@ -403,6 +432,37 @@ def send_telegram(message):
             )
     except Exception as e:
         print(f"  ⚠ Telegram Fehler: {e}")
+
+VIX_HALVING_THRESHOLD = 30.0
+
+
+def get_current_vix(con):
+    """Aktueller VIX (M1, 30.09.2026): regime_history (täglich), sonst macro_data 'VIXCLS' (FRED).
+
+    Die alte Abfrage nutzte macro_data.indicator_id (Spalte existiert nicht) und schluckte den Fehler:
+    die VIX-Halbierung der Positionsgröße war nie aktiv. None, wenn kein Wert ermittelbar ist."""
+    queries = (
+        "SELECT vix AS v FROM regime_history WHERE vix IS NOT NULL AND vix > 0 ORDER BY date DESC LIMIT 1",
+        "SELECT value AS v FROM macro_data WHERE indicator='VIXCLS' AND value IS NOT NULL ORDER BY date DESC LIMIT 1",
+    )
+    for sql in queries:
+        try:
+            row = con.execute(sql).fetchone()
+        except Exception as e:
+            log.warning("VIX-Abfrage fehlgeschlagen (%s): %s", sql[:40], e)
+            continue
+        if row and row["v"]:
+            return float(row["v"])
+    return None
+
+
+def vix_size_factor(con, threshold=VIX_HALVING_THRESHOLD):
+    """(Faktor, VIX): 0.5 bei VIX > threshold, sonst 1.0."""
+    vix = get_current_vix(con)
+    if vix is not None and vix > threshold:
+        return 0.5, vix
+    return 1.0, vix
+
 
 def get_current_regime(con):
     """Liest das aktuelle Marktregime aus regime_history."""
@@ -477,8 +537,13 @@ def adapt_strategy(cfg, con):
         # unerreichbar). Vorher wurde stattdessen min_confidence angehoben — ein
         # Parameter ohne Wirkung, siehe Deprecation-Hinweis im Docstring.
         if regime != "sideways":
-            cfg["atr_tp_multiplier"] = min(3.5, cfg["atr_tp_multiplier"] + 0.25)
-            changes.append(f"TP erhöht auf {cfg['atr_tp_multiplier']}x ATR")
+            _old_tp = cfg["atr_tp_multiplier"]
+            cfg["atr_tp_multiplier"] = min(3.5, _old_tp + 0.25)
+            # N4 (30.09.2026): die Meldung sagte immer "erhöht", auch wenn die Obergrenze 3.5 den Wert SENKTE
+            _dir = ("erhöht" if cfg["atr_tp_multiplier"] > _old_tp
+                    else "gesenkt" if cfg["atr_tp_multiplier"] < _old_tp else "unverändert")
+            if _dir != "unverändert":
+                changes.append(f"TP {_dir} auf {cfg['atr_tp_multiplier']}x ATR (Obergrenze 3.5)")
         cfg["consecutive_wins"] = 0
 
     if cfg["consecutive_losses"] >= 3:
@@ -486,8 +551,12 @@ def adapt_strategy(cfg, con):
         # bewusst nichts. Die Risikoreduktion nach Verlustserien läuft im
         # Sideways ohnehin über die Drawdown-Matrix (Size + Positionslimit).
         if regime != "sideways":
-            cfg["atr_sl_multiplier"] = max(1.2, cfg["atr_sl_multiplier"] - 0.25)
-            changes.append(f"SL enger auf {cfg['atr_sl_multiplier']}x ATR")
+            _old_sl = cfg["atr_sl_multiplier"]
+            cfg["atr_sl_multiplier"] = max(1.2, _old_sl - 0.25)
+            _dir = ("enger" if cfg["atr_sl_multiplier"] < _old_sl
+                    else "weiter" if cfg["atr_sl_multiplier"] > _old_sl else "unverändert")
+            if _dir != "unverändert":
+                changes.append(f"SL {_dir} auf {cfg['atr_sl_multiplier']}x ATR (Untergrenze 1.2)")
         cfg["consecutive_losses"] = 0
 
     if changes:
@@ -497,6 +566,12 @@ def adapt_strategy(cfg, con):
 
     save_config(cfg)
     return cfg
+
+
+def conviction_tier(score):
+    """HIGH >= 0.8, NORMAL >= 0.6, sonst LOW (identisch zu nightly_eval.update_segment_performance)."""
+    s = score or 0
+    return "HIGH" if s >= 0.8 else "NORMAL" if s >= 0.6 else "LOW"
 
 
 def check_segment_performance(con, ticker, direction, conviction_score):
@@ -511,7 +586,7 @@ def check_segment_performance(con, ticker, direction, conviction_score):
         ).fetchone()
         sector = (sector_row["sector"] if sector_row else "Other") or "Other"
 
-        tier = "HIGH" if (conviction_score or 0) >= 0.8 else "NORMAL" if (conviction_score or 0) >= 0.6 else "LOW"
+        tier = conviction_tier(conviction_score)
 
         row = con.execute("""
             SELECT trades_total, win_rate, avg_pnl_pct
@@ -537,16 +612,66 @@ def check_segment_performance(con, ticker, direction, conviction_score):
         return True, None  # Bei Fehler durchlassen (fail open)
 
 
+def _ensure_sector_table(con):
+    """N10 (30.09.2026): Die Sektor-Sperrliste liegt in der DB (Tabelle sector_blacklist), nicht mehr in strategy_config.json.
+
+    Vorher schrieb der Signal Manager sie ins JSON, der Watchlist-Manager verschob sie nachts in die DB (und las dabei den
+    falschen Schluessel blocked_at statt blocked_since) und leerte das JSON. Ergebnis: Sperre weg, Cooldown bei jedem
+    Lauf neu, DB-Zeile ohne Wirkung, waehrend Dashboard und Export den Alt-Eintrag zeigten. Jetzt gibt es eine Quelle."""
+    con.execute("""
+        CREATE TABLE IF NOT EXISTS sector_blacklist (
+            sector TEXT PRIMARY KEY,
+            blocked_at DATE NOT NULL,
+            cooldown_days INTEGER DEFAULT 14,
+            probation_entry_id INTEGER,
+            probation_entry_ticker TEXT,
+            probation_opened_at DATE,
+            probation_status TEXT DEFAULT NULL,
+            probation_pnl REAL,
+            re_entry_threshold_pnl REAL DEFAULT 0,
+            created_at TEXT DEFAULT (datetime('now')),
+            updated_at TEXT
+        )
+    """)
+    if "reason" not in {r[1] for r in con.execute("PRAGMA table_info(sector_blacklist)")}:
+        con.execute("ALTER TABLE sector_blacklist ADD COLUMN reason TEXT")
+
+
+def _sector_date(value):
+    return datetime.strptime(str(value)[:10], "%Y-%m-%d").date()
+
+
+def _import_json_sector_blacklist(con, cfg):
+    """Alt-Eintraege aus cfg["sector_blacklist"] einmalig in die DB uebernehmen und das JSON leeren."""
+    old = cfg.get("sector_blacklist") or {}
+    if not old:
+        return cfg
+    today = datetime.now().strftime("%Y-%m-%d")
+    for sector, entry in old.items():
+        since = str((entry or {}).get("blocked_since") or (entry or {}).get("blocked_at") or today)[:10]
+        con.execute("""
+            INSERT OR IGNORE INTO sector_blacklist (sector, blocked_at, cooldown_days, reason)
+            VALUES (?, ?, ?, ?)
+        """, (sector, since, cfg.get("sector_cooldown_days", 14), (entry or {}).get("reason")))
+    con.commit()
+    cfg["sector_blacklist"] = {}
+    save_config(cfg)
+    return cfg
+
+
 def update_sector_blacklist(con, cfg):
-    """Aktualisiert die Sektor-Blacklist basierend auf 14d P&L.
-    
-    Ein Sektor wird auf die Blacklist gesetzt wenn:
-    - mind. 3 geschlossene Trades in 14 Tagen
-    - avg P&L negativ
-    
-    Re-Entry (Probation): Nach cooldown_days wird 1 Probation-Trade 
-    mit 50% Position Size erlaubt. Bei Gewinn → Sektor frei.
+    """Aktualisiert die Sektor-Sperrliste (DB) anhand des 14d-P&L.
+
+    Ein Sektor wird gesperrt, wenn er in 14 Tagen mindestens 3 geschlossene Trades und eine negative P&L-Summe hat.
+    Nach cooldown_days ist ein Probation-Trade mit 50 % Size erlaubt; erst ein Gewinn ueber
+    sector_reentry_threshold_pnl gibt den Sektor frei, ein Verlust startet den Cooldown neu (is_sector_allowed).
+
+    P8 (30.09.2026): Vorher loeschte diese Funktion die Sperre nach dem Cooldown, sobald das 14-Tage-Fenster keine
+    3 Verlusttrades mehr zeigte. Weil im gesperrten Sektor keine neuen Trades entstehen, war das nach 14 Tagen fast
+    immer so: volle Freigabe statt Probation, der Probation-Pfad lief praktisch nie.
     """
+    _ensure_sector_table(con)
+    cfg = _import_json_sector_blacklist(con, cfg)
     sector_pnl = {}
     for row in con.execute("""
         SELECT c.sector, COUNT(*) as trades, ROUND(SUM(p.pnl_eur), 2) as total_pnl,
@@ -565,35 +690,27 @@ def update_sector_blacklist(con, cfg):
                 "avg_pnl_pct": row["avg_pnl_pct"]
             }
 
-    blacklist = cfg.get("sector_blacklist", {})
     cooldown = cfg.get("sector_cooldown_days", 14)
-    
+    today = datetime.now().date()
+    listed = {r["sector"]: r for r in con.execute("SELECT * FROM sector_blacklist").fetchall()}
+
     for sector, data in sector_pnl.items():
-        if sector not in blacklist:
-            blacklist[sector] = {
-                "blocked_since": datetime.now().isoformat(),
-                "reason": f"14d: {data['trades']} Trades, {data['total_pnl']:.0f}€ Ø {data['avg_pnl_pct']:+.1f}%",
-                "probation_done": False
-            }
-            print(f"  🚫 Sektor '{sector}' auf Blacklist: {blacklist[sector]['reason']}", flush=True)
-    
-    # Verwaiste Einträge entfernen (Sektoren die wieder positiv laufen)
-    for sector in list(blacklist.keys()):
-        if sector not in sector_pnl:
-            # Prüfen ob Cooldown abgelaufen + Probation möglich
-            blocked_since = datetime.fromisoformat(blacklist[sector]["blocked_since"])
-            days_blocked = (datetime.now() - blocked_since).days
-            if days_blocked >= cooldown:
-                if blacklist[sector].get("probation_done"):
-                    del blacklist[sector]
-                    print(f"  ✅ Sektor '{sector}' von Blacklist entfernt (Cooldown + Probation bestanden)", flush=True)
-                else:
-                    # Sektor hat keine neuen Trades im 14d-Fenster → automatisch freigeben
-                    # Der Grund für die Blockade (frühere Verluste) ist nicht mehr aktiv
-                    del blacklist[sector]
-                    print(f"  ✅ Sektor '{sector}' von Blacklist entfernt (Cooldown abgelaufen, keine neuen Trades)", flush=True)
-    
-    cfg["sector_blacklist"] = blacklist
+        if sector not in listed:
+            reason = f"14d: {data['trades']} Trades, {data['total_pnl']:.0f}€ Ø {data['avg_pnl_pct']:+.1f}%"
+            con.execute("""
+                INSERT INTO sector_blacklist (sector, blocked_at, cooldown_days, reason, re_entry_threshold_pnl, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?)
+            """, (sector, today.strftime("%Y-%m-%d"), cooldown, reason,
+                  cfg.get("sector_reentry_threshold_pnl", 0), datetime.now().isoformat()))
+            print(f"  🚫 Sektor '{sector}' auf Blacklist: {reason}", flush=True)
+
+    # P8: keine automatische Freigabe nach dem Cooldown. Danach entscheidet ein Probation-Trade (is_sector_allowed).
+    for sector, r in listed.items():
+        days_blocked = (today - _sector_date(r["blocked_at"])).days
+        if (days_blocked == int(r["cooldown_days"] or cooldown)
+                and r["probation_status"] not in ("active",)):
+            print(f"  🧪 Sektor '{sector}': Cooldown abgelaufen, naechster Entry als Probation-Trade (50 %)", flush=True)
+    con.commit()
     return cfg
 
 
@@ -632,49 +749,54 @@ def _derive_signal_source(channels):
     return "youtube"
 
 
+def mark_probation_started(con, sector, ticker, position_id):
+    """Vermerkt den Probation-Trade in der DB (Status 'active'); is_sector_allowed wertet ihn nach dem Schliessen aus."""
+    _ensure_sector_table(con)
+    con.execute("""
+        UPDATE sector_blacklist SET probation_status='active', probation_entry_id=?, probation_entry_ticker=?,
+               probation_opened_at=?, updated_at=? WHERE sector=?
+    """, (position_id, ticker, datetime.now().strftime("%Y-%m-%d"), datetime.now().isoformat(), sector))
+    con.commit()
+
+
 def is_sector_allowed(sector, con, cfg):
-    """Prüft ob ein Sektor für neue Entries freigegeben ist.
-    
+    """Prueft ob ein Sektor fuer neue Entries freigegeben ist (Quelle: DB sector_blacklist).
+
     Returns: (ok: bool, is_probation: bool, reason: str)
     """
-    blacklist = cfg.get("sector_blacklist", {})
-    if sector not in blacklist:
+    _ensure_sector_table(con)
+    row = con.execute("SELECT * FROM sector_blacklist WHERE sector=?", (sector,)).fetchone()
+    if row is None:
         return True, False, ""
-    
-    entry = blacklist[sector]
-    blocked_since = datetime.fromisoformat(entry["blocked_since"])
-    days_blocked = (datetime.now() - blocked_since).days
-    cooldown = cfg.get("sector_cooldown_days", 14)
-    
-    if days_blocked < cooldown:
-        return False, False, f"Sektor '{sector}' gesperrt ({days_blocked}/{cooldown}d): {entry.get('reason', '')}"
-    
-    # Cooldown abgelaufen → Probation
-    if not entry.get("probation_done"):
-        return True, True, f"Sektor '{sector}' in Probation (50% Size)"
-    
-    # Probation bereits durchgeführt → prüfen ob erfolgreich
-    probation_result = con.execute("""
-        SELECT pnl_eur, pnl_pct FROM positions p
-        JOIN companies c ON c.ticker = p.ticker
-        WHERE c.sector = ? AND p.exit_date >= ?
-        ORDER BY p.exit_date DESC LIMIT 1
-    """, (sector, blocked_since.isoformat())).fetchone()
-    
-    if probation_result and (probation_result["pnl_eur"] or 0) > 0:
-        # Probation gewonnen → Sektor freigeben
-        del blacklist[sector]
-        cfg["sector_blacklist"] = blacklist
-        save_config(cfg)
-        return True, False, f"Sektor '{sector}' freigegeben (Probation bestanden)"
-    else:
-        # Probation verloren → erneuter Cooldown
-        entry["blocked_since"] = datetime.now().isoformat()
-        entry["probation_done"] = False
-        cfg["sector_blacklist"] = blacklist
-        save_config(cfg)
+
+    today = datetime.now().date()
+    days_blocked = (today - _sector_date(row["blocked_at"])).days
+    cooldown = int(row["cooldown_days"] or cfg.get("sector_cooldown_days", 14))
+
+    if row["probation_status"] == "active":
+        pos = (con.execute("SELECT status, pnl_eur FROM positions WHERE id=?", (row["probation_entry_id"],)).fetchone()
+               if row["probation_entry_id"] else None)
+        if pos is not None and pos["status"] != "closed":
+            return False, False, f"Sektor '{sector}': Probation-Trade laeuft ({row['probation_entry_ticker']})"
+        pnl = (pos["pnl_eur"] or 0.0) if pos is not None else 0.0
+        threshold = float(cfg.get("sector_reentry_threshold_pnl", row["re_entry_threshold_pnl"] or 0) or 0)
+        if pos is not None and pnl > threshold:
+            con.execute("DELETE FROM sector_blacklist WHERE sector=?", (sector,))
+            con.commit()
+            return True, False, f"Sektor '{sector}' freigegeben (Probation bestanden)"
+        con.execute("""
+            UPDATE sector_blacklist SET probation_status='failed', probation_pnl=?, blocked_at=?, updated_at=?
+            WHERE sector=?
+        """, (pnl, today.strftime("%Y-%m-%d"), datetime.now().isoformat(), sector))
+        con.commit()
         return False, False, f"Sektor '{sector}' in erneutem Cooldown (Probation fehlgeschlagen)"
-    
+
+    if days_blocked < cooldown:
+        return False, False, f"Sektor '{sector}' gesperrt ({days_blocked}/{cooldown}d): {row['reason'] or ''}"
+
+    # Cooldown abgelaufen (auch nach fehlgeschlagener Probation): ein Probation-Trade
+    return True, True, f"Sektor '{sector}' in Probation (50% Size)"
+
 
 def has_upcoming_earnings(ticker, days_ahead=5):
     """Prüft ob Earnings innerhalb der nächsten N Tage anstehen.
@@ -728,6 +850,9 @@ def is_macro_event_day(d=None):
     return _first_friday_of_month(d)
 
 
+GAP_ATR_THRESHOLD = 0.8
+
+
 def has_overnight_gap(current_price, atr, prev_close=None):
     """Gap-Filter: blockt Entry wenn der Open weit vom Vortages-Schluss entfernt ist
     (typisch nach Overnight-Earnings oder Makro-News). Verhindert Kauf nach 1.5x ATR Gap."""
@@ -736,8 +861,26 @@ def has_overnight_gap(current_price, atr, prev_close=None):
     if prev_close is None:
         return False  # ohne Referenz nicht beurteilbar → durchlassen (fail-open)
     gap_pct = abs(current_price - prev_close) / current_price
-    # Gap > 60% einer Tages-ATR → zu riskant (Gap-Entry), blocken
-    return gap_pct > 0.6 * (atr / current_price)
+    # M2 (30.09.2026, Entscheidung Martin): Schwelle 0,6 -> 0,8 ATR. Gemessen an 20 Titeln / 9.441 Ticker-Tagen
+    # blockte die Eröffnungslücke bei 0,6 ATR 15,5 % der Tage, bei 0,8 ATR 8,9 % (Ziel < 10 %).
+    return gap_pct > GAP_ATR_THRESHOLD * (atr / current_price)
+
+
+def _ledger_with_partial(con, pos_id, rest_pnl_eur, rest_pnl_pct, rest_size):
+    """Gesamt-P&L einer Position inkl. bereits gebuchtem Teil-TP (K3, 30.09.2026).
+
+    Der Teil-TP hat seinen Gewinn schon ins Cash gebucht. Ohne diese Summe stand im Ledger
+    (positions.pnl_eur) nur der Rest-Exit, Win-Rate und Gesamt-P&L waren zu pessimistisch.
+    Ohne Teil-TP bleibt alles wie bisher. Rückgabe: (pnl_eur, pnl_pct als Anteil)."""
+    row = con.execute(
+        "SELECT partial_pnl_eur, partial_size_eur FROM positions WHERE id=?", (pos_id,)
+    ).fetchone()
+    p_pnl = float(row["partial_pnl_eur"] or 0.0) if row else 0.0
+    p_size = float(row["partial_size_eur"] or 0.0) if row else 0.0
+    if not p_size:
+        return rest_pnl_eur, rest_pnl_pct
+    total_pnl = rest_pnl_eur + p_pnl
+    return total_pnl, total_pnl / (rest_size + p_size)
 
 
 def check_open_positions(con, cfg):
@@ -812,6 +955,7 @@ def check_open_positions(con, cfg):
             if fade_reason:
                 pnl_eur, pnl_pct = realized_pnl_from_effective_entry(
                     entry, fade_px, original_position_size, direction)
+                pnl_eur -= COMMISSION_EUR   # N12: Entry-Kommission
                 cash += original_position_size + pnl_eur
                 con.execute("""
                     UPDATE positions SET status='closed', exit_price=?, exit_date=?,
@@ -820,11 +964,7 @@ def check_open_positions(con, cfg):
                       round(pnl_eur, 2), round(pnl_pct * 100, 2), pos["id"]))
                 con.execute(
                     "UPDATE portfolio SET cash=?, total_value=?, updated_at=? WHERE id=1",
-                    (round(cash, 2), round(cash + sum(
-                        r["position_size"] for r in con.execute(
-                            "SELECT position_size FROM positions WHERE status='open'"
-                        ).fetchall()
-                    ), 2), datetime.now().isoformat())
+                    (round(cash, 2), compute_total_value(con, cash), datetime.now().isoformat())
                 )
                 con.commit()
                 won = pnl_eur > 0
@@ -872,11 +1012,19 @@ def check_open_positions(con, cfg):
                 and not reached_target:
             initial_sl = initial_stop(entry, pos["atr_at_entry"] or atr,
                                       direction, pos_mult["sl"])
-            exit_price = protected_time_stop_price(current_price, initial_sl, direction)
-            pnl_eur, pnl_pct = realized_pnl_from_effective_entry(
+            # N9 (30.09.2026): protected_time_stop_price deckelt den Fuellpreis am Anfangs-Stop. Liegt der Kurs
+            # am Time-Stop-Tag schon jenseits des Stops, wird dadurch zu gut gebucht (in den 13 bisherigen
+            # Time-Stops nie eingetreten). cfg["time_stop_protected_fill"]=False bucht zum tatsaechlichen Kurs;
+            # Voreinstellung True = bisheriges Verhalten (Replay und Shadow-Buecher rechnen gleich).
+            exit_price = (protected_time_stop_price(current_price, initial_sl, direction)
+                          if cfg.get("time_stop_protected_fill", True) else current_price)
+            rest_pnl_eur, rest_pnl_pct = realized_pnl_from_effective_entry(
                 entry, exit_price, original_position_size, direction
             )
-            cash += original_position_size + pnl_eur
+            rest_pnl_eur -= COMMISSION_EUR   # N12: Entry-Kommission
+            cash += original_position_size + rest_pnl_eur
+            pnl_eur, pnl_pct = _ledger_with_partial(
+                con, pos["id"], rest_pnl_eur, rest_pnl_pct, original_position_size)
             con.execute("""
                 UPDATE positions SET status='closed', exit_price=?, exit_date=?,
                     exit_reason='TIME_STOP', pnl_eur=?, pnl_pct=? WHERE id=?
@@ -884,11 +1032,7 @@ def check_open_positions(con, cfg):
                   round(pnl_pct * 100, 2), pos["id"]))
             con.execute(
                 "UPDATE portfolio SET cash=?, total_value=?, updated_at=? WHERE id=1",
-                (round(cash, 2), round(cash + sum(
-                    r["position_size"] for r in con.execute(
-                        "SELECT position_size FROM positions WHERE status='open'"
-                    ).fetchall()
-                ), 2), datetime.now().isoformat())
+                (round(cash, 2), compute_total_value(con, cash), datetime.now().isoformat())
             )
             con.commit()
             continue
@@ -903,7 +1047,9 @@ def check_open_positions(con, cfg):
                       else (entry - current_price) / atr
             if pnl_atr >= pos_mult["partial_atr"]:
                 partial_pct = cfg.get("partial_tp_pct", 0.50)
-                partial_pnl = pnl_pct * (pos["position_size"] * partial_pct)
+                # N12 (30.09.2026): wie beim Voll-Exit mit Exit-Slippage und Kommission
+                partial_pnl, _partial_ratio = realized_pnl_from_effective_entry(
+                    entry, current_price, pos["position_size"] * partial_pct, direction)
 
                 # 50% der Position schließen
                 remaining_shares = shares * (1 - partial_pct)
@@ -925,11 +1071,15 @@ def check_open_positions(con, cfg):
                         position_size = ?,
                         partial_exit_done = 1,
                         stop_loss = ?,
-                        trailing_sl = ?
+                        trailing_sl = ?,
+                        partial_pnl_eur = COALESCE(partial_pnl_eur, 0) + ?,
+                        partial_size_eur = COALESCE(partial_size_eur, 0) + ?
                     WHERE id = ?
                 """, (round(remaining_shares, 4), round(remaining_size, 2),
                       round(new_sl_after_partial, 2),
-                      round(new_sl_after_partial, 2), pos["id"]))
+                      round(new_sl_after_partial, 2),
+                      round(partial_pnl, 2),
+                      round(pos["position_size"] * partial_pct, 2), pos["id"]))
 
                 # Cash zurückbuchen (verkaufter Anteil + Gewinn)
                 cash_return = pos["position_size"] * partial_pct + partial_pnl
@@ -1089,11 +1239,17 @@ def check_open_positions(con, cfg):
         if exit_reason:
             # #11: PnL einheitlich mit Exit-Slippage + Commission (entry_price ist
             # bereits effektiv). Ersetzt die slippage-freie Rohberechnung.
-            pnl_eur, pnl_pct = realized_pnl_from_effective_entry(
+            rest_pnl_eur, rest_pnl_pct = realized_pnl_from_effective_entry(
                 entry, current_price, original_position_size, direction
             )
+            # N12 (30.09.2026): Die Entry-Kommission wurde nie verbucht (sie senkt beim Kauf nur die
+            # Stückzahl, der Rückfluss kam aber mit vollem position_size zurück). Abzug beim Schluss.
+            rest_pnl_eur -= COMMISSION_EUR
             # Cash-Rückbuchung mit original_position_size (vor Partial-TP-Reduktion)
-            cash += original_position_size + pnl_eur
+            cash += original_position_size + rest_pnl_eur
+            # K3: Ledger und Statistik bekommen den Gesamt-P&L inkl. Teil-TP
+            pnl_eur, pnl_pct = _ledger_with_partial(
+                con, pos["id"], rest_pnl_eur, rest_pnl_pct, original_position_size)
             con.execute("""
                 UPDATE positions SET
                     status='closed', exit_price=?, exit_date=?,
@@ -1104,11 +1260,7 @@ def check_open_positions(con, cfg):
                   round(pnl_pct * 100, 2), pos["id"]))
 
             # Portfolio-Value live aktualisieren
-            new_total = cash + sum(
-                r["position_size"] for r in con.execute(
-                    "SELECT position_size FROM positions WHERE status='open'"
-                ).fetchall()
-            )
+            new_total = compute_total_value(con, cash)
             con.execute("""
                 UPDATE portfolio SET cash=?, total_value=?, updated_at=?
                 WHERE id=1
@@ -1141,6 +1293,20 @@ def check_open_positions(con, cfg):
 
             cfg = adapt_strategy(cfg, con)
 
+    cfg = _sync_trade_totals(con, cfg)   # P13
+    return cfg
+
+
+def _sync_trade_totals(con, cfg):
+    """P13 (30.09.2026): total_trades/winning_trades in strategy_config.json aus der DB. Vorher nur im SL/TP- und
+    Fade-Pfad hochgezaehlt (56/19 gegen 98/40 in positions). consecutive_* bleiben unveraendert (adapt_strategy)."""
+    row = con.execute(
+        "SELECT COUNT(*) AS n, SUM(CASE WHEN pnl_eur > 0 THEN 1 ELSE 0 END) AS w FROM positions WHERE status='closed'"
+    ).fetchone()
+    n, w = int(row["n"] or 0), int(row["w"] or 0)
+    if cfg.get("total_trades") != n or cfg.get("winning_trades") != w:
+        cfg["total_trades"], cfg["winning_trades"] = n, w
+        save_config(cfg)
     return cfg
 
 def get_macro_signal():
@@ -1168,6 +1334,20 @@ def apply_regime_filter(conviction, direction, regime):
             return min(1.0, conviction * 1.20)
     return conviction
 
+
+
+def compute_total_value(con, cash):
+    """Depotwert = Cash + Mark-to-Market aller offenen Positionen (N11, 30.09.2026).
+
+    Früher schrieben Exit- und Entry-Pfade cash + Σ position_size (Buchwert), während
+    check_drawdown() den Marktwert schrieb. portfolio.total_value hing dadurch vom
+    letzten Schreiber ab. Jetzt rechnen alle Schreiber gleich. Fehlt ein Kurs, zählt
+    der Einstand der Position (wie in open_positions_market_value_eur)."""
+    open_positions = con.execute(
+        "SELECT ticker, direction, entry_price, position_size FROM positions WHERE status='open'"
+    ).fetchall()
+    market_val = open_positions_market_value_eur(open_positions) if open_positions else 0.0
+    return round(cash + market_val, 2)
 
 
 def check_drawdown(con):
@@ -1232,7 +1412,7 @@ def _is_drawdown_cooldown_active(cfg) -> bool:
         days_elapsed = (_date.today() - close_all_date).days
         cooldown = cfg.get("drawdown_cooldown_days", 7)
         if days_elapsed < cooldown:
-            print(f"  🕐 Drawdown-Cooldown aktiv: noch {cooldown - days_elapsed} Handelstage gesperrt",
+            print(f"  🕐 Drawdown-Cooldown aktiv: noch {cooldown - days_elapsed} Tage gesperrt (Kalendertage)",
                   flush=True)
             return True
     except Exception:
@@ -1240,11 +1420,55 @@ def _is_drawdown_cooldown_active(cfg) -> bool:
     return False
 
 
+def _maybe_reset_drawdown_reference(con, cfg) -> bool:
+    """Wiedereinstieg nach der Notbremse mit neuem Referenzwert (K1b, 30.09.2026).
+
+    Nach close_all besteht das Depot nur aus Cash, der Drawdown vom alten ATH bleibt dauerhaft
+    >= 25 % und der Agent würde nie wieder handeln. Ablauf:
+      - Ohne Cooldown-Datum (Positionen wurden anders geschlossen): Cooldown startet jetzt.
+      - Cooldown läuft noch: nichts tun.
+      - Cooldown vorbei: ath_value = aktueller Depotwert, altes ATH in der Config vermerkt,
+        Cooldown-Datum gelöscht. Gibt True zurück, damit der Entry-Loop normal weiterläuft.
+    """
+    if not cfg.get("drawdown_close_all_date"):
+        cfg["drawdown_close_all_date"] = datetime.now().isoformat()
+        save_config(cfg)
+        print("  🕐 Notbremse ohne offene Positionen: Cooldown startet jetzt.", flush=True)
+        _is_drawdown_cooldown_active(cfg)
+        return False
+    if _is_drawdown_cooldown_active(cfg):
+        return False
+
+    row = con.execute("SELECT cash, ath_value FROM portfolio WHERE id=1").fetchone()
+    cash = float(row["cash"] or 0.0) if row else 0.0
+    old_ath = float(row["ath_value"] or 0.0) if row else 0.0
+    total = compute_total_value(con, cash)
+    con.execute(
+        "UPDATE portfolio SET ath_value=?, total_value=?, updated_at=? WHERE id=1",
+        (total, total, datetime.now().isoformat())
+    )
+    con.commit()
+    cfg["drawdown_ath_before_reset"] = round(old_ath, 2)
+    cfg["drawdown_reference_reset_date"] = datetime.now().isoformat()
+    cfg["drawdown_close_all_date"] = None
+    save_config(cfg)
+    msg = (f"✅ Notbremse-Cooldown abgelaufen\nReferenzwert neu: {total:.2f}€ (altes ATH {old_ath:.2f}€)\n"
+           f"Neue Entries sind wieder möglich.")
+    print("  " + msg.replace("\n", " | "), flush=True)
+    send_telegram(msg)
+    return True
+
+
 def _emergency_close_all(con, cfg):
     """Schließt alle offenen Positionen (Drawdown-Notbremse) und bucht Cash zurück."""
     positions = con.execute(
         "SELECT * FROM positions WHERE status='open'"
     ).fetchall()
+    if not positions:
+        # K1 (30.09.2026): ohne offene Positionen gibt es nichts zu schliessen. Weder Cash
+        # noch Cooldown-Datum anfassen (sonst wuerde jede Nacht der Cooldown neu gestartet).
+        print("  🛑 Notbremse: keine offenen Positionen, nichts zu schließen.", flush=True)
+        return
     total_recovered = 0.0
     for pos in positions:
         ticker    = pos["ticker"]
@@ -1254,13 +1478,17 @@ def _emergency_close_all(con, cfg):
         if not current_price:
             current_price = entry  # Fallback: keine Bewegung angenommen
 
-        if direction == "LONG":
-            pnl_pct = (current_price - entry) / entry
-        else:
-            pnl_pct = (entry - current_price) / entry
-
-        pnl_eur = pnl_pct * pos["position_size"] - COMMISSION_EUR
-        total_recovered += pos["position_size"] + pnl_eur
+        # P13 (30.09.2026): wie jeder andere Exit mit Exit-Slippage und Kommission, Entry-Kommission (N12), Teil-TP-
+        # Gewinn im Ledger (K3) und fuer YT-Fade der Totalverlust-Deckel des 1x-Shorts (wie fade_exit_decision).
+        # Vorher Rohrendite ohne Slippage, Teil-TP fehlte im Ledger, ein Fade konnte mehr als 100 % verlieren.
+        fill = current_price
+        if (pos["exit_mode"] if "exit_mode" in pos.keys() else None) == YT_FADE_MODE:
+            fill = min(current_price, entry * FADE_MAX_LOSS_MULT)
+        rest_pnl_eur, rest_pnl_pct = realized_pnl_from_effective_entry(entry, fill, pos["position_size"], direction)
+        rest_pnl_eur -= COMMISSION_EUR   # Entry-Kommission (N12)
+        total_recovered += pos["position_size"] + rest_pnl_eur
+        pnl_eur, pnl_pct = _ledger_with_partial(con, pos["id"], rest_pnl_eur, rest_pnl_pct, pos["position_size"])
+        current_price = fill
 
         con.execute("""
             UPDATE positions SET
@@ -1270,18 +1498,25 @@ def _emergency_close_all(con, cfg):
         """, (round(current_price, 2), datetime.now().isoformat(),
               round(pnl_eur, 2), round(pnl_pct * 100, 2), pos["id"]))
 
-    # Portfolio zurücksetzen
+    # K1 (30.09.2026): Rückfluss zum vorhandenen Cash ADDIEREN. Früher stand hier
+    # cash = total_recovered, das vernichtete das gesamte freie Cash.
+    row = con.execute("SELECT cash FROM portfolio WHERE id=1").fetchone()
+    cash_before = float(row["cash"]) if row and row["cash"] is not None else 0.0
+    cash_after = cash_before + total_recovered
     con.execute(
         "UPDATE portfolio SET cash=?, total_value=?, updated_at=? WHERE id=1",
-        (round(total_recovered, 2), round(total_recovered, 2), datetime.now().isoformat())
+        (round(cash_after, 2), round(cash_after, 2), datetime.now().isoformat())
     )
     con.commit()
     # Cooldown-Datum setzen
     cfg["drawdown_close_all_date"] = datetime.now().isoformat()
     save_config(cfg)
-    print(f"  🚨 {len(positions)} Positionen geschlossen. Cash zurück: {total_recovered:.2f}€",
-          flush=True)
+    print(f"  🚨 {len(positions)} Positionen geschlossen. Rückfluss: {total_recovered:.2f}€, "
+          f"Cash jetzt: {cash_after:.2f}€", flush=True)
 
+
+
+FUNDAMENTALS_MAX_AGE_DAYS = 30
 
 
 def check_short_thesis(con, ticker: str, conviction_bear: float, cfg: dict) -> tuple:
@@ -1312,34 +1547,28 @@ def check_short_thesis(con, ticker: str, conviction_bear: float, cfg: dict) -> t
         score += 1
         reasons.append(f"Bearish conviction stark {conviction_bear:.0%}")
 
-    # Kriterium 2: Bewertung (P/E > Sektor-Median)
+    # Kriterium 2: Bewertung (P/E > Sektor-Median).
+    # M3 (30.09.2026): Die Abfrage nutzte Spalten, die es nicht gibt (pe_ratio, updated_at) und schluckte den
+    # Fehler; das Kriterium punktete nie. Jetzt echte Spalten (pe_ttm, pe_sector_median, date); Snapshots älter
+    # als FUNDAMENTALS_MAX_AGE_DAYS setzen das Kriterium sichtbar aus statt mit alten Daten zu entscheiden.
     try:
         snap = con.execute("""
-            SELECT fs.pe_ratio, fs.pe_sector_median
-            FROM fundamentals_snapshot fs
-            WHERE fs.ticker = ?
-            ORDER BY fs.updated_at DESC LIMIT 1
+            SELECT pe_ttm, pe_sector_median, date FROM fundamentals_snapshot
+            WHERE ticker = ? ORDER BY date DESC LIMIT 1
         """, (ticker,)).fetchone()
-        if snap and snap["pe_ratio"] and snap["pe_sector_median"]:
-            if snap["pe_ratio"] > snap["pe_sector_median"] * 1.2:  # 20% über Median
+        if snap and snap["pe_ttm"] and snap["pe_sector_median"]:
+            age = (datetime.now().date() - datetime.strptime(str(snap["date"])[:10], "%Y-%m-%d").date()).days
+            if age > FUNDAMENTALS_MAX_AGE_DAYS:
+                log.info("SHORT-Thesis Kriterium 2 ausgesetzt (%s): Snapshot %d Tage alt", ticker, age)
+            elif snap["pe_ttm"] > snap["pe_sector_median"] * 1.2:  # 20% über Median
                 score += 1
-                reasons.append(f"P/E {snap['pe_ratio']:.0f} > Sektor-Median {snap['pe_sector_median']:.0f}")
-    except Exception:
-        pass
+                reasons.append(f"P/E {snap['pe_ttm']:.0f} > Sektor-Median {snap['pe_sector_median']:.0f}")
+    except Exception as e:
+        log.warning("SHORT-Thesis Kriterium 2 (%s): %s", ticker, e)
 
-    # Kriterium 3: Negative Earnings-Revisionen
-    try:
-        snap = con.execute("""
-            SELECT analyst_recommendation FROM fundamentals_snapshot
-            WHERE ticker = ? ORDER BY updated_at DESC LIMIT 1
-        """, (ticker,)).fetchone()
-        if snap and snap["analyst_recommendation"]:
-            neg_recs = ["sell", "underperform", "underweight", "reduce"]
-            if any(r in snap["analyst_recommendation"].lower() for r in neg_recs):
-                score += 1
-                reasons.append(f"Analyst: {snap['analyst_recommendation']}")
-    except Exception:
-        pass
+    # Kriterium 3: Negative Earnings-Revisionen: keine Datenquelle. fundamentals_snapshot enthält nur
+    # analyst_count, keine Empfehlung (die frühere Abfrage auf analyst_recommendation/updated_at schlug
+    # still fehl). Das Kriterium bleibt ausgesetzt, bis eine Quelle für Analysten-Empfehlungen angebunden ist.
 
     # Kriterium 4: Technische Schwäche – #7: nicht nur tech_direction='SHORT'
     # (das ist per Kandidaten-Query ohnehin gesetzt), sondern zusätzlich ein
@@ -1390,9 +1619,19 @@ def compute_sl_tp(effective_entry: float, atr: float, asset_type: str, direction
     return sl, tp
 
 
+def entry_regime(sector_regime, global_regime):
+    """Regime fuer Positionsgroesse und Anfangs-Stop eines Entries (P2, 30.09.2026).
+
+    Das Sektor-Regime der Position, Fallback das globale Regime aus regime_history: dieselbe Regel wie der Exit-Check
+    (check_open_positions und active_exit_check, pos_regime seit 06.09.2026). Vorher rechnete das Sizing mit dem
+    Sektor-Regime, compute_sl_tp beim Entry aber mit dem globalen: bei Abweichung (SHORT im Bear-Sektor bei
+    seitwaerts laufendem Markt, LONG bei globalem Bear) lag das Ist-Risiko 20-25 % neben risk_pct_per_trade."""
+    return sector_regime if sector_regime in ("bull", "sideways", "bear") else global_regime
+
+
 def log_blocked_entry(con, c, ticker, direction, gate, current_price=None, atr=None,
                       ticker_sector=None, conviction=None, crabel=None,
-                      breakout_level=None):
+                      breakout_level=None, sector_regime=None):
     """
     Shadow-Log: schreibt einen vom Gate verhinderten Entry mit allen Levels,
     die gegolten hätten. `crabel_shadow_eval.py` bepreist die Einträge später
@@ -1416,8 +1655,9 @@ def log_blocked_entry(con, c, ticker, direction, gate, current_price=None, atr=N
         if has_levels:
             effective_entry = apply_slippage(current_price, direction, is_entry=True)
             _regime, _vix   = get_current_regime(con)
+            # P2: would_sl wie der Live-Stop (Sektor-Regime, Fallback global)
             would_sl, would_tp = compute_sl_tp(effective_entry, atr, asset_type,
-                                               direction, regime=_regime)
+                                               direction, regime=entry_regime(sector_regime, _regime))
         now = datetime.now()
         con.execute("""
             INSERT OR IGNORE INTO blocked_entries
@@ -1628,6 +1868,18 @@ def open_new_positions(con, cfg):
     """Öffnet neue Positionen aus der Watchlist (LONG + SHORT)."""
     # ── Drawdown-Notbremse + Graduierte Reduzierung ─────────────────
     drawdown_pct, dd_action, dd_params = check_drawdown(con)
+    if dd_action == "close_all":
+        n_open = con.execute("SELECT COUNT(*) FROM positions WHERE status='open'").fetchone()[0]
+        if n_open == 0:
+            # K1: Notbremse bleibt aktiv (keine neuen Entries), aber kein wiederholter Alarm
+            # und kein erneutes close_all. K1b: nach Ablauf des Cooldowns wird der
+            # Referenzwert (ATH) auf den aktuellen Depotwert gesetzt, dann geht es normal weiter.
+            if _maybe_reset_drawdown_reference(con, cfg):
+                drawdown_pct, dd_action, dd_params = check_drawdown(con)
+            else:
+                print(f"  🛑 Drawdown -{drawdown_pct:.1%} vom ATH: Notbremse aktiv, keine offenen "
+                      f"Positionen, keine neuen Entries.", flush=True)
+                return
     if dd_action == "close_all":
         print(f"  🚨 DRAWDOWN NOTBREMSE: -{drawdown_pct:.1%} vom ATH → ALLE Positionen schließen!", flush=True)
         send_telegram(f"🚨 DRAWDOWN NOTBREMSE\n-{drawdown_pct:.1%} vom ATH\nAlle Positionen werden geschlossen!")
@@ -1880,7 +2132,12 @@ def open_new_positions(con, cfg):
 
     all_candidates.sort(key=priority_score, reverse=True)
 
-    slots_available = cfg["max_positions"] - open_count
+    # P1 (30.09.2026): Vorher galt hier cfg["max_positions"] (8) statt des Drawdown-Limits (base_max), und die
+    # Grenzen je Richtung (effective_max_long/short) wurden nur VOR dem Laden der Kandidaten geprueft. In einem Lauf
+    # konnten dadurch bis zu 8 Positionen und mehr LONG/SHORT entstehen, als Drawdown-Matrix und Regime erlauben.
+    # Jetzt zaehlt der Loop je Richtung mit (YT-Fade hat eigene Slots/Budget, s. Allokations-Limit).
+    slots_available = min(cfg["max_positions"], base_max) - open_count
+    _direction_full_noted = set()
     opened = 0
 
     for c, direction in all_candidates:
@@ -1895,6 +2152,7 @@ def open_new_positions(con, cfg):
         current_price = atr = None
         ticker_sector = "Other"
         crabel = None
+        sector_regime = None       # P2: fuer would_sl in blocked_entries (vor der Sektor-Abfrage: global)
 
         def _skip(gate, level=None):
             """Kandidat verwerfen UND den Grund in blocked_entries protokollieren.
@@ -1910,7 +2168,7 @@ def open_new_positions(con, cfg):
             """
             log_blocked_entry(con, c, ticker, direction, gate,
                               current_price, atr, ticker_sector,
-                              cand_conviction, crabel, level)
+                              cand_conviction, crabel, level, sector_regime=sector_regime)
 
         # wie "OpenAI"/"Anthropic" als CRYPTOCURRENCY-Ticker getradet werden.
         # yfinance liefert fuer XYZ-USD echte Preise/Volumen – Liquiditaetsfilter
@@ -1924,6 +2182,16 @@ def open_new_positions(con, cfg):
         unique_channels = len(set(channels))
         is_fade = (fade_on and direction == "LONG"
                    and _derive_signal_source(channels) == "youtube")
+
+        # P1: Grenzen je Richtung auch innerhalb des Laufs. Kein blocked_entries-Eintrag (wie der fruehere break).
+        if not is_fade:
+            _cap = effective_max_long if direction == "LONG" else effective_max_short
+            _now = open_long_count if direction == "LONG" else open_short_count
+            if _now >= _cap:
+                if direction not in _direction_full_noted:
+                    _direction_full_noted.add(direction)
+                    print(f"  📐 Max. {direction}-Positionen ({_cap}) in diesem Lauf erreicht", flush=True)
+                continue
 
         # Filter
         if ticker in open_tickers:
@@ -2063,9 +2331,14 @@ def open_new_positions(con, cfg):
         # Loop 3: Pre-Entry Validation Gate – Segment-Historie prüfen
         seg_ok, seg_reason = check_segment_performance(con, ticker, direction, cand_conviction)
         if not seg_ok:
-            print(f"  🚫 {c['name']}: {seg_reason}")
-            _skip("segment-history")
-            continue
+            # M4 (30.09.2026): entry_conviction_score wird jetzt gespeichert, segment_performance füllt sich
+            # damit. Die Conviction hat laut Probe vom 25.09. keine Vorhersagekraft; das Gate bleibt deshalb
+            # ein Hinweis, solange cfg["segment_gate_enforce"] nicht ausdrücklich True ist.
+            if cfg.get("segment_gate_enforce", False):
+                print(f"  🚫 {c['name']}: {seg_reason}")
+                _skip("segment-history")
+                continue
+            print(f"  ℹ️ {c['name']}: {seg_reason} (nur Hinweis, Gate nicht scharf)")
 
         # X Breaking-News-Check: Negative Breaking News → kein Entry (via twitterapi.io)
         # Nur für HIGH-Conviction (spart X-API-Calls für schwächere Kandidaten)
@@ -2108,9 +2381,9 @@ def open_new_positions(con, cfg):
         # letzte Close weit vom Vortagesschluss entfernt ist (Earnings-/News-Gap).
         # Verhindert "Kauf nach Gap" — klarer Tag-0-Verlierer-Verursacher.
         try:
-            _cur, _prev = get_prev_close_ratio(ticker)
+            _cur, _prev = get_overnight_gap_inputs(ticker)
             if has_overnight_gap(_cur, atr, _prev):
-                print(f"  ↔️ {c['name']}: Overnight-Gap ({_cur:.2f} vs Vortag {_prev:.2f}) – überspringe Entry")
+                print(f"  ↔️ {c['name']}: Overnight-Gap (Open {_cur:.2f} vs Vortagsschluss {_prev:.2f}) – überspringe Entry")
                 _skip("overnight-gap")
                 continue
         except Exception:
@@ -2233,18 +2506,10 @@ def open_new_positions(con, cfg):
                           flush=True)
 
         # VIX-Halving: Bei VIX > 30 Positionsgröße halbieren
-        vix_factor = 1.0
-        try:
-            vix_row = con.execute("""
-                SELECT value FROM macro_data
-                WHERE indicator_id='vix' ORDER BY date DESC LIMIT 1
-            """).fetchone()
-            if vix_row and vix_row["value"] and float(vix_row["value"]) > 30:
-                vix_factor = 0.5
-                print(f"  ⚠️  VIX={vix_row['value']:.0f} > 30 → Positionsgröße halbiert",
-                      flush=True)
-        except Exception:
-            pass
+        vix_factor, _vix_now = vix_size_factor(con)
+        if vix_factor < 1.0:
+            print(f"  ⚠️  VIX={_vix_now:.0f} > {VIX_HALVING_THRESHOLD:.0f} → Positionsgröße halbiert",
+                  flush=True)
 
         # ── Position Sizing (08.09.2026 neu gefasst) ────────────────────────
         # Die Basisgroesse ist fuer alle Kandidaten gleich. Die Conviction wird
@@ -2284,7 +2549,10 @@ def open_new_positions(con, cfg):
         _asset_type_for_sizing = get_asset_type(ticker_sector)
         # 06.09.2026: Sizing nutzt das SEKTOR-Regime (sector_regime aus dem Entry-Filter)
         # statt des globalen, damit SL-Abstand zum Sektor-Trend passt.
-        sl_multiplier  = get_exit_config(asset_type=_asset_type_for_sizing, regime=sector_regime if sector_regime in ("bull","sideways","bear") else "sideways")["sl"]
+        # P2 (30.09.2026): Anfangs-Stop (compute_sl_tp unten) und Exit-Check nutzen jetzt dasselbe Regime.
+        _regime, _vix = get_current_regime(con)
+        _sl_regime = entry_regime(sector_regime, _regime)
+        sl_multiplier  = get_exit_config(asset_type=_asset_type_for_sizing, regime=_sl_regime)["sl"]
         # ATR in EUR umrechnen (FX-aware) für korrektes Sizing
         atr_eur        = price_to_eur(atr, ticker)
         sl_distance_eur = sl_multiplier * atr_eur
@@ -2339,8 +2607,8 @@ def open_new_positions(con, cfg):
         # (Exit-Matrix) statt get_asset_multipliers (Legacy) — konsistent zu
         # active_exit_check. Regime aus DB (get_current_regime), Entry- und
         # Exit-Pfad teilen dieselbe Regimequelle.
-        _regime, _vix = get_current_regime(con)
-        sl, tp = compute_sl_tp(effective_entry, atr, asset_type, direction, regime=_regime)
+        # P2 (30.09.2026): Sektor-Regime wie Sizing und Exit-Check (vorher globales Regime aus regime_history)
+        sl, tp = compute_sl_tp(effective_entry, atr, asset_type, direction, regime=_sl_regime)
         if is_fade:
             # Weiter Notfallstop statt ATR-Stop (siehe exit_rules);
             # TP nur Anzeige — der Exit laeuft ueber die Haltedauer.
@@ -2355,14 +2623,14 @@ def open_new_positions(con, cfg):
         # ermöglicht die Winrate-pro-Signalkomponente in nightly_eval. Vorher blieb
         # die Spalte leer (alle 77 Trades), sodass keine Trennung tech/social/llm
         # messbar war.
-        con.execute("""
+        _pos_cur = con.execute("""
             INSERT INTO positions
             (ticker, name, direction, entry_price, entry_date,
              stop_loss, take_profit, trailing_sl, position_size, shares,
              atr_at_entry, confidence, source_channel, reason,
              highest_price, lowest_price, asset_type, crabel_at_entry, signal_source,
-             exit_mode)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+             exit_mode, entry_conviction_score, entry_conviction_tier, initial_stop_loss)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
         """, (
             ticker, c["name"], trade_direction,
             round(effective_entry, 2),
@@ -2386,6 +2654,9 @@ def open_new_positions(con, cfg):
             json.dumps(crabel) if crabel else None,
             _derive_signal_source(channels) or None,
             YT_FADE_MODE if is_fade else None,
+            round(cand_conviction, 4) if cand_conviction is not None else None,
+            conviction_tier(cand_conviction) if cand_conviction is not None else None,
+            round(sl, 2),      # P7: initial_stop_loss
         ))
 
         # Committee-Audit: Entry hat stattgefunden → Join-Basis für nightly_eval
@@ -2412,15 +2683,13 @@ def open_new_positions(con, cfg):
             fade_invested += position_size
         elif direction == "LONG":
             long_invested += position_size
+            open_long_count += 1      # P1
         else:
             short_invested += position_size
+            open_short_count += 1     # P1
 
         # Portfolio-Value aktualisieren
-        new_total = cash + sum(
-            r["position_size"] for r in con.execute(
-                "SELECT position_size FROM positions WHERE status='open'"
-            ).fetchall()
-        )
+        new_total = compute_total_value(con, cash)
         con.execute(
             "UPDATE portfolio SET cash=?, total_value=?, updated_at=? WHERE id=1",
             (round(cash, 2), round(new_total, 2), datetime.now().isoformat())
@@ -2434,13 +2703,9 @@ def open_new_positions(con, cfg):
         # probation_done=True setzen. Vorher wurde das Flag nie gesetzt → beliebig
         # viele 50%-Probation-Trades, und der Auswertungs-/Removal-Pfad war toter Code.
         if is_probation:
-            bl = cfg.get("sector_blacklist", {})
-            if ticker_sector in bl:
-                bl[ticker_sector]["probation_done"] = True
-                cfg["sector_blacklist"] = bl
-                save_config(cfg)
-                print(f"  🧪 Probation-Trade eröffnet für '{ticker_sector}' "
-                      f"→ probation_done=True (Auswertung beim nächsten Lauf)", flush=True)
+            mark_probation_started(con, ticker_sector, ticker, _pos_cur.lastrowid)
+            print(f"  🧪 Probation-Trade eröffnet für '{ticker_sector}' "
+                  f"→ Status active (Auswertung beim nächsten Lauf)", flush=True)
 
         msg = (
             f"📈 <b>NEUES SIGNAL: {c['name']}</b>\n"

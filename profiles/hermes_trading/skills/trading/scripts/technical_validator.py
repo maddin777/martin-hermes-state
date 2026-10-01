@@ -293,6 +293,21 @@ def resolve_ticker(company_name):
 # get_technical_score() wurde nach utils.py ausgelagert (DRY).
 # Import steht oben: from utils import get_technical_score
 
+_STRENGTH_RANK = {"strong": 3.0, "moderate": 2.0, "weak": 1.0}
+
+
+def _strength_val(c):
+    """Rang der Signalstärke eines Kandidaten. N1 (30.09.2026): der Extraktor liefert strong/moderate/weak als Text;
+    float("strong") schlug fehl und ergab für ALLE -1, der 'stärkste' Eintrag war damit beliebig (der erste)."""
+    v = c["company"].get("strength")
+    if isinstance(v, str) and v.strip().lower() in _STRENGTH_RANK:
+        return _STRENGTH_RANK[v.strip().lower()]
+    try:
+        return float(v) if v is not None else -1
+    except (TypeError, ValueError):
+        return -1
+
+
 def main():
     with open(SIGNALS_PATH, encoding="utf-8") as f:
         signals = json.load(f)
@@ -375,10 +390,6 @@ def main():
                 sources_list.append(s)
 
         # Eintrag mit höchster strength als Repräsentant für Sentiment-Metadaten
-        def _strength_val(c):
-            v = c["company"].get("strength")
-            try: return float(v) if v is not None else -1
-            except (TypeError, ValueError): return -1
         top = max(candidates, key=_strength_val)
         top_comp = top["company"]
 
@@ -418,8 +429,8 @@ def main():
     results.sort(key=lambda x: (x["technical"]["confidence"], x["mentions"]), reverse=True)
 
     os.makedirs(os.path.dirname(OUTPUT_PATH), exist_ok=True)
-    with open(OUTPUT_PATH, "w", encoding="utf-8") as f:
-        json.dump(results, f, ensure_ascii=False, indent=2)
+    from utils import atomic_write_json  # N3
+    atomic_write_json(OUTPUT_PATH, results, ensure_ascii=False, indent=2)
 
     print(f"\n✅ Fertig. {len(results)} validierte Signale → {OUTPUT_PATH}", flush=True)
     print("\nTop 10 nach Confidence × Mentions:", flush=True)

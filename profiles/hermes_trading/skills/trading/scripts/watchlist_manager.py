@@ -33,6 +33,65 @@ from config import (DB_PATH, SIGNALS_PATH, WATCHLIST_DAYS, MIN_MENTIONS, MIN_CON
                     confirmation_factor)
 from pead_signal import get_pead_boost_cached, ensure_pead_cache_table
 
+def _channel_keys(display_name):
+    """Schreibweisen, unter denen eine Quelle in watchlist_mentions.channel auftaucht (M9, 30.09.2026).
+
+    Die Kanäle werden auf lower()/strip() normalisiert, RSS-Quellen tragen das Präfix 'rss:'; die Registry
+    führt display_name in Originalschreibweise. Ohne diese Varianten fanden Gewichte und Kalibrierung für
+    RSS- und Mixed-Case-Quellen (16 % der Mentions der letzten 14 Tage) keinen Treffer (Fallback 1.0)."""
+    dn = (display_name or "").strip()
+    low = dn.lower()
+    return [dn, low, f"rss:{low}"]
+
+
+def _with_variants(pairs):
+    """pairs: [(display_name, wert)]. Exakte Namen haben Vorrang vor abgeleiteten Varianten."""
+    out = {}
+    for name, value in pairs:
+        out[(name or "").strip()] = value
+    for name, value in pairs:
+        for key in _channel_keys(name):
+            out.setdefault(key, value)
+    return out
+
+
+def normalize_compact_dates(con):
+    """M11 (30.09.2026): 'YYYYMMDD' -> 'YYYY-MM-DD' in first_seen/last_seen.
+
+    Der Stale-Drop vergleicht last_seen als String mit dem ISO-Stichtag; '20260621' ist als String immer
+    GRÖSSER als '2026-09-01' ('0' > '-'), 12 watching-Zeilen wurden dadurch nie gedroppt."""
+    n = 0
+    for col in ("first_seen", "last_seen"):
+        n += con.execute(
+            f"UPDATE watchlist SET {col} = substr({col},1,4)||'-'||substr({col},5,2)||'-'||substr({col},7,2) "
+            f"WHERE {col} GLOB '[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]'"
+        ).rowcount
+    con.commit()
+    return n
+
+
+def reactivate_closed_bought(con, cooldown_hours=24):
+    """K4 (30.09.2026): 'bought' ist kein Endstatus mehr.
+
+    Vorher blieb ein Titel nach dem Kauf für immer 'bought' und war damit dauerhaft aus dem Kandidatenpool
+    (91 Titel ohne offene Position, 11 mit frischen Mentions, u. a. AMD, MSFT). Jetzt geht ein Titel zurück auf
+    'watching', wenn keine Position mehr offen ist und der letzte Exit länger als `cooldown_hours` her ist
+    (wie die 24-h-Sperre im Signal Manager)."""
+    cutoff = (datetime.now() - timedelta(hours=cooldown_hours)).isoformat()
+    rows = con.execute("""
+        SELECT w.rowid AS rid FROM watchlist w
+        WHERE w.status = 'bought'
+          AND NOT EXISTS (SELECT 1 FROM positions p WHERE p.status = 'open'
+                          AND (p.ticker = w.ticker OR p.name = w.name))
+          AND NOT EXISTS (SELECT 1 FROM positions p WHERE p.status = 'closed' AND p.exit_date >= ?
+                          AND (p.ticker = w.ticker OR p.name = w.name))
+    """, (cutoff,)).fetchall()
+    for r in rows:
+        con.execute("UPDATE watchlist SET status='watching' WHERE rowid=?", (r["rid"],))
+    con.commit()
+    return len(rows)
+
+
 def get_channel_weights(con):
     """
     Lädt aktive Quellen-Gewichte aus source_registry.
@@ -45,7 +104,7 @@ def get_channel_weights(con):
             FROM source_registry
             WHERE status IN ('active', 'probation') AND enabled = 1
         """).fetchall()
-        return {r["display_name"]: r["weight"] for r in rows}
+        return _with_variants([(r["display_name"], r["weight"]) for r in rows])
     except Exception:
         return {}
 
@@ -73,20 +132,21 @@ def get_channel_calibration(con):
             WHERE status IN ('active', 'probation') AND enabled = 1
               AND avg_pnl_per_trade IS NOT NULL
         """).fetchall()
-        result = {}
+        pairs = []
         for r in rows:
             pnl = r["avg_pnl_per_trade"]
             if pnl >= 50.0:
-                result[r["display_name"]] = 1.5
+                factor = 1.5
             elif pnl >= 20.0:
-                result[r["display_name"]] = 1.2
+                factor = 1.2
             elif pnl >= -5.0:
-                result[r["display_name"]] = 1.0
+                factor = 1.0
             elif pnl >= -20.0:
-                result[r["display_name"]] = 0.7
+                factor = 0.7
             else:
-                result[r["display_name"]] = 0.3
-        return result
+                factor = 0.3
+            pairs.append((r["display_name"], factor))
+        return _with_variants(pairs)
     except Exception:
         return {}
 
@@ -273,6 +333,29 @@ def calculate_conviction_bear(bullish, bearish, neutral, mention_count, unique_c
 # Import steht im Dateikopf: from company_normalizer import ...
 
 
+def migrate_sector_blacklist_json(con, scfg):
+    """Alt-Sperrliste aus strategy_config.json in die DB uebernehmen (N10).
+
+    Liest blocked_since (ISO-Datum, so schreibt es der Signal Manager) und reason; leert scfg["sector_blacklist"].
+    Gibt die Zahl der uebernommenen Sektoren zurueck (der Aufrufer schreibt die Config)."""
+    old = scfg.get("sector_blacklist") or {}
+    if not old:
+        return 0
+    if "reason" not in {r[1] for r in con.execute("PRAGMA table_info(sector_blacklist)")}:
+        con.execute("ALTER TABLE sector_blacklist ADD COLUMN reason TEXT")
+    for sector, entry in old.items():
+        entry = entry or {}
+        blocked_at = str(entry.get("blocked_since") or entry.get("blocked_at")
+                         or datetime.now().strftime("%Y-%m-%d"))[:10]
+        con.execute("""
+            INSERT OR IGNORE INTO sector_blacklist (sector, blocked_at, cooldown_days, reason)
+            VALUES (?, ?, ?, ?)
+        """, (sector, blocked_at, scfg.get("sector_cooldown_days", 14), entry.get("reason")))
+    con.commit()
+    scfg["sector_blacklist"] = {}
+    return len(old)
+
+
 def get_sector_blockade_info(con):
     """Liest sector_blacklist und gibt Dict sector -> {blocked, cooldown_remaining, probation_status} zurück."""
     rows = con.execute("""
@@ -332,6 +415,8 @@ def get_thesis_conviction_boost(con, ticker):
             WHERE tb.ticker = ?
               AND tb.status != 'archived'
               AND td.status = 'active'
+              -- N15 (30.09.2026): Verlierer des Themas (play_type losers) bekamen einen POSITIVEN Boost
+              AND COALESCE(tb.play_type, '') NOT IN ('losers', 'loser')
               -- FIX 08.09.2026: Altersgrenze als zweites Netz. Der Lifecycle in
               -- beneficiary_mapper.sync_beneficiary_status archiviert veraltete
               -- Mappings; faellt der Lauf aus, darf ein monatealtes Mapping
@@ -558,26 +643,17 @@ def main(dry_run=False):
                 updated_at TEXT
             )
         """)
-        # sector_cooldown_days aus strategy_config.json einmalig in DB migrieren
+        # sector_cooldown_days und eine ggf. noch vorhandene Alt-Sperrliste aus strategy_config.json in die DB uebernehmen
         try:
             scfg = json.load(open(STRATEGY_CONFIG_PATH))
             if "sector_cooldown_days" in scfg:
-                cd = scfg["sector_cooldown_days"]
-                con.execute("UPDATE sector_blacklist SET cooldown_days=? WHERE cooldown_days=14", (cd,))
-            # Alte sector_blacklist aus JSON in DB migrieren (einmalig)
-            old_bl = scfg.get("sector_blacklist", {})
-            if old_bl:
-                for sector, entry in old_bl.items():
-                    blocked_at = entry.get("blocked_at", datetime.now().strftime("%Y-%m-%d"))
-                    con.execute("""
-                        INSERT OR IGNORE INTO sector_blacklist (sector, blocked_at, cooldown_days)
-                        VALUES (?, ?, ?)
-                    """, (sector, blocked_at, scfg.get("sector_cooldown_days", 14)))
-                con.commit()
-                # JSON leeren (Daten sind jetzt in DB)
-                scfg["sector_blacklist"] = {}
-                json.dump(scfg, open(STRATEGY_CONFIG_PATH, "w"), indent=2)
-                print(f"  📦 {len(old_bl)} Sektoren aus strategy_config.json in DB migriert", flush=True)
+                con.execute("UPDATE sector_blacklist SET cooldown_days=? WHERE cooldown_days=14",
+                            (scfg["sector_cooldown_days"],))
+            n_migrated = migrate_sector_blacklist_json(con, scfg)
+            if n_migrated:
+                from utils import atomic_write_json  # N3
+                atomic_write_json(STRATEGY_CONFIG_PATH, scfg, indent=2)
+                print(f"  📦 {n_migrated} Sektoren aus strategy_config.json in DB migriert", flush=True)
         except Exception:
             pass
         print("  🚫 Sector-Blacklist-Tabelle bereit", flush=True)
@@ -596,6 +672,16 @@ def main(dry_run=False):
             if calib_count:
                 print(f"  📐 Quellen-Kalibrierung: {len(channel_calibration)} Quellen, {calib_count} mit abweichendem Faktor", flush=True)
     
+        # M11/K4: erst Datumsformat vereinheitlichen, dann abgeschlossene bought-Titel zurück in den Pool
+        # (vor Stale-Drop und Mention-Update, damit deren Conviction in diesem Lauf neu berechnet wird)
+        if not dry_run:
+            _n_dates = normalize_compact_dates(con)
+            if _n_dates:
+                print(f"  🔧 {_n_dates} kompakte Datumswerte (YYYYMMDD) normalisiert", flush=True)
+            _n_react = reactivate_closed_bought(con)
+            if _n_react:
+                print(f"  ♻ {_n_react} bought-Titel ohne offene Position zurück auf 'watching'", flush=True)
+
         # 1. Alte Einträge bereinigen (> 14 Tage ohne Mention)
         cutoff = (datetime.now() - timedelta(days=WATCHLIST_DAYS)).strftime("%Y-%m-%d")
         if dry_run:

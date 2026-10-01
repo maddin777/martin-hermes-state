@@ -75,8 +75,44 @@ def auto_merge_theme(con, new_data: dict, existing_id: int):
     print(f"  🔄 Auto-Merged: '{new_data.get('name')}' -> existing ID {existing_id}", flush=True)
 
 
+def apply_merge_decisions(con) -> int:
+    """Fuehrt Entscheidungen aus theme_merge_queue aus (N16, 30.09.2026).
+
+    Das Dashboard setzt status='merged' oder 'kept_separate', danach passierte nichts (22 Eintraege pending, Entscheidungen
+    wirkungslos). Neu: 'merged' -> auto_merge_theme in das Kandidaten-Theme, 'kept_separate' -> neues Theme. Jede Entscheidung
+    wird einmal ausgefuehrt (Spalte applied)."""
+    cols = {r[1] for r in con.execute("PRAGMA table_info(theme_merge_queue)")}
+    if "applied" not in cols:
+        con.execute("ALTER TABLE theme_merge_queue ADD COLUMN applied INTEGER DEFAULT 0")
+    rows = con.execute("""
+        SELECT id, new_theme_data, candidate_existing_id, status FROM theme_merge_queue
+        WHERE status IN ('merged', 'kept_separate') AND COALESCE(applied, 0) = 0
+    """).fetchall()
+    done = 0
+    for r in rows:
+        try:
+            data = json.loads(r["new_theme_data"])
+        except (TypeError, json.JSONDecodeError):
+            data = None
+        if data:
+            if r["status"] == "merged" and r["candidate_existing_id"]:
+                auto_merge_theme(con, data, r["candidate_existing_id"])
+            elif r["status"] == "kept_separate":
+                insert_new_theme(con, data)
+        con.execute("UPDATE theme_merge_queue SET applied = 1 WHERE id = ?", (r["id"],))
+        done += 1
+    con.commit()
+    return done
+
+
 def queue_for_review(con, new_data: dict, candidate_id: int, similarity: float):
-    """Stellt ein Theme in die Review-Queue."""
+    """Stellt ein Theme in die Review-Queue (nicht doppelt: dasselbe Theme bleibt nur einmal pending)."""
+    dup = con.execute("""
+        SELECT id FROM theme_merge_queue WHERE status = 'pending' AND candidate_existing_id = ?
+        AND json_extract(new_theme_data, '$.name') = ?
+    """, (candidate_id, new_data.get("name"))).fetchone()
+    if dup:
+        return
     con.execute("""
         INSERT INTO theme_merge_queue
         (new_theme_data, candidate_existing_id, similarity_score, status)
@@ -100,6 +136,19 @@ def insert_new_theme(con, new_data: dict) -> int:
     # Embedding berechnen
     embedding = embed_theme(name, description)
     embedding_json = json.dumps(embedding)
+
+    # N16: UNIQUE(name) plus "dormant wird nicht verglichen" ergab einen IntegrityError, sobald ein dormantes Theme
+    # unter demselben Namen wieder auftauchte. Jetzt wird es reaktiviert.
+    existing = con.execute("SELECT id FROM theme_definitions WHERE lower(name) = lower(?)", (name,)).fetchone()
+    if existing:
+        con.execute("""
+            UPDATE theme_definitions SET status = 'active', last_seen = ?, coverage_count = COALESCE(coverage_count, 0) + 1,
+                description = ?, momentum = ?, embedding_vector = ?
+            WHERE id = ?
+        """, (today, description, new_data.get("momentum", "steady"), embedding_json, existing[0]))
+        con.commit()
+        print(f"  ♻ Theme '{name}' reaktiviert (ID {existing[0]})", flush=True)
+        return existing[0]
 
     con.execute("""
         INSERT INTO theme_definitions
@@ -139,6 +188,11 @@ def check_and_merge(new_data: dict, con) -> int:
     if not name or not description:
         return 0
 
+    try:
+        apply_merge_decisions(con)
+    except Exception as e:
+        print(f"  ⚠ Merge-Entscheidungen nicht ausgefuehrt: {e}", flush=True)
+
     embedding = embed_theme(name, description)
     active = _load_active_embeddings(con)
 
@@ -148,6 +202,7 @@ def check_and_merge(new_data: dict, con) -> int:
 
     best_sim = 0.0
     best_id = None
+    skipped_dim = 0
 
     for row in active:
         stored_vec = row["embedding_vector"]
@@ -160,7 +215,12 @@ def check_and_merge(new_data: dict, con) -> int:
                 best_sim = sim
                 best_id = row["id"]
         except (json.JSONDecodeError, TypeError, ValueError):
+            skipped_dim += 1
             continue
+
+    if skipped_dim:
+        # N19: abweichende Embedding-Dimensionen (OpenRouter 1536 vs. lokaler Fallback 384) liessen Vergleiche still ausfallen
+        print(f"  ⚠ {skipped_dim} Themen nicht verglichen (Embedding nicht lesbar oder andere Dimension)", flush=True)
 
     config_path = os.path.join(
         os.path.dirname(__file__), "config", "thematic_config.json"

@@ -1,0 +1,145 @@
+"""K3: Teil-TP-Gewinne gehoeren ins Ledger (positions.pnl_eur).
+
+Befund der Code-Pruefung (30.09.2026): Der Teil-TP buchte seinen Gewinn nur ins Cash; beim Rest-Exit
+stand nur der Rest-P&L im Ledger. Cash minus Ledger = +380,55 EUR, 4 Trades zu Unrecht als Verlust.
+"""
+import os
+import sqlite3
+import sys
+import unittest
+from datetime import datetime, timedelta
+from unittest import mock
+
+ROOT = os.path.dirname(os.path.dirname(__file__))
+sys.path.insert(0, ROOT)
+sys.path.insert(0, os.path.join(ROOT, "scripts"))
+
+from scripts import signal_manager as sm
+
+START_CASH = 5000.0     # Cash nach dem Kauf (1.000 EUR Position bereits abgezogen)
+
+
+def _make_db():
+    con = sqlite3.connect(":memory:")
+    con.row_factory = sqlite3.Row
+    con.execute("CREATE TABLE watchlist (id INTEGER PRIMARY KEY, ticker TEXT, status TEXT, conviction_score REAL)")
+    sm.init_db(con)
+    con.execute("DELETE FROM portfolio")
+    con.execute("INSERT INTO portfolio (id, cash, total_value, ath_value) VALUES (1, ?, ?, ?)",
+                (START_CASH, START_CASH + 1000.0, 11207.85))
+    con.commit()
+    return con
+
+
+def _open_long(con, days_old=0):
+    entry_date = (datetime.now() - timedelta(days=days_old)).isoformat()
+    con.execute(
+        "INSERT INTO positions (ticker, name, direction, entry_price, entry_date, stop_loss, take_profit, "
+        "position_size, shares, status, atr_at_entry, highest_price, lowest_price) "
+        "VALUES ('AAA', 'AAA', 'LONG', 100.0, ?, 96.0, 130.0, 1000.0, 10.0, 'open', 2.0, 100.0, 100.0)",
+        (entry_date,))
+    con.commit()
+
+
+class Ticks:
+    """Steuert den Kurs pro Aufruf von check_open_positions."""
+
+    def __init__(self):
+        self.price = 100.0
+
+    def patches(self):
+        fn = lambda t: (self.price, 2.0, None)
+        return [
+            mock.patch.object(sm, "get_price_data_cached", side_effect=fn),
+            mock.patch("utils.get_price_data_cached", side_effect=fn),
+            mock.patch.object(sm, "prefetch_prices"),
+            mock.patch.object(sm, "get_current_regime", return_value=("sideways", 15.0)),
+            mock.patch.object(sm, "send_telegram"),
+            mock.patch.object(sm, "save_config"),
+            mock.patch.object(sm, "adapt_strategy", side_effect=lambda cfg, con: cfg),
+        ]
+
+
+def _tick(con, cfg, ticks, price):
+    ticks.price = price
+    ps = ticks.patches()
+    for p in ps:
+        p.start()
+    try:
+        return sm.check_open_positions(con, cfg)
+    finally:
+        for p in ps:
+            p.stop()
+
+
+def _cfg():
+    cfg = dict(sm.DEFAULT_CONFIG)
+    cfg["donchian_exit_enabled"] = False       # Chandelier-Modus: SL wandert nach dem Teil-TP auf Breakeven
+    cfg["partial_tp_enabled"] = True
+    return cfg
+
+
+class PartialTpLedgerTests(unittest.TestCase):
+    def test_partial_tp_is_remembered_on_the_position(self):
+        con, ticks = _make_db(), Ticks()
+        _open_long(con)
+        _tick(con, _cfg(), ticks, 104.0)               # +2 ATR -> Teil-TP auf 50 %
+        row = con.execute("SELECT * FROM positions").fetchone()
+        self.assertEqual(row["status"], "open")
+        self.assertEqual(row["partial_exit_done"], 1)
+        # seit N12 mit Exit-Slippage und Kommission wie ein Voll-Exit
+        expected_partial, _ = sm.realized_pnl_from_effective_entry(100.0, 104.0, 500.0, "LONG")
+        self.assertAlmostEqual(row["partial_pnl_eur"], expected_partial, delta=0.01)
+        self.assertAlmostEqual(row["partial_size_eur"], 500.0, places=2)
+        self.assertAlmostEqual(row["position_size"], 500.0, places=2)
+
+    def test_final_exit_books_partial_plus_rest_and_cash_equals_ledger(self):
+        con, ticks, cfg = _make_db(), Ticks(), _cfg()
+        _open_long(con)
+        _tick(con, cfg, ticks, 104.0)
+        _tick(con, cfg, ticks, 99.0)                   # SL steht auf Breakeven (100) -> Rest-Exit im Minus
+        row = con.execute("SELECT * FROM positions").fetchone()
+        self.assertEqual(row["status"], "closed")
+        rest_pnl, _ = sm.realized_pnl_from_effective_entry(100.0, 99.0, 500.0, "LONG")
+        self.assertLess(rest_pnl, 0)
+        partial_pnl, _ = sm.realized_pnl_from_effective_entry(100.0, 104.0, 500.0, "LONG")
+        # Teil-TP + Rest - Entry-Kommission (N12)
+        self.assertAlmostEqual(row["pnl_eur"], partial_pnl + rest_pnl - sm.COMMISSION_EUR, delta=0.02)
+        cash = con.execute("SELECT cash FROM portfolio WHERE id=1").fetchone()["cash"]
+        # Invariante: Cash-Aenderung seit dem Kauf == Ledger
+        self.assertAlmostEqual(cash - (START_CASH + 1000.0), row["pnl_eur"], delta=0.02)   # Cent-Rundung
+
+    def test_trade_with_partial_profit_larger_than_rest_loss_counts_as_win(self):
+        con, ticks, cfg = _make_db(), Ticks(), _cfg()
+        _open_long(con)
+        _tick(con, cfg, ticks, 104.0)
+        _tick(con, cfg, ticks, 99.0)
+        self.assertGreater(con.execute("SELECT pnl_eur FROM positions").fetchone()["pnl_eur"], 0)
+        self.assertEqual(cfg["winning_trades"], 1)
+        self.assertEqual(cfg["consecutive_losses"], 0)
+
+    def test_time_stop_after_partial_also_books_the_partial(self):
+        con, ticks, cfg = _make_db(), Ticks(), _cfg()
+        _open_long(con, days_old=40)
+        con.execute("UPDATE positions SET partial_exit_done=1, position_size=500.0, shares=5.0, "
+                    "partial_pnl_eur=20.0, partial_size_eur=500.0")
+        con.commit()
+        _tick(con, cfg, ticks, 100.5)
+        row = con.execute("SELECT * FROM positions").fetchone()
+        self.assertEqual(row["exit_reason"], "TIME_STOP")
+        rest_pnl, _ = sm.realized_pnl_from_effective_entry(100.0, 100.5, 500.0, "LONG")
+        self.assertAlmostEqual(row["pnl_eur"], rest_pnl - sm.COMMISSION_EUR + 20.0, delta=0.01)   # N12: Entry-Kommission
+
+    def test_trade_without_partial_is_unchanged(self):
+        con, ticks, cfg = _make_db(), Ticks(), _cfg()
+        _open_long(con)
+        _tick(con, cfg, ticks, 95.0)                   # SL 96 getroffen, kein Teil-TP
+        row = con.execute("SELECT * FROM positions").fetchone()
+        rest_pnl, rest_pct = sm.realized_pnl_from_effective_entry(100.0, 95.0, 1000.0, "LONG")
+        self.assertEqual(row["status"], "closed")
+        self.assertAlmostEqual(row["pnl_eur"], rest_pnl - sm.COMMISSION_EUR, delta=0.01)   # N12: Entry-Kommission
+        self.assertAlmostEqual(row["pnl_pct"], round(rest_pct * 100, 2), places=2)
+
+
+if __name__ == "__main__":
+    unittest.main()

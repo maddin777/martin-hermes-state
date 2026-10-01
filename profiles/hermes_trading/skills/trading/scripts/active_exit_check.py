@@ -250,7 +250,8 @@ def main():
             if (time_stop_due(pos["entry_date"], cfg.get("time_stop_trading_days", 7))
                     and not reached_target):
                 initial_sl = initial_stop(entry, atr_entry or atr, direction, pos_mult["sl"])
-                exit_price = protected_time_stop_price(current_price, initial_sl, direction)
+                exit_price = (protected_time_stop_price(current_price, initial_sl, direction)
+                              if cfg.get("time_stop_protected_fill", True) else current_price)   # N9
                 pnl_eur, pnl_pct_frac = realized_pnl_from_effective_entry(
                     entry, exit_price, pos["position_size"], direction
                 )

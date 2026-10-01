@@ -54,7 +54,11 @@ def _get(endpoint: str, params: Optional[dict] = None) -> dict:
         _rate_limit()
         try:
             resp = requests.get(f"{FINNHUB_URL}{endpoint}", params=params, timeout=15)
-            if resp.status_code == 429 or resp.status_code == 403:
+            if resp.status_code == 403:
+                # N19: 403 = Endpunkt im Free-Tier nicht freigegeben, kein Rate-Limit: sofort aufgeben statt ~9 s zu warten
+                print(f"[Finnhub] ⚠️ {endpoint}: 403 (kein Zugriff im aktuellen Tarif)")
+                return {}
+            if resp.status_code == 429:
                 wait = 3 * (attempt + 1)
                 print(f"[Finnhub] ⚠️ {endpoint}: {resp.status_code} (Rate-Limit) → retry in {wait}s")
                 time.sleep(wait)
@@ -106,12 +110,12 @@ def get_insider_transactions(ticker: str) -> dict:
     return _get("/stock/insider-transactions", {"symbol": ticker})
 
 
-def get_short_interest(ticker: str) -> float:
-    """Short Interest in Prozent."""
+def get_short_interest(ticker: str):
+    """Short Interest in Prozent; None, wenn keine Daten vorliegen (N18: vorher 0.0, in 301 von 301 Zeilen)."""
     data = _get("/stock/short-interest", {"symbol": ticker})
-    if isinstance(data, list) and data:
-        return float(data[0].get("shortPercentOfFloat", 0)) * 100
-    return 0.0
+    if isinstance(data, list) and data and data[0].get("shortPercentOfFloat") is not None:
+        return float(data[0]["shortPercentOfFloat"]) * 100
+    return None
 
 
 def get_quote(ticker: str) -> dict:

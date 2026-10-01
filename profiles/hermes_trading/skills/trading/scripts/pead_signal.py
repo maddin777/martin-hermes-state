@@ -19,6 +19,7 @@ Usage:
 from __future__ import annotations
 
 import logging
+import math
 import os
 from datetime import datetime, timedelta
 
@@ -70,7 +71,11 @@ PEAD_CACHE_TTL_HOURS = 6        # Cache nach 6 Stunden verfallen lassen
 
 def _surprise_pct(actual: float, estimate: float):
     """Relative Ueberraschung. None, wenn die Schaetzung ~0 ist (nicht skalierbar)."""
-    if estimate is None or abs(estimate) < 1e-9:
+    # M15 (30.09.2026): fehlende Zahlen (NaN) sind kein MISS. Vorher fiel NaN durch alle Vergleiche und
+    # wurde als MISS mit Short-Boost +0,05 gewertet (4 von 13 Boosts im Cache, u. a. MU am Meldetag).
+    if actual is None or estimate is None or not (math.isfinite(actual) and math.isfinite(estimate)):
+        return None
+    if abs(estimate) < 1e-9:
         return None
     return (actual - estimate) / abs(estimate)
 
@@ -139,6 +144,8 @@ def get_pead_boost(ticker: str) -> tuple[float, float, dict | None]:
 
             if not (isinstance(est, (int, float)) and isinstance(act, (int, float))):
                 continue
+            if not (math.isfinite(est) and math.isfinite(act)):
+                continue      # M15: Ergebnis noch nicht gemeldet / Wert fehlt
 
             # Relative statt absoluter Ueberraschung: +0.01 EPS auf eine
             # Schaetzung von 0.05 ist etwas anderes als +0.01 auf 4.00.
@@ -167,6 +174,10 @@ def get_pead_boost(ticker: str) -> tuple[float, float, dict | None]:
         return 0.0, 0.0, None
 
 
+def _info_has_nan(info) -> bool:
+    return bool(info) and any(isinstance(v, float) and v != v for v in info.values())
+
+
 def get_pead_boost_cached(ticker: str, con=None) -> tuple[float, float, dict | None]:
     """Gecachte Version von get_pead_boost().
 
@@ -189,7 +200,8 @@ def get_pead_boost_cached(ticker: str, con=None) -> tuple[float, float, dict | N
         if row:
             import json
             info = json.loads(row["info_json"]) if row["info_json"] else None
-            return float(row["boost_long"]), float(row["boost_short"]), info
+            if not _info_has_nan(info):      # M15: Alt-Einträge mit NaN-Boost werden neu berechnet
+                return float(row["boost_long"]), float(row["boost_short"]), info
 
         # Neu berechnen
         boost_long, boost_short, info = get_pead_boost(ticker)

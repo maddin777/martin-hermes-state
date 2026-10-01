@@ -17,7 +17,7 @@ import requests
 import itertools
 from config import (DB_PATH, SIGNALS_PATH, STRATEGY_CONFIG_PATH, OPTIMIZATION_REPORT_PATH,
                     SOURCES_CONFIG_PATH, db_connect, get_exit_config, EXIT_PROFILES)
-from exit_rules import replay_exit_path
+from exit_rules import replay_exit_path, replay_fill_settings
 from trade_paths import attach_paths
 from utils import roundtrip_cost_pct
 
@@ -252,6 +252,7 @@ def backtest_params(trades, profile, time_stop_bars, min_conf=None, cost_mult=1.
             donchian_period=cfg.get("donchian_exit_period", 10),
             time_stop_bars=time_stop_bars,
             tp_mult=None,   # Live setzt hit_tp=False — das TP feuert nie
+            **replay_fill_settings(cfg),   # M5/N9: Stop-Durchrutschen und Time-Stop-Fill wie live
         )
         if res["r_multiple"] is None:
             continue
@@ -553,13 +554,29 @@ def main(dry_run=False, report_only=False):
               f"(Verbesserung {improvement*100:+.1f}%)", flush=True)
         return
 
-    # Automatisch updaten wenn > 10% besser UND profitabel
-    if improvement >= IMPROVEMENT_THRESHOLD:
-        cfg["exit_profile"]           = best_params["exit_profile"]
-        cfg["time_stop_trading_days"] = best_params["time_stop_trading_days"]
+    # 30.09.2026: Nur Vorschlag, solange optimizer_apply_live nicht gesetzt ist (siehe apply_exit_params).
+    if improvement >= IMPROVEMENT_THRESHOLD and not cfg.get("optimizer_apply_live", False):
+        report["updated"] = False
+        report["proposal_only"] = True
+        if not dry_run:
+            with open(OPTIMIZATION_REPORT_PATH, "w") as f:
+                json.dump(report, f, indent=2, ensure_ascii=False)
+        msg = (
+            "💡 <b>Strategy Optimizer: Vorschlag (nicht angewendet)</b>\n\n"
+            f"Profil {best_params['exit_profile']}, TimeStop {best_params['time_stop_trading_days']}d "
+            f"({improvement*100:+.1f}% besser, Robustheits-Gate bestanden).\n\n"
+            "<i>Die Live-Config bleibt unveraendert (optimizer_apply_live=false).</i>")
+        print(f"\n{msg}", flush=True)
+        send_telegram(msg)
+        print("\n✅ Optimizer abgeschlossen (Vorschlag).", flush=True)
+        return
 
-        with open(STRATEGY_CONFIG_PATH, "w") as f:
-            json.dump(cfg, f, indent=2)
+    # Automatisch updaten wenn > 10% besser UND profitabel (nur mit optimizer_apply_live)
+    if improvement >= IMPROVEMENT_THRESHOLD:
+        apply_exit_params(cfg, best_params["exit_profile"], best_params["time_stop_trading_days"], "(Grid)")
+
+        from utils import atomic_write_json  # N3
+        atomic_write_json(STRATEGY_CONFIG_PATH, cfg, indent=2)
 
         msg = (
             "🔧 <b>Strategie automatisch verbessert!</b>\n\n"
@@ -643,10 +660,25 @@ def adjust_source_weights(con):
     if _DRY_RUN:
         print("  [DRY-RUN] sources.json NICHT geschrieben", flush=True)
     else:
-        with open(SOURCES_PATH, "w") as f:
-            _json.dump(sources, f, indent=2, ensure_ascii=False)
+        from utils import atomic_write_json  # N3
+        atomic_write_json(SOURCES_PATH, sources, indent=2, ensure_ascii=False)
 
     return changes
+
+def apply_exit_params(cfg, profile, time_stop, quelle=""):
+    """Schreibt Exit-Profil und Time-Stop nur mit cfg["optimizer_apply_live"]=true in die Config (Entscheidung 30.09.2026).
+
+    Beide Werte messen die Shadow-Selection und die Live-Auswertung; ein woechentlich wechselnder Wert unter laufender
+    Messung verschiebt die Vergleichsbasis. Ohne den Schalter bleibt es bei einem Vorschlag im Bericht.
+    """
+    if not cfg.get("optimizer_apply_live", False):
+        print(f"  💡 Vorschlag (nicht angewendet, optimizer_apply_live=false): "
+              f"Profil={profile} TimeStop={time_stop}d {quelle}".rstrip(), flush=True)
+        return False
+    cfg["exit_profile"] = profile
+    cfg["time_stop_trading_days"] = time_stop
+    return True
+
 
 def adjust_from_eval_metrics(con, cfg):
     """Passt Parameter basierend auf eval_metrics an."""
@@ -685,10 +717,15 @@ def adjust_from_eval_metrics(con, cfg):
         cur = cfg.get("exit_profile", "current")
         i = ladder.index(cur) if cur in ladder else ladder.index("current")
         if i + 1 < len(ladder):
-            cfg["exit_profile"] = ladder[i + 1]
-            changes.append(
-                f"🛑 Exit-Profil: {cur}→{ladder[i + 1]} "
-                f"(x{EXIT_PROFILES[ladder[i + 1]]['sl_scale']}, SL-Hits:{avg_sl:.0%})")
+            if cfg.get("optimizer_apply_live", False):
+                cfg["exit_profile"] = ladder[i + 1]
+                changes.append(
+                    f"🛑 Exit-Profil: {cur}→{ladder[i + 1]} "
+                    f"(x{EXIT_PROFILES[ladder[i + 1]]['sl_scale']}, SL-Hits:{avg_sl:.0%})")
+            else:
+                changes.append(
+                    f"💡 Vorschlag (nicht angewendet): Exit-Profil {cur}→{ladder[i + 1]} "
+                    f"(x{EXIT_PROFILES[ladder[i + 1]]['sl_scale']}, SL-Hits:{avg_sl:.0%})")
         else:
             changes.append(f"ℹ️ SL-Hits {avg_sl:.0%}, aber Profil '{cur}' "
                            f"ist bereits das weiteste — keine Aenderung.")
@@ -747,8 +784,8 @@ def main(dry_run=False):
         if dry_run:
             print("  [DRY-RUN] strategy_config.json NICHT geschrieben", flush=True)
             return
-        with open(STRATEGY_CONFIG_PATH, "w") as f:
-            json.dump(cfg_obj, f, indent=2)
+        from utils import atomic_write_json  # N3
+        atomic_write_json(STRATEGY_CONFIG_PATH, cfg_obj, indent=2)
 
     con = db_connect()
     cfg = load_config()
@@ -819,19 +856,22 @@ def main(dry_run=False):
                     "candidate_params": {"exit_profile": cand_prof,
                                          "time_stop_trading_days": cand_ts},
                     "robustness_gate": {"passed": ok, "reasons": reasons, **gate},
-                    "updated": ok,
+                    "updated": ok and bool(cfg.get("optimizer_apply_live", False)),
+                    "proposal_only": ok and not cfg.get("optimizer_apply_live", False),
                 }
                 if not dry_run:
                     with open(OPTIMIZATION_REPORT_PATH, "w") as f:
                         json.dump(wf_report, f, indent=2, ensure_ascii=False)
-                if ok:
-                    cfg["exit_profile"] = cand_prof
-                    cfg["time_stop_trading_days"] = cand_ts
+                if ok and apply_exit_params(cfg, cand_prof, cand_ts, "(Walk-Forward)"):
                     # #4: WF-Parameter wurden vorher NUR im Speicher gesetzt und nie
                     # geschrieben – Telegram meldete "übernommen", auf Platte No-Op.
                     _save(cfg)
                     print(f"  ✅ WF-Parameter übernommen: "
                           f"Profil={cand_prof} TimeStop={cand_ts}d")
+                elif ok:
+                    all_changes.append(
+                        f"💡 WF-Kandidat {cand_prof}/{cand_ts}d hat das Robustheits-Gate bestanden — "
+                        "Vorschlag, nicht angewendet (optimizer_apply_live=false)")
                 else:
                     all_changes.append(
                         f"⛔ WF-Kandidat {cand_prof}/{cand_ts}d gesperrt: "

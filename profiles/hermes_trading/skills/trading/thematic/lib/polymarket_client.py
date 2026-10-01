@@ -4,6 +4,7 @@ Importiert direkt aus dem Hermes-Research-Skill statt eigene Implementierung.
 """
 import sys
 import json
+import time
 
 import os
 
@@ -54,8 +55,11 @@ def fetch_trending_markets(limit: int = 50, min_volume: float = 100_000) -> list
                 continue
             prices = _parse_json_field(m.get("outcomePrices", "[]"))
             yes_price = float(prices[0]) if isinstance(prices, list) and prices else 0.0
+            tokens = _parse_json_field(m.get("clobTokenIds", "[]"))
+            token_id = str(tokens[0]) if isinstance(tokens, list) and tokens else ""
             result.append({
                 "market_id":        m.get("conditionId", ""),
+                "token_id":         token_id,       # M18: die CLOB-History braucht die Token-ID, nicht die conditionId
                 "question":         m.get("question", ""),
                 "category":         _categorize_market(m.get("question", ""), evt.get("title", "")),
                 "resolution_date":  m.get("endDate", "")[:10] if m.get("endDate") else None,
@@ -67,13 +71,51 @@ def fetch_trending_markets(limit: int = 50, min_volume: float = 100_000) -> list
             })
     return result
 
-def fetch_market_history(condition_id: str, interval: str = "1w") -> list:
-    """Preisverlauf für einen Market (für delta_7d Berechnung)."""
+def fetch_market_history(market_ref: str, interval: str = "1w", fidelity: int = 60) -> list:
+    """Preisverlauf eines Markets: Liste {"t": Unix-Sekunden, "p": Preis}.
+
+    M18 (30.09.2026): `market_ref` muss die CLOB-Token-ID (YES-Token) sein. Mit der conditionId lieferte die Abfrage
+    0 Datenpunkte (Probe: mit Token-ID 1.440). `fidelity` in Minuten (60 = stündlich)."""
     try:
-        data = _get(f"{CLOB}/prices-history?market={condition_id}&interval={interval}&fidelity=7")
+        data = _get(f"{CLOB}/prices-history?market={market_ref}&interval={interval}&fidelity={fidelity}")
         return data.get("history", [])
-    except Exception:
+    except BaseException:       # _get beendet den Prozess per sys.exit() bei HTTP-Fehlern
         return []
+
+
+def price_days_ago(history: list, days: float, now_ts: float = None, tolerance_days: float = 1.0):
+    """Preis, der `days` Tage vor jetzt galt, oder None, wenn die Historie nicht so weit zurückreicht.
+
+    M18: vorher wurde history[-2] als "Preis vor 7 Tagen" genommen (bei stündlichen Punkten: vor einer Stunde)."""
+    if not history:
+        return None
+    now_ts = time.time() if now_ts is None else now_ts
+    target = now_ts - days * 86400
+    points = [(float(h["t"]), h["p"]) for h in history if h.get("p") not in (None, "")]
+    if not points or min(t for t, _ in points) > target + tolerance_days * 86400:
+        return None
+    t, p = min(points, key=lambda tp: abs(tp[0] - target))
+    return float(p)
+
+
+def enrich_with_history(markets: list, max_markets: int = 60) -> list:
+    """Ergänzt price_7d_ago, price_30d_ago und delta_7d für die `max_markets` größten Märkte (nach 24h-Volumen).
+    Ohne Historie bleiben die Werte None (nicht 0)."""
+    ranked = sorted(markets, key=lambda m: m.get("volume_24h_usd", 0) or 0, reverse=True)[:max_markets]
+    for m in ranked:
+        ref = m.get("token_id") or ""
+        m.setdefault("price_7d_ago", None)
+        m.setdefault("price_30d_ago", None)
+        m.setdefault("delta_7d", None)
+        if not ref:
+            continue
+        cur = m.get("current_yes_price")
+        p7 = price_days_ago(fetch_market_history(ref, "1w", 60), 7)
+        p30 = price_days_ago(fetch_market_history(ref, "1m", 720), 30, tolerance_days=2.0)
+        m["price_7d_ago"], m["price_30d_ago"] = p7, p30
+        if p7 is not None and cur is not None:
+            m["delta_7d"] = round(cur - p7, 3)
+    return markets
 
 def search_markets(query: str, min_volume: float = 50_000) -> list:
     """Suche nach Markets per Keyword."""
@@ -106,9 +148,9 @@ def fetch_top_movers(min_delta_7d: float = 0.10, limit: int = 10) -> list:
     result = []
     for m in relevant[:50]:
         try:
-            history = fetch_market_history(m['market_id'], interval='1w')
-            if len(history) >= 2:
-                old_price = float(history[-2]['p']) if history[-2]['p'] else 0
+            history = fetch_market_history(m.get('token_id') or m['market_id'], interval='1w')
+            old_price = price_days_ago(history, 7)
+            if old_price is not None:
                 new_price = m['current_yes_price']
                 delta = abs(new_price - old_price)
                 if delta >= min_delta_7d:

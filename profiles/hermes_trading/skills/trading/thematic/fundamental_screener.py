@@ -20,19 +20,62 @@ def _db_connect():
     return con
 
 
+MIN_SECTOR_PEERS = 5
+
+
+def _sector_of(con, ticker: str):
+    try:
+        row = con.execute("SELECT sector FROM companies WHERE ticker = ?", (ticker,)).fetchone()
+        return row[0] if row and row[0] else None
+    except Exception:
+        return None
+
+
 def _sector_median_pe(con, sector: str) -> float:
-    """Ermittelt Sektor-Median P/E aus eigenen Snapshots (rolling 30d)."""
+    """Ermittelt Sektor-Median P/E aus eigenen Snapshots (rolling 30d).
+
+    N18 (30.09.2026): der Parameter `sector` wurde ignoriert (Median ueber ALLE Titel). Jetzt: Median der Peers im selben
+    Sektor (Join auf companies.sector), erst bei weniger als MIN_SECTOR_PEERS Peers der Gesamtmedian."""
     cutoff = (date.today() - timedelta(days=30)).isoformat()
-    rows = con.execute("""
-        SELECT pe_ttm FROM fundamentals_snapshot
-        WHERE date >= ? AND pe_ttm IS NOT NULL AND pe_ttm > 0
-        ORDER BY pe_ttm
-    """, (cutoff,)).fetchall()
+    rows = []
+    if sector and sector != "all":
+        try:
+            rows = con.execute("""
+                SELECT fs.pe_ttm FROM fundamentals_snapshot fs
+                JOIN companies c ON c.ticker = fs.ticker
+                WHERE fs.date >= ? AND fs.pe_ttm IS NOT NULL AND fs.pe_ttm > 0 AND c.sector = ?
+                ORDER BY fs.pe_ttm
+            """, (cutoff, sector)).fetchall()
+        except Exception:
+            rows = []
+    if len(rows) < MIN_SECTOR_PEERS:
+        rows = con.execute("""
+            SELECT pe_ttm FROM fundamentals_snapshot
+            WHERE date >= ? AND pe_ttm IS NOT NULL AND pe_ttm > 0
+            ORDER BY pe_ttm
+        """, (cutoff,)).fetchall()
     if not rows:
         return 18.0  # Fallback
     vals = [r["pe_ttm"] for r in rows]
     mid = len(vals) // 2
     return vals[mid] if len(vals) % 2 == 1 else (vals[mid - 1] + vals[mid]) / 2
+
+
+def _fcf_yield(metric_data: dict, profile: dict, market_cap):
+    """FCF-Rendite. N18: der Fallback fcfPerShareTTM (pro Aktie) wurde wie ein Gesamtbetrag durch die Marktkapitalisierung
+    geteilt. Finnhub: freeCashFlowTTM und marketCapitalization in Mio USD, fcfPerShareTTM in USD je Aktie,
+    shareOutstanding in Mio. Rendite je Aktie = fcfPerShare / (Marktkapitalisierung / Aktienzahl)."""
+    if not market_cap or market_cap <= 0:
+        return None
+    fcf_total = metric_data.get("freeCashFlowTTM")
+    if fcf_total:
+        return float(fcf_total) / float(market_cap)
+    per_share = metric_data.get("fcfPerShareTTM")
+    shares = (profile or {}).get("shareOutstanding")
+    if per_share and shares and shares > 0:
+        price = float(market_cap) / float(shares)
+        return float(per_share) / price if price > 0 else None
+    return None
 
 
 def _check_flags(row: dict, sector_pe: float) -> list:
@@ -70,7 +113,7 @@ def main():
     # Alle Candidate/Watching-Beneficiaries die heute Aktualisiert wurden
     candidates = con.execute("""
         SELECT * FROM theme_beneficiaries
-        WHERE status IN ('candidate', 'watching')
+        WHERE status IN ('candidate', 'watching', 'active')
         AND last_updated >= ?
     """, (today,)).fetchall()
 
@@ -81,10 +124,9 @@ def main():
 
     print(f"[Fundamental Screener] {len(candidates)} Kandidaten...", flush=True)
 
-    sector_pe = _sector_median_pe(con, "all")
-
     for c in candidates:
         ticker = c["ticker"]
+        sector_pe = _sector_median_pe(con, _sector_of(con, ticker))
         profile = finnhub_client.get_company_profile(ticker)
         metrics = finnhub_client.get_basic_financials(ticker)
         metric_data = metrics.get("metric", {}) if metrics else {}
@@ -104,11 +146,8 @@ def main():
         pe_ttm = metric_data.get("peBasicExclExtraTTM") or metric_data.get("peTTM")
         pe_forward = metric_data.get("peForward")
 
-        # FCF Yield aus finnhub metrics
-        fcf = metric_data.get("freeCashFlowTTM") or metric_data.get("fcfPerShareTTM")
-        fcf_yield = None
-        if fcf and market_cap and market_cap > 0:
-            fcf_yield = (fcf / (market_cap * 1_000_000)) if market_cap else None
+        # FCF Yield aus finnhub metrics (N18: Einheiten getrennt behandelt)
+        fcf_yield = _fcf_yield(metric_data, profile, market_cap)
 
         rev_growth = metric_data.get("revenueGrowthTTMYoy")
 

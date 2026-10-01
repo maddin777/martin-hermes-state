@@ -38,7 +38,7 @@ import env_loader  # noqa: F401  (side-effect: laedt .env)
 import yfinance as yf
 from config import db_connect, STRATEGY_CONFIG_PATH, get_exit_config
 from utils import get_logger, realized_pnl_from_effective_entry
-from exit_rules import peak_chandelier_stop
+from exit_rules import peak_chandelier_stop, replay_exit_path, replay_fill_settings
 
 log = get_logger("crabel_shadow_eval")
 
@@ -74,7 +74,8 @@ def _get_regime(con):
         return "sideways", 0
 
 
-def simulate_forward(df, entry, sl, tp, atr, direction, asset_type, cfg, regime="sideways"):
+def simulate_forward(df, entry, sl, tp, atr, direction, asset_type, cfg, regime="sideways",
+                     stop_slippage_atr=0.0):
     """
     Simuliert den geblockten Trade auf Tagesbars ab dem Tag NACH dem Block.
 
@@ -105,13 +106,14 @@ def simulate_forward(df, entry, sl, tp, atr, direction, asset_type, cfg, regime=
         day = i + 1
 
         # 1. Exit-Prüfung auf Intrabar-Extremen — SL zuerst (konservativ)
+        # M5: Stop-Fuellung optional mit Durchrutschen (Voreinstellung 0.0 = exakt zum Stop wie bisher)
         if direction == "LONG":
             if lo <= cur_sl:
-                return "SL_HIT", cur_sl, day
+                return "SL_HIT", cur_sl - stop_slippage_atr * atr, day
 
         else:
             if hi >= cur_sl:
-                return "SL_HIT", cur_sl, day
+                return "SL_HIT", cur_sl + stop_slippage_atr * atr, day
 
 
         # 2. SL-Nachführung auf Close-Basis (wie active_exit_check, das EOD läuft)
@@ -124,6 +126,63 @@ def simulate_forward(df, entry, sl, tp, atr, direction, asset_type, cfg, regime=
             return "TIME_STOP", cl, day
 
     return "TIMEOUT", float(closes.iloc[-1]), len(df)
+
+
+def use_live_replay(cfg):
+    """Ab 30.09.2026 rechnet der Shadow mit dem Live-Exit (Donchian-Trail, Time-Stop aus der Config, Teil-TP).
+    ``crabel_shadow_live_exits=false`` schaltet auf die alte Chandelier/7-Tage-Simulation zurueck."""
+    return bool((cfg or {}).get("crabel_shadow_live_exits", True))
+
+
+def _bars_from_df(df):
+    highs, lows, closes = _col(df, "High"), _col(df, "Low"), _col(df, "Close")
+    return [{"high": float(h), "low": float(l), "close": float(c)} for h, l, c in zip(highs, lows, closes)]
+
+
+def _entry_idx(df, block_date):
+    """Index des letzten Bars am oder vor dem Block-Tag; alles danach ist der Vorwaertspfad."""
+    idx = None
+    for i, ts in enumerate(df.index):
+        if ts.strftime("%Y-%m-%d") <= block_date:
+            idx = i
+        else:
+            break
+    return idx
+
+
+def simulate_forward_live(bars, entry_idx, entry, sl, atr, direction, asset_type, cfg, regime="sideways"):
+    """Wie simulate_forward, aber mit exit_rules.replay_exit_path (dieselbe Funktion wie Optimizer und Shadow-Selection).
+
+    Das Anfangsrisiko kommt aus dem gespeicherten would_sl, damit die Stop-Distanz zu blocked_entries passt. Die Bars
+    vor ``entry_idx`` liefern nur die Vorgeschichte fuer den Donchian-Trail. Returns (outcome, exit_price, days) mit
+    outcome SL_HIT | TIME_STOP | TIMEOUT, oder None, wenn nichts simulierbar ist. Der Preis ist der effektive
+    Ausstiegspreis (inkl. Teil-TP), passend zu realized_pnl_from_effective_entry.
+    """
+    if not atr or atr <= 0 or entry is None or sl is None:
+        return None
+    risk = abs(entry - sl)
+    if risk <= 0:
+        return None
+    ec = get_exit_config(asset_type=asset_type, regime=regime)
+    res = replay_exit_path(
+        bars, entry_idx, entry, direction, atr,
+        sl_mult=risk / atr,
+        partial_atr=ec["partial_atr"],
+        partial_pct=(cfg.get("partial_tp_pct", 0.5) if cfg.get("partial_tp_enabled", True) else 0.0),
+        profit_lock_atr=ec["profit_lock_atr"],
+        chandelier_mult=ec["chandelier_mult"],
+        donchian_primary=(bool(cfg.get("donchian_exit_enabled")) and cfg.get("donchian_exit_mode") == "primary"),
+        donchian_period=cfg.get("donchian_exit_period", 10),
+        time_stop_bars=cfg.get("time_stop_trading_days", 7),
+        tp_mult=None,
+        **replay_fill_settings(cfg),
+    )
+    if res["r_multiple"] is None:
+        return None
+    sign = 1 if direction == "LONG" else -1
+    exit_price = entry + sign * res["r_multiple"] * risk
+    outcome = "TIMEOUT" if res["reason"] == "EOD" else res["reason"]
+    return outcome, exit_price, res["bars_held"]
 
 
 def check_later_entry(con, row):
@@ -159,6 +218,11 @@ def main():
     cfg     = load_cfg()
     horizon = int(cfg.get("crabel_shadow_horizon_days", DEFAULT_HORIZON_DAYS))
     con     = db_connect()
+    try:
+        con.execute("ALTER TABLE blocked_entries ADD COLUMN sim_mode TEXT")   # additiv: chandelier7 | live_replay
+        con.commit()
+    except Exception:
+        pass
     # FIX 16.08.: Regime für Exit-Matrix (konsistent zu signal_manager/active_exit_check)
     _regime, _vix = _get_regime(con)
     print(f"🔍 Crabel Shadow Eval (Horizont: {horizon} Kalendertage)", flush=True)
@@ -196,14 +260,18 @@ def main():
     for row in rows:
         ticker = row["ticker"]
         try:
+            live_mode = use_live_replay(cfg)
+            # live_mode: 40 Kalendertage Vorlauf, damit der Donchian-Trail wie live auf Bars vor dem Entry zurueckgreift
             start = (datetime.strptime(row["block_date"], "%Y-%m-%d")
-                     + timedelta(days=1)).strftime("%Y-%m-%d")
+                     + timedelta(days=-40 if live_mode else 1)).strftime("%Y-%m-%d")
             end   = (datetime.strptime(row["block_date"], "%Y-%m-%d")
                      + timedelta(days=horizon + 1)).strftime("%Y-%m-%d")
             df = yf.download(ticker, start=start, end=end, interval="1d",
                              progress=False, auto_adjust=True)
             df = df.dropna()
-            if df.empty or len(df) < 3:
+            entry_idx = _entry_idx(df, row["block_date"]) if (live_mode and not df.empty) else None
+            fwd = (0 if entry_idx is None else len(df) - entry_idx - 1) if live_mode else len(df)
+            if df.empty or fwd < 3:
                 con.execute(
                     "UPDATE blocked_entries SET eval_status='no_data', eval_date=? WHERE id=?",
                     (datetime.now().strftime("%Y-%m-%d"), row["id"])
@@ -211,11 +279,21 @@ def main():
                 no_data += 1
                 continue
 
-            outcome, exit_price, days = simulate_forward(
-                df, row["would_entry"], row["would_sl"], row["would_tp"],
-                row["atr_at_block"], row["direction"],
-                row["asset_type"] or "STANDARD", cfg, regime=_regime
-            )
+            if live_mode:
+                sim = simulate_forward_live(
+                    _bars_from_df(df), entry_idx, row["would_entry"], row["would_sl"],
+                    row["atr_at_block"], row["direction"],
+                    row["asset_type"] or "STANDARD", cfg, regime=_regime)
+                if sim is None:
+                    raise ValueError("keine simulierbaren Levels")
+                outcome, exit_price, days = sim
+            else:
+                outcome, exit_price, days = simulate_forward(
+                    df, row["would_entry"], row["would_sl"], row["would_tp"],
+                    row["atr_at_block"], row["direction"],
+                    row["asset_type"] or "STANDARD", cfg, regime=_regime,
+                    stop_slippage_atr=replay_fill_settings(cfg)["stop_slippage_atr"]
+                )
             # pnl_pct ohne Commission – konsistent zu positions.pnl_pct.
             # Nominalgröße egal, pnl_pct ist size-invariant.
             _, pnl_pct = realized_pnl_from_effective_entry(
@@ -227,12 +305,13 @@ def main():
                 UPDATE blocked_entries SET
                     eval_status='evaluated', eval_date=?, outcome=?,
                     days_to_outcome=?, exit_price_sim=?, pnl_pct_sim=?,
-                    later_entered=?, later_entry_days=?, later_entry_price=?
+                    later_entered=?, later_entry_days=?, later_entry_price=?, sim_mode=?
                 WHERE id=?
             """, (
                 datetime.now().strftime("%Y-%m-%d"), outcome, days,
                 round(exit_price, 4), round(pnl_pct * 100, 2),
-                later, later_days, later_price, row["id"]
+                later, later_days, later_price,
+                "live_replay" if live_mode else "chandelier7", row["id"]
             ))
             evaluated += 1
             tag = "→ später doch gekauft" if later else ""

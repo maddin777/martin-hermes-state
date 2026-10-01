@@ -16,6 +16,49 @@ TAVILY_URL = "https://api.tavily.com/search"
 _last_call = 0
 MIN_INTERVAL = 2.0  # Sekunden zwischen Calls (Free-Tier-Limit)
 
+# M17 (30.09.2026): `days` wirkt bei Tavily nur zusammen mit topic="news". Ohne topic lieferte die Suche Kursseiten
+# ohne Datum (Probe "Qualys QLYS news"). Mit topic=news und days=1 kamen frische, aber meist irrelevante Artikel;
+# sinnvoll ist ein Fenster von 7 Tagen plus Namensfilter (filter_relevant). Anpassbar per TAVILY_NEWS_DAYS.
+try:
+    NEWS_DAYS = max(1, int(os.environ.get("TAVILY_NEWS_DAYS", "7")))
+except ValueError:
+    NEWS_DAYS = 7
+
+_NAME_STOPWORDS = {
+    "inc", "corp", "corporation", "company", "holdings", "holding", "group", "limited", "ltd", "plc", "the", "and",
+    "aktiengesellschaft", "stock", "news", "analyst", "earnings", "international", "technologies", "technology",
+    "systems", "services", "global", "partners", "industries",
+}
+
+
+def _name_terms(names) -> set:
+    import re
+    terms = set()
+    for n in names or []:
+        for t in re.findall(r"[a-z0-9]+", (n or "").lower()):
+            if len(t) >= 5 and t not in _NAME_STOPWORDS:
+                terms.add(t)
+    return terms
+
+
+def filter_relevant(results: list, names=None, ticker: Optional[str] = None) -> list:
+    """Behält nur Treffer, in deren Titel/Text ein Namenswort (>= 5 Zeichen) oder das Tickersymbol (>= 3 Zeichen,
+    ganzes Wort) vorkommt. Ohne Namen und Ticker bleibt alles erhalten."""
+    import re
+    terms = _name_terms(names)
+    sym = (ticker or "").split(".")[0].upper()
+    if not terms and len(sym) < 3:
+        return list(results)
+    kept = []
+    for r in results:
+        blob = f"{r.get('title', '')} {r.get('content', '')}"
+        low = blob.lower()
+        if any(re.search(rf"\b{re.escape(t)}", low) for t in terms):
+            kept.append(r)
+        elif len(sym) >= 3 and re.search(rf"\b{re.escape(sym)}\b", blob):
+            kept.append(r)
+    return kept
+
 
 def _rate_limit():
     global _last_call
@@ -30,7 +73,7 @@ def search_news(
     search_depth: str = "basic",
     max_results: int = 10,
     include_domains: Optional[list] = None,
-    days: int = 1,
+    days: Optional[int] = None,
 ) -> list:
     """
     Fuehrt eine Tavily-Suche durch.
@@ -56,7 +99,8 @@ def search_news(
         "search_depth": search_depth,
         "max_results": max_results,
         "include_answer": False,
-        "days": days,
+        "topic": "news",
+        "days": days if days else NEWS_DAYS,
     }
     if include_domains:
         payload["include_domains"] = include_domains
@@ -100,11 +144,11 @@ def fetch_theme_news() -> list:
     return all_results
 
 
-def fetch_ticker_news(ticker: str, days: int = 1) -> list:
-    """Sammelt aktuelle News zu einem Ticker."""
+def fetch_ticker_news(ticker: str, days: Optional[int] = None, company_name: Optional[str] = None) -> list:
+    """Sammelt aktuelle News zu einem Ticker (M17: topic=news, Fenster NEWS_DAYS, nur relevante Treffer)."""
     queries = [
-        f"{ticker} stock news",
-        f"{ticker} analyst earnings",
+        f"{company_name or ticker} {ticker} stock news",
+        f"{company_name or ticker} analyst earnings",
     ]
     all_results = []
     seen_urls = set()
@@ -117,4 +161,4 @@ def fetch_ticker_news(ticker: str, days: int = 1) -> list:
                 seen_urls.add(url)
                 all_results.append(r)
 
-    return all_results
+    return filter_relevant(all_results, [company_name] if company_name else None, ticker)

@@ -342,7 +342,9 @@ def detect_market_regime(con):
         print(f"  Aktuelles Regime: {current_regime.upper()}", flush=True)
         print(f"  SPY 20d Return:   {current_spy:.1%}", flush=True)
         print(f"  DAX 20d Return:   {current_dax:.1%}", flush=True)
-        print(f"  Nächste Woche:    Bull={curr_probs.get('bull',0):.0%} "
+        # N4 (30.09.2026): das ist die Übergangswahrscheinlichkeit zum NÄCHSTEN Beobachtungstag (die Regimezeitreihe
+        # ist täglich), nicht zur nächsten Woche
+        print(f"  Übergang Folgetag: Bull={curr_probs.get('bull',0):.0%} "
               f"Bear={curr_probs.get('bear',0):.0%} "
               f"Sideways={curr_probs.get('sideways',0):.0%}", flush=True)
 
@@ -458,14 +460,23 @@ def detect_market_regime(con):
         macro["vix"]           = round(float(vix.iloc[-1]), 1) if len(vix) > 0 else None
         macro["regime_updated"] = datetime.now().isoformat()
 
-        with open(macro_file, "w") as f:
-            _json.dump(macro, f, indent=2)
+        from utils import atomic_write_json  # N3
+        atomic_write_json(macro_file, macro, indent=2)
 
         return current_regime, curr_probs
 
     except Exception as e:
         print(f"  ✗ Regime-Detection fehlgeschlagen: {e}", flush=True)
         return "sideways", {"bull": 0.33, "bear": 0.33, "sideways": 0.34}
+
+
+def portfolio_start_date(con):
+    """Erster Handelstag des Depots (frühester Positions-Entry), 'YYYY-MM-DD' oder None."""
+    try:
+        row = con.execute("SELECT MIN(substr(entry_date, 1, 10)) FROM positions WHERE entry_date IS NOT NULL").fetchone()
+        return row[0] if row and row[0] else None
+    except Exception:
+        return None
 
 
 def update_benchmark(con):
@@ -530,11 +541,14 @@ def update_benchmark(con):
         portfolio = con.execute("SELECT total_value FROM portfolio WHERE id=1").fetchone()
         portfolio_value = float(portfolio[0]) if portfolio else 10000.0
 
-        # Jahresanfangs-Werte für YTD-Return
-        jan1 = f"{datetime.now().year}-01-01"
-        spy_jan = yf.download("SPY",    start=jan1, end=f"{datetime.now().year}-01-31",
+        # M7 (30.09.2026): Startpunkt der Benchmarks = erster Handelstag des DEPOTS (25.04.), nicht der 1. Januar.
+        # Vorher lief SPY seit Jahresanfang, das Portfolio erst seit 25.04.: der Alpha war um die SPY-Rendite
+        # von Januar bis April verzerrt. Die Spaltennamen *_ytd bleiben (Schema), bedeuten aber "seit Depotstart".
+        jan1 = portfolio_start_date(con) or f"{datetime.now().year}-01-01"
+        _end = (datetime.strptime(jan1, "%Y-%m-%d") + timedelta(days=10)).strftime("%Y-%m-%d")
+        spy_jan = yf.download("SPY",    start=jan1, end=_end,
                               interval="1d", progress=False, auto_adjust=True)
-        dax_jan = yf.download("^GDAXI", start=jan1, end=f"{datetime.now().year}-01-31",
+        dax_jan = yf.download("^GDAXI", start=jan1, end=_end,
                               interval="1d", progress=False, auto_adjust=True)
 
         spy_start = get_close(spy_jan, idx=0) or spy_close
@@ -630,8 +644,8 @@ def main():
             "regime":  regime,
             "updated": datetime.now().isoformat()
         })
-        with open(macro_file, "w") as f:
-            _json.dump(macro_data, f, indent=2)
+        from utils import atomic_write_json  # N3
+        atomic_write_json(macro_file, macro_data, indent=2)
 
         print("\n✅ Fundamental Data Collector abgeschlossen", flush=True)
     finally:

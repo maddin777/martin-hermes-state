@@ -97,6 +97,17 @@ def _load_position_themes(con, pos):
     return dict(theme), theme["description"] if theme["description"] else ""
 
 
+def thesis_coverage(positions):
+    """(Positionen mit These, Positionen gesamt). M19 (30.09.2026): 0 von 101 Positionen hatten eine These, der
+    Job lief täglich ohne etwas zu prüfen und meldete das nirgends."""
+    covered = 0
+    for p in positions:
+        text = (p["thesis_text"] or "").strip()
+        if p["thesis_theme_id"] or (text and text != "Keine These dokumentiert."):
+            covered += 1
+    return covered, len(positions)
+
+
 def main(intraday: bool = False):
     con = _db_connect()
     con.execute("PRAGMA busy_timeout=30000;")
@@ -112,7 +123,11 @@ def main(intraday: bool = False):
         con.close()
         return
 
-    print(f"[Thesis Monitor] {len(positions)} Positionen...", flush=True)
+    _covered, _total = thesis_coverage(positions)
+    print(f"[Thesis Monitor] {len(positions)} Positionen, {_covered} mit These...", flush=True)
+    if _covered == 0:
+        print("[Thesis Monitor] ⚠ Keine offene Position hat eine These (thesis_text/thesis_theme_id leer): "
+              "es wird nichts geprüft.", flush=True)
     model = llm_client.get_model("thesis_monitor")
 
     broken_count = 0
@@ -140,7 +155,7 @@ def main(intraday: bool = False):
         thesis = thesis_raw if has_thesis else "Keine explizite These – Bewertung auf Basis des Themas."
 
         # News holen
-        news = tavily_client.fetch_ticker_news(ticker, days=1)
+        news = tavily_client.fetch_ticker_news(ticker, company_name=pos["name"])
         news_text = "\n".join(
             f"- [{a.get('title', '')}]({a.get('url', '')}): {a.get('content', '')[:200]}"
             for a in news[:8]
@@ -286,7 +301,7 @@ def main(intraday: bool = False):
                 f"Thema: {theme_name}\n"
                 f"Confidence: {confidence:.0%}\n"
                 f"Rationale: {rationale}\n\n"
-                f"<i>SL wurde automatisch auf 0.5×ATR enger gezogen.</i>"
+                f"<i>Hinweis: kein automatischer Eingriff (der Stop wird durch diese Meldung nicht verändert).</i>"
             )
         elif verdict == "WEAKENING":
             weakening_count += 1
