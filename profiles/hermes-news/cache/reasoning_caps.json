@@ -1,7 +1,12 @@
 {
 "https://openrouter.ai/api/v1/models":{
-"ts":1790921639.6610017,
+"ts":1791008039.970259,
 "caps":{
+"inclusionai/ling-3.1-flash":{
+"supports_reasoning":true,
+"supported_efforts":null,
+"mandatory":false
+},
 "apodex/apodex-1.1-mini:free":{
 "supports_reasoning":true,
 "supported_efforts":null,
@@ -263,6 +268,9 @@
 "low"
 ],
 "mandatory":true
+},
+"nvidia/switchyard":{
+"supports_reasoning":false
 },
 "xiaomi/mimo-v2.6-pro-ultraspeed":{
 "supports_reasoning":true,

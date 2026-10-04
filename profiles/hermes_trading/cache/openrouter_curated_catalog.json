@@ -1,5 +1,5 @@
 {
-  "fetched_at": 1790921641.3874607,
+  "fetched_at": 1791008041.6436133,
   "curated": [
     [
       "anthropic/claude-fable-5.1",
@@ -195,6 +195,14 @@
     ],
     [
       "sakana/fugu-ultra",
+      ""
+    ],
+    [
+      "upstage/solar-pro4",
+      ""
+    ],
+    [
+      "upstage/solar-mini4",
       ""
     ],
     [
