@@ -985,11 +985,58 @@ cp /root/martin-hermes-state/profiles/hermes_trading/skills/trading/scripts/<fil
 ```
 Vorher `wc -l` beider Dateien vergleichen — das Backup kann älter sein als die Live-Version. Nach dem Restore die neuen Änderungen erneut per `patch` (nicht write_file) anwenden.
 
-## Trading Scan — Wrapper Entry Point
+## Trading Scan — Quick Start (consolidated from trading-scan)
 
-> **Hinweis:** Der `trading-scan`-Skill ist ein dünner Wrapper um diese Pipeline. Sämtliche Dokumentation und Verfahren finden sich in diesem Skill oben.
+> This section replaces the former `trading-scan` skill — a thin wrapper now consolidated here for discoverability.
 
-Siehe `trading-scan` Skill für die kompakte Zusammenfassung aller Pipeline-Schritte als einzeiligen Workflow.
+### Vollständiger Pipeline-Durchlauf
+
+```bash
+cd /root/.hermes/profiles/hermes_trading/skills/trading/scripts
+python3 trading_pipeline.py
+```
+
+**Pipeline-Reihenfolge:**
+| Schritt | Script | Zeit | Zweck |
+|---------|--------|------|-------|
+| 1 | `fundamental_data.py` | 02:00 | FRED Makro, SEC Insider, Put/Call Ratio, Regime |
+| 2 | `social_scanner.py` | 03:00 | RSS + Twitter/X |
+| 3 | `trading_pipeline.py` (intern) | 03:30 | YouTube → KI → Watchlist → Technisch → Signale |
+| 4 | `nightly_eval.py` | 05:00 | Metriken + Telegram-Report |
+
+**Einzelschritte ausführen:**
+```bash
+source /root/.hermes/profiles/hermes_trading/.env
+python3 fundamental_data.py
+python3 social_scanner.py
+python3 trading_pipeline.py
+python3 nightly_eval.py
+```
+
+**Intraday (09:00-20:00):**
+```bash
+python3 signal_manager.py check_only  # SL/TP prüfen
+python3 active_exit_check.py          # Tech-Check + Profit-Sicherung
+```
+
+**Wöchentlich (Sonntag):**
+```bash
+python3 watchlist_dedup.py    # 05:30
+python3 nightly_eval.py      # 06:00 (weekly mode)
+python3 source_lifecycle.py  # 07:00
+```
+
+### Dashboard
+```bash
+curl http://localhost:8081/
+```
+
+### Letzter Pipeline-Lauf
+```bash
+tail -30 /root/.hermes/profiles/hermes_trading/skills/trading/data/cron.log
+```
+
+---
 
 ## Quick Debug
 

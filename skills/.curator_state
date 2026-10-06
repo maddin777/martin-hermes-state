@@ -1,9 +1,9 @@
 {
-  "last_report_path": "/root/.hermes/logs/curator/20260928-080853",
-  "last_run_at": "2026-09-28T08:08:53.960506+00:00",
-  "last_run_duration_seconds": 109.183924,
-  "last_run_summary": "auto: 9 marked stale, 1 archived; llm: The patch was applied successfully. Now let me provide the final summary.\n\n---\n\n## Consolidation Summary\n\nAfter examining all 12 agent-created skills and cross-referencing with the broader skill landscape (77 total skills), I found:\n\n**Find…",
+  "last_report_path": "/root/.hermes/logs/curator/20261005-080910",
+  "last_run_at": "2026-10-05T08:09:10.759842+00:00",
+  "last_run_duration_seconds": 117.405805,
+  "last_run_summary": "auto: 5 marked stale, 5 reactivated; llm: ## Curator Pass Complete\n\nI successfully patched `trading-pipeline` to include a consolidated quick-start section (previously the entire `trading-scan` skill content). However, I could not complete the archive/delete of `trading-scan` becau…",
   "last_run_summary_shown_at": "2026-09-21T08:05:34.200902+00:00",
   "paused": false,
-  "run_count": 21
+  "run_count": 22
 }

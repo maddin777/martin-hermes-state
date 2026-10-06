@@ -1670,9 +1670,9 @@
 "max_completion_tokens":393216,
 "name":"DeepSeek: DeepSeek Pro Latest",
 "pricing":{
-"prompt":"0.000000136",
+"prompt":"0.0000001901",
 "completion":"0.0000042",
-"input_cache_read":"0.00000012"
+"input_cache_read":"0.00000019"
 }
 },
 "deepseek-pro-latest":{
@@ -1680,9 +1680,9 @@
 "max_completion_tokens":393216,
 "name":"DeepSeek: DeepSeek Pro Latest",
 "pricing":{
-"prompt":"0.000000136",
+"prompt":"0.0000001901",
 "completion":"0.0000042",
-"input_cache_read":"0.00000012"
+"input_cache_read":"0.00000019"
 }
 },
 "~deepseek/deepseek-flash-latest":{
@@ -3076,9 +3076,9 @@
 "max_completion_tokens":131072,
 "name":"Z.ai: GLM Flash Latest",
 "pricing":{
-"prompt":"0.0000000333",
+"prompt":"0.0000000352",
 "completion":"0.0000005",
-"input_cache_read":"0.00000003"
+"input_cache_read":"0.0000000232"
 }
 },
 "glm-flash-latest":{
@@ -3086,9 +3086,9 @@
 "max_completion_tokens":131072,
 "name":"Z.ai: GLM Flash Latest",
 "pricing":{
-"prompt":"0.0000000333",
+"prompt":"0.0000000352",
 "completion":"0.0000005",
-"input_cache_read":"0.00000003"
+"input_cache_read":"0.0000000232"
 }
 },
 "qwen/qwen3.8-flash":{
@@ -3353,22 +3353,22 @@
 },
 "~z-ai/glm-latest":{
 "context_length":1048576,
-"max_completion_tokens":943718,
+"max_completion_tokens":131072,
 "name":"Z.ai: GLM Latest",
 "pricing":{
-"prompt":"0.00000005",
-"completion":"0.0000044",
-"input_cache_read":"0.00000004"
+"prompt":"0.00000003",
+"completion":"0.000016",
+"input_cache_read":"0.00000003"
 }
 },
 "glm-latest":{
 "context_length":1048576,
-"max_completion_tokens":943718,
+"max_completion_tokens":131072,
 "name":"Z.ai: GLM Latest",
 "pricing":{
-"prompt":"0.00000005",
-"completion":"0.0000044",
-"input_cache_read":"0.00000004"
+"prompt":"0.00000003",
+"completion":"0.000016",
+"input_cache_read":"0.00000003"
 }
 },
 "tencent/hy-mt2-7b":{
@@ -3472,9 +3472,10 @@
 "max_completion_tokens":131072,
 "name":"Qwen: Qwen3.8 27B",
 "pricing":{
-"prompt":"0.00000042",
-"completion":"0.000003",
-"input_cache_read":"0.000000085"
+"prompt":"0.000000425",
+"completion":"0.00000255",
+"input_cache_read":"0.000000085",
+"input_cache_write":"0.00000053125"
 }
 },
 "qwen3.8-27b":{
@@ -3482,9 +3483,10 @@
 "max_completion_tokens":131072,
 "name":"Qwen: Qwen3.8 27B",
 "pricing":{
-"prompt":"0.00000042",
-"completion":"0.000003",
-"input_cache_read":"0.000000085"
+"prompt":"0.000000425",
+"completion":"0.00000255",
+"input_cache_read":"0.000000085",
+"input_cache_write":"0.00000053125"
 }
 },
 "qwen/qwen3.8-27b-20260814":{
@@ -3501,9 +3503,10 @@
 "max_completion_tokens":131072,
 "name":"Qwen: Qwen3.8 27B",
 "pricing":{
-"prompt":"0.00000042",
-"completion":"0.000003",
-"input_cache_read":"0.000000085"
+"prompt":"0.000000425",
+"completion":"0.00000255",
+"input_cache_read":"0.000000085",
+"input_cache_write":"0.00000053125"
 }
 },
 "qwen/qwen3.8-27b:free":{
@@ -3801,9 +3804,9 @@
 "max_completion_tokens":943718,
 "name":"DeepSeek: DeepSeek V4 Pro 0813",
 "pricing":{
-"prompt":"0.00000017",
-"completion":"0.0000042",
-"input_cache_read":"0.00000014"
+"prompt":"0.00000055",
+"completion":"0.000005",
+"input_cache_read":"0.00000045"
 }
 },
 "deepseek-v4-pro-0813":{
@@ -3811,9 +3814,9 @@
 "max_completion_tokens":943718,
 "name":"DeepSeek: DeepSeek V4 Pro 0813",
 "pricing":{
-"prompt":"0.00000017",
-"completion":"0.0000042",
-"input_cache_read":"0.00000014"
+"prompt":"0.00000055",
+"completion":"0.000005",
+"input_cache_read":"0.00000045"
 }
 },
 "deepseek/deepseek-v4-pro-20260813":{
@@ -3821,9 +3824,9 @@
 "max_completion_tokens":943718,
 "name":"DeepSeek: DeepSeek V4 Pro 0813",
 "pricing":{
-"prompt":"0.00000017",
-"completion":"0.0000042",
-"input_cache_read":"0.00000014"
+"prompt":"0.00000055",
+"completion":"0.000005",
+"input_cache_read":"0.00000045"
 }
 },
 "deepseek-v4-pro-20260813":{
@@ -3831,9 +3834,9 @@
 "max_completion_tokens":943718,
 "name":"DeepSeek: DeepSeek V4 Pro 0813",
 "pricing":{
-"prompt":"0.00000017",
-"completion":"0.0000042",
-"input_cache_read":"0.00000014"
+"prompt":"0.00000055",
+"completion":"0.000005",
+"input_cache_read":"0.00000045"
 }
 },
 "x-ai/grok-4.6":{
@@ -3950,22 +3953,22 @@
 },
 "nvidia/nemotron-3.5-lightning":{
 "context_length":262144,
-"max_completion_tokens":131072,
+"max_completion_tokens":32768,
 "name":"NVIDIA: Nemotron 3.5 Lightning",
 "pricing":{
-"prompt":"0.0000000595",
-"completion":"0.00000017",
-"input_cache_read":"0.00000002975"
+"prompt":"0.00000006",
+"completion":"0.00000016",
+"input_cache_read":"0.00000003"
 }
 },
 "nemotron-3.5-lightning":{
 "context_length":262144,
-"max_completion_tokens":131072,
+"max_completion_tokens":32768,
 "name":"NVIDIA: Nemotron 3.5 Lightning",
 "pricing":{
-"prompt":"0.0000000595",
-"completion":"0.00000017",
-"input_cache_read":"0.00000002975"
+"prompt":"0.00000006",
+"completion":"0.00000016",
+"input_cache_read":"0.00000003"
 }
 },
 "nvidia/nemotron-3.5-lightning-20260807":{
@@ -3979,12 +3982,12 @@
 },
 "nemotron-3.5-lightning-20260807":{
 "context_length":262144,
-"max_completion_tokens":131072,
+"max_completion_tokens":32768,
 "name":"NVIDIA: Nemotron 3.5 Lightning",
 "pricing":{
-"prompt":"0.0000000595",
-"completion":"0.00000017",
-"input_cache_read":"0.00000002975"
+"prompt":"0.00000006",
+"completion":"0.00000016",
+"input_cache_read":"0.00000003"
 }
 },
 "nvidia/nemotron-3.5-lightning:free":{
@@ -4180,7 +4183,7 @@
 "pricing":{
 "prompt":"0.0000000152",
 "completion":"0.00000128",
-"input_cache_read":"0.0000000137"
+"input_cache_read":"0.0000000152"
 }
 },
 "deepseek-v4-flash-latest":{
@@ -4190,7 +4193,7 @@
 "pricing":{
 "prompt":"0.0000000152",
 "completion":"0.00000128",
-"input_cache_read":"0.0000000137"
+"input_cache_read":"0.0000000152"
 }
 },
 "deepseek/deepseek-v4-flash-0731":{
@@ -4200,7 +4203,7 @@
 "pricing":{
 "prompt":"0.0000000152",
 "completion":"0.00000128",
-"input_cache_read":"0.0000000137"
+"input_cache_read":"0.0000000152"
 }
 },
 "deepseek-v4-flash-0731":{
@@ -4210,7 +4213,7 @@
 "pricing":{
 "prompt":"0.0000000152",
 "completion":"0.00000128",
-"input_cache_read":"0.0000000137"
+"input_cache_read":"0.0000000152"
 }
 },
 "deepseek/deepseek-v4-flash-20260731":{
@@ -4220,7 +4223,7 @@
 "pricing":{
 "prompt":"0.0000000152",
 "completion":"0.00000128",
-"input_cache_read":"0.0000000137"
+"input_cache_read":"0.0000000152"
 }
 },
 "deepseek-v4-flash-20260731":{
@@ -4230,7 +4233,7 @@
 "pricing":{
 "prompt":"0.0000000152",
 "completion":"0.00000128",
-"input_cache_read":"0.0000000137"
+"input_cache_read":"0.0000000152"
 }
 },
 "thinkingmachines/inkling-small":{
@@ -4882,9 +4885,9 @@
 "max_completion_tokens":943718,
 "name":"MoonshotAI: Kimi K3",
 "pricing":{
-"prompt":"0.00000072",
-"completion":"0.000013",
-"input_cache_read":"0.0000007"
+"prompt":"0.00000067",
+"completion":"0.000014",
+"input_cache_read":"0.00000022"
 }
 },
 "kimi-k3":{
@@ -4892,9 +4895,9 @@
 "max_completion_tokens":943718,
 "name":"MoonshotAI: Kimi K3",
 "pricing":{
-"prompt":"0.00000072",
-"completion":"0.000013",
-"input_cache_read":"0.0000007"
+"prompt":"0.00000067",
+"completion":"0.000014",
+"input_cache_read":"0.00000022"
 }
 },
 "moonshotai/kimi-k3-20260715":{
@@ -4912,9 +4915,9 @@
 "max_completion_tokens":943718,
 "name":"MoonshotAI: Kimi K3",
 "pricing":{
-"prompt":"0.00000072",
-"completion":"0.000013",
-"input_cache_read":"0.0000007"
+"prompt":"0.00000067",
+"completion":"0.000014",
+"input_cache_read":"0.00000022"
 }
 },
 "moonshotai/kimi-k3:batch":{
@@ -5506,18 +5509,18 @@
 "max_completion_tokens":128000,
 "name":"OpenAI: GPT-5.6 Sol Pro",
 "pricing":{
-"prompt":"0.000004",
-"completion":"0.00002",
+"prompt":"0.000002",
+"completion":"0.00001",
 "web_search":"0.01",
-"input_cache_read":"0.0000004",
-"input_cache_write":"0.000005",
+"input_cache_read":"0.0000002",
+"input_cache_write":"0.0000025",
 "overrides":[
 {
 "min_prompt_tokens":272000,
-"prompt":"0.000008",
-"completion":"0.00003",
-"input_cache_read":"0.0000008",
-"input_cache_write":"0.00001"
+"prompt":"0.000004",
+"completion":"0.000015",
+"input_cache_read":"0.0000004",
+"input_cache_write":"0.000005"
 }
 ]
 }
@@ -5527,18 +5530,18 @@
 "max_completion_tokens":128000,
 "name":"OpenAI: GPT-5.6 Sol Pro",
 "pricing":{
-"prompt":"0.000004",
-"completion":"0.00002",
+"prompt":"0.000002",
+"completion":"0.00001",
 "web_search":"0.01",
-"input_cache_read":"0.0000004",
-"input_cache_write":"0.000005",
+"input_cache_read":"0.0000002",
+"input_cache_write":"0.0000025",
 "overrides":[
 {
 "min_prompt_tokens":272000,
-"prompt":"0.000008",
-"completion":"0.00003",
-"input_cache_read":"0.0000008",
-"input_cache_write":"0.00001"
+"prompt":"0.000004",
+"completion":"0.000015",
+"input_cache_read":"0.0000004",
+"input_cache_write":"0.000005"
 }
 ]
 }
@@ -5569,18 +5572,18 @@
 "max_completion_tokens":128000,
 "name":"OpenAI: GPT-5.6 Sol Pro",
 "pricing":{
-"prompt":"0.000004",
-"completion":"0.00002",
+"prompt":"0.000002",
+"completion":"0.00001",
 "web_search":"0.01",
-"input_cache_read":"0.0000004",
-"input_cache_write":"0.000005",
+"input_cache_read":"0.0000002",
+"input_cache_write":"0.0000025",
 "overrides":[
 {
 "min_prompt_tokens":272000,
-"prompt":"0.000008",
-"completion":"0.00003",
-"input_cache_read":"0.0000008",
-"input_cache_write":"0.00001"
+"prompt":"0.000004",
+"completion":"0.000015",
+"input_cache_read":"0.0000004",
+"input_cache_write":"0.000005"
 }
 ]
 }
@@ -6456,42 +6459,42 @@
 },
 "z-ai/glm-5.2":{
 "context_length":1048576,
-"max_completion_tokens":943718,
+"max_completion_tokens":131072,
 "name":"Z.ai: GLM 5.2",
 "pricing":{
-"prompt":"0.00000038",
-"completion":"0.00000349",
-"input_cache_read":"0.00000026"
+"prompt":"0.000000016",
+"completion":"0.000016",
+"input_cache_read":"0.000000016"
 }
 },
 "glm-5.2":{
 "context_length":1048576,
-"max_completion_tokens":943718,
+"max_completion_tokens":131072,
 "name":"Z.ai: GLM 5.2",
 "pricing":{
-"prompt":"0.00000038",
-"completion":"0.00000349",
-"input_cache_read":"0.00000026"
+"prompt":"0.000000016",
+"completion":"0.000016",
+"input_cache_read":"0.000000016"
 }
 },
 "z-ai/glm-5.2-20260616":{
 "context_length":1048576,
-"max_completion_tokens":943718,
+"max_completion_tokens":131072,
 "name":"Z.ai: GLM 5.2",
 "pricing":{
-"prompt":"0.00000038",
-"completion":"0.00000349",
-"input_cache_read":"0.00000026"
+"prompt":"0.000000016",
+"completion":"0.000016",
+"input_cache_read":"0.000000016"
 }
 },
 "glm-5.2-20260616":{
 "context_length":1048576,
-"max_completion_tokens":943718,
+"max_completion_tokens":131072,
 "name":"Z.ai: GLM 5.2",
 "pricing":{
-"prompt":"0.00000038",
-"completion":"0.00000349",
-"input_cache_read":"0.00000026"
+"prompt":"0.000000016",
+"completion":"0.000016",
+"input_cache_read":"0.000000016"
 }
 },
 "openrouter/fusion":{
@@ -7700,9 +7703,9 @@
 "max_completion_tokens":943718,
 "name":"MoonshotAI: Kimi Latest",
 "pricing":{
-"prompt":"0.000000576",
+"prompt":"0.0000006112",
 "completion":"0.000013",
-"input_cache_read":"0.0000003"
+"input_cache_read":"0.00000045"
 }
 },
 "kimi-latest":{
@@ -7710,9 +7713,9 @@
 "max_completion_tokens":943718,
 "name":"MoonshotAI: Kimi Latest",
 "pricing":{
-"prompt":"0.000000576",
+"prompt":"0.0000006112",
 "completion":"0.000013",
-"input_cache_read":"0.0000003"
+"input_cache_read":"0.00000045"
 }
 },
 "~google/gemini-flash-latest":{
@@ -7959,38 +7962,42 @@
 },
 "qwen/qwen3.6-27b":{
 "context_length":262144,
-"max_completion_tokens":81920,
+"max_completion_tokens":262140,
 "name":"Qwen: Qwen3.6 27B",
 "pricing":{
 "prompt":"0.00000032",
-"completion":"0.0000032"
+"completion":"0.0000027",
+"input_cache_read":"0.00000003"
 }
 },
 "qwen3.6-27b":{
 "context_length":262144,
-"max_completion_tokens":81920,
+"max_completion_tokens":262140,
 "name":"Qwen: Qwen3.6 27B",
 "pricing":{
 "prompt":"0.00000032",
-"completion":"0.0000032"
+"completion":"0.0000027",
+"input_cache_read":"0.00000003"
 }
 },
 "qwen/qwen3.6-27b-20260422":{
 "context_length":262144,
-"max_completion_tokens":81920,
+"max_completion_tokens":262140,
 "name":"Qwen: Qwen3.6 27B",
 "pricing":{
 "prompt":"0.00000032",
-"completion":"0.0000032"
+"completion":"0.0000027",
+"input_cache_read":"0.00000003"
 }
 },
 "qwen3.6-27b-20260422":{
 "context_length":262144,
-"max_completion_tokens":81920,
+"max_completion_tokens":262140,
 "name":"Qwen: Qwen3.6 27B",
 "pricing":{
 "prompt":"0.00000032",
-"completion":"0.0000032"
+"completion":"0.0000027",
+"input_cache_read":"0.00000003"
 }
 },
 "openai/gpt-5.5-pro":{
@@ -8254,9 +8261,9 @@
 "max_completion_tokens":943718,
 "name":"DeepSeek: DeepSeek V4 Flash 0423",
 "pricing":{
-"prompt":"0.0000000224",
+"prompt":"0.0000000281",
 "completion":"0.00000128",
-"input_cache_read":"0.0000000202"
+"input_cache_read":"0.0000000281"
 }
 },
 "deepseek-v4-flash":{
@@ -8264,9 +8271,9 @@
 "max_completion_tokens":943718,
 "name":"DeepSeek: DeepSeek V4 Flash 0423",
 "pricing":{
-"prompt":"0.0000000224",
+"prompt":"0.0000000281",
 "completion":"0.00000128",
-"input_cache_read":"0.0000000202"
+"input_cache_read":"0.0000000281"
 }
 },
 "deepseek/deepseek-v4-flash-20260423":{
@@ -8274,9 +8281,9 @@
 "max_completion_tokens":943718,
 "name":"DeepSeek: DeepSeek V4 Flash 0423",
 "pricing":{
-"prompt":"0.0000000224",
+"prompt":"0.0000000281",
 "completion":"0.00000128",
-"input_cache_read":"0.0000000202"
+"input_cache_read":"0.0000000281"
 }
 },
 "deepseek-v4-flash-20260423":{
@@ -8284,9 +8291,9 @@
 "max_completion_tokens":943718,
 "name":"DeepSeek: DeepSeek V4 Flash 0423",
 "pricing":{
-"prompt":"0.0000000224",
+"prompt":"0.0000000281",
 "completion":"0.00000128",
-"input_cache_read":"0.0000000202"
+"input_cache_read":"0.0000000281"
 }
 },
 "tencent/hy3-preview":{
@@ -15383,20 +15390,22 @@
 },
 "deepseek/deepseek-chat-v3-0324":{
 "context_length":163840,
-"max_completion_tokens":147456,
+"max_completion_tokens":115200,
 "name":"DeepSeek: DeepSeek V3 0324",
 "pricing":{
-"prompt":"0.00000025",
-"completion":"0.000001"
+"prompt":"0.00000029",
+"completion":"0.00000114",
+"input_cache_read":"0.00000011"
 }
 },
 "deepseek-chat-v3-0324":{
 "context_length":163840,
-"max_completion_tokens":147456,
+"max_completion_tokens":115200,
 "name":"DeepSeek: DeepSeek V3 0324",
 "pricing":{
-"prompt":"0.00000025",
-"completion":"0.000001"
+"prompt":"0.00000029",
+"completion":"0.00000114",
+"input_cache_read":"0.00000011"
 }
 },
 "openai/o1-pro":{
