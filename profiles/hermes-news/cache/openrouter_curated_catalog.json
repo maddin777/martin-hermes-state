@@ -1,5 +1,5 @@
 {
-  "fetched_at": 1791180840.4930735,
+  "fetched_at": 1791267240.7691467,
   "curated": [
     [
       "anthropic/claude-fable-5.1",
@@ -231,10 +231,6 @@
     ],
     [
       "nvidia/nemotron-3.5-lightning:free",
-      "free"
-    ],
-    [
-      "stealth/space-bunny-alpha",
       "free"
     ]
   ]
