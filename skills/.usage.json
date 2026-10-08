@@ -1027,13 +1027,13 @@
     "created_by": null,
     "last_patched_at": null,
     "last_reused_patch_generation": 0,
-    "last_used_at": "2026-10-04T13:00:50.669771+00:00",
+    "last_used_at": "2026-10-07T12:00:36.443539+00:00",
     "last_viewed_at": "2026-08-27T18:15:34.184642+00:00",
     "patch_count": 0,
     "patch_generation": 0,
     "pinned": false,
     "state": "active",
-    "use_count": 35,
+    "use_count": 36,
     "view_count": 2
   },
   "llama-cpp": {
@@ -1237,13 +1237,13 @@
     "created_by": null,
     "last_patched_at": "2026-07-11T01:10:31.710850+00:00",
     "last_reused_patch_generation": 0,
-    "last_used_at": "2026-10-06T14:00:50.695516+00:00",
+    "last_used_at": "2026-10-07T14:00:36.385243+00:00",
     "last_viewed_at": "2026-10-03T01:00:51.376613+00:00",
     "patch_count": 11,
     "patch_generation": 0,
     "pinned": false,
     "state": "active",
-    "use_count": 124,
+    "use_count": 125,
     "view_count": 38
   },
   "ocr-and-documents": {
