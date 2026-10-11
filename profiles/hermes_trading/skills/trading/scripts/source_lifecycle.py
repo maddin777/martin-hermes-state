@@ -477,7 +477,7 @@ Antworte NUR mit einem JSON-Array von maximal 3 Vorschlägen (kein Markdown, kei
 
         # Modell-Fallback-Kette
         models_to_try = [
-            "deepseek/deepseek-v4-flash-0731",
+            "deepseek/deepseek-v4.1-flash",
             "openrouter/owl-alpha",
             "openai/gpt-4o-mini",
         ]
@@ -492,7 +492,7 @@ Antworte NUR mit einem JSON-Array von maximal 3 Vorschlägen (kein Markdown, kei
                              "Content-Type": "application/json"},
                     json={"model": model,
                           "messages": [{"role": "user", "content": prompt}],
-                          "max_tokens": 600, "temperature": 0.3},
+                          "max_tokens": 2000, "temperature": 0.3},
                     timeout=30
                 )
                 data = resp.json()

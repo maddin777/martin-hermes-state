@@ -55,7 +55,9 @@ def _extract_sentiment(texts):
             "https://openrouter.ai/api/v1/chat/completions",
             headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
             json={
-                "model": "deepseek/deepseek-v4-flash-0731", "max_tokens": 400,
+                "model": "deepseek/deepseek-v4.1-flash", "max_tokens": 1000,
+                # Reasoning aus: v4.1-flash denkt mit, sonst leeres content bei knappem Limit
+                "reasoning": {"enabled": False},
                 "messages": [{
                     "role": "system",
                     "content": """Analysiere diese Tweets zu einem Ticker/Unternehmen. Antworte NUR mit JSON:

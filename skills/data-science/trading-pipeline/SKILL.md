@@ -23,7 +23,7 @@ Bevor du eine Änderung am Trading-System vorschlägst, prüfe ob sie zu unserem
 | **Hebel** | Paper-Trading mit 1x Hebel + TR-Gebühren (1€/Trade). Intraday-Edge wird killt. |
 | **Datenquellen** | yfinance (täglich), YouTube/RSS/Twitter (morgens). Kein Echtzeit-Feed. |
 | **Modell-Kosten** | OpenRouter (DeepSeek, Gemini) für Pipeline-Extraktion. twitterapi.io für Twitter-Daten (API-Key). Kein xAI/Grok. |
-| **Model-Naming** | Alle DeepSeek-Modelle nutzen `deepseek/deepseek-v4-flash-0731` (die fixe Version, kein `-latest`-Suffix). |
+| **Model-Naming** | Modell-IDs stehen hardcodiert in Scripts (`MODEL`/`VALIDATION_MODEL`/`DS_MODEL`-Konstanten, Inline-`model`-Felder) und in `thematic/config/thematic_config.json`. Vor jedem Swap alle Stellen erfassen (`grep -rn '<alte-id>' scripts/ thematic/config/`). Fixe Version, kein `-latest`. Ablauf: Modell-Swap-Abschnitt in `hermes-profile-management`. Langfristig gehört die ID in eine zentrale Config (DB-First-Prinzip), nicht in N Dateien. |
 
 ### DB-First-Prinzip
 
@@ -309,6 +309,8 @@ sqlite3 /root/.hermes/profiles/hermes_trading/skills/trading/data/trading.db \
 ```
 
 Bei Abweichung (gelb, rot, Fehler im Log, oder Pipelineschritt fehlt) sofort Fehleranalyse starten — nicht auf Nachfrage warten.
+
+**Vor der RCA den Schedule prüfen:** Die meisten Pipeline-Jobs laufen Mo–Fr (`crontab -l`, Wochentag-Feld `1-5`). Ein Log, das Freitagabend endet, ist am Samstag kein Ausfall. Erst Crontab-Wochentage gegen den Log-Stand abgleichen, dann RCA. Uhrzeiten aus Gedächtnis-Notizen sind nicht die Quelle — die Crontab ist es.
 
 ### 🔴 HARD RULE: KEIN `.get()` auf sqlite3.Row
 

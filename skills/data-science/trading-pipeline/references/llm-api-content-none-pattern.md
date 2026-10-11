@@ -46,6 +46,29 @@ text = msg_content.strip()
 | `source_lifecycle.py` | 366 | `.get("content")` + `continue` |
 | `thematic/weekly_review.py` | 176 | `.get("content")` + `return default` |
 
+## Reasoning-Modelle: Budget-Falle (die häufigere Ursache)
+
+Reasoning-Modelle (z.B. DeepSeek v4 / v4.1-flash) zählen das interne Denken gegen
+`max_tokens`. Ist das Budget klein, endet die Antwort mit `finish_reason: length` und
+`content` ist leer oder abgeschnitten — derselbe Crash-Pfad wie oben.
+
+**Regel:**
+- Reine JSON-Extraktion / Klassifikation: `"reasoning": {"enabled": false}` setzen UND `max_tokens` ≥ 1000.
+  Ohne Reasoning-Abschaltung reichen selbst 400 Tokens bei langen Prompts nicht.
+- Komplexe Analyse (Scout/Analyst): Reasoning bewusst lassen, aber `max_tokens` groß genug wählen und
+  `finish_reason == "length"` als eigenen Fehlerfall behandeln (nicht als leeres Ergebnis).
+- Smoke-Test vor Rollout mit dem echten Payload des Scripts, nicht mit `max_tokens=20`:
+  ein 20-Token-Call zeigt nur, dass das Modell antwortet, nicht dass das Budget reicht.
+
+## Modell-Swap-Verify (Trading)
+
+Vor dem Swap: jede geänderte Datei sichern (`cp` nach `~/.hermes/cache/scratch/`), damit Rollback ein `cp` ist.
+Nach dem Swap:
+1. Grep auf die alte ID, Live-Dateien filtern. Logs, Caches, `.bak`, Curator-Backups und Migrations-Doku ausschließen (die beschreiben Vergangenheit).
+2. Syntax-Gate: `python3 -m py_compile` für Scripts, `json.load` für `jobs.json` und JSON-Configs.
+3. Live-Call mit dem echten Payload (Modell, `max_tokens`, Reasoning-Setting) des Scripts. Ein 20-Token-Ping reicht nicht.
+4. Nach 1–2 Cron-Läufen `agent.log` auf `PAID lane` / `fallback model` mit altem Namen prüfen. Der Auxiliary-Client kann den alten Modellnamen aus dem Katalog-Cache wählen, obwohl keine Config-Datei ihn enthält. Ein Grep auf Config-Dateien findet das nicht.
+
 ## Wann tritt das auf?
 
 - OpenRouter Timeout (Modell antwortet nicht rechtzeitig)

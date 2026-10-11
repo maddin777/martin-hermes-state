@@ -25,7 +25,7 @@ PAGE = ('<html><body><h1>Dashboard</h1>'
         '<form method="POST" action="/thematic/config/save"><input name="llm_committee_bull"></form>'
         '</body></html>')
 THEMATIC_CFG = {
-    "llm_models": {"committee_bull": "deepseek/deepseek-v4-pro", "devils_advocate": "deepseek/deepseek-v4-flash-0731"},
+    "llm_models": {"committee_bull": "deepseek/deepseek-v4-pro", "devils_advocate": "deepseek/deepseek-v4.1-flash"},
     "thresholds": {"min_score": 0.5},
     "allowed_llm_models": ["openai/gpt-4o-mini"],
 }
@@ -142,7 +142,7 @@ class DashboardTests(unittest.TestCase):
 
     def test_known_model_and_allowed_list_are_accepted(self):
         cookie = self._cookie()
-        for model in ("deepseek/deepseek-v4-flash-0731", "openai/gpt-4o-mini"):
+        for model in ("deepseek/deepseek-v4.1-flash", "openai/gpt-4o-mini"):
             status, _, _ = self._req("POST", "/thematic/config/save", f"llm_committee_bull={model}", {"Cookie": cookie})
             self.assertEqual(status, 303, model)
         self.assertEqual(self.save_thematic.call_count, 2)

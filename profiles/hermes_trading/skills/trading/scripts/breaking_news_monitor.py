@@ -90,7 +90,7 @@ def _score_news_sentiment(news_items: list, company_name: str) -> tuple:
             # FIX 28.09.2026: Reasoning aus + mehr Tokens — bei max_tokens=200 lief
             # das Reasoning ins Limit, content blieb leer und der Score fiel still
             # auf 0.5 zurueck (Testlauf: 3/3 Positionen exakt 0.50).
-            json={"model": "deepseek/deepseek-v4-flash-0731", "max_tokens": 400,
+            json={"model": "deepseek/deepseek-v4.1-flash", "max_tokens": 400,
                   "reasoning": {"enabled": False},
                   "messages": [{"role": "user", "content": prompt}]},
             timeout=30,

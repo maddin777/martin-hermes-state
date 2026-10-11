@@ -24,7 +24,7 @@ import env_loader  # noqa: F401  (side-effect: laedt .env)
 from config import DB_PATH, db_connect, DETERMINISTIC_CHANNELS  # noqa: F401
 
 OPENROUTER_KEY = os.environ.get("OPENROUTER_API_KEY")
-VALIDATION_MODEL = "deepseek/deepseek-v4-flash-0731"
+VALIDATION_MODEL = "deepseek/deepseek-v4.1-flash"
 FRESH_DAYS = 14        # nur Kandidaten mit Mention in den letzten 14 Tagen (wie der Stale-Drop der Watchlist)
 REASON_DAYS = 30       # Begründungen der letzten 30 Tage
 MAX_REASONS = 8

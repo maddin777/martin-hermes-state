@@ -932,8 +932,8 @@ DAILY_TOKEN_BUDGET = {
 "committee_bull":    "deepseek/deepseek-v4-pro",
 "committee_bear":    "openai/gpt-5.4-nano",
 "committee_risk":    "google/gemini-2.5-flash-lite",
-"devils_advocate":   "deepseek/deepseek-v4-flash-0731",
-"extractor_analyst": "deepseek/deepseek-v4-flash-0731"
+"devils_advocate":   "deepseek/deepseek-v4.1-flash",
+"extractor_analyst": "deepseek/deepseek-v4.1-flash"
 ```
 Bull, Bear und Risk sind DREI verschiedene Provider (DeepSeek / OpenAI / Google) — Bull und Bear MÜSSEN verschieden sein, sonst widerlegt sich dasselbe Modell nur mit denselben Biases. `grok-lite` bewusst NICHT fürs Committee (wird vom Breaking-News-Check genutzt, Rate-Limits schonen).
 
@@ -1342,13 +1342,13 @@ Twitter/X-Daten flossen ausschließlich über `twitterapi.io` (Drittanbieter, li
 - Model: `grok-4.5` (grok-2-latest existiert nicht mehr auf xAI, nur Responses API Models wie grok-4.5/grok-3 funktionieren)
 - `fetch_x_search_grok()` für generische X-Searches (Keyword/Thema, `source_type='x_search'`)
 - `_send_telegram_alert()` für Fallback-Benachrichtigungen via `TELEGRAM_CHAT_ID`
-- `beneficiary_a` in `thematic_config.json` von `grok-lite` auf `deepseek/deepseek-v4-flash-0731` umgestellt
+- `beneficiary_a` in `thematic_config.json` von `grok-lite` auf `deepseek/deepseek-v4.1-flash` umgestellt
 
 ### Geänderte Dateien
 | Datei | Änderung |
 |---|---|
 | `scripts/social_scanner.py` | +170 Zeilen: 5 neue Funktionen, `main()` priorisiert Grok, Telegram-Alert bei Fallback |
-| `thematic/config/thematic_config.json` | `beneficiary_a: grok-lite` → `deepseek/deepseek-v4-flash-0731` |
+| `thematic/config/thematic_config.json` | `beneficiary_a: grok-lite` → `deepseek/deepseek-v4.1-flash` |
 
 ---
 
@@ -2335,7 +2335,7 @@ Jev als Ersatz im Durchschnitt bzw. als Marktprognose.
 **Aufbau:** `scripts/jev_veto_probe.py` (neu, nur lesend, keine Buchung in `llm_budget_log`). Menge = die 400
 Stage-1-Titel des TradingView-Screeners vom 29.09. (300 L / 100 S), davon 144 in Stage 2 (137 L / 7 S), 10 in der
 Auswahl nach Regime-Cap. Nachrichten: Finnhub `company-news`, 14 Tage, max. 12 je Titel (400/400 mit Nachrichten).
-Je Titel: Stichwort-Regex, Jev `choice` zweimal, `deepseek-v4-flash-0731` zweimal (Referenz = beide DS-Läufe gleich;
+Je Titel: Stichwort-Regex, Jev `choice` zweimal, `deepseek-v4.1-flash` zweimal (Referenz = beide DS-Läufe gleich;
 13 Titel „unklar“). Kategorien: acquisition_pending, offering_dilution, legal_accounting, guidance_cut, none.
 Jev bekommt nur Schlagzeilen und Zusammenfassungen, keine Kurszahlen. 1.600 Anfragen, 0 Fehler, **0,098 $**
 (Jev ≈ 0,016 $, DeepSeek ≈ 0,082 $).

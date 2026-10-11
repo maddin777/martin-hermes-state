@@ -8,6 +8,17 @@ description: "Read, search, create, and maintain notes in the Obsidian vault. In
 **Location:** `OBSIDIAN_VAULT_PATH` env var, or defaults to `~/Documents/Obsidian Vault`.
 For Martin: `/root/obsidian-vault` (root-owned, synced to GDrive).
 
+## Read-only Ordner: `claude/` (Claude-Code-Second-Brain)
+
+`claude/` im Vault-Root gehört Claude Code. Hermes nutzt den Ordner als **reine Wissensbasis (read-only)**:
+- DARF lesen und Inhalte als Kontext/Wissen für Antworten verwenden
+- DARF NICHT schreiben, verschieben, löschen oder ingesten
+- DARF NICHT als Orphan, Broken-Link oder Widerspruch linten/bewerten
+- DARF NICHT in `index.md` oder `log.md` aufnehmen
+- DARF NICHT per Backlink/Self-Write aus `wiki/` oder anderen Ordnern darauf verlinken
+
+`claude/` bleibt im Google-Drive-Bisync. Schließe `claude/` bei Vault-Iterationen aus (Health-Check, Backward Integration, Gap Detection, Orphan-Scan, Clippings-Ingest, Regenerate-Index), lies aber bei Bedarf daraus. Nur Hermes schreibt in `index.md` und `log.md`.
+
 ## Read a note
 
 ```bash

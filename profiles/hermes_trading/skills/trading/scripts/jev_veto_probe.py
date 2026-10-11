@@ -56,7 +56,7 @@ NEWS_DAYS = 14
 MAX_NEWS = 12
 FINNHUB_PAUSE = 1.25            # < 50 Aufrufe je Minute
 WORKERS = 8
-DS_MODEL = "deepseek/deepseek-v4-flash-0731"
+DS_MODEL = "deepseek/deepseek-v4.1-flash"
 ARMS = ("JEV1", "JEV2", "DS1", "DS2")
 TOP_K = 15
 

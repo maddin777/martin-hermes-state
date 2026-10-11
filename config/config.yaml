@@ -1,4 +1,8 @@
-model: deepseek/deepseek-v4-flash-0731
+model:
+  default: anthropic/claude-haiku-5.5
+  provider: openrouter
+  base_url: https://openrouter.ai/api/v1
+  api_mode: chat_completions
 fallback_providers: []
 toolsets:
   - hermes-cli
@@ -133,89 +137,89 @@ auxiliary:
     timeout: 120
     download_timeout: 30
   web_extract:
-    provider: auto
-    model: ''
+    provider: openrouter
+    model: 'deepseek/deepseek-v4.1-flash'
     base_url: ''
     api_key: ''
     timeout: 360
   compression:
-    provider: auto
-    model: ''
+    provider: openrouter
+    model: 'deepseek/deepseek-v4.1-flash'
     base_url: ''
     api_key: ''
     timeout: 120
   skills_hub:
-    provider: auto
-    model: ''
+    provider: openrouter
+    model: 'deepseek/deepseek-v4.1-flash'
     base_url: ''
     api_key: ''
     timeout: 30
   approval:
-    provider: auto
-    model: ''
+    provider: openrouter
+    model: 'deepseek/deepseek-v4.1-flash'
     base_url: ''
     api_key: ''
     timeout: 30
   mcp:
-    provider: auto
-    model: ''
+    provider: openrouter
+    model: 'deepseek/deepseek-v4.1-flash'
     base_url: ''
     api_key: ''
     timeout: 30
   title_generation:
-    provider: auto
-    model: ''
+    provider: openrouter
+    model: 'deepseek/deepseek-v4.1-flash'
     base_url: ''
     api_key: ''
     timeout: 30
     language: ''
   tts_audio_tags:
-    provider: auto
-    model: ''
+    provider: openrouter
+    model: 'deepseek/deepseek-v4.1-flash'
     base_url: ''
     api_key: ''
     timeout: 30
   triage_specifier:
-    provider: auto
-    model: ''
+    provider: openrouter
+    model: 'deepseek/deepseek-v4.1-flash'
     base_url: ''
     api_key: ''
     timeout: 120
   kanban_decomposer:
-    provider: auto
-    model: ''
+    provider: openrouter
+    model: 'deepseek/deepseek-v4.1-flash'
     base_url: ''
     api_key: ''
     timeout: 180
   profile_describer:
-    provider: auto
-    model: ''
+    provider: openrouter
+    model: 'deepseek/deepseek-v4.1-flash'
     base_url: ''
     api_key: ''
     timeout: 60
   curator:
-    provider: auto
-    model: ''
+    provider: openrouter
+    model: 'deepseek/deepseek-v4.1-flash'
     base_url: ''
     api_key: ''
     timeout: 600
   monitor:
-    provider: auto
-    model: ''
+    provider: openrouter
+    model: 'deepseek/deepseek-v4.1-flash'
     base_url: ''
     api_key: ''
     timeout: 60
   session_search:
-    provider: auto
-    model: ''
+    provider: openrouter
+    model: 'deepseek/deepseek-v4.1-flash'
     base_url: ''
     api_key: ''
     timeout: 30
     extra_body: {}
     max_concurrency: 3
   flush_memories:
-    provider: auto
-    model: ''
+    provider: openrouter
+    model: 'deepseek/deepseek-v4.1-flash'
     base_url: ''
     api_key: ''
     timeout: 30

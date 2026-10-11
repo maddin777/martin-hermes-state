@@ -25,7 +25,7 @@ from utils import retry, get_logger
 log = get_logger("social_scanner")
 
 OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY")
-MODEL = "deepseek/deepseek-v4-flash-0731"
+MODEL = "deepseek/deepseek-v4.1-flash"
 
 DAYS = 2
 
@@ -86,7 +86,9 @@ def extract_companies(title, content, source_name):
             "https://openrouter.ai/api/v1/chat/completions",
             headers={"Authorization": f"Bearer {OPENROUTER_API_KEY}", "Content-Type": "application/json"},
             json={
-                "model": MODEL, "max_tokens": 500,
+                "model": MODEL, "max_tokens": 1200,
+                # Reasoning aus: reine JSON-Extraktion, Reasoning frisst sonst das Budget
+                "reasoning": {"enabled": False},
                 "messages": [{
                     "role": "system",
                     "content": """Extrahiere börsennotierte Unternehmen aus dem Text.
