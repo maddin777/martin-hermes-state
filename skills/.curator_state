@@ -1,9 +1,9 @@
 {
-  "last_report_path": "/root/.hermes/logs/curator/20261005-080910",
-  "last_run_at": "2026-10-05T08:09:10.759842+00:00",
-  "last_run_duration_seconds": 117.405805,
-  "last_run_summary": "auto: 5 marked stale, 5 reactivated; llm: ## Curator Pass Complete\n\nI successfully patched `trading-pipeline` to include a consolidated quick-start section (previously the entire `trading-scan` skill content). However, I could not complete the archive/delete of `trading-scan` becau…",
+  "last_report_path": "/root/.hermes/logs/curator/20261012-081131",
+  "last_run_at": "2026-10-12T08:11:31.036798+00:00",
+  "last_run_duration_seconds": 291.146096,
+  "last_run_summary": "auto: 15 marked stale; llm: Consolidation pass complete. Here's what I found and did.\n\n## Clusters processed\n\n**Cluster 1 — Hermes profile infrastructure (2 members)**\n`hermes-profile-ops` was already the class-level umbrella (\"cron, bot mode, vault, management\"). `op…\narchived 3 skill(s):\n  • dataviz-story-scout → idea-scout-pipelines\n  • micro-saas-opportunity-scan → idea-scout-pipelines\n  • open-webui-deployment → hermes-profile-ops\nfull report: hermes curator status\nkeep an umbrella stable: hermes curator pin hermes-profile-ops",
   "last_run_summary_shown_at": "2026-09-21T08:05:34.200902+00:00",
   "paused": false,
-  "run_count": 22
+  "run_count": 23
 }

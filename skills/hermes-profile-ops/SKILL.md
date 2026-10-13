@@ -51,4 +51,30 @@ Jeder Cron, der „Dateien seit letztem Lauf neu/geändert" scannt (vault insigh
 - **Marker persistieren, nie in /tmp.** `/tmp` ist ephemär; ein verlorener Marker wird beim Scan neu erzeugt und markiert alles als „alt“ → ein ganzes Intervall an Änderungen geht stillschweigend verloren. Persistenter Pfad wie `~/.hermes/cache/<marker>` + `mkdir -p` + Bootstrap.
 - **Mit dem BESTEHENDEN Marker ZUERST finden, DANN touchen.** `touch`-dann-`find -newer` setzt die Baseline auf „jetzt“ und findet nichts. Richtige Reihenfolge: `find ... -newer <persistierter-marker>` zuerst, danach `touch`, um die Baseline für den nächsten Lauf vorzurollen. Beim Erstlauf mit `-mtime -N` statt `-newer` bootstrappen, damit nicht alles als neu eingepaukt wird.
 
-See archived devops/ skills for detailed procedures.
+## Open WebUI Deployment (LAN-Chat für ein isoliertes Profil)
+
+Nutzer per Browser-Chat gegen ein spezialisiertes Profil sprechen lassen (getrennte
+Verläufe, Bild-Upload). Architektur: Browser → Open WebUI (Docker :3000) → API-Server
+des Profils (:8643, eigener Port+Key) → Profil.
+
+- **Isolierter API-Server pro Profil**: im Profil-`.env` `API_SERVER_ENABLED=true`,
+eigener `API_SERVER_PORT` (Default 8642, z.B. 8643) + eigener `API_SERVER_KEY` — sonst
+kollidiert der Chat mit dem Haupt-API-Server. Start via `sudo /root/.local/bin/hermes -p
+<profil> gateway install --system --run-as-user root` (voller Pfad nötig, `hermes` fehlt
+im sudo-PATH). Verify: 401 ohne Key / 200 mit Key auf `/v1/chat/completions`.
+- **Docker**: `ghcr.io/open-webui/open-webui:main`, `-p 3000:8080`,
+`--add-host=host.docker.internal:host-gateway`, `--restart always`. Image ~3GB → im
+Hintergrund starten. **`WEBUI_SECRET_KEY` ist Pflicht** (sonst inkonsistente Config-Pfade).
+- **`OPENAI_API_MODELS` = PROFIL-ID, nicht Modellname** (z.B. `hermes_learn`); vorher mit
+`curl /v1/models` prüfen. Falscher Wert → 0 Modelle.
+- **User-Verwaltung**: der erste `POST /api/v1/auths/signup` wird Admin, danach ist
+Self-Signup gesperrt (403). Kein öffentlicher Admin-User-Create-Endpoint (SCIM default
+disabled) → weitere User über die Admin-UI anlegen.
+- **Vision-Modell nötig** für Bild-Upload (`google/gemini-2.5-flash` Sweet-Spot;
+`qwen/qwen3.7-flash` günstig). PITFALL: `:batch`-Suffix-Modelle sind nur Batch-API →
+für Live-Chat unbrauchbar.
+- Nur LAN, kein Internet-Port.
+
+Details: `references/open-webui-deployment.md` (Deploy-Prozedur) und
+`references/no-models-troubleshooting.md` („0 Modelle"-Diagnose: Key in DB persistiert,
+WEBUI_SECRET_KEY, MODELS=Profil-ID).
