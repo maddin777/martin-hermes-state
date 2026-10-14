@@ -255,6 +255,17 @@ Nach jeder Änderung am Prompt oder Skill:
 
 ## Workflow
 
+### Pre-Run-Datenbeschaffung (Cron, verifiziert)
+
+Der Cron-Job bekommt ein Script (`scripts/gather_briefing_data.py`, Vorlage im Skill), das News (2-Tage-Filter), Wetter und Wassertemperatur VOR dem Agent-Lauf holt. Die stdout-Ausgabe landet im Prompt; der Agent formatiert nur noch.
+
+1. Script ins Profil kopieren: `<profil>/scripts/gather_briefing_data.py`
+2. Anhängen per **Dateiname** (keine absoluten Pfade): `hermes-<profil> cron edit <job_id> --script gather_briefing_data.py`
+3. Prompt MUSS enthalten: Daten sind oben im Prompt, keine Terminal-Befehle, kein `send_message`/curl an Telegram (Final-Antwort wird vom Gateway zugestellt).
+4. Testlauf im Hintergrund (`background=true`), Ergebnis in `deliveries.db` prüfen (siehe Fehlerbilder).
+
+Script-Regel: Feeds ohne Artikel der letzten 2 Tage → „keine Artikel“ ausgeben, NICHT auf ältere Artikel zurückfallen. Veraltete Items als Fallback sind genau der Fehler, den die Frische-Regel verhindern soll.
+
 ### Step 1: Try web_search and web_extract first
 
 ```
@@ -266,7 +277,7 @@ If these fail (Firecrawl credits exhausted — Refresh meist 13.7.), proceed to 
 
 ### Step 2: Fetch RSS feeds directly via curl
 
-**CRITICAL for cron jobs:** `execute_code` is blocked in cron. Use `curl -sL` and pipe to Python directly in terminal (in non-cron mode) or save to file then `read_file` (in cron mode).
+**Für Cron gilt: der Agent holt KEINE Daten selbst.** Terminal-Befehle mit Interpreter-Flag (`python -c`, heredoc) werden in Cron geblockt; der Lauf endet dann mit leerer Antwort. Rohdaten kommen aus dem Pre-Run-Script (Abschnitt „Pre-Run-Datenbeschaffung“). Die curl-Befehle unten sind für manuelle Läufe in der interaktiven Session.
 
 ```bash
 # Google News DE — Top News (funktioniert immer)
@@ -338,6 +349,15 @@ Alternative: seatemperature.org via browser. Die Open-Meteo Lufttemperatur ist N
   - Nachricht 3: Wetter & Wassertemperaturen (kürzer, ggf. an letzte Sektion anhängen)
 - Quellenangabe bei jeder News
 
+## Cron-Fehlerbilder (Diagnose zuerst)
+
+- **`last_status: ok` heißt NICHT, dass Inhalt kam.** Prüfe `deliveries.db` → `length(content)`. 0 oder nur Header-Skelett = leerer Lauf.
+- **Ursachen in `errors.log`:**
+  - `Reasoning-only clean stop`: Reasoning-Modell beendet ohne sichtbare Antwort → leere Delivery. Ungetestete Gegenmaßnahme: Reasoning für den Job deaktivieren oder Modell wechseln.
+  - `BLOCKED: Command flagged as dangerous`: Terminal-Befehl mit Interpreter-Flag in Cron → Pre-Run-Script verwenden.
+- **`Upstream error ... Output data may contain inappropriate content`** (OpenRouter/Alibaba-Filter für deepseek-v4-flash): transient, Re-Run nach einigen Minuten. Kein Gateway-Problem, solange Gateway active und Delivery-Status `delivered`.
+- **Prompt-Änderungen** nur per Python-`json.dump(ensure_ascii=False)` in `jobs.json` schreiben (Umlaute, Anführungszeichen), dann Testlauf.
+
 ## Quality Rules
 
 - **KEINE leeren Überschriften oder Sektionen.** Martin hat sich explizit darüber beschwert. Wenn eine Sektion wenig Meldungen hat: die 1-2 relevantesten trotzdem mit Inhalt nennen. Kein "Keine Meldungen" oder "Ruhiger Tag".
@@ -400,8 +420,7 @@ Delivery goes through the **profile's own Telegram bot** to the profile's TELEGR
 Key constraints for the agent running this cron:
 - `execute_code` is **blocked** in cron mode — do not attempt it
 - `web_search` / `web_extract` may fail due to Firecrawl credits — always have RSS fallback ready
-- `curl | python3` pipe is **safe in terminal() calls** (non-cron runs) but blocked in cron
-- In cron mode: save RSS to `/tmp/` then `read_file`
+- Terminal-Befehle mit Interpreter-Flag (`python -c`, heredoc) sind in Cron **blockiert**. Verifizierter Weg: Pre-Run-Script, nicht Agent-Fetch.
 - No user interaction possible — make autonomous decisions
 - Final response is auto-delivered by the profile's gateway — do NOT use `send_message` or `curl`-based Telegram API calls
 - **Delivery goes to the profile's TELEGRAM_HOME_CHANNEL** via the profile's bot

@@ -305,16 +305,16 @@
     "archived_at": null,
     "created_at": "2026-06-17T05:36:27.522356+00:00",
     "created_by": "agent",
-    "last_patched_at": "2026-07-02T05:25:47.300146+00:00",
+    "last_patched_at": "2026-10-13T06:17:53.048729+00:00",
     "last_reused_patch_generation": 0,
-    "last_used_at": "2026-10-12T08:11:55.850391+00:00",
-    "last_viewed_at": "2026-10-12T08:11:55.840115+00:00",
-    "patch_count": 23,
-    "patch_generation": 0,
+    "last_used_at": "2026-10-13T06:16:50.945537+00:00",
+    "last_viewed_at": "2026-10-13T06:16:50.935031+00:00",
+    "patch_count": 28,
+    "patch_generation": 5,
     "pinned": false,
     "state": "stale",
-    "use_count": 44,
-    "view_count": 31
+    "use_count": 45,
+    "view_count": 32
   },
   "dataviz-story-scout": {
     "archived_at": "2026-10-12T08:15:55.298218+00:00",
@@ -819,14 +819,14 @@
     "created_at": "2026-05-10T22:19:09.296101+00:00",
     "last_patched_at": "2026-07-08T21:16:07.239655+00:00",
     "last_reused_patch_generation": 0,
-    "last_used_at": "2026-10-10T19:14:05.000714+00:00",
-    "last_viewed_at": "2026-10-10T19:14:04.990691+00:00",
+    "last_used_at": "2026-10-13T06:16:50.914774+00:00",
+    "last_viewed_at": "2026-10-13T06:16:50.907838+00:00",
     "patch_count": 59,
     "patch_generation": 0,
     "pinned": false,
     "state": "active",
-    "use_count": 88,
-    "view_count": 89
+    "use_count": 89,
+    "view_count": 90
   },
   "hermes-profile-news-cron": {
     "archived_at": null,
@@ -1253,14 +1253,14 @@
     "created_by": null,
     "last_patched_at": "2026-10-10T20:33:07.121959+00:00",
     "last_reused_patch_generation": 2,
-    "last_used_at": "2026-10-12T14:00:20.356385+00:00",
-    "last_viewed_at": "2026-10-10T01:00:56.768266+00:00",
+    "last_used_at": "2026-10-13T14:00:20.391881+00:00",
+    "last_viewed_at": "2026-10-13T06:16:50.955325+00:00",
     "patch_count": 13,
     "patch_generation": 2,
     "pinned": false,
     "state": "active",
-    "use_count": 132,
-    "view_count": 40
+    "use_count": 134,
+    "view_count": 41
   },
   "ocr-and-documents": {
     "archived_at": null,
@@ -1762,6 +1762,22 @@
     "state": "active",
     "use_count": 25,
     "view_count": 25
+  },
+  "vault-file-reorganization": {
+    "archived_at": null,
+    "created_at": "2026-10-13T06:18:30.466602+00:00",
+    "created_by": "agent",
+    "first_seen_at": null,
+    "last_patched_at": "2026-10-13T06:18:42.645988+00:00",
+    "last_reused_patch_generation": 0,
+    "last_used_at": "2026-10-13T06:18:36.749872+00:00",
+    "last_viewed_at": "2026-10-13T06:18:36.742111+00:00",
+    "patch_count": 3,
+    "patch_generation": 3,
+    "pinned": false,
+    "state": "active",
+    "use_count": 1,
+    "view_count": 1
   },
   "vehicle-comparison": {
     "archived_at": "2026-09-21T08:05:56.027639+00:00",
