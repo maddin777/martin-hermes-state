@@ -134,7 +134,9 @@ Adapt to the user's domain. The schema constrains agent behavior and ensures con
   title: Page Title
   created: YYYY-MM-DD
   updated: YYYY-MM-DD
-  type: entity | concept | comparison | query | summary
+  kind: entity | concept | comparison | query | summary
+origin: hermes
+topic: sonstiges
   tags: [from taxonomy below]
   sources: [raw/articles/source-name.md]
   # Optional quality signals:

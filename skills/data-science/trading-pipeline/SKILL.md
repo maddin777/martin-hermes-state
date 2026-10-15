@@ -12,6 +12,10 @@ description: >-
 
 ## Allgemeine Prinzipien
 
+### Scope: Trading ist nur Geldanlage
+
+Der Trading-Pipeline gehört nur, was Anlage, Aktien oder Börse betrifft (Watchlist, Signale, Exit-Matrix, Backtests). Lebensplanung, Auswanderung, Nebengewerbe und Grundstück gehören nicht in diesen Skill und nicht in `Trading/` im Vault. Clippings zu Plan B, Irland oder Gewerbe werden nicht als Trading-Input verarbeitet.
+
 ### Vorschläge immer am System-Kontext messen
 
 Bevor du eine Änderung am Trading-System vorschlägst, prüfe ob sie zu unserem tatsächlichen Betrieb passt:

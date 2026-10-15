@@ -8,9 +8,18 @@ description: "Read, search, create, and maintain notes in the Obsidian vault. In
 **Location:** `OBSIDIAN_VAULT_PATH` env var, or defaults to `~/Documents/Obsidian Vault`.
 For Martin: `/root/obsidian-vault` (root-owned, synced to GDrive).
 
+## Claude-Code-Protokolle in `claude/` (Stand 14.10.2026)
+
+Claude-Code-Inhalte sind in die Vault-Struktur überführt und über `origin: claude` markiert. `claude/` enthält nur noch `index.md` und `log.md` (Claude-Protokolle).
+
+- Hermes nutzt `claude/index.md` und `claude/log.md` nur lesend und schreibt dort nicht.
+- Alle übrigen Dateien folgen dem Tag-Schema (`kind`, `origin`, `topic`) und dürfen wie jede andere Vault-Datei behandelt werden.
+
+### Altregel (überholt)
+
 ## Read-only Ordner: `claude/` (Claude-Code-Second-Brain)
 
-`claude/` im Vault-Root gehört Claude Code. Hermes nutzt den Ordner als **reine Wissensbasis (read-only)**:
+(überholt, siehe oben) `claude/` im Vault-Root gehörte Claude Code. Hermes nutzte den Ordner als reine Wissensbasis:
 - DARF lesen und Inhalte als Kontext/Wissen für Antworten verwenden
 - DARF NICHT schreiben, verschieben, löschen oder ingesten
 - DARF NICHT als Orphan, Broken-Link oder Widerspruch linten/bewerten
@@ -147,7 +156,9 @@ Pro relevanter Quelle: neue Wiki-Seite in `wiki/concepts/` anlegen.
 created: {{YYYY-MM-DD}}
 updated: {{YYYY-MM-DD}}
 tags: [concept, tag1, tag2]
-type: enriched
+kind: concept
+origin: hermes
+topic: sonstiges
 source: {{Quellenangabe}} — {{Author}}
 ---
 
@@ -269,7 +280,7 @@ Nachdem der Health Check läuft: welche Konzepte tauchen in Rohdaten auf, haben 
 - **Max 2 neue Seiten** pro Durchlauf
 - **Nur anlegen wenn genug Substanz:** 3+ Absätze Content möglich (nicht nur "[...] ist ein Tool")
 - **Concept oder Entity?** Abstrakte Idee → `concepts/`. Konkrete Sache (Modell, Person, Tool, Ort) → `entities/`
-- **Template:** Frontmatter (`created`, `updated`, `tags`, `type`, `source`) + `[[wiki/concepts|concepts]] → [[Seitenname]]` Navigation + Body + `## Quellen`-Sektion mit vollen Pfaden zu Quellen
+- **Template:** Frontmatter (`created`, `updated`, `tags`, `kind`, `origin`, `topic`, `source`) + `[[wiki/concepts|concepts]] → [[Seitenname]]` Navigation + Body + `## Quellen`-Sektion mit vollen Pfaden zu Quellen
 
 ---
 

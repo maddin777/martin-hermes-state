@@ -1,5 +1,5 @@
 {
-  "fetched_at": 1791872044.3574603,
+  "fetched_at": 1791958444.627737,
   "curated": [
     [
       "anthropic/claude-fable-5.1",
@@ -79,6 +79,10 @@
     ],
     [
       "openai/gpt-5.4-mini",
+      ""
+    ],
+    [
+      "google/gemini-4-argon",
       ""
     ],
     [
@@ -207,6 +211,10 @@
     ],
     [
       "upstage/solar-mini4",
+      ""
+    ],
+    [
+      "openrouter/pareto-code",
       ""
     ],
     [
