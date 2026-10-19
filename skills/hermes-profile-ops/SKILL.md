@@ -18,6 +18,14 @@ Unified skill for Hermes profile operations, cron troubleshooting, vault managem
 - **hermes-vault-management** — Obsidian vault lifecycle
 - **hermes-profile-management** — End-to-end profile management
 
+## Cron-Jobs: Toolset und Prompt müssen zusammenpassen
+
+Ein Cron-Job, dessen Prompt ein Werkzeug verbietet (z.B. "keine Terminal-Befehle"), darf dieses Toolset nicht mehr enthalten. Der Widerspruch lässt das Modell einen Befehl absetzen, der hängt, und erzeugt dann eine erfundene Begründung statt Output. Vor dem Anlegen oder Ändern eines Cron-Jobs: Prompt-Verbote gegen `enabled_toolsets` abgleichen. Daten, die ein Pre-Run-Script liefert, brauchen kein Terminal im Job.
+
+## Cron-Health muss `last_status` anderer Jobs prüfen
+
+Ein Health-Check, der nur ein Log auswertet, sieht Jobs nicht, die in ein anderes Log schreiben, und meldet dann "ok" bei einem Dauerfehler. Der Check liest `last_status` jedes kritischen Jobs direkt aus `jobs.json` (Job-ID fest) und meldet alles außer `ok` als Fehler. Ein Sync-Job, der seit mehreren Läufen `error` steht, muss im Health-Output auffallen.
+
 ## Duplicate Telegram Credential Triage (Doctor)
 
 Der Doctor meldet oft identische „Duplicate platform credential across profiles"-Warnungen (TELEGRAM_BOT_TOKEN). Die sind NICHT automatisch echte Konflikte:

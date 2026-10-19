@@ -1,5 +1,5 @@
 {
-  "fetched_at": 1792217645.4034674,
+  "fetched_at": 1792321488.1194468,
   "curated": [
     [
       "anthropic/claude-fable-5.1",
@@ -115,6 +115,10 @@
     ],
     [
       "deepseek/deepseek-v4.1-flash",
+      ""
+    ],
+    [
+      "deepseek/deepseek-v4.1-flash-1017",
       ""
     ],
     [
