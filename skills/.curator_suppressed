@@ -9,6 +9,7 @@ codebase-inspection
 codex
 comfyui
 design-md
+docx
 dogfood
 excalidraw
 google-workspace
@@ -22,7 +23,9 @@ notion
 opencode
 openhue
 p5js
+pdf
 popular-web-designs
+powerpoint
 pretext
 python-debugpy
 research-paper-writing
@@ -33,4 +36,5 @@ songwriting-and-ai-music
 spike
 teams-meeting-pipeline
 touchdesigner-mcp
+xlsx
 xurl

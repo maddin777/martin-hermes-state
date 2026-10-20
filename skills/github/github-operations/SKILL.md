@@ -109,7 +109,12 @@ gh pr review 123 --approve --body "LGTM!"
 
 ## References
 
-- `references/github-auth.md` — Full auth setup
 - `references/ci-troubleshooting.md` — CI auto-fix
+- `references/conventional-commits.md` — commit message conventions
+- `scripts/gh-env.sh` — gh/git auth detection helper
+- `scripts/git-credential-token.py` — PAT credential helper
 - `templates/pr-body-feature.md` — PR template
 - `templates/pr-body-bugfix.md` — Bugfix template
+
+(Authentication setup is documented inline in `## Authentication` above; the former
+`references/github-auth.md` pointer was dead and has been dropped.)

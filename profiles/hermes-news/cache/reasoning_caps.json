@@ -1,6 +1,6 @@
 {
 "https://openrouter.ai/api/v1/models":{
-"ts":1792321485.9259202,
+"ts":1792407886.2373016,
 "caps":{
 "deepseek/deepseek-v4.1-flash-1017":{
 "supports_reasoning":true,
@@ -3012,11 +3012,6 @@
 "perplexity/sonar":{
 "supports_reasoning":false
 },
-"deepseek/deepseek-r1":{
-"supports_reasoning":true,
-"supported_efforts":null,
-"mandatory":true
-},
 "minimax/minimax-01":{
 "supports_reasoning":false
 },
@@ -3024,9 +3019,6 @@
 "supports_reasoning":false
 },
 "deepseek/deepseek-chat":{
-"supports_reasoning":false
-},
-"sao10k/l3.3-euryale-70b":{
 "supports_reasoning":false
 },
 "openai/o1":{
@@ -3128,9 +3120,6 @@
 "supports_reasoning":false
 },
 "mistralai/mixtral-8x22b-instruct":{
-"supports_reasoning":false
-},
-"microsoft/wizardlm-2-8x22b":{
 "supports_reasoning":false
 },
 "openai/gpt-4-turbo":{

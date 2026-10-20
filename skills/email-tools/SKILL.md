@@ -16,4 +16,7 @@ Unified skill for email operations from the terminal.
 - **email-inbox-triage** — Prioritize threads, draft replies
 - **himalaya** — IMAP/SMTP email from terminal via Himalaya CLI
 
-See archived email/ skills for detailed procedures.
+Detailed procedures from the former per-tool email skills were not carried over
+in the earlier consolidation; Himalaya (IMAP/SMTP CLI) is the tool for both
+send/receive and triage workflows. Rebuild command specifics from the CLI help
+rather than looking for the removed skills.

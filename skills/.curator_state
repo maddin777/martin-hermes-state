@@ -1,9 +1,9 @@
 {
-  "last_report_path": "/root/.hermes/logs/curator/20261012-081131",
-  "last_run_at": "2026-10-12T08:11:31.036798+00:00",
-  "last_run_duration_seconds": 291.146096,
-  "last_run_summary": "auto: 15 marked stale; llm: Consolidation pass complete. Here's what I found and did.\n\n## Clusters processed\n\n**Cluster 1 — Hermes profile infrastructure (2 members)**\n`hermes-profile-ops` was already the class-level umbrella (\"cron, bot mode, vault, management\"). `op…\narchived 3 skill(s):\n  • dataviz-story-scout → idea-scout-pipelines\n  • micro-saas-opportunity-scan → idea-scout-pipelines\n  • open-webui-deployment → hermes-profile-ops\nfull report: hermes curator status\nkeep an umbrella stable: hermes curator pin hermes-profile-ops",
+  "last_report_path": "/root/.hermes/logs/curator/20261019-091036",
+  "last_run_at": "2026-10-19T09:10:36.925103+00:00",
+  "last_run_duration_seconds": 550.122726,
+  "last_run_summary": "auto: 4 archived, 7 reactivated; llm: ## Curator pass — consolidation review\n\n**Scope reality check first.** The candidate list has 11 skills, not the 100+ the pass heuristics are calibrated for. I read all 11 as complete packages (SKILL.md + `references/`, `scripts/`, `templat…",
   "last_run_summary_shown_at": "2026-09-21T08:05:34.200902+00:00",
   "paused": false,
-  "run_count": 23
+  "run_count": 24
 }
