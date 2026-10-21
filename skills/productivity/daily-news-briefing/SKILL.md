@@ -72,9 +72,11 @@ Job-Struktur in der Profil-Cron-DB (`/root/.hermes/profiles/<profil>/cron/jobs.j
   "enabled": true,
   "repeat": {"times": null, "completed": 0},
   "no_agent": false,
-  "enabled_toolsets": ["web", "terminal", "file", "browser"]
+  "enabled_toolsets": ["web"]
 }
 ```
+
+**Toolset passend zum Prompt:** Der Agent holt keine Daten selbst (Pre-Run-Script), also KEIN `terminal` im Toolset. Terminal im Toolset bei gleichzeitigem Prompt-Verbot erzeugt den Widerspruch, der zu hängenden Befehlen und leerer Antwort führt.
 
 **Wichtig:** Der Skill (`daily-news-briefing`) muss auch im Profil-Verzeichnis existieren:
 ```bash
@@ -105,7 +107,7 @@ job = {
     "deliver": "telegram",
     "repeat": {"times": None, "completed": 0},
     "no_agent": False,
-    "enabled_toolsets": ["web", "terminal", "file", "browser"]
+    "enabled_toolsets": ["web"]
 }
 
 data["jobs"].append(job)
@@ -231,11 +233,7 @@ curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" 
 ### Manuelles Triggern (Profil-Kontext)
 
 Nach Änderungen am Prompt oder Skill den nächsten scheduled Run abwarten (06:00)
-oder den Gateway neustarten, damit er den Job sofort triggert:
-
-```bash
-systemctl restart hermes-gateway-hermes-news.service
-```
+Manuell auslösen per `hermes-news cron run <job_id>` (Vordergrund, Tool-Timeout >= 420s; Briefing-Läufe dauern 2-4 min). Erfolg NUR über das Log belegen: Session `cron_<job_id>_<ts>` in `logs/agent.log` mit `Turn ended` und `delivered to telegram:…`. Die CLI-Ausgabe `Ran now: succeeded` ist kein Beleg: sie kam auch bei einem Aufruf, der keine Session erzeugte. Ein Gateway-Restart triggert den Job nicht.
 
 Verifikation dass der Bot im Channel ist:
 ```bash
@@ -261,10 +259,12 @@ Der Cron-Job bekommt ein Script (`scripts/gather_briefing_data.py`, Vorlage im S
 
 1. Script ins Profil kopieren: `<profil>/scripts/gather_briefing_data.py`
 2. Anhängen per **Dateiname** (keine absoluten Pfade): `hermes-<profil> cron edit <job_id> --script gather_briefing_data.py`
-3. Prompt MUSS enthalten: Daten sind oben im Prompt, keine Terminal-Befehle, kein `send_message`/curl an Telegram (Final-Antwort wird vom Gateway zugestellt).
+3. Prompt MUSS enthalten: Daten sind oben im Prompt, keine Terminal-Befehle, KEINE Dateilese- oder Suchbefehle (read_file, search_files, Pfadprüfung), kein `send_message`/curl an Telegram (Final-Antwort wird vom Gateway zugestellt). Dafür gilt die Toolset-Regel unten: `file` gehört nicht ins Toolset.
 4. Testlauf im Hintergrund (`background=true`), Ergebnis in `deliveries.db` prüfen (siehe Fehlerbilder).
 
 Script-Regel: Feeds ohne Artikel der letzten 2 Tage → „keine Artikel“ ausgeben, NICHT auf ältere Artikel zurückfallen. Veraltete Items als Fallback sind genau der Fehler, den die Frische-Regel verhindern soll.
+
+**Script vor dem Cron-Lauf einzeln testen** (`python3 scripts/gather_briefing_data.py`, Ausgabe prüfen). Zwei Fehler brechen sonst still: (1) `urlopen`-Antwort ist `bytes`, Webseiten-Parsing braucht `.decode()`; (2) RSS-`pubDate` ist naiv, Vergleich mit einem timezone-aware Datum wirft Fehler. Im Zweifel `.replace(tzinfo=None)` auf beiden Seiten.
 
 ### Step 1: Try web_search and web_extract first
 
@@ -356,7 +356,9 @@ Alternative: seatemperature.org via browser. Die Open-Meteo Lufttemperatur ist N
   - `Reasoning-only clean stop`: Reasoning-Modell beendet ohne sichtbare Antwort → leere Delivery. Ungetestete Gegenmaßnahme: Reasoning für den Job deaktivieren oder Modell wechseln.
   - `BLOCKED: Command flagged as dangerous`: Terminal-Befehl mit Interpreter-Flag in Cron → Pre-Run-Script verwenden.
 - **`Upstream error ... Output data may contain inappropriate content`** (OpenRouter/Alibaba-Filter für deepseek-v4-flash): transient, Re-Run nach einigen Minuten. Kein Gateway-Problem, solange Gateway active und Delivery-Status `delivered`.
-- **Prompt-Änderungen** nur per Python-`json.dump(ensure_ascii=False)` in `jobs.json` schreiben (Umlaute, Anführungszeichen), dann Testlauf.
+- **Prompt-Änderungen** nur per Python-`json.dump(ensure_ascii=False)` in `jobs.json` schreiben (Umlaute, Anführungszeichen), dann Testlauf. Vor dem Schreiben Backup der `jobs.json` und den neuen Prompt im Speicher auf Länge > 0 prüfen: Ein fehlender Prompt-Datei-Pfad schreibt sonst einen leeren Prompt.
+- **Telegram-MarkdownV2 bricht bei `(` in Quellenklammern** (`Can't parse entities`). Der Gateway fällt dann auf Klartext zurück, die Zustellung klappt. Kosmetisch, kein Fehler im Job. Quellen als `— Quelle` statt `(Quelle)` schreiben, dann tritt es nicht auf.
+- **Abbruch mit Statusmeldung statt Briefing** (Antwort beginnt mit 'I stopped retrying…', `delivered` mit Länge ~0): Im Log stehen `read_file`-Fehler auf Verzeichnisse oder nicht existierende Dateien (`.profile.json`, `memories/…`, `cron/active.json`). Ursache ist ein Dateitool im Toolset, nicht das Script. Fix: Dateitools aus `enabled_toolsets` entfernen, Prompt-Verbot ergänzen, Testlauf im Hintergrund.
 
 ## Quality Rules
 
@@ -421,6 +423,7 @@ Key constraints for the agent running this cron:
 - `execute_code` is **blocked** in cron mode — do not attempt it
 - `web_search` / `web_extract` may fail due to Firecrawl credits — always have RSS fallback ready
 - Terminal-Befehle mit Interpreter-Flag (`python -c`, heredoc) sind in Cron **blockiert**. Verifizierter Weg: Pre-Run-Script, nicht Agent-Fetch.
+- Dateitools (`read_file`, `search_files`) gehören ebenso nicht ins Toolset. Ohne sie hat der Agent keinen Anlass, im Dateisystem zu suchen. Ein Prompt-Verbot allein wirkt nicht zuverlässig, solange das Werkzeug verfügbar ist.
 - No user interaction possible — make autonomous decisions
 - Final response is auto-delivered by the profile's gateway — do NOT use `send_message` or `curl`-based Telegram API calls
 - **Delivery goes to the profile's TELEGRAM_HOME_CHANNEL** via the profile's bot

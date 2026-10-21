@@ -3,7 +3,7 @@
     {
       "id": "46acda532f8",
       "name": "daily-news-briefing",
-      "prompt": "Erstelle das tägliche Morgen-Briefing (06:00) — folge dem daily-news-briefing Skill exakt. 5 Sektionen: Politik & Internationales, Finanzen & Wirtschaft, IT & KI, Deutschland & Nordeuropa, Wetter & Wassertemperaturen. KEINE leeren Sektionen. Max 3000 Zeichen pro Nachricht, aufteilen auf bis zu 5 Nachrichten. Alle Quellen angeben. Übersetzte internationale Quellen auf Deutsch.\n\n📦 ROHDATEN: Die aktuellen Rohdaten (Nachrichten, Wetter, Wassertemperatur) sind oben im Prompt von einem Pre-Run-Script frisch abgerufen worden (Abschnitt \"DATENSTAND\"). Verwende NUR diese Daten — der 2-Tage-Filter und der Datenstand gelten dort bereits.\n- Feeds ohne frische Artikel (z.B. \"keine Artikel der letzten 2 Tage\") einfach auslassen, nicht erfinden.\n- Wetter/Wassertemperatur direkt übernehmen.\n\n🚫 KEINE Terminal-Befehle: Führe KEINE Shell-Befehle, curl, python -c oder heredocs aus — die sind in Cron ohne User blockiert und führen zu einem LEEREN Briefing. Alle Daten sind bereits vorhanden, du formatierst nur noch.\n\n🚫 Sende NICHT selbst per Telegram/send_message: Deine finale Antwort wird automatisch vom Gateway in den News-Channel zugestellt. Kein send_message, kein curl an Telegram.\n\n🔴 FRISCHE-REGEL (wichtig!): NUR Artikel der letzten 2 Tage verwenden. Jeden Artikel am Datum prüfen. Alles älter als 2 Tage komplett weglassen — auch wenn es interessant ist. Lieber 2 aktuelle Artikel pro Sektion als 5 mit veraltetem Zeug. Keine Ausnahmen.",
+      "prompt": "Erstelle das tägliche Morgen-Briefing (06:00) — folge dem daily-news-briefing Skill exakt. 5 Sektionen: Politik & Internationales, Finanzen & Wirtschaft, IT & KI, Deutschland & Nordeuropa, Wetter & Wassertemperaturen. KEINE leeren Sektionen. Max 3000 Zeichen pro Nachricht, aufteilen auf bis zu 5 Nachrichten. Alle Quellen angeben. Übersetzte internationale Quellen auf Deutsch.\n\n📦 ROHDATEN: Die aktuellen Rohdaten (Nachrichten, Wetter, Wassertemperatur) sind oben im Prompt von einem Pre-Run-Script frisch abgerufen worden (Abschnitt \"DATENSTAND\"). Verwende NUR diese Daten — der 2-Tage-Filter und der Datenstand gelten dort bereits.\n- Feeds ohne frische Artikel (z.B. \"keine Artikel der letzten 2 Tage\") einfach auslassen, nicht erfinden.\n- Wetter/Wassertemperatur direkt übernehmen.\n\n🚫 KEINE Terminal-Befehle: Führe KEINE Shell-Befehle, curl, python -c oder heredocs aus — die sind in Cron ohne User blockiert und führen zu einem LEEREN Briefing. Alle Daten sind bereits vorhanden, du formatierst nur noch.\n\n🚫 Sende NICHT selbst per Telegram/send_message: Deine finale Antwort wird automatisch vom Gateway in den News-Channel zugestellt. Kein send_message, kein curl an Telegram.\n\n🔴 FRISCHE-REGEL (wichtig!): NUR Artikel der letzten 2 Tage verwenden. Jeden Artikel am Datum prüfen. Alles älter als 2 Tage komplett weglassen — auch wenn es interessant ist. Lieber 2 aktuelle Artikel pro Sektion als 5 mit veraltetem Zeug. Keine Ausnahmen.\n\n🚫 KEINE Dateien lesen oder suchen: Verwende kein read_file, keine Dateisuche, keine Pfadprüfung. Die Daten stehen vollständig im Abschnitt 'Script Output'. Fehlt dir etwas, nimm es aus diesem Abschnitt oder lass es weg. Schreibe das Briefing SOFORT als finale Antwort, nie eine Statusmeldung oder Abbruchnachricht.",
       "skills": [
         "daily-news-briefing"
       ],
@@ -22,36 +22,34 @@
       "schedule_display": "0 6 * * *",
       "repeat": {
         "times": null,
-        "completed": 119
+        "completed": 121
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-06-22T07:17:50.376210+02:00",
-      "next_run_at": "2026-10-20T06:00:00+02:00",
-      "last_run_at": "2026-10-19T06:02:03.835079+02:00",
+      "next_run_at": "2026-10-21T06:00:00+02:00",
+      "last_run_at": "2026-10-20T10:20:59.784931+02:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
       "deliver": "telegram",
       "origin": null,
       "enabled_toolsets": [
-        "web",
-        "file",
-        "browser"
+        "web"
       ],
       "workdir": null,
       "profile": null,
       "fire_claim": null,
       "failure_streak": 0,
       "last_dispatch": {
-        "scheduled_at": "2026-10-19T06:00:00+02:00",
-        "dispatched_at": "2026-10-19T06:00:16.511709+02:00",
+        "scheduled_at": "2026-10-20T06:00:00+02:00",
+        "dispatched_at": "2026-10-20T06:00:16.518251+02:00",
         "lateness_seconds": 16.5,
         "kind": "on_time"
       }
     }
   ],
-  "updated_at": "2026-10-19T06:02:03.861144+02:00"
+  "updated_at": "2026-10-20T10:20:59.788787+02:00"
 }

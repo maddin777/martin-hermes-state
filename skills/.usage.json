@@ -305,16 +305,16 @@
     "archived_at": null,
     "created_at": "2026-06-17T05:36:27.522356+00:00",
     "created_by": "agent",
-    "last_patched_at": "2026-10-13T06:17:53.048729+00:00",
-    "last_reused_patch_generation": 5,
-    "last_used_at": "2026-10-19T09:11:11.774321+00:00",
-    "last_viewed_at": "2026-10-19T09:11:11.763492+00:00",
-    "patch_count": 28,
-    "patch_generation": 5,
+    "last_patched_at": "2026-10-20T08:25:47.268245+00:00",
+    "last_reused_patch_generation": 12,
+    "last_used_at": "2026-10-20T08:25:16.632970+00:00",
+    "last_viewed_at": "2026-10-20T08:25:16.622180+00:00",
+    "patch_count": 37,
+    "patch_generation": 14,
     "pinned": false,
     "state": "active",
-    "use_count": 46,
-    "view_count": 33
+    "use_count": 51,
+    "view_count": 38
   },
   "dataviz-story-scout": {
     "archived_at": "2026-10-12T08:15:55.298218+00:00",
@@ -819,14 +819,14 @@
     "created_at": "2026-05-10T22:19:09.296101+00:00",
     "last_patched_at": "2026-07-08T21:16:07.239655+00:00",
     "last_reused_patch_generation": 0,
-    "last_used_at": "2026-10-14T08:42:44.565716+00:00",
-    "last_viewed_at": "2026-10-14T08:42:44.539246+00:00",
+    "last_used_at": "2026-10-20T06:39:16.877977+00:00",
+    "last_viewed_at": "2026-10-20T06:39:16.871335+00:00",
     "patch_count": 59,
     "patch_generation": 0,
     "pinned": false,
     "state": "active",
-    "use_count": 91,
-    "view_count": 92
+    "use_count": 93,
+    "view_count": 94
   },
   "hermes-profile-news-cron": {
     "archived_at": null,
@@ -844,16 +844,16 @@
     "archived_at": null,
     "created_at": "2026-09-14T08:09:42.237434+00:00",
     "created_by": "agent",
-    "last_patched_at": "2026-10-18T10:00:47.266441+00:00",
-    "last_reused_patch_generation": 7,
-    "last_used_at": "2026-10-19T09:11:11.632974+00:00",
-    "last_viewed_at": "2026-10-19T09:11:11.620259+00:00",
-    "patch_count": 7,
-    "patch_generation": 7,
+    "last_patched_at": "2026-10-20T08:25:47.359917+00:00",
+    "last_reused_patch_generation": 8,
+    "last_used_at": "2026-10-20T08:25:16.598418+00:00",
+    "last_viewed_at": "2026-10-20T08:25:16.590089+00:00",
+    "patch_count": 10,
+    "patch_generation": 10,
     "pinned": false,
     "state": "active",
-    "use_count": 10,
-    "view_count": 10
+    "use_count": 15,
+    "view_count": 15
   },
   "hermes-vault-management": {
     "archived_at": null,
@@ -1253,14 +1253,14 @@
     "created_by": null,
     "last_patched_at": "2026-10-14T09:34:47.700406+00:00",
     "last_reused_patch_generation": 4,
-    "last_used_at": "2026-10-19T14:00:19.454167+00:00",
-    "last_viewed_at": "2026-10-18T10:00:30.376129+00:00",
+    "last_used_at": "2026-10-20T14:00:29.021945+00:00",
+    "last_viewed_at": "2026-10-20T06:39:16.833378+00:00",
     "patch_count": 15,
     "patch_generation": 4,
     "pinned": false,
     "state": "active",
-    "use_count": 149,
-    "view_count": 50
+    "use_count": 154,
+    "view_count": 54
   },
   "ocr-and-documents": {
     "archived_at": null,
@@ -1763,6 +1763,22 @@
     "use_count": 25,
     "view_count": 25
   },
+  "vault-clippings-maintenance": {
+    "archived_at": null,
+    "created_at": "2026-10-20T06:45:22.006365+00:00",
+    "created_by": "agent",
+    "first_seen_at": null,
+    "last_patched_at": "2026-10-20T08:25:57.636342+00:00",
+    "last_reused_patch_generation": 0,
+    "last_used_at": "2026-10-20T08:25:16.658996+00:00",
+    "last_viewed_at": "2026-10-20T08:25:16.643728+00:00",
+    "patch_count": 3,
+    "patch_generation": 3,
+    "pinned": false,
+    "state": "active",
+    "use_count": 1,
+    "view_count": 1
+  },
   "vault-file-reorganization": {
     "archived_at": null,
     "created_at": "2026-10-13T06:18:30.466602+00:00",
@@ -1778,6 +1794,22 @@
     "state": "active",
     "use_count": 13,
     "view_count": 13
+  },
+  "vault-sync-conflicts-triage": {
+    "archived_at": null,
+    "created_at": "2026-10-20T06:06:11.415194+00:00",
+    "created_by": "agent",
+    "first_seen_at": null,
+    "last_patched_at": null,
+    "last_reused_patch_generation": 0,
+    "last_used_at": "2026-10-20T08:25:16.667461+00:00",
+    "last_viewed_at": "2026-10-20T08:25:16.652542+00:00",
+    "patch_count": 0,
+    "patch_generation": 0,
+    "pinned": false,
+    "state": "active",
+    "use_count": 1,
+    "view_count": 1
   },
   "vehicle-comparison": {
     "archived_at": "2026-09-21T08:05:56.027639+00:00",
