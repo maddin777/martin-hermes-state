@@ -1,6 +1,6 @@
 {
 "https://openrouter.ai/api/v1/models":{
-"ts":1792494286.5213568,
+"ts":1792580686.7913804,
 "caps":{
 "minimax/minimax-m3.1-flash:free":{
 "supports_reasoning":true,
@@ -2852,17 +2852,7 @@
 "supported_efforts":null,
 "mandatory":false
 },
-"google/gemini-2.5-flash:batch":{
-"supports_reasoning":true,
-"supported_efforts":null,
-"mandatory":false
-},
 "google/gemini-2.5-pro":{
-"supports_reasoning":true,
-"supported_efforts":null,
-"mandatory":true
-},
-"google/gemini-2.5-pro:batch":{
 "supports_reasoning":true,
 "supported_efforts":null,
 "mandatory":true

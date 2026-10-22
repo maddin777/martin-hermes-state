@@ -20,7 +20,7 @@
           "position": 0,
           "isVisionModel": false,
           "isCompactionModel": false,
-          "updatedAt": "2026-10-19T20:17:38.974Z"
+          "updatedAt": "2026-10-20T21:51:32.827Z"
         },
         {
           "modelName": "deepseek/deepseek-v4.1-flash:US",
@@ -34,7 +34,7 @@
           "position": 1,
           "isVisionModel": false,
           "isCompactionModel": false,
-          "updatedAt": "2026-10-19T20:17:38.974Z"
+          "updatedAt": "2026-10-20T21:51:32.827Z"
         },
         {
           "modelName": "z-ai/glm-5.3:US",
@@ -48,7 +48,7 @@
           "position": 2,
           "isVisionModel": false,
           "isCompactionModel": false,
-          "updatedAt": "2026-10-19T20:17:38.974Z"
+          "updatedAt": "2026-10-20T21:51:32.827Z"
         },
         {
           "modelName": "z-ai/glm-5.3-flash:US",
@@ -62,7 +62,7 @@
           "position": 3,
           "isVisionModel": false,
           "isCompactionModel": false,
-          "updatedAt": "2026-10-19T20:17:38.974Z"
+          "updatedAt": "2026-10-20T21:51:32.827Z"
         },
         {
           "modelName": "openai/gpt-6-astra",
@@ -82,7 +82,7 @@
           "position": 4,
           "isVisionModel": false,
           "isCompactionModel": false,
-          "updatedAt": "2026-10-19T20:17:38.974Z"
+          "updatedAt": "2026-10-20T21:51:32.827Z"
         },
         {
           "modelName": "openai/gpt-6-astra-fast",
@@ -102,7 +102,7 @@
           "position": 5,
           "isVisionModel": false,
           "isCompactionModel": false,
-          "updatedAt": "2026-10-19T20:17:38.974Z"
+          "updatedAt": "2026-10-20T21:51:32.827Z"
         },
         {
           "modelName": "openai/gpt-6-astra-flex",
@@ -122,7 +122,7 @@
           "position": 6,
           "isVisionModel": false,
           "isCompactionModel": false,
-          "updatedAt": "2026-10-19T20:17:38.974Z"
+          "updatedAt": "2026-10-20T21:51:32.827Z"
         },
         {
           "modelName": "openai/gpt-6-astra-pro",
@@ -142,7 +142,7 @@
           "position": 7,
           "isVisionModel": false,
           "isCompactionModel": false,
-          "updatedAt": "2026-10-19T20:17:38.974Z"
+          "updatedAt": "2026-10-20T21:51:32.827Z"
         },
         {
           "modelName": "openai/gpt-6-astra-pro-fast",
@@ -162,7 +162,7 @@
           "position": 8,
           "isVisionModel": false,
           "isCompactionModel": false,
-          "updatedAt": "2026-10-19T20:17:38.974Z"
+          "updatedAt": "2026-10-20T21:51:32.827Z"
         },
         {
           "modelName": "openai/gpt-6-astra-pro-flex",
@@ -182,7 +182,7 @@
           "position": 9,
           "isVisionModel": false,
           "isCompactionModel": false,
-          "updatedAt": "2026-10-19T20:17:38.974Z"
+          "updatedAt": "2026-10-20T21:51:32.827Z"
         },
         {
           "modelName": "upstage/solar-mini4:free",
@@ -196,7 +196,7 @@
           "position": 10,
           "isVisionModel": false,
           "isCompactionModel": false,
-          "updatedAt": "2026-10-19T20:17:38.974Z"
+          "updatedAt": "2026-10-20T21:51:32.827Z"
         },
         {
           "modelName": "meituan/longcat-2.5-preview:free",
@@ -210,21 +210,7 @@
           "position": 11,
           "isVisionModel": false,
           "isCompactionModel": false,
-          "updatedAt": "2026-10-19T20:17:38.974Z"
-        },
-        {
-          "modelName": "inclusionai/ling-3.0-flash-sante:free",
-          "displayName": "inclusionai/ling-3.0-flash-sante:free",
-          "source": "local",
-          "href": null,
-          "tokenPrice": "$0.00/1M",
-          "contextLength": null,
-          "inputModalities": [],
-          "outputModalities": [],
-          "position": 12,
-          "isVisionModel": false,
-          "isCompactionModel": false,
-          "updatedAt": "2026-10-19T20:17:38.974Z"
+          "updatedAt": "2026-10-20T21:51:32.827Z"
         },
         {
           "modelName": "poolside/laguna-s-2.1:free",
@@ -239,10 +225,10 @@
           "outputModalities": [
             "text"
           ],
-          "position": 13,
+          "position": 12,
           "isVisionModel": false,
           "isCompactionModel": false,
-          "updatedAt": "2026-10-19T20:17:38.974Z"
+          "updatedAt": "2026-10-20T21:51:32.827Z"
         },
         {
           "modelName": "stepfun/step-3.7-flash:free",
@@ -253,10 +239,10 @@
           "contextLength": null,
           "inputModalities": [],
           "outputModalities": [],
-          "position": 14,
+          "position": 13,
           "isVisionModel": false,
           "isCompactionModel": false,
-          "updatedAt": "2026-10-19T20:17:38.974Z"
+          "updatedAt": "2026-10-20T21:51:32.827Z"
         },
         {
           "modelName": "poolside/laguna-xs-2.1:free",
@@ -271,10 +257,38 @@
           "outputModalities": [
             "text"
           ],
+          "position": 14,
+          "isVisionModel": false,
+          "isCompactionModel": false,
+          "updatedAt": "2026-10-20T21:51:32.827Z"
+        },
+        {
+          "modelName": "reflection/beam-1.0-501b-a23b:free",
+          "displayName": "reflection/beam-1.0-501b-a23b:free",
+          "source": "local",
+          "href": null,
+          "tokenPrice": null,
+          "contextLength": null,
+          "inputModalities": [],
+          "outputModalities": [],
           "position": 15,
           "isVisionModel": false,
           "isCompactionModel": false,
-          "updatedAt": "2026-10-19T20:17:38.974Z"
+          "updatedAt": "2026-10-20T21:51:32.827Z"
+        },
+        {
+          "modelName": "ornith/ornith-1.5-122b:free",
+          "displayName": "ornith/ornith-1.5-122b:free",
+          "source": "local",
+          "href": null,
+          "tokenPrice": null,
+          "contextLength": null,
+          "inputModalities": [],
+          "outputModalities": [],
+          "position": 16,
+          "isVisionModel": false,
+          "isCompactionModel": false,
+          "updatedAt": "2026-10-20T21:51:32.827Z"
         }
       ],
       "freeRecommendedModels": [
@@ -290,7 +304,7 @@
           "position": 0,
           "isVisionModel": false,
           "isCompactionModel": false,
-          "updatedAt": "2026-10-19T20:17:38.974Z"
+          "updatedAt": "2026-10-20T21:51:32.827Z"
         },
         {
           "modelName": "meituan/longcat-2.5-preview:free",
@@ -304,21 +318,7 @@
           "position": 1,
           "isVisionModel": false,
           "isCompactionModel": false,
-          "updatedAt": "2026-10-19T20:17:38.974Z"
-        },
-        {
-          "modelName": "inclusionai/ling-3.0-flash-sante:free",
-          "displayName": "inclusionai/ling-3.0-flash-sante:free",
-          "source": "local",
-          "href": null,
-          "tokenPrice": "$0.00/1M",
-          "contextLength": null,
-          "inputModalities": [],
-          "outputModalities": [],
-          "position": 2,
-          "isVisionModel": false,
-          "isCompactionModel": false,
-          "updatedAt": "2026-10-19T20:17:38.974Z"
+          "updatedAt": "2026-10-20T21:51:32.827Z"
         },
         {
           "modelName": "poolside/laguna-xs-2.1:free",
@@ -333,10 +333,10 @@
           "outputModalities": [
             "text"
           ],
-          "position": 3,
+          "position": 2,
           "isVisionModel": false,
           "isCompactionModel": false,
-          "updatedAt": "2026-10-19T20:17:38.974Z"
+          "updatedAt": "2026-10-20T21:51:32.827Z"
         },
         {
           "modelName": "poolside/laguna-s-2.1:free",
@@ -351,10 +351,10 @@
           "outputModalities": [
             "text"
           ],
-          "position": 4,
+          "position": 3,
           "isVisionModel": false,
           "isCompactionModel": false,
-          "updatedAt": "2026-10-19T20:17:38.974Z"
+          "updatedAt": "2026-10-20T21:51:32.827Z"
         },
         {
           "modelName": "stepfun/step-3.7-flash:free",
@@ -365,10 +365,38 @@
           "contextLength": null,
           "inputModalities": [],
           "outputModalities": [],
-          "position": 5,
+          "position": 4,
           "isVisionModel": true,
           "isCompactionModel": true,
-          "updatedAt": "2026-10-19T20:17:38.974Z"
+          "updatedAt": "2026-10-20T21:51:32.827Z"
+        },
+        {
+          "modelName": "reflection/beam-1.0-501b-a23b:free",
+          "displayName": "reflection/beam-1.0-501b-a23b:free",
+          "source": "local",
+          "href": null,
+          "tokenPrice": null,
+          "contextLength": null,
+          "inputModalities": [],
+          "outputModalities": [],
+          "position": 5,
+          "isVisionModel": false,
+          "isCompactionModel": false,
+          "updatedAt": "2026-10-20T21:51:32.827Z"
+        },
+        {
+          "modelName": "ornith/ornith-1.5-122b:free",
+          "displayName": "ornith/ornith-1.5-122b:free",
+          "source": "local",
+          "href": null,
+          "tokenPrice": null,
+          "contextLength": null,
+          "inputModalities": [],
+          "outputModalities": [],
+          "position": 6,
+          "isVisionModel": false,
+          "isCompactionModel": false,
+          "updatedAt": "2026-10-20T21:51:32.827Z"
         }
       ],
       "paidRecommendedVisionModel": null,
@@ -382,10 +410,10 @@
         "contextLength": null,
         "inputModalities": [],
         "outputModalities": [],
-        "position": 5,
+        "position": 4,
         "isVisionModel": true,
         "isCompactionModel": true,
-        "updatedAt": "2026-10-19T20:17:38.974Z"
+        "updatedAt": "2026-10-20T21:51:32.827Z"
       },
       "freeRecommendedCompactionModel": {
         "modelName": "stepfun/step-3.7-flash:free",
@@ -396,12 +424,12 @@
         "contextLength": null,
         "inputModalities": [],
         "outputModalities": [],
-        "position": 5,
+        "position": 4,
         "isVisionModel": true,
         "isCompactionModel": true,
-        "updatedAt": "2026-10-19T20:17:38.974Z"
+        "updatedAt": "2026-10-20T21:51:32.827Z"
       }
     },
-    "ts": 1792494288.7455254
+    "ts": 1792580688.991863
   }
 }
