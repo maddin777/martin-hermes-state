@@ -1,7 +1,12 @@
 {
 "https://openrouter.ai/api/v1/models":{
-"ts":1792580688.9285026,
+"ts":1792667089.1752024,
 "caps":{
+"recursive/flint-v1.0:free":{
+"supports_reasoning":true,
+"supported_efforts":null,
+"mandatory":true
+},
 "minimax/minimax-m3.1-flash:free":{
 "supports_reasoning":true,
 "supported_efforts":[
@@ -2810,11 +2815,6 @@
 "supports_reasoning":false
 },
 "google/gemini-2.5-flash-lite":{
-"supports_reasoning":true,
-"supported_efforts":null,
-"mandatory":false
-},
-"google/gemini-2.5-flash-lite:batch":{
 "supports_reasoning":true,
 "supported_efforts":null,
 "mandatory":false

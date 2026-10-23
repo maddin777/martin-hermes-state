@@ -515,6 +515,13 @@ cd /root/.hermes/profiles/hermes_trading/skills/trading && \
   PYTHONPATH=. python3 scripts/signal_manager.py full
 ```
 
+## Stale-Status nach Exit: Reset läuft im nächsten Batch
+
+- `bought` wird nach einem Exit nicht sofort zurückgesetzt. `reactivate_closed_bought()` in `watchlist_manager.py` (aufgerufen aus `main()`, nur ohne Dry-Run) setzt einen Titel auf `watching`, wenn keine offene Position existiert und der letzte Exit älter als 24h ist. Der Reset läuft also erst im nächsten Pipeline-Lauf (Mo–Fr 03:30). Ein Exit nach diesem Lauf bleibt bis dahin `bought`. Das ist erwartet, kein Bug. Vor einer Bug-Meldung Exit-Zeitpunkt gegen die Pipeline-Zeit aus der Crontab prüfen.
+- Zählwerte aus dem Watchlist-Export (`Gekauft N`) sind bis zum nächsten Lauf überhöht. Verlässlich für offene Positionen ist nur `positions WHERE status='open'`.
+- Dry-Run einer Pipeline-Funktion immer gegen eine Kopie der DB (`cp data/trading.db <scratch>`), nie gegen die Live-DB.
+- Auf `positions` nie `SELECT *`: JSON-Spalten (`reason`, `thesis_text`, Indikator-JSON) blähen den Output auf zehntausende Zeichen. Explizite Spaltenliste verwenden.
+
 ## Dynamische Exit-Regeln (seit 18.06.2026)
 
 **Konzept:** ATR-Multiplikatoren werden nicht mehr global, sondern abhängig vom **Asset-Typ** vergeben. Der Asset-Typ wird aus dem Sektor abgeleitet (siehe `config.py`).

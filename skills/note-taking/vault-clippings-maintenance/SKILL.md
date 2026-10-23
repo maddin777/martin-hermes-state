@@ -58,6 +58,7 @@ Umbrella für Konflikt-Cleanup nach rclone bisync, Clippings-Einsortierung und I
 - **Artefakte ausschließen:** `index.md` in Clippings ist ein Wiki-Index, keine Quelle. Per Namensfilter im Scanner überspringen.
 - **Vor dem Überschreiben** einer Datei prüfen, ob ein Cron sie aktiv beschreibt: Zielpfad im Cron-Prompt suchen, `enabled` und `last_run_at` in der `jobs.json` lesen. Memory-Notizen zum Cron-Status sind nicht verlässlich.
 - **Ersetzen durch Entwurf** nur, wenn der Entwurf eine Obermenge des Originals ist. Einzelne Einträge (z.B. Lektionen) pro Block vergleichen.
+- **Ingest-Kopien erkennen:** Eine Clippings-Datei, die sich vom Vault-Original nur im Frontmatter (`origin`) unterscheidet, ist eine Ingest-Kopie und kann weg. Hat sie zusätzliche Inhaltszeilen, gehört sie per Merge ins Original, nicht gelöscht.
 
 Diagnose und Reset-Prozedur für Hash-Mismatches: `references/scanner-hash-reset.md`.
 

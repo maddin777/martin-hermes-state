@@ -233,7 +233,7 @@ curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" 
 ### Manuelles Triggern (Profil-Kontext)
 
 Nach Änderungen am Prompt oder Skill den nächsten scheduled Run abwarten (06:00)
-Manuell auslösen per `hermes-news cron run <job_id>` (Vordergrund, Tool-Timeout >= 420s; Briefing-Läufe dauern 2-4 min). Erfolg NUR über das Log belegen: Session `cron_<job_id>_<ts>` in `logs/agent.log` mit `Turn ended` und `delivered to telegram:…`. Die CLI-Ausgabe `Ran now: succeeded` ist kein Beleg: sie kam auch bei einem Aufruf, der keine Session erzeugte. Ein Gateway-Restart triggert den Job nicht.
+Manuell auslösen per `hermes-news cron run <job_id>` (Vordergrund, Tool-Timeout >= 420s; Briefing-Läufe dauern 2-4 min). Nicht mit `nohup … &` im Hintergrund starten: der Befehl meldete `Ran now: succeeded`, erzeugte aber keine Session. Ursache ungeklärt, daher Vordergrund. Erfolg NUR über das Log belegen: Session `cron_<job_id>_<ts>` in `logs/agent.log` mit `Turn ended` und `delivered to telegram:…`. Die CLI-Ausgabe `Ran now: succeeded` ist kein Beleg: sie kam auch bei einem Aufruf, der keine Session erzeugte. Ein Gateway-Restart triggert den Job nicht.
 
 Verifikation dass der Bot im Channel ist:
 ```bash
@@ -357,7 +357,7 @@ Alternative: seatemperature.org via browser. Die Open-Meteo Lufttemperatur ist N
   - `BLOCKED: Command flagged as dangerous`: Terminal-Befehl mit Interpreter-Flag in Cron → Pre-Run-Script verwenden.
 - **`Upstream error ... Output data may contain inappropriate content`** (OpenRouter/Alibaba-Filter für deepseek-v4-flash): transient, Re-Run nach einigen Minuten. Kein Gateway-Problem, solange Gateway active und Delivery-Status `delivered`.
 - **Prompt-Änderungen** nur per Python-`json.dump(ensure_ascii=False)` in `jobs.json` schreiben (Umlaute, Anführungszeichen), dann Testlauf. Vor dem Schreiben Backup der `jobs.json` und den neuen Prompt im Speicher auf Länge > 0 prüfen: Ein fehlender Prompt-Datei-Pfad schreibt sonst einen leeren Prompt.
-- **Telegram-MarkdownV2 bricht bei `(` in Quellenklammern** (`Can't parse entities`). Der Gateway fällt dann auf Klartext zurück, die Zustellung klappt. Kosmetisch, kein Fehler im Job. Quellen als `— Quelle` statt `(Quelle)` schreiben, dann tritt es nicht auf.
+- **Telegram-MarkdownV2 bricht bei `(` in Quellenklammern** (`Can't parse entities`). Der Gateway fällt dann auf Klartext zurück, die Zustellung klappt. Kosmetisch, kein Fehler im Job. Die Umstellung auf `— Quelle` ist NICHT verifiziert: der Fehler trat auch in Läufen mit Klammern auf, die Umstellung ist ungetestet. Bis zum Test nicht als Fix ausgeben.
 - **Abbruch mit Statusmeldung statt Briefing** (Antwort beginnt mit 'I stopped retrying…', `delivered` mit Länge ~0): Im Log stehen `read_file`-Fehler auf Verzeichnisse oder nicht existierende Dateien (`.profile.json`, `memories/…`, `cron/active.json`). Ursache ist ein Dateitool im Toolset, nicht das Script. Fix: Dateitools aus `enabled_toolsets` entfernen, Prompt-Verbot ergänzen, Testlauf im Hintergrund.
 
 ## Quality Rules

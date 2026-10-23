@@ -20,7 +20,7 @@ Unified skill for Hermes profile operations, cron troubleshooting, vault managem
 
 ## Cron-Jobs: Toolset und Prompt müssen zusammenpassen
 
-Ein Cron-Job, dessen Prompt ein Werkzeug verbietet (z.B. "keine Terminal-Befehle"), darf dieses Toolset nicht mehr enthalten. Das gilt für Dateitools (`read_file`, `search_files`) genauso: Ein Toolset mit `file` bei einem Prompt 'nur Script-Output verwenden' führt zu Suchschleifen über nicht existierende Pfade und zu einem Abbruch ohne Output. Der Widerspruch lässt das Modell einen Befehl absetzen, der hängt, und erzeugt dann eine erfundene Begründung statt Output. Vor dem Anlegen oder Ändern eines Cron-Jobs: Prompt-Verbote gegen `enabled_toolsets` abgleichen. Daten, die ein Pre-Run-Script liefert, brauchen kein Terminal im Job.
+Ein Cron-Job, dessen Prompt ein Werkzeug verbietet (z.B. "keine Terminal-Befehle"), darf dieses Toolset nicht mehr enthalten. Das gilt für Dateitools (`read_file`, `search_files`) genauso: Ein Toolset mit `file` bei einem Prompt 'nur Script-Output verwenden' führt zu Suchschleifen über nicht existierende Pfade und zu einem Abbruch ohne Output. Der Widerspruch lässt das Modell einen Befehl absetzen, der hängt, und erzeugt dann eine erfundene Begründung statt Output. Vor dem Anlegen oder Ändern eines Cron-Jobs: Prompt-Verbote gegen `enabled_toolsets` abgleichen. Daten, die ein Pre-Run-Script liefert, brauchen kein Terminal im Job. Die CLI hat kein Flag für `enabled_toolsets`; der Wert wird nur in `jobs.json` gesetzt (atomar: tmp-Datei + `os.replace`). Danach mit `_resolve_cron_enabled_toolsets(job, {})` aus `cron/scheduler.py` prüfen, was der Scheduler tatsächlich verwendet, nicht nur den Wert in der Datei.
 
 ## Cron-Health muss `last_status` anderer Jobs prüfen
 
