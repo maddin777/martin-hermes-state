@@ -1,13 +1,13 @@
 {
 "https://openrouter.ai/api/v1/models":{
-"ts":1792667087.0537827,
+"ts":1792753487.3809936,
 "caps":{
 "recursive/flint-v1.0:free":{
 "supports_reasoning":true,
 "supported_efforts":null,
 "mandatory":true
 },
-"minimax/minimax-m3.1-flash:free":{
+"minimax/minimax-m3.1-flash":{
 "supports_reasoning":true,
 "supported_efforts":[
 "max",

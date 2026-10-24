@@ -35,40 +35,44 @@
 "completion":"0"
 }
 },
-"minimax/minimax-m3.1-flash:free":{
-"context_length":1000000,
+"minimax/minimax-m3.1-flash":{
+"context_length":1048576,
 "max_completion_tokens":524288,
-"name":"MiniMax: MiniMax M3.1 Flash (free)",
+"name":"MiniMax: MiniMax M3.1 Flash",
 "pricing":{
-"prompt":"0",
-"completion":"0"
+"prompt":"0.00000015",
+"completion":"0.0000006",
+"input_cache_read":"0.000000015"
 }
 },
-"minimax-m3.1-flash:free":{
-"context_length":1000000,
+"minimax-m3.1-flash":{
+"context_length":1048576,
 "max_completion_tokens":524288,
-"name":"MiniMax: MiniMax M3.1 Flash (free)",
+"name":"MiniMax: MiniMax M3.1 Flash",
 "pricing":{
-"prompt":"0",
-"completion":"0"
+"prompt":"0.00000015",
+"completion":"0.0000006",
+"input_cache_read":"0.000000015"
 }
 },
 "minimax/minimax-m3.1-flash-20261019":{
-"context_length":1000000,
+"context_length":1048576,
 "max_completion_tokens":524288,
-"name":"MiniMax: MiniMax M3.1 Flash (free)",
+"name":"MiniMax: MiniMax M3.1 Flash",
 "pricing":{
-"prompt":"0",
-"completion":"0"
+"prompt":"0.00000015",
+"completion":"0.0000006",
+"input_cache_read":"0.000000015"
 }
 },
 "minimax-m3.1-flash-20261019":{
-"context_length":1000000,
+"context_length":1048576,
 "max_completion_tokens":524288,
-"name":"MiniMax: MiniMax M3.1 Flash (free)",
+"name":"MiniMax: MiniMax M3.1 Flash",
 "pricing":{
-"prompt":"0",
-"completion":"0"
+"prompt":"0.00000015",
+"completion":"0.0000006",
+"input_cache_read":"0.000000015"
 }
 },
 "deepseek/deepseek-v4.1-flash-1017":{
@@ -513,42 +517,42 @@
 },
 "reflection/beam-1.0-501b-a23b":{
 "context_length":1048576,
-"max_completion_tokens":943718,
+"max_completion_tokens":131072,
 "name":"Reflection: Beam 1.0 501B A23B",
 "pricing":{
-"prompt":"0.0000003",
+"prompt":"0.00000025",
 "completion":"0.000001",
-"input_cache_read":"0.00000004"
+"input_cache_read":"0.00000005"
 }
 },
 "beam-1.0-501b-a23b":{
 "context_length":1048576,
-"max_completion_tokens":943718,
+"max_completion_tokens":131072,
 "name":"Reflection: Beam 1.0 501B A23B",
 "pricing":{
-"prompt":"0.0000003",
+"prompt":"0.00000025",
 "completion":"0.000001",
-"input_cache_read":"0.00000004"
+"input_cache_read":"0.00000005"
 }
 },
 "reflection/beam-1.0-501b-a23b-20261016":{
 "context_length":1048576,
-"max_completion_tokens":943718,
+"max_completion_tokens":131072,
 "name":"Reflection: Beam 1.0 501B A23B",
 "pricing":{
-"prompt":"0.0000003",
+"prompt":"0.00000025",
 "completion":"0.000001",
-"input_cache_read":"0.00000004"
+"input_cache_read":"0.00000005"
 }
 },
 "beam-1.0-501b-a23b-20261016":{
 "context_length":1048576,
-"max_completion_tokens":943718,
+"max_completion_tokens":131072,
 "name":"Reflection: Beam 1.0 501B A23B",
 "pricing":{
-"prompt":"0.0000003",
+"prompt":"0.00000025",
 "completion":"0.000001",
-"input_cache_read":"0.00000004"
+"input_cache_read":"0.00000005"
 }
 },
 "inception/mercury-3":{
@@ -1746,7 +1750,7 @@
 },
 "typesafe/jev-router":{
 "context_length":1000000,
-"max_completion_tokens":null,
+"max_completion_tokens":65536,
 "name":"TypeSafe: Jev Router",
 "pricing":{
 "prompt":"-1",
@@ -1755,7 +1759,7 @@
 },
 "jev-router":{
 "context_length":1000000,
-"max_completion_tokens":null,
+"max_completion_tokens":65536,
 "name":"TypeSafe: Jev Router",
 "pricing":{
 "prompt":"-1",
@@ -2999,9 +3003,9 @@
 "max_completion_tokens":393216,
 "name":"DeepSeek: DeepSeek Pro Latest",
 "pricing":{
-"prompt":"0.0000002235",
+"prompt":"0.000000225",
 "completion":"0.000008",
-"input_cache_read":"0.00000022"
+"input_cache_read":"0.00000023"
 }
 },
 "deepseek-pro-latest":{
@@ -3009,9 +3013,9 @@
 "max_completion_tokens":393216,
 "name":"DeepSeek: DeepSeek Pro Latest",
 "pricing":{
-"prompt":"0.0000002235",
+"prompt":"0.000000225",
 "completion":"0.000008",
-"input_cache_read":"0.00000022"
+"input_cache_read":"0.00000023"
 }
 },
 "~deepseek/deepseek-flash-latest":{
@@ -3447,8 +3451,8 @@
 "max_completion_tokens":943718,
 "name":"DeepSeek: DeepSeek V4.1 Flash",
 "pricing":{
-"prompt":"0.0000003",
-"completion":"0.0000012",
+"prompt":"0.000000165",
+"completion":"0.00000066",
 "input_cache_read":"0.000000006"
 }
 },
@@ -3457,8 +3461,8 @@
 "max_completion_tokens":943718,
 "name":"DeepSeek: DeepSeek V4.1 Flash",
 "pricing":{
-"prompt":"0.0000003",
-"completion":"0.0000012",
+"prompt":"0.000000165",
+"completion":"0.00000066",
 "input_cache_read":"0.000000006"
 }
 },
@@ -3477,8 +3481,8 @@
 "max_completion_tokens":943718,
 "name":"DeepSeek: DeepSeek V4.1 Flash",
 "pricing":{
-"prompt":"0.0000003",
-"completion":"0.0000012",
+"prompt":"0.000000165",
+"completion":"0.00000066",
 "input_cache_read":"0.000000006"
 }
 },
@@ -4322,22 +4326,22 @@
 },
 "~z-ai/glm-flash-latest":{
 "context_length":1048576,
-"max_completion_tokens":131072,
+"max_completion_tokens":943718,
 "name":"Z.ai: GLM Flash Latest",
 "pricing":{
-"prompt":"0.0000000162",
-"completion":"0.0000001443",
-"input_cache_read":"0.0000000162"
+"prompt":"0.0000000052",
+"completion":"0.0000001985",
+"input_cache_read":"0.0000000052"
 }
 },
 "glm-flash-latest":{
 "context_length":1048576,
-"max_completion_tokens":131072,
+"max_completion_tokens":943718,
 "name":"Z.ai: GLM Flash Latest",
 "pricing":{
-"prompt":"0.0000000162",
-"completion":"0.0000001443",
-"input_cache_read":"0.0000000162"
+"prompt":"0.0000000052",
+"completion":"0.0000001985",
+"input_cache_read":"0.0000000052"
 }
 },
 "qwen/qwen3.8-flash":{
@@ -4382,22 +4386,22 @@
 },
 "z-ai/glm-5.3-flash":{
 "context_length":1048576,
-"max_completion_tokens":131072,
+"max_completion_tokens":943718,
 "name":"Z.ai: GLM 5.3 Flash",
 "pricing":{
-"prompt":"0.0000000162",
-"completion":"0.0000001443",
-"input_cache_read":"0.0000000162"
+"prompt":"0.0000000052",
+"completion":"0.0000001985",
+"input_cache_read":"0.0000000052"
 }
 },
 "glm-5.3-flash":{
 "context_length":1048576,
-"max_completion_tokens":131072,
+"max_completion_tokens":943718,
 "name":"Z.ai: GLM 5.3 Flash",
 "pricing":{
-"prompt":"0.0000000162",
-"completion":"0.0000001443",
-"input_cache_read":"0.0000000162"
+"prompt":"0.0000000052",
+"completion":"0.0000001985",
+"input_cache_read":"0.0000000052"
 }
 },
 "z-ai/glm-5.3-flash-20260826":{
@@ -4412,12 +4416,12 @@
 },
 "glm-5.3-flash-20260826":{
 "context_length":1048576,
-"max_completion_tokens":131072,
+"max_completion_tokens":943718,
 "name":"Z.ai: GLM 5.3 Flash",
 "pricing":{
-"prompt":"0.0000000162",
-"completion":"0.0000001443",
-"input_cache_read":"0.0000000162"
+"prompt":"0.0000000052",
+"completion":"0.0000001985",
+"input_cache_read":"0.0000000052"
 }
 },
 "z-ai/glm-5.3-flash:batch":{
@@ -4714,42 +4718,42 @@
 },
 "qwen/qwen3.8-27b":{
 "context_length":1000000,
-"max_completion_tokens":65536,
+"max_completion_tokens":235929,
 "name":"Qwen: Qwen3.8 27B",
 "pricing":{
-"prompt":"0.00000004",
-"completion":"0.00000135",
-"input_cache_read":"0.000000018"
+"prompt":"0.0000002",
+"completion":"0.0000025",
+"input_cache_read":"0.00000009"
 }
 },
 "qwen3.8-27b":{
 "context_length":1000000,
-"max_completion_tokens":65536,
+"max_completion_tokens":235929,
 "name":"Qwen: Qwen3.8 27B",
 "pricing":{
-"prompt":"0.00000004",
-"completion":"0.00000135",
-"input_cache_read":"0.000000018"
+"prompt":"0.0000002",
+"completion":"0.0000025",
+"input_cache_read":"0.00000009"
 }
 },
 "qwen/qwen3.8-27b-20260814":{
 "context_length":1000000,
-"max_completion_tokens":65536,
+"max_completion_tokens":235929,
 "name":"Qwen: Qwen3.8 27B",
 "pricing":{
-"prompt":"0.00000004",
-"completion":"0.00000135",
-"input_cache_read":"0.000000018"
+"prompt":"0.0000002",
+"completion":"0.0000025",
+"input_cache_read":"0.00000009"
 }
 },
 "qwen3.8-27b-20260814":{
 "context_length":1000000,
-"max_completion_tokens":65536,
+"max_completion_tokens":235929,
 "name":"Qwen: Qwen3.8 27B",
 "pricing":{
-"prompt":"0.00000004",
-"completion":"0.00000135",
-"input_cache_read":"0.000000018"
+"prompt":"0.0000002",
+"completion":"0.0000025",
+"input_cache_read":"0.00000009"
 }
 },
 "dots-studio/dots-3-note-preview:free":{
@@ -9220,7 +9224,7 @@
 "name":"MoonshotAI: Kimi Latest",
 "pricing":{
 "prompt":"0.000000238",
-"completion":"0.000024",
+"completion":"0.000016",
 "input_cache_read":"0.000000228"
 }
 },
@@ -9230,7 +9234,7 @@
 "name":"MoonshotAI: Kimi Latest",
 "pricing":{
 "prompt":"0.000000238",
-"completion":"0.000024",
+"completion":"0.000016",
 "input_cache_read":"0.000000228"
 }
 },
@@ -15363,8 +15367,8 @@
 "max_completion_tokens":16384,
 "name":"Mistral: Mistral Small 3.2 24B",
 "pricing":{
-"prompt":"0.00000009375",
-"completion":"0.00000025"
+"prompt":"0.000000075",
+"completion":"0.0000002"
 }
 },
 "mistral-small-3.2-24b-instruct":{
@@ -15372,8 +15376,8 @@
 "max_completion_tokens":16384,
 "name":"Mistral: Mistral Small 3.2 24B",
 "pricing":{
-"prompt":"0.00000009375",
-"completion":"0.00000025"
+"prompt":"0.000000075",
+"completion":"0.0000002"
 }
 },
 "mistralai/mistral-small-3.2-24b-instruct-2506":{
@@ -15381,8 +15385,8 @@
 "max_completion_tokens":16384,
 "name":"Mistral: Mistral Small 3.2 24B",
 "pricing":{
-"prompt":"0.00000009375",
-"completion":"0.00000025"
+"prompt":"0.000000075",
+"completion":"0.0000002"
 }
 },
 "mistral-small-3.2-24b-instruct-2506":{
@@ -15390,8 +15394,8 @@
 "max_completion_tokens":16384,
 "name":"Mistral: Mistral Small 3.2 24B",
 "pricing":{
-"prompt":"0.00000009375",
-"completion":"0.00000025"
+"prompt":"0.000000075",
+"completion":"0.0000002"
 }
 },
 "minimax/minimax-m1":{
