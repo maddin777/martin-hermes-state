@@ -940,15 +940,15 @@
     "created_by": "agent",
     "first_seen_at": null,
     "last_patched_at": "2026-10-12T08:15:42.842257+00:00",
-    "last_reused_patch_generation": 0,
-    "last_used_at": "2026-10-19T09:11:12.223861+00:00",
-    "last_viewed_at": "2026-10-19T09:11:12.211219+00:00",
+    "last_reused_patch_generation": 2,
+    "last_used_at": "2026-10-25T16:01:24.570546+00:00",
+    "last_viewed_at": "2026-10-25T16:01:24.560775+00:00",
     "patch_count": 2,
     "patch_generation": 2,
     "pinned": false,
     "state": "active",
-    "use_count": 1,
-    "view_count": 1
+    "use_count": 2,
+    "view_count": 2
   },
   "imessage": {
     "archived_at": null,
@@ -1043,13 +1043,13 @@
     "created_by": null,
     "last_patched_at": null,
     "last_reused_patch_generation": 0,
-    "last_used_at": "2026-10-21T12:00:29.061571+00:00",
+    "last_used_at": "2026-10-25T14:00:59.323422+00:00",
     "last_viewed_at": "2026-08-27T18:15:34.184642+00:00",
     "patch_count": 0,
     "patch_generation": 0,
     "pinned": false,
     "state": "active",
-    "use_count": 42,
+    "use_count": 44,
     "view_count": 2
   },
   "llama-cpp": {
@@ -1253,13 +1253,13 @@
     "created_by": null,
     "last_patched_at": "2026-10-14T09:34:47.700406+00:00",
     "last_reused_patch_generation": 4,
-    "last_used_at": "2026-10-24T14:00:28.984719+00:00",
+    "last_used_at": "2026-10-25T15:00:58.835005+00:00",
     "last_viewed_at": "2026-10-20T06:39:16.833378+00:00",
     "patch_count": 15,
     "patch_generation": 4,
     "pinned": false,
     "state": "active",
-    "use_count": 158,
+    "use_count": 159,
     "view_count": 54
   },
   "ocr-and-documents": {

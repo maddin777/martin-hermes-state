@@ -4369,8 +4369,8 @@
 "max_completion_tokens":131072,
 "name":"Z.ai: GLM Flash Latest",
 "pricing":{
-"prompt":"0.0000000304",
-"completion":"0.0000000852",
+"prompt":"0.0000000511",
+"completion":"0.0000000761",
 "input_cache_read":"0.00000003"
 }
 },
@@ -4379,8 +4379,8 @@
 "max_completion_tokens":131072,
 "name":"Z.ai: GLM Flash Latest",
 "pricing":{
-"prompt":"0.0000000304",
-"completion":"0.0000000852",
+"prompt":"0.0000000511",
+"completion":"0.0000000761",
 "input_cache_read":"0.00000003"
 }
 },
@@ -4642,22 +4642,22 @@
 },
 "~z-ai/glm-latest":{
 "context_length":1048576,
-"max_completion_tokens":943718,
+"max_completion_tokens":131072,
 "name":"Z.ai: GLM Latest",
 "pricing":{
-"prompt":"0.000000079",
-"completion":"0.0000014",
-"input_cache_read":"0.000000078"
+"prompt":"0.0000000703",
+"completion":"0.0000043843",
+"input_cache_read":"0.0000000703"
 }
 },
 "glm-latest":{
 "context_length":1048576,
-"max_completion_tokens":943718,
+"max_completion_tokens":131072,
 "name":"Z.ai: GLM Latest",
 "pricing":{
-"prompt":"0.000000079",
-"completion":"0.0000014",
-"input_cache_read":"0.000000078"
+"prompt":"0.0000000703",
+"completion":"0.0000043843",
+"input_cache_read":"0.0000000703"
 }
 },
 "tencent/hy-mt2-7b":{
@@ -5508,22 +5508,24 @@
 ]
 }
 },
-"liquid/lfm-2.5-2.6b:free":{
-"context_length":65536,
+"liquid/lfm-2.5-2.6b":{
+"context_length":128000,
 "max_completion_tokens":8192,
-"name":"LiquidAI: LFM2.5-2.6B (free)",
+"name":"LiquidAI: LFM2.5-2.6B",
 "pricing":{
-"prompt":"0",
-"completion":"0"
+"prompt":"0.00000035",
+"completion":"0.0000005",
+"input_cache_read":"0.00000004"
 }
 },
-"lfm-2.5-2.6b:free":{
-"context_length":65536,
+"lfm-2.5-2.6b":{
+"context_length":128000,
 "max_completion_tokens":8192,
-"name":"LiquidAI: LFM2.5-2.6B (free)",
+"name":"LiquidAI: LFM2.5-2.6B",
 "pricing":{
-"prompt":"0",
-"completion":"0"
+"prompt":"0.00000035",
+"completion":"0.0000005",
+"input_cache_read":"0.00000004"
 }
 },
 "liquid/lfm-2.5-2.6b-20260811":{
@@ -5536,6 +5538,25 @@
 }
 },
 "lfm-2.5-2.6b-20260811":{
+"context_length":128000,
+"max_completion_tokens":8192,
+"name":"LiquidAI: LFM2.5-2.6B",
+"pricing":{
+"prompt":"0.00000035",
+"completion":"0.0000005",
+"input_cache_read":"0.00000004"
+}
+},
+"liquid/lfm-2.5-2.6b:free":{
+"context_length":65536,
+"max_completion_tokens":8192,
+"name":"LiquidAI: LFM2.5-2.6B (free)",
+"pricing":{
+"prompt":"0",
+"completion":"0"
+}
+},
+"lfm-2.5-2.6b:free":{
 "context_length":65536,
 "max_completion_tokens":8192,
 "name":"LiquidAI: LFM2.5-2.6B (free)",
@@ -5791,42 +5812,42 @@
 },
 "deepseek/deepseek-v4-flash-0731":{
 "context_length":1048576,
-"max_completion_tokens":131072,
+"max_completion_tokens":943718,
 "name":"DeepSeek: DeepSeek V4 Flash 0731",
 "pricing":{
-"prompt":"0.00000004444",
-"completion":"0.00000013332",
-"input_cache_read":"0.000000001414"
+"prompt":"0.0000000422",
+"completion":"0.0000001694",
+"input_cache_read":"0.000000028"
 }
 },
 "deepseek-v4-flash-0731":{
 "context_length":1048576,
-"max_completion_tokens":131072,
+"max_completion_tokens":943718,
 "name":"DeepSeek: DeepSeek V4 Flash 0731",
 "pricing":{
-"prompt":"0.00000004444",
-"completion":"0.00000013332",
-"input_cache_read":"0.000000001414"
+"prompt":"0.0000000422",
+"completion":"0.0000001694",
+"input_cache_read":"0.000000028"
 }
 },
 "deepseek/deepseek-v4-flash-20260731":{
 "context_length":1048576,
-"max_completion_tokens":131072,
+"max_completion_tokens":943718,
 "name":"DeepSeek: DeepSeek V4 Flash 0731",
 "pricing":{
-"prompt":"0.00000004444",
-"completion":"0.00000013332",
-"input_cache_read":"0.000000001414"
+"prompt":"0.0000000422",
+"completion":"0.0000001694",
+"input_cache_read":"0.000000028"
 }
 },
 "deepseek-v4-flash-20260731":{
 "context_length":1048576,
-"max_completion_tokens":131072,
+"max_completion_tokens":943718,
 "name":"DeepSeek: DeepSeek V4 Flash 0731",
 "pricing":{
-"prompt":"0.00000004444",
-"completion":"0.00000013332",
-"input_cache_read":"0.000000001414"
+"prompt":"0.0000000422",
+"completion":"0.0000001694",
+"input_cache_read":"0.000000028"
 }
 },
 "thinkingmachines/inkling-small":{
@@ -9263,9 +9284,9 @@
 "max_completion_tokens":943718,
 "name":"MoonshotAI: Kimi Latest",
 "pricing":{
-"prompt":"0.000000238",
-"completion":"0.000016",
-"input_cache_read":"0.000000228"
+"prompt":"0.00000019",
+"completion":"0.00000894",
+"input_cache_read":"0.00000019"
 }
 },
 "kimi-latest":{
@@ -9273,9 +9294,9 @@
 "max_completion_tokens":943718,
 "name":"MoonshotAI: Kimi Latest",
 "pricing":{
-"prompt":"0.000000238",
-"completion":"0.000016",
-"input_cache_read":"0.000000228"
+"prompt":"0.00000019",
+"completion":"0.00000894",
+"input_cache_read":"0.00000019"
 }
 },
 "~google/gemini-flash-latest":{
@@ -9709,9 +9730,9 @@
 "max_completion_tokens":384000,
 "name":"DeepSeek: DeepSeek V4 Pro 0423",
 "pricing":{
-"prompt":"0.000000601344",
-"completion":"0.000001202688",
-"input_cache_read":"0.000000050112"
+"prompt":"0.0000002088",
+"completion":"0.0000004176",
+"input_cache_read":"0.0000000174"
 }
 },
 "deepseek-v4-pro":{
@@ -9719,9 +9740,9 @@
 "max_completion_tokens":384000,
 "name":"DeepSeek: DeepSeek V4 Pro 0423",
 "pricing":{
-"prompt":"0.000000601344",
-"completion":"0.000001202688",
-"input_cache_read":"0.000000050112"
+"prompt":"0.0000002088",
+"completion":"0.0000004176",
+"input_cache_read":"0.0000000174"
 }
 },
 "deepseek/deepseek-v4-pro-20260423":{
@@ -9729,9 +9750,9 @@
 "max_completion_tokens":384000,
 "name":"DeepSeek: DeepSeek V4 Pro 0423",
 "pricing":{
-"prompt":"0.000000601344",
-"completion":"0.000001202688",
-"input_cache_read":"0.000000050112"
+"prompt":"0.0000002088",
+"completion":"0.0000004176",
+"input_cache_read":"0.0000000174"
 }
 },
 "deepseek-v4-pro-20260423":{
@@ -9739,9 +9760,9 @@
 "max_completion_tokens":384000,
 "name":"DeepSeek: DeepSeek V4 Pro 0423",
 "pricing":{
-"prompt":"0.000000601344",
-"completion":"0.000001202688",
-"input_cache_read":"0.000000050112"
+"prompt":"0.0000002088",
+"completion":"0.0000004176",
+"input_cache_read":"0.0000000174"
 }
 },
 "deepseek/deepseek-v4-flash":{
@@ -12159,41 +12180,41 @@
 },
 "minimax/minimax-m2.5":{
 "context_length":204800,
-"max_completion_tokens":32768,
+"max_completion_tokens":131072,
 "name":"MiniMax: MiniMax M2.5",
 "pricing":{
-"prompt":"0.00000027",
-"completion":"0.00000095",
+"prompt":"0.0000003",
+"completion":"0.0000012",
 "input_cache_read":"0.00000003"
 }
 },
 "minimax-m2.5":{
 "context_length":204800,
-"max_completion_tokens":32768,
+"max_completion_tokens":131072,
 "name":"MiniMax: MiniMax M2.5",
 "pricing":{
-"prompt":"0.00000027",
-"completion":"0.00000095",
+"prompt":"0.0000003",
+"completion":"0.0000012",
 "input_cache_read":"0.00000003"
 }
 },
 "minimax/minimax-m2.5-20260211":{
 "context_length":204800,
-"max_completion_tokens":32768,
+"max_completion_tokens":131072,
 "name":"MiniMax: MiniMax M2.5",
 "pricing":{
-"prompt":"0.00000027",
-"completion":"0.00000095",
+"prompt":"0.0000003",
+"completion":"0.0000012",
 "input_cache_read":"0.00000003"
 }
 },
 "minimax-m2.5-20260211":{
 "context_length":204800,
-"max_completion_tokens":32768,
+"max_completion_tokens":131072,
 "name":"MiniMax: MiniMax M2.5",
 "pricing":{
-"prompt":"0.00000027",
-"completion":"0.00000095",
+"prompt":"0.0000003",
+"completion":"0.0000012",
 "input_cache_read":"0.00000003"
 }
 },
@@ -17210,20 +17231,20 @@
 },
 "meta-llama/llama-3.2-3b-instruct":{
 "context_length":131072,
-"max_completion_tokens":72000,
+"max_completion_tokens":117964,
 "name":"Meta: Llama 3.2 3B Instruct",
 "pricing":{
-"prompt":"0.0000000509",
-"completion":"0.000000335"
+"prompt":"0.00000005",
+"completion":"0.00000033"
 }
 },
 "llama-3.2-3b-instruct":{
 "context_length":131072,
-"max_completion_tokens":72000,
+"max_completion_tokens":117964,
 "name":"Meta: Llama 3.2 3B Instruct",
 "pricing":{
-"prompt":"0.0000000509",
-"completion":"0.000000335"
+"prompt":"0.00000005",
+"completion":"0.00000033"
 }
 },
 "qwen/qwen-2.5-72b-instruct":{
@@ -17685,24 +17706,6 @@
 "completion":"-1"
 }
 },
-"openai/gpt-3.5-turbo-instruct":{
-"context_length":4095,
-"max_completion_tokens":3685,
-"name":"OpenAI: GPT-3.5 Turbo Instruct",
-"pricing":{
-"prompt":"0.0000015",
-"completion":"0.000002"
-}
-},
-"gpt-3.5-turbo-instruct":{
-"context_length":4095,
-"max_completion_tokens":3685,
-"name":"OpenAI: GPT-3.5 Turbo Instruct",
-"pricing":{
-"prompt":"0.0000015",
-"completion":"0.000002"
-}
-},
 "openai/gpt-3.5-turbo-16k":{
 "context_length":16385,
 "max_completion_tokens":4096,
@@ -17773,45 +17776,6 @@
 "pricing":{
 "prompt":"0.00000008",
 "completion":"0.00000011"
-}
-},
-"openai/gpt-3.5-turbo":{
-"context_length":16385,
-"max_completion_tokens":4096,
-"name":"OpenAI: GPT-3.5 Turbo (batch)",
-"pricing":{
-"prompt":"0.00000025",
-"completion":"0.00000075",
-"web_search":"0.01"
-}
-},
-"gpt-3.5-turbo":{
-"context_length":16385,
-"max_completion_tokens":4096,
-"name":"OpenAI: GPT-3.5 Turbo",
-"pricing":{
-"prompt":"0.0000005",
-"completion":"0.0000015"
-}
-},
-"openai/gpt-3.5-turbo:batch":{
-"context_length":16385,
-"max_completion_tokens":4096,
-"name":"OpenAI: GPT-3.5 Turbo (batch)",
-"pricing":{
-"prompt":"0.00000025",
-"completion":"0.00000075",
-"web_search":"0.01"
-}
-},
-"gpt-3.5-turbo:batch":{
-"context_length":16385,
-"max_completion_tokens":4096,
-"name":"OpenAI: GPT-3.5 Turbo (batch)",
-"pricing":{
-"prompt":"0.00000025",
-"completion":"0.00000075",
-"web_search":"0.01"
 }
 },
 "openai/gpt-4":{
