@@ -1,6 +1,6 @@
 {
 "https://openrouter.ai/api/v1/models":{
-"ts":1792926287.983646,
+"ts":1793012688.3344126,
 "caps":{
 "moonshotai/kimi-k3.1-pro":{
 "supports_reasoning":true,

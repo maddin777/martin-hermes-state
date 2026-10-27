@@ -1,5 +1,5 @@
 {
-  "fetched_at": 1792979258.688549,
+  "fetched_at": 1793065683.5439174,
   "curated": [
     [
       "anthropic/claude-fable-5.1",
@@ -143,7 +143,7 @@
     ],
     [
       "z-ai/glm-5.3",
-      ""
+      "default"
     ],
     [
       "z-ai/glm-5.3-flash",
@@ -155,7 +155,7 @@
     ],
     [
       "z-ai/glm-5.2",
-      "default"
+      ""
     ],
     [
       "xiaomi/mimo-v2.6-pro",

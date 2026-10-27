@@ -52,7 +52,10 @@ Jeder Cluster bekommt:
 Schreibe einen Report im Format:
 
 ```
-📡 Last30days: [Thema] (Stand: [Datum])
+📡 Last30days: <Thema> (Stand: <heutiges Datum, TT.MM.JJJJ, aus dem Systemdatum>)
+
+<!-- Hinweis: <...> sind Platzhalter, NICHT wörtlich übernehmen. Das Datum ist
+     immer das aktuelle Lauf-Datum, nie ein Datum aus alten Quellen oder Caches. -->
 
 ## Zusammenfassung
 2-3 Sätze: Was ist in den letzten 30 Tagen passiert?

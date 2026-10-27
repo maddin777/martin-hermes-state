@@ -1,11 +1,7 @@
 ---
 name: trading-pipeline
 description: >-
-  Operate and debug the automated market signal pipeline under profile
-  hermes_trading. Covers cron-based data collection (YouTube, RSS, Twitter),
-  LLM signal extraction, watchlist management, technical analysis, nightly
-  evaluation, and dashboard (port 8081). Known failure modes and their fixes
-  are documented.
+  Operate and debug the hermes_trading signal pipeline (cron, watchlist, exits).
 ---
 
 # Trading Pipeline
@@ -262,6 +258,7 @@ Details siehe `references/` im Skill-Verzeichnis sowie die Erläuterung.md im Ob
 | **Stale-Analyse: Immer die volle Watchlist, nicht nur offene Positionen** → Bei Fragen zu "stale Einträgen >30 Tage" oder "was hat keine Mentions" IMMER die gesamte Watchlist (`status IN ('watching','bought')`) scannen, nicht nur offene Positionen (`positions WHERE exit_date IS NULL`). Der vault-insights-daily scannt die Watchlist. Eine Position kann frisch sein, aber die Watchlist hat hunderte stale Kandidaten. |
 | **Last30days Pre-Trade Gate** → `scripts/last30days_gate.py` prüft News-Sentiment via Google News RSS (kein API-Key). Keyword-basiert (32 neg + 18 pos). Nur für HIGH-Conviction (≥0.80). Drei Stufen: ok/warning/block. Fail-Open. Siehe `references/last30days-gate.md`. |
 | **Pre-Delivery-Verification-Gate (14.09.2026)** → `scripts/pre_delivery_gate.py` validiert die Top-N Watchlist-Kandidaten (Shortlist wie `nightly_eval.calc_top_signals`) VOR der Telegram-Delivery gegen die festen Entry-Kriterien (conviction ≥ min_confidence, tech_score vorhanden, tech_direction LONG, kein `.L`-DQ). Verdrahtet in `nightly_eval.py` (Tages- + Wochen-Report). Zeigt ✅/⚠️/🚫 pro Kandidat als proof-of-work, blockiert aber NIE die Zustellung (graceful Degradation → "❌ nicht verfügbar"). Siehe `references/pre-delivery-gate.md`. |
+| **ATR-Plausibilität prüfen (read-only)** | `references/atr-plausibility-check.md` — Verteilung, Stop-Seite/Abstand in ATR, Stichprobe gegen yfinance am Entry-Datum |
 | **PEAD Signal (Post-Earnings Drift)** | `references/pead-signal.md` |
 | **Model-Migration ohne Patch-Blocker** → `config.yaml` ist für patch gesperrt, NUR `hermes config set model <name>`; alle anderen Dateien per patch/sed. Siehe `references/model-migration-config-blocker.md`. |
 | **Cross-Model-Zweitmeinung (Fremdmodell-Review)** → System zusätzlich mit unabhängigem Modell (z.B. `z-ai/glm-5.2`) über OpenRouter prüfen; Reviewer-Mathematik IMMER gegen Roh-DB verifizieren (glm behauptete falsch 10.4% WR, real 39%; echter Killer = Payoff<1). Kompletter Ablauf: `references/cross-model-review.md`. |
@@ -519,7 +516,7 @@ cd /root/.hermes/profiles/hermes_trading/skills/trading && \
 
 - `bought` wird nach einem Exit nicht sofort zurückgesetzt. `reactivate_closed_bought()` in `watchlist_manager.py` (aufgerufen aus `main()`, nur ohne Dry-Run) setzt einen Titel auf `watching`, wenn keine offene Position existiert und der letzte Exit älter als 24h ist. Der Reset läuft also erst im nächsten Pipeline-Lauf (Mo–Fr 03:30). Ein Exit nach diesem Lauf bleibt bis dahin `bought`. Das ist erwartet, kein Bug. Vor einer Bug-Meldung Exit-Zeitpunkt gegen die Pipeline-Zeit aus der Crontab prüfen.
 - Zählwerte aus dem Watchlist-Export (`Gekauft N`) sind bis zum nächsten Lauf überhöht. Verlässlich für offene Positionen ist nur `positions WHERE status='open'`.
-- Dry-Run einer Pipeline-Funktion immer gegen eine Kopie der DB (`cp data/trading.db <scratch>`), nie gegen die Live-DB.
+- Dry-Run einer Pipeline-Funktion immer gegen eine Kopie der DB (`cp data/trading.db <scratch>`), nie gegen die Live-DB. Vollständige Pipeline-Läufe sind NICHT kopiersicher: DB-Pfade sind in den Skripten hart kodiert, und ein Lauf schreibt in die Live-DB und löst LLM-Calls, Entries und Alerts aus. Trockentest deshalb isoliert: die eine Funktion aus dem Quelltext laden (Regex auf `def <name>`) und nur gegen die Kopie ausführen.
 - Auf `positions` nie `SELECT *`: JSON-Spalten (`reason`, `thesis_text`, Indikator-JSON) blähen den Output auf zehntausende Zeichen. Explizite Spaltenliste verwenden.
 
 ## Dynamische Exit-Regeln (seit 18.06.2026)

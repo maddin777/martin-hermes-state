@@ -233,7 +233,7 @@ curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" 
 ### Manuelles Triggern (Profil-Kontext)
 
 Nach Änderungen am Prompt oder Skill den nächsten scheduled Run abwarten (06:00)
-Manuell auslösen per `hermes-news cron run <job_id>` (Vordergrund, Tool-Timeout >= 420s; Briefing-Läufe dauern 2-4 min). Nicht mit `nohup … &` im Hintergrund starten: der Befehl meldete `Ran now: succeeded`, erzeugte aber keine Session. Ursache ungeklärt, daher Vordergrund. Erfolg NUR über das Log belegen: Session `cron_<job_id>_<ts>` in `logs/agent.log` mit `Turn ended` und `delivered to telegram:…`. Die CLI-Ausgabe `Ran now: succeeded` ist kein Beleg: sie kam auch bei einem Aufruf, der keine Session erzeugte. Ein Gateway-Restart triggert den Job nicht.
+Manuell auslösen per `hermes-news cron run <job_id>` (Vordergrund, Tool-Timeout >= 600s; ein 420s-Limit brach einen Testlauf ab, Briefing-Läufe dauern 2-4 min). Nicht mit `nohup … &` im Hintergrund starten: der Befehl meldete `Ran now: succeeded`, erzeugte aber keine Session. Ursache ungeklärt, daher Vordergrund. Erfolg NUR über das Log belegen: Session `cron_<job_id>_<ts>` in `logs/agent.log` mit `Turn ended` und `delivered to telegram:…`. Die CLI-Ausgabe `Ran now: succeeded` ist kein Beleg: sie kam auch bei einem Aufruf, der keine Session erzeugte. Ein Gateway-Restart triggert den Job nicht.
 
 Verifikation dass der Bot im Channel ist:
 ```bash

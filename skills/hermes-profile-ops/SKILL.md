@@ -22,6 +22,10 @@ Unified skill for Hermes profile operations, cron troubleshooting, vault managem
 
 Ein Cron-Job, dessen Prompt ein Werkzeug verbietet (z.B. "keine Terminal-Befehle"), darf dieses Toolset nicht mehr enthalten. Das gilt für Dateitools (`read_file`, `search_files`) genauso: Ein Toolset mit `file` bei einem Prompt 'nur Script-Output verwenden' führt zu Suchschleifen über nicht existierende Pfade und zu einem Abbruch ohne Output. Der Widerspruch lässt das Modell einen Befehl absetzen, der hängt, und erzeugt dann eine erfundene Begründung statt Output. Vor dem Anlegen oder Ändern eines Cron-Jobs: Prompt-Verbote gegen `enabled_toolsets` abgleichen. Daten, die ein Pre-Run-Script liefert, brauchen kein Terminal im Job. Die CLI hat kein Flag für `enabled_toolsets`; der Wert wird nur in `jobs.json` gesetzt (atomar: tmp-Datei + `os.replace`). Danach mit `_resolve_cron_enabled_toolsets(job, {})` aus `cron/scheduler.py` prüfen, was der Scheduler tatsächlich verwendet, nicht nur den Wert in der Datei.
 
+## Gateway-Restart darf nicht aus einem Gateway-Cron-Job laufen
+
+Ein Cron-Job, der den eigenen Gateway per `systemctl restart` neu startet, wartet im Gateway-Drain auf sich selbst, weil er der einzige in-flight Cron-Job ist. Nach dem Drain-Timeout schickt systemd SIGKILL an die ganze Cgroup, also auch an das Job-Skript. Der Restart gelingt, der Job schreibt aber nie seinen Abschluss (`last_run_at` bleibt None). Das sieht aus wie "nicht gelaufen", ist aber ein Selbst-Deadlock. Diagnose: `journalctl -u hermes-gateway` zeigt "drain timed out … 1 in-flight cron job" direkt vor dem SIGKILL der Cgroup. Fix: den Restart vom Gateway entkoppeln, per systemd-Timer oder `systemd-run --no-block --unit=<name> --collect systemctl restart hermes-gateway`.
+
 ## Cron-Health muss `last_status` anderer Jobs prüfen
 
 Ein Health-Check, der nur ein Log auswertet, sieht Jobs nicht, die in ein anderes Log schreiben, und meldet dann "ok" bei einem Dauerfehler. Der Check liest `last_status` jedes kritischen Jobs direkt aus `jobs.json` (Job-ID fest) und meldet alles außer `ok` als Fehler. Ein Sync-Job, der seit mehreren Läufen `error` steht, muss im Health-Output auffallen.
