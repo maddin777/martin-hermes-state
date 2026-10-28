@@ -512,6 +512,14 @@ cd /root/.hermes/profiles/hermes_trading/skills/trading && \
   PYTHONPATH=. python3 scripts/signal_manager.py full
 ```
 
+## Quellen-Qualität messen: Join-Falle
+
+Bevor eine Quellen-Kennzahl (z.B. Anteil Mentions ohne Tech-Score) als Gate oder Report dient, gelten vier Regeln:
+- `watchlist.name` ist nicht eindeutig (mehrere Zeilen je Name). Ein Join `watchlist_mentions ⋈ watchlist` über den Namen vervielfacht Zeilen und liefert Quoten über 100 %. Pro Mention deduplizieren und prüfen, dass alle Quoten im Bereich 0–100 % liegen.
+- `watchlist_mentions` hat keine `tech_score`-Spalte. Der Score steht in `watchlist` pro Ticker, die Quelle über `channel`.
+- Mentions ohne Watchlist-Zeile zuerst über `company_aliases` (Alias→Ticker) auflösen und die Auflösungsquote ausweisen. Ohne diesen Schritt misst die Kennzahl Namens-Mismatch, nicht Quellenqualität.
+- Schwellen-Gates an eine Mindestmenge koppeln (Richtwert 15 Mentions/7 Tage). Eine Quelle mit 8 Mentions erreicht sonst leicht 100 % und wird fälschlich geflaggt.
+
 ## Stale-Status nach Exit: Reset läuft im nächsten Batch
 
 - `bought` wird nach einem Exit nicht sofort zurückgesetzt. `reactivate_closed_bought()` in `watchlist_manager.py` (aufgerufen aus `main()`, nur ohne Dry-Run) setzt einen Titel auf `watching`, wenn keine offene Position existiert und der letzte Exit älter als 24h ist. Der Reset läuft also erst im nächsten Pipeline-Lauf (Mo–Fr 03:30). Ein Exit nach diesem Lauf bleibt bis dahin `bought`. Das ist erwartet, kein Bug. Vor einer Bug-Meldung Exit-Zeitpunkt gegen die Pipeline-Zeit aus der Crontab prüfen.

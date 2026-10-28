@@ -1,5 +1,5 @@
 {
-  "fetched_at": 1793012690.3597403,
+  "fetched_at": 1793099090.6448936,
   "curated": [
     [
       "anthropic/claude-fable-5.1",
@@ -51,6 +51,10 @@
     ],
     [
       "openai/gpt-6.1-sol-pro",
+      ""
+    ],
+    [
+      "openai/gpt-6.1-terra",
       ""
     ],
     [
@@ -235,10 +239,6 @@
     ],
     [
       "poolside/laguna-xs-2.1:free",
-      "free"
-    ],
-    [
-      "nvidia/nemotron-3-super-120b-a12b:free",
       "free"
     ],
     [

@@ -24,7 +24,13 @@ Ein Cron-Job, dessen Prompt ein Werkzeug verbietet (z.B. "keine Terminal-Befehle
 
 ## Gateway-Restart darf nicht aus einem Gateway-Cron-Job laufen
 
-Ein Cron-Job, der den eigenen Gateway per `systemctl restart` neu startet, wartet im Gateway-Drain auf sich selbst, weil er der einzige in-flight Cron-Job ist. Nach dem Drain-Timeout schickt systemd SIGKILL an die ganze Cgroup, also auch an das Job-Skript. Der Restart gelingt, der Job schreibt aber nie seinen Abschluss (`last_run_at` bleibt None). Das sieht aus wie "nicht gelaufen", ist aber ein Selbst-Deadlock. Diagnose: `journalctl -u hermes-gateway` zeigt "drain timed out … 1 in-flight cron job" direkt vor dem SIGKILL der Cgroup. Fix: den Restart vom Gateway entkoppeln, per systemd-Timer oder `systemd-run --no-block --unit=<name> --collect systemctl restart hermes-gateway`.
+Ein Cron-Job, der den eigenen Gateway per `systemctl restart` neu startet, wartet im Gateway-Drain auf sich selbst, weil er der einzige in-flight Cron-Job ist. Nach dem Drain-Timeout schickt systemd SIGKILL an die ganze Cgroup, also auch an das Job-Skript. Der Restart gelingt, der Job schreibt aber nie seinen Abschluss (`last_run_at` bleibt None). Das sieht aus wie "nicht gelaufen", ist aber ein Selbst-Deadlock. Diagnose: `journalctl -u hermes-gateway` zeigt "drain timed out … 1 in-flight cron job" direkt vor dem SIGKILL der Cgroup. Fix: den Restart vom Gateway entkoppeln, per systemd-Timer oder `systemd-run --no-block --unit=<name> --collect systemctl restart hermes-gateway`. Beim Umstellen zuerst `jobs.json` sichern, dann den Cron-Job mit `hermes cron remove <id>` entfernen, damit er nicht parallel weiterläuft.
+
+## Cron: Einmal-Erinnerung und Nachlauf pausierter Jobs
+
+- Einmal-Erinnerung zu einem festen Datum: `hermes cron create "<min> <std> <tag> <monat> *" --repeat 1 --deliver origin "<text>"`. Ohne `--repeat 1` feuert der Ausdruck jährlich am selben Datum. Danach `next_run_at` in `jobs.json` gegen das Wunschdatum prüfen.
+- `--paused` ist ein reiner Schalter ohne Wert. `--paused false` ist ungültig, also den Flag einfach weglassen.
+- `hermes cron resume <id>` lässt ein vergangenes `next_run_at` stehen. Bei `cron.catch_up_missed` (Default true) läuft der Job dann einmal nach. Vor dem Reaktivieren prüfen, ob dieser Nachlauf harmlos ist: keine Orders, keine Live-Config-Änderung, nur Report oder Alarm.
 
 ## Cron-Health muss `last_status` anderer Jobs prüfen
 

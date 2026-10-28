@@ -1,6 +1,6 @@
 {
 "https://openrouter.ai/api/v1/models":{
-"ts":1793065683.529796,
+"ts":1793152123.0506737,
 "caps":{
 "openai/gpt-6.1-terra-pro":{
 "supports_reasoning":true,
@@ -113,6 +113,11 @@
 "low",
 "none"
 ],
+"mandatory":false
+},
+"prism-ml/ternary-bonsai-2-9b":{
+"supports_reasoning":true,
+"supported_efforts":null,
 "mandatory":false
 },
 "moondream/moondream3-preview":{
@@ -2085,15 +2090,6 @@
 "mandatory":false
 },
 "nvidia/nemotron-3-super-120b-a12b":{
-"supports_reasoning":true,
-"supported_efforts":[
-"medium",
-"low",
-"none"
-],
-"mandatory":false
-},
-"nvidia/nemotron-3-super-120b-a12b:free":{
 "supports_reasoning":true,
 "supported_efforts":[
 "medium",
