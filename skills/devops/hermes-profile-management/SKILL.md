@@ -18,14 +18,18 @@ Umbrella for creating, configuring, and troubleshooting isolated Hermes agent pr
 # 1. Create profile
 hermes profile create <name>
 
-# 2. Copy .env FIRST (empty by default, gateway needs it!)
-cp /root/.hermes/.env /root/.hermes/profiles/<name>/.env
-# Edit: TELEGRAM_BOT_TOKEN=<SEPARATE_BOT>  # MUST differ from main!
-# Edit: TELEGRAM_HOME_CHANNEL=<id>  # Must include -100 prefix for channels
-# Ensure OPENROUTER_API_KEY is set
+# 2. Write the profile .env by hand — do NOT cp the main .env
+#    The main .env carries the DM bot token; copying it gives the profile the wrong bot.
+#    Only these keys belong in the profile .env (chmod 600):
+#      TELEGRAM_BOT_TOKEN=<token of the profile's OWN bot>
+#      TELEGRAM_ALLOWED_USERS=<Martin's numeric Telegram ID>   (see Allowlist pitfall)
+#      HERMES_TELEGRAM_DISABLE_FALLBACK_IPS=true
+#      OPENROUTER_API_KEY=<copy the value from /root/.hermes/.env without printing it>
+#      TELEGRAM_HOME_CHANNEL=<id>  # only for channel delivery, -100 prefix
 
-# 3. Set model (interactive-only command needs workaround)
-<name> model set <model> --provider openrouter
+# 3. Set the model by editing config.yaml — `<name> model set` does not exist in current Hermes
+#    Change `model.default` (and keep `model.provider: openrouter`). Back up config.yaml first.
+#    Then add a fallback chain (see Fallback pitfall) — `hermes fallback add` is an interactive picker.
 
 # 4. Write SOUL.md (no restart needed)
 
@@ -45,6 +49,9 @@ sudo systemctl restart hermes-gateway-<name>
 
 ### Telegram Channel / Bot Configuration
 
+- **Allowlist is mandatory for DM bots.** Without `TELEGRAM_ALLOWED_USERS`, the gateway logs `No env user allowlists configured` and denies unknown senders by default. Set it to the owner's numeric ID in the profile `.env`, then restart. Test with a real message, not only `getMe`.
+- **Verify the token with `getMe` before writing the gateway unit.** `getMe` returns the bot username, which confirms the token belongs to the bot you expect. Do this on the token, never print it back into chat.
+- **Token in chat is a leak.** If the user pastes a bot token into chat, recommend rotation via @BotFather (`/revoke`) after setup.
 - **Bot token conflict:** Two gateways CANNOT share one bot token. Error: "Telegram bot token already in use (PID XXXX)". Fix: kill old gateway or use separate bot per profile.
 - **TG Channel ID needs -100 prefix:** Channel IDs like `1003687061880` must be `-1003687061880`. Get via @userinfobot in channel. Private DM IDs are just numeric (e.g. 216051232).
 - **Bot must be Admin in channel** with "Nachrichten posten" permission. Kicked bot = Forbidden errors on send.
@@ -214,7 +221,29 @@ except urllib.error.HTTPError as e:
     
     **Nicht versuchen:** curl-Befehle in den Cron-Prompt zu packen — der Hermes Prompt-Validator blockiert shell-basierte Delivery-Payloads als Exfiltrations-Risiko (`threat pattern 'exfil_curl_url'`).
 
-    ### Pitfall: cronjob run ignoriert profile-Feld aus jobs.json
+    ### Gateway Service Template (new profile)
+
+Copy the unit from an existing working profile instead of writing one from scratch:
+```bash
+sed -e 's/--profile <old>/--profile <new>/' \
+    -e 's#/root/.hermes/profiles/<old>#/root/.hermes/profiles/<new>#g' \
+    /etc/systemd/system/hermes-gateway-<old>.service > /etc/systemd/system/hermes-gateway-<new>.service
+systemctl daemon-reload
+systemctl enable --now hermes-gateway-<new>.service
+```
+Start the single profile this way. Do NOT use `--replace` and do NOT run `gateway migrate --multiplex` to get it running — the standalone log warning names other profiles still running their own gateway; that is informational, not an error for a new profile.
+
+### Rate-limit (429) on a new profile — add a fallback chain
+
+A new profile can hit `HTTP 429: Provider returned error` on its first message while the same model and key work fine from `curl`. Verify with a direct `curl` to `/chat/completions` using the profile's key; if it returns 200, the failure is upstream and transient. Mitigate with a fallback chain in `config.yaml` (other provider or model), not with a retry loop:
+```yaml
+fallback_providers:
+  - provider: openrouter
+    model: anthropic/claude-haiku-5.5
+```
+Restart the gateway after the edit. `hermes fallback add` is an interactive picker and cannot be scripted.
+
+### Pitfall: cronjob run ignoriert profile-Feld aus jobs.json
 
     Wenn du manuell `"profile": "hermes-news"` in die `jobs.json` geschrieben hast
     (z.B. für Delivery-Routing über den Profil-Gateway), wird dieser Parameter beim

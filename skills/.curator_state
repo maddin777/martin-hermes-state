@@ -3,7 +3,7 @@
   "last_run_at": "2026-10-26T09:14:00.802352+00:00",
   "last_run_duration_seconds": 259.4379,
   "last_run_summary": "auto: 6 archived; llm: Consolidation pass complete. Here's the report.\n\n## Clusters examined\n\n**1. `vault-*` cluster (3 members) — CONSOLIDATED.** `vault-clippings-maintenance`, `vault-sync-conflicts-triage`, and `vault-file-reorganization` were three skills for …\narchived 3 skill(s):\n  • vault-clippings-maintenance → vault-maintenance\n  • vault-file-reorganization → vault-maintenance\n  • vault-sync-conflicts-triage → vault-maintenance\nfull report: hermes curator status\nkeep an umbrella stable: hermes curator pin vault-maintenance",
-  "last_run_summary_shown_at": "2026-09-21T08:05:34.200902+00:00",
+  "last_run_summary_shown_at": "2026-10-26T09:14:00.802352+00:00",
   "paused": false,
   "run_count": 25
 }

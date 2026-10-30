@@ -1,0 +1,32 @@
+{
+  "identity": {
+    "root": "/root/.hermes/hermes-agent",
+    "home": "/root/.hermes/profiles/hermes-news",
+    "head": "72ffcb978862feadb673df0c3efbb4018ee969b5",
+    "origin": "https://github.com/NousResearch/hermes-agent.git",
+    "branch": "main",
+    "channel": "stable",
+    "embedded": null,
+    "branchOverride": false,
+    "channelProtocol": 3,
+    "forwardOnly": true
+  },
+  "ts": 1793256877.986849,
+  "status": {
+    "supported": true,
+    "hermesRoot": "/root/.hermes/hermes-agent",
+    "behind": 0,
+    "commits": [],
+    "currentSha": "72ffcb978862feadb673df0c3efbb4018ee969b5",
+    "currentBranch": "main",
+    "dirty": true,
+    "channel": "stable",
+    "fetchedAt": 1793256877986,
+    "targetSha": "72ffcb978862feadb673df0c3efbb4018ee969b5",
+    "updateAvailable": false,
+    "sourceVersion": "0.22.5",
+    "buildId": null,
+    "aheadOfRelease": true,
+    "rollback": false
+  }
+}

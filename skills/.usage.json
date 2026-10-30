@@ -817,16 +817,16 @@
   "hermes-profile-management": {
     "archived_at": null,
     "created_at": "2026-05-10T22:19:09.296101+00:00",
-    "last_patched_at": "2026-07-08T21:16:07.239655+00:00",
-    "last_reused_patch_generation": 0,
-    "last_used_at": "2026-10-20T06:39:16.877977+00:00",
-    "last_viewed_at": "2026-10-20T06:39:16.871335+00:00",
-    "patch_count": 59,
-    "patch_generation": 0,
+    "last_patched_at": "2026-10-28T17:04:41.689969+00:00",
+    "last_reused_patch_generation": 3,
+    "last_used_at": "2026-10-28T17:04:44.793529+00:00",
+    "last_viewed_at": "2026-10-28T17:04:44.785608+00:00",
+    "patch_count": 62,
+    "patch_generation": 3,
     "pinned": false,
     "state": "active",
-    "use_count": 93,
-    "view_count": 94
+    "use_count": 96,
+    "view_count": 97
   },
   "hermes-profile-news-cron": {
     "archived_at": null,
@@ -1043,13 +1043,13 @@
     "created_by": null,
     "last_patched_at": null,
     "last_reused_patch_generation": 0,
-    "last_used_at": "2026-10-25T14:00:59.323422+00:00",
+    "last_used_at": "2026-10-28T13:00:59.107651+00:00",
     "last_viewed_at": "2026-08-27T18:15:34.184642+00:00",
     "patch_count": 0,
     "patch_generation": 0,
     "pinned": false,
     "state": "active",
-    "use_count": 44,
+    "use_count": 45,
     "view_count": 2
   },
   "llama-cpp": {
@@ -1253,13 +1253,13 @@
     "created_by": null,
     "last_patched_at": "2026-10-14T09:34:47.700406+00:00",
     "last_reused_patch_generation": 4,
-    "last_used_at": "2026-10-27T15:00:57.873366+00:00",
+    "last_used_at": "2026-10-29T15:00:16.898026+00:00",
     "last_viewed_at": "2026-10-27T08:06:26.794007+00:00",
     "patch_count": 15,
     "patch_generation": 4,
     "pinned": false,
     "state": "active",
-    "use_count": 164,
+    "use_count": 166,
     "view_count": 57
   },
   "ocr-and-documents": {
@@ -1739,13 +1739,13 @@
     "created_by": "agent",
     "last_patched_at": "2026-10-27T07:46:41.686433+00:00",
     "last_reused_patch_generation": 33,
-    "last_used_at": "2026-10-27T08:30:58.616910+00:00",
+    "last_used_at": "2026-10-29T08:30:19.500115+00:00",
     "last_viewed_at": "2026-10-27T07:41:45.480310+00:00",
     "patch_count": 301,
     "patch_generation": 33,
     "pinned": false,
     "state": "active",
-    "use_count": 384,
+    "use_count": 386,
     "view_count": 326
   },
   "trading-scan": {
