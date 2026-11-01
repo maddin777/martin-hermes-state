@@ -1,5 +1,5 @@
 {
-  "fetched_at": 1793411688.67669,
+  "fetched_at": 1793498104.424183,
   "curated": [
     [
       "anthropic/claude-fable-5.1",
@@ -231,14 +231,6 @@
     ],
     [
       "thinkingmachines/inkling-small:free",
-      "free"
-    ],
-    [
-      "poolside/laguna-s-2.1:free",
-      "free"
-    ],
-    [
-      "poolside/laguna-xs-2.1:free",
       "free"
     ],
     [
