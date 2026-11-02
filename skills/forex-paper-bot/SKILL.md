@@ -334,11 +334,13 @@ Dukascopy-Daten ist weder die aktuelle Strategie noch eine der 648 getesteten Va
 im Zeitraum 2023–2026 profitabel; Tages-Trendfolge auf diesen Paaren trägt seit etwa 2019 nicht mehr (Details im Vault:
 `wiki/tasks/forex-pruefungen-2026-09-24.md`). Wieder aktivieren: `entries_paused` auf `false`.
 
-## Projekt beendet (24.09.2026)
+## Projekt beendet (24.09.2026) — ÜBERHOLT durch Beobachtungsphase
+
+Historisch: Stand am 24.09.2026. Seitdem ist das Projekt wieder aktiv (siehe Beobachtungsphase unten).
 
 Letzte Position geschlossen (Grund PROJEKTENDE), Endstand 24 Trades, netto +1.070,19 € (Stichprobe zu klein für eine Aussage).
-Hermes-Jobs `forex-trade-check`, `forex-walk-forward-weekly`, `forex-daily-report` sind pausiert, nicht gelöscht
-(`hermes cron resume <id>`). Keine der geprüften Forex-Strategien trägt auf sauberen Daten nach Kosten
+Damals wurden die Hermes-Jobs `forex-trade-check`, `forex-walk-forward-weekly`, `forex-daily-report` pausiert (nicht gelöscht,
+`hermes cron resume <id>`). Heute gilt der Stand der Beobachtungsphase. Keine der geprüften Forex-Strategien trägt auf sauberen Daten nach Kosten
 (`/root/obsidian-vault/wiki/tasks/forex-pruefungen-2026-09-24.md`).
 
 ## Beobachtungsphase (ab 24.09.2026, ~19 Uhr)
