@@ -38,11 +38,9 @@ than an *idea list*; it stays a separate skill.
 - **Store-freeze PITFALL:** if scans run but the store never changes (digest says "keine
   Veränderung"), the cause is almost always that the **goal files lost their STORE-UPDATE
   step** — fix the goal files, do not suspect the digest.
-- **Web fallback when Firecrawl credits are exhausted** (reset ~monthly, mid-month has
-  long dead windows): Exa Search `mcporter call 'exa.web_search_exa(...)'`; Jina Reader
-  `curl -s "https://r.jina.ai/URL"`; Google News RSS via curl; Wikipedia API
-  (`action=parse` → HTML, `action=query&prop=extracts&explaintext` → plain text); `web_search`
-  runs on DDGS backend already (no Firecrawl needed for simple searches).
+- **Web fallback when Firecrawl credits are exhausted**: use the ladder documented in the
+  `research-tools` skill (Exa → Jina Reader → Google News RSS → Wikipedia API → DDGS). One
+  ladder, one place — do not re-derive it per pipeline.
 - **Never invent data.** Every idea needs a real, freely-accessible source. Better 7 solid
   ideas than 10 with dead sources.
 - **Delivery:** scans write reports + store; the weekly digest is the single delivery point

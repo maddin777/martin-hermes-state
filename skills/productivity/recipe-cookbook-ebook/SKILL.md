@@ -1,7 +1,14 @@
 ---
 name: recipe-cookbook-ebook
-description: "Turn Obsidian recipe clippings into a Keto cookbook PDF."
+description: "Vault recipes → cookbook PDF with macro tables."
 category: productivity
+version: 1.1.0
+author: Hermes Agent
+license: MIT
+metadata:
+  hermes:
+    tags: [cookbook, ebook, pdf, reportlab, nutrition, macros, obsidian, digital-product]
+    related_skills: [obsidian, research-tools]
 ---
 
 # Recipe Cookbook & Macro E-Book

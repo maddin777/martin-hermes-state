@@ -11,12 +11,15 @@ trigger:
 
 Unified skill for Hermes profile operations, cron troubleshooting, vault management, and bot mode.
 
-## Subsections
+## Scope
 
-- **hermes-profile-cron-troubleshooting** — Diagnose/fix broken cron jobs in profiles
-- **hermes-bot-mode-roster** — Build Hermes Bot Mode role bots
-- **hermes-vault-management** — Obsidian vault lifecycle
-- **hermes-profile-management** — End-to-end profile management
+Profile lifecycle (create, `.env`, gateway install, bot mode), **profile-cron jobs**
+(create/migrate/edit/verify — full procedure in `references/profile-cron-jobs.md`), gateway
+restarts and self-deadlocks, Telegram credential triage, cron health checks, and per-profile
+chat frontends (Open WebUI).
+
+Not here: vault file maintenance (`vault-maintenance`), content pipelines that merely *use* a
+profile cron (`daily-news-briefing`, `idea-scout-pipelines`, `trading-pipeline`).
 
 ## Cron-Jobs: Toolset und Prompt müssen zusammenpassen
 

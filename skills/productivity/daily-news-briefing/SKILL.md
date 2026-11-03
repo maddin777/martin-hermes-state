@@ -1,19 +1,30 @@
 ---
 name: daily-news-briefing
 description: "Create structured daily morning briefings (Morgen-Briefing) in German from multiple news sources via RSS feeds, weather APIs, and browser fallback. Handles web_search/web_extract failures gracefully. Designed for profile-cron delivery (profil-eigener Bot)."
+version: 1.2.0
+author: Hermes Agent
+license: MIT
 metadata:
   hermes:
     tags: [news, briefing, rss, cron, german, morning, weather]
+    related_skills: [research-tools, idea-scout-pipelines, hermes-profile-ops]
     schedule: "0 6 * * *"
 ---
 
 # Daily News Briefing (Morgen-Briefing)
 
-Create a structured German-language morning briefing from multiple news sources, weather data, and water temperatures. Designed to run as a cron job in an isolated Hermes profile (e.g. `hermes-news`).
+Structured German-language morning briefing from RSS feeds, weather and water temperatures,
+delivered by a **profile cron job** (profil-eigener Bot).
+
+## When to Use
+
+- "Morgen-Briefing", daily news digest, the `daily-news-briefing` cron job
+- Changing sections, sources or delivery target of the briefing
+- Diagnosing an empty, duplicated or stale briefing run
 
 ## Output Format
 
-Standard 4-section briefing (Martins Konfiguration), max 5 items per section:
+Max 5 items per section:
 
 ```
 ☀️ Guten Morgen! Hier ist Euer tägliches Morgen-Briefing für den [Datum].
@@ -29,432 +40,129 @@ Standard 4-section briefing (Martins Konfiguration), max 5 items per section:
 
 Each item: **Überschrift** (max 10 Wörter) + 1-2 Sätze + Quellenlink in Klammern.
 
-#### Delivery Model (CRITICAL — Profile Scheduler, NOT default)
+## Delivery Model
 
-**Das Briefing läuft im hermes-news Profil-Scheduler** (Job `46acda532f8`),
-nicht im default Hermes Scheduler. Der Job lebt in
-`/root/.hermes/profiles/hermes-news/cron/jobs.json`, nicht in der
-Default-Cron-DB.
+Runs in the **hermes-news profile scheduler** (job `46acda532f8`), not the default Hermes
+scheduler; the job lives in `/root/.hermes/profiles/hermes-news/cron/jobs.json`. Model
+`deepseek/deepseek-v4-flash` via OpenRouter, `deliver: telegram` → the profile bot
+(@hermster_news_bot) into `TELEGRAM_HOME_CHANNEL` (`-1003687061880`, News-Channel).
 
-**Modell:** `deepseek/deepseek-v4-flash` via OpenRouter.  
-**Delivery:** `deliver: telegram` → TELEGRAM_HOME_CHANNEL des Profil-Bots
-(@hermster_news_bot → News-Channel `-1003687061880`).
+Job mechanics — creating/migrating the job, the duplicate-job check across both schedulers,
+toolset-vs-prompt rules, proof that a run happened, gateway deadlocks — are in
+`hermes-profile-ops` → `references/profile-cron-jobs.md`. Never keep the job in both
+schedulers: two jobs means two deliveries with different models and prompts. The packaged
+checker `scripts/check_duplicate_jobs.py` greps both schedulers and warns on duplicates.
 
-### Voraussetzung: Profil-Gateway läuft
+- The profile gateway must be running or the scheduler does not tick:
+  `systemctl start hermes-gateway-hermes-news.service`; check `gateway_state.json`
+  (`gateway_state == "running"`, `platforms.telegram.state`).
+- The skill must also exist inside the profile (`<profil>/skills/`); re-copy after edits.
+- `enabled_toolsets` must match the prompt: the agent fetches nothing itself, so `terminal`
+  and `file` do not belong in the toolset. With them present the run ends in path-search
+  loops and an answer that starts with "I stopped retrying…".
 
-Der Gateway des Ziel-Profils muss aktiv sein, sonst tickt der Scheduler nicht:
+## Pre-Run Data Gathering (verified cron path)
 
-```bash
-# Prüfen: Gateway läuft?
-cat /root/.hermes/profiles/hermes-news/gateway_state.json | python3 -c "import json,sys; d=json.load(sys.stdin); print('✅ Running' if d.get('gateway_state')=='running' else '❌ Dead')"
-# Telegram verbunden?
-cat /root/.hermes/profiles/hermes-news/gateway_state.json | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('platforms',{}).get('telegram',{}).get('state','❌'))"
-```
+`scripts/gather_briefing_data.py` fetches news (2-day filter), weather and water temperatures
+BEFORE the agent run; its stdout lands in the prompt and the agent only formats.
 
-Falls der Gateway nicht läuft: `systemctl start hermes-gateway-hermes-news.service`
+1. Copy the script into the profile (`<profil>/scripts/gather_briefing_data.py`).
+2. Attach by filename: `hermes-<profil> cron edit <job_id> --script gather_briefing_data.py`.
+3. The prompt must state: data is above, no terminal commands, no file reads/searches, no
+   `send_message`/curl to Telegram (the gateway delivers the final answer itself).
+4. Run it once by hand (`python3 scripts/gather_briefing_data.py`) and inspect the output.
 
-### Konfiguration
+**Script rules:** a feed with no article from the last 2 days prints "keine Artikel" — never
+fall back to older items. Two silent breakers: `urlopen` returns `bytes` (decode before
+parsing) and RSS `pubDate` is naive (`.replace(tzinfo=None)` on both sides before comparing).
 
-Job-Struktur in der Profil-Cron-DB (`/root/.hermes/profiles/<profil>/cron/jobs.json`):
+## Workflow (manual run)
 
-```json
-{
-  "id": "<hash>",            // selbst generiert (z.B. md5(name+ts)[:11])
-  "name": "daily-news-briefing",
-  "prompt": "...",
-  "skills": ["daily-news-briefing"],
-  "skill": "daily-news-briefing",
-  "model": "deepseek/deepseek-v4-flash",
-  "provider": "openrouter",
-  "schedule": {"kind": "cron", "expr": "0 6 * * *", "display": "0 6 * * *"},
-  "deliver": "telegram",       // → TELEGRAM_HOME_CHANNEL des Profil-Bots
-  "state": "scheduled",
-  "enabled": true,
-  "repeat": {"times": null, "completed": 0},
-  "no_agent": false,
-  "enabled_toolsets": ["web"]
-}
-```
-
-**Toolset passend zum Prompt:** Der Agent holt keine Daten selbst (Pre-Run-Script), also KEIN `terminal` im Toolset. Terminal im Toolset bei gleichzeitigem Prompt-Verbot erzeugt den Widerspruch, der zu hängenden Befehlen und leerer Antwort führt.
-
-**Wichtig:** Der Skill (`daily-news-briefing`) muss auch im Profil-Verzeichnis existieren:
-```bash
-cp -r /root/.hermes/skills/productivity/daily-news-briefing /root/.hermes/profiles/<profil>/skills/productivity/
-```
-
-### Anlegen eines Profil-Cron-Jobs (Python)
-
-Das `cronjob`-Tool arbeitet NUR im default Scheduler. Für Profil-Crons direkt ins JSON schreiben:
-
-```python
-import json, hashlib
-from datetime import datetime, timezone, timedelta
-
-path = "/root/.hermes/profiles/hermes-news/cron/jobs.json"
-data = json.load(open(path))
-
-job = {
-    "id": hashlib.md5(f"job-name-{datetime.now().isoformat()}".encode()).hexdigest()[:11],
-    "name": "daily-news-briefing",
-    "prompt": "<prompt>",
-    "skills": ["daily-news-briefing"],
-    "model": "deepseek/deepseek-v4-flash",
-    "provider": "openrouter",
-    "schedule": {"kind": "cron", "expr": "0 6 * * *", "display": "0 6 * * *"},
-    "enabled": True,
-    "state": "scheduled",
-    "deliver": "telegram",
-    "repeat": {"times": None, "completed": 0},
-    "no_agent": False,
-    "enabled_toolsets": ["web"]
-}
-
-data["jobs"].append(job)
-data["updated_at"] = datetime.now(timezone(timedelta(hours=2))).isoformat()
-
-with open(path, "w", encoding="utf-8") as f:
-    json.dump(data, f, indent=2, default=str)
-```
-
-Danach Gateway neustarten (falls nötig — der Scheduler liest live):
-```bash
-systemctl restart hermes-gateway-<profil>
-```
-
-### 🚨 ACHTUNG: Duplikat-Job-Falle bei Migration
-
-**Das Problem:** Wenn der Job im default Scheduler lebt und du einen zweiten
-Job im Profil-Scheduler anlegst (für Channel-Delivery), laufen **BEIDE parallel**.
-Der default Job deliveriert weiter in den DM, der Profil-Job in den Channel.
-
-**Passiert (02.07.2026):** Der Profil-Job lief 9 Tage lang mit
-`nvidia/nemotron-3-super-120b-a12b:free` (altes Modell, alter Prompt ohne
-Frische-Regel) während der Default-Job mit `deepseek/deepseek-v4-flash` lief.
-Ergebnis: Gossip, Dopplungen, schlechte Formatierung im Channel + Duplikate im DM.
-
-**Fix bei Migration → IMMER beide Scheduler checken:**
-
-```bash
-# Prüfen ob der Jobname in beiden Schedulern existiert
-grep -l '"daily-news-briefing"' /root/.hermes/cron/jobs.json
-grep -l '"daily-news-briefing"' /root/.hermes/profiles/hermes-news/cron/jobs.json
-```
-
-**Wenn er in BEIDEN existiert** → einen löschen (meist den im default Scheduler).
-
-### ⚠️ Default Scheduler + profile-Routing
-
-Das Briefing läuft im **hermes-news Profil-Scheduler** (Job `46acda532f8`).
-Der default Scheduler ist seit 02.07.2026 NICHT mehr zuständig.
-
-Der Profil-Job deliveriert über den Profil-Bot (@hermster_news_bot) in dessen
-TELEGRAM_HOME_CHANNEL (-1003687061880 = News-Channel).
-
-**Wenn Delivery im DM statt im News-Channel ankommt:** Job ins Profil
-migrieren (siehe §Migration unten).
-
-### ✅ Alternative: Job direkt in Profil-Cron-DB (empfohlen für Channel-Delivery)
-
-Soll das Briefing im News-Channel (Ch_hermster_news) landen, MUSS der Job
-im hermes-news Profil-Scheduler leben. Anlegen via Python:
-
-### Migration: Job aus default Scheduler → Profil-Scheduler
-
-Wenn der Job noch im default Scheduler läuft und in den Profil-Scheduler umziehen soll:
-
-1. **Job im default Scheduler löschen:**
+1. `web_search` / `web_extract` first.
+2. If they fail (Firecrawl credits exhausted), use the fallback ladder documented in the
+   `research-tools` skill — Exa, Jina Reader, Google News RSS via curl, Wikipedia API, DDGS.
+3. Google News RSS is the reliable base:
    ```bash
-   hermes cron remove <job-id>
+   curl -s "https://news.google.com/rss?hl=de&gl=DE&ceid=DE:de"
+   curl -s "https://news.google.com/rss/search?q=DAX+%C3%96l+Gold+Bitcoin+B%C3%B6rse&hl=de&gl=DE&ceid=DE:de"
+   curl -s "https://news.google.com/rss/search?q=KI+Artificial+Intelligence+Tech+heise+golem&hl=de&gl=DE&ceid=DE:de"
+   curl -s "https://news.google.com/rss/search?q=Schleswig-Holstein+Mecklenburg-Vorpommern+Norddeutschland&hl=de&gl=DE&ceid=DE:de"
    ```
-   🔴 **KRITISCH:** Nicht vergessen — sonst laufen BEIDE Jobs parallel mit
-   unterschiedlichen Modellen. Der default Job wirst du nicht sehen (liefert in DM),
-   der Profil-Job in den Channel. Passiert am 02.07.2026 mit nemotron vs deepseek.
-
-   **Automatisierte Prüfung:** Das Script `scripts/check_duplicate_jobs.py`
-   (im Skill-Verzeichnis) prüft beide Scheduler und warnt bei Duplikaten.
-
-2. **Modell-Kopie sicherstellen:** Prüfe dass das Modell im Profil-Cron dem
-   gewünschten entspricht. Der Profil-Scheduler hat SEIN EIGENES jobs.json —
-   ein `model`-Update im default Scheduler ändert NICHT den Profil-Job.
+   Working feeds: `references/rss-feeds-and-cron-pitfalls.md`.
+4. Weather, no API key:
    ```bash
-   cat /root/.hermes/profiles/hermes-news/cron/jobs.json | python3 -c "
-   import json,sys; d=json.load(sys.stdin)
-   for j in d['jobs']:
-       if 'daily-news' in j.get('name',''):
-           print(f\"{j['name']}: {j['provider']}/{j['model']}\")
-   "
+   curl -s "https://api.open-meteo.com/v1/forecast?latitude=53.70&longitude=10.75&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max,weathercode&timezone=auto"
+   curl -s "https://api.open-meteo.com/v1/forecast?latitude=53.63&longitude=11.41&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max,weathercode&timezone=auto"
    ```
+5. Water temperatures have no free API: browser on wassertemperatur.org (Ostsee Lübeck /
+   Wismar / Rostock, Schweriner See) or seatemperature.org. Open-Meteo air temperature is NOT
+   water temperature.
+6. Dedup, categorize, translate to German, assemble.
 
-3. **Skill ins Profil kopieren:**
-   ```bash
-   cp -r /root/.hermes/skills/productivity/daily-news-briefing /root/.hermes/profiles/<profil>/skills/productivity/
-   ```
-
-4. **Profil-Gateway prüfen (muss laufen):**
-   ```bash
-   cat /root/.hermes/profiles/<profil>/gateway_state.json | python3 -c "import json,sys; d=json.load(sys.stdin); print('✅' if d.get('gateway_state')=='running' else '❌')"
-   ```
-   Falls nicht: `systemctl start hermes-gateway-<profil>.service`
-
-5. **Job in Profil-Cron-DB anlegen** (siehe Python-Snippet unter "Anlegen eines Profil-Cron-Jobs").
-
-6. **🔴 VERIFIKATION — Kein Duplikat-Job:**
-   ```bash
-   # Prüfen: kommt der Jobname in beiden Schedulern vor?
-   echo "Default: $(grep -c '\"daily-news-briefing\"' /root/.hermes/cron/jobs.json 2>/dev/null || echo 0)"
-   echo "Profil:  $(grep -c '\"daily-news-briefing\"' /root/.hermes/profiles/hermes-news/cron/jobs.json 2>/dev/null || echo 0)"
-   ```
-
-### ⚠️ Bekanntes Problem: cron_health.py false-positives
-
-Der `cron_health.py` Check (Job `cron-health-daily`) kann ❌ für Jobs melden,
-die parallel zu ihm laufen. Der Health-Check liest `cron.log` und markiert einen Job
-als "crashed" wenn sein Log-Block ein `START` aber noch kein `DONE/✅` enthält.
-
-**Betroffen:** Jobs die zur gleichen Minute wie der Health-Check starten (08:00)
-und länger als ein paar Sekunden brauchen.
-
-**Diagnose:** Im Dashboard oder per `grep` prüfen ob der betreffende Job
-tatsächlich `✅ ... abgeschlossen` im Log hat — wenn ja, ist es ein Timing-Problem.
-
-**Fix:** `cron-health-daily` auf 08:30 verschieben, sodass alle 08:00-Jobs
-durch sind bevor er checkt.
-
-### Verifikation
-
-```bash
-source /root/.hermes/profiles/hermes-news/.env
-curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
-  -d "chat_id=${TELEGRAM_HOME_CHANNEL}" \
-  -d "text=Test" | python3 -c "import json,sys; print('✅' if json.load(sys.stdin).get('ok') else '❌')"
-```
-
-### Manuelles Triggern (Profil-Kontext)
-
-Nach Änderungen am Prompt oder Skill den nächsten scheduled Run abwarten (06:00)
-Manuell auslösen per `hermes-news cron run <job_id>` (Vordergrund, Tool-Timeout >= 600s; ein 420s-Limit brach einen Testlauf ab, Briefing-Läufe dauern 2-4 min). Nicht mit `nohup … &` im Hintergrund starten: der Befehl meldete `Ran now: succeeded`, erzeugte aber keine Session. Ursache ungeklärt, daher Vordergrund. Erfolg NUR über das Log belegen: Session `cron_<job_id>_<ts>` in `logs/agent.log` mit `Turn ended` und `delivered to telegram:…`. Die CLI-Ausgabe `Ran now: succeeded` ist kein Beleg: sie kam auch bei einem Aufruf, der keine Session erzeugte. Ein Gateway-Restart triggert den Job nicht.
-
-Verifikation dass der Bot im Channel ist:
-```bash
-source /root/.hermes/profiles/hermes-news/.env
-curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
-  -d "chat_id=${TELEGRAM_HOME_CHANNEL}" \
-  -d "text=Test" | python3 -c "import json,sys; print('✅' if json.load(sys.stdin).get('ok') else '❌')"
-```
-
-### Cron Job Lebenszyklus (Profil-Cron)
-
-Der Job lebt in `/root/.hermes/profiles/hermes-news/cron/jobs.json`.
-Nach jeder Änderung am Prompt oder Skill:
-1. Prompt in der Profil-`jobs.json` per Python-json.dump updaten
-2. Gateway neustarten: `systemctl restart hermes-gateway-hermes-news.service`
-3. Verifikation: `journalctl -u hermes-gateway-hermes-news.service --since "1 min ago"`
-
-## Workflow
-
-### Pre-Run-Datenbeschaffung (Cron, verifiziert)
-
-Der Cron-Job bekommt ein Script (`scripts/gather_briefing_data.py`, Vorlage im Skill), das News (2-Tage-Filter), Wetter und Wassertemperatur VOR dem Agent-Lauf holt. Die stdout-Ausgabe landet im Prompt; der Agent formatiert nur noch.
-
-1. Script ins Profil kopieren: `<profil>/scripts/gather_briefing_data.py`
-2. Anhängen per **Dateiname** (keine absoluten Pfade): `hermes-<profil> cron edit <job_id> --script gather_briefing_data.py`
-3. Prompt MUSS enthalten: Daten sind oben im Prompt, keine Terminal-Befehle, KEINE Dateilese- oder Suchbefehle (read_file, search_files, Pfadprüfung), kein `send_message`/curl an Telegram (Final-Antwort wird vom Gateway zugestellt). Dafür gilt die Toolset-Regel unten: `file` gehört nicht ins Toolset.
-4. Testlauf im Hintergrund (`background=true`), Ergebnis in `deliveries.db` prüfen (siehe Fehlerbilder).
-
-Script-Regel: Feeds ohne Artikel der letzten 2 Tage → „keine Artikel“ ausgeben, NICHT auf ältere Artikel zurückfallen. Veraltete Items als Fallback sind genau der Fehler, den die Frische-Regel verhindern soll.
-
-**Script vor dem Cron-Lauf einzeln testen** (`python3 scripts/gather_briefing_data.py`, Ausgabe prüfen). Zwei Fehler brechen sonst still: (1) `urlopen`-Antwort ist `bytes`, Webseiten-Parsing braucht `.decode()`; (2) RSS-`pubDate` ist naiv, Vergleich mit einem timezone-aware Datum wirft Fehler. Im Zweifel `.replace(tzinfo=None)` auf beiden Seiten.
-
-### Step 1: Try web_search and web_extract first
-
-```
-web_search(query="...", limit=10)
-web_extract(urls=[...])
-```
-
-If these fail (Firecrawl credits exhausted — Refresh meist 13.7.), proceed to Step 2.
-
-### Step 2: Fetch RSS feeds directly via curl
-
-**Für Cron gilt: der Agent holt KEINE Daten selbst.** Terminal-Befehle mit Interpreter-Flag (`python -c`, heredoc) werden in Cron geblockt; der Lauf endet dann mit leerer Antwort. Rohdaten kommen aus dem Pre-Run-Script (Abschnitt „Pre-Run-Datenbeschaffung“). Die curl-Befehle unten sind für manuelle Läufe in der interaktiven Session.
-
-```bash
-# Google News DE — Top News (funktioniert immer)
-curl -s "https://news.google.com/rss?hl=de&gl=DE&ceid=DE:de" | python3 -c "
-import sys, xml.etree.ElementTree as ET
-root = ET.fromstring(sys.stdin.read())
-for item in root.findall('.//item')[:15]:
-    title = item.find('title')
-    source = item.find('source')
-    src = source.text if source is not None else ''
-    print(f'{title.text} ({src})')
-"
-
-# Topic-Specific Search (Finanzen, IT/KI, Regional)
-curl -s "https://news.google.com/rss/search?q=DAX+%C3%96l+Gold+Bitcoin+B%C3%B6rse&hl=de&gl=DE&ceid=DE:de"
-curl -s "https://news.google.com/rss/search?q=KI+Artificial+Intelligence+Tech+heise+golem&hl=de&gl=DE&ceid=DE:de"
-curl -s "https://news.google.com/rss/search?q=Schleswig-Holstein+Mecklenburg-Vorpommern+Norddeutschland&hl=de&gl=DE&ceid=DE:de"
-```
-
-Working RSS feeds documented in `references/rss-feeds-and-cron-pitfalls.md`.
-
-### Step 3: Weather Data via Open-Meteo API (kein API-Key nötig)
-
-```bash
-# Ratzeburg (53.70, 10.75)
-curl -s "https://api.open-meteo.com/v1/forecast?latitude=53.70&longitude=10.75&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max,weathercode&timezone=auto"
-
-# Schwerin (53.63, 11.41)
-curl -s "https://api.open-meteo.com/v1/forecast?latitude=53.63&longitude=11.41&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max,weathercode&timezone=auto"
-```
-
-Parse with Python:
-```python
-import json, sys
-d = json.load(sys.stdin)
-d2 = d['daily']
-print(f'Max: {d2["temperature_2m_max"][0]}°C, Min: {d2["temperature_2m_min"][0]}°C, Regen: {d2["precipitation_probability_max"][0]}%')
-```
-
-### Step 4: Water Temperatures (browser fallback, da keine offene API)
-
-Wassertemperaturen gibt es keine kostenlose API. Workaround:
-
-```python
-# Browser-basiert auf wassertemperatur.org
-# Ostsee Lübeck/Trave: https://www.wassertemperatur.org/ostsee/luebeck/
-# Ostsee Wismar: https://www.wassertemperatur.org/ostsee/wismar/
-# Ostsee Rostock: https://www.wassertemperatur.org/ostsee/rostock/
-# Schweriner See: https://www.wassertemperatur.org/schweriner-see/
-browser_navigate(url)
-browser_snapshot(full=True)  # Temperatur aus dem Text extrahieren
-```
-
-Alternative: seatemperature.org via browser. Die Open-Meteo Lufttemperatur ist NICHT die Wassertemperatur.
-
-### Step 5: Deduplicate, categorize, translate
-
-- Same story from multiple sources → list once with all sources
-- Sort into 4 sections (Politik, Finanzen, IT/KI, D/Nordeuropa) + Wetter/Wasser
-- **RECENCY FILTER — NUR Artikel der letzten 2 Tage!** Jeder RSS-Item hat ein `<pubDate>`-Element. Parse es und vergleiche mit heute. Alles älter als 2 Tage → WEGLASSEN. Keine Ausnahmen, auch wenn interessant. Google News RSS liefert immer aktuelle News — wenn der Feed Müll/Altes ausspuckt, lieber weniger Items als alte.
-- All output in German — translate international sources
-
-### Step 6: Assemble and deliver
-
-- Pro Telegram-Nachricht: max 3000 Zeichen
-- Aufteilen auf bis zu 5 Nachrichten:
-  - Nachricht 1: Politik & Internationales + Finanzen & Wirtschaft
-  - Nachricht 2: IT & KI + Deutschland & Nordeuropa
-  - Nachricht 3: Wetter & Wassertemperaturen (kürzer, ggf. an letzte Sektion anhängen)
-- Quellenangabe bei jeder News
-
-## Cron-Fehlerbilder (Diagnose zuerst)
-
-- **`last_status: ok` heißt NICHT, dass Inhalt kam.** Prüfe `deliveries.db` → `length(content)`. 0 oder nur Header-Skelett = leerer Lauf.
-- **Ursachen in `errors.log`:**
-  - `Reasoning-only clean stop`: Reasoning-Modell beendet ohne sichtbare Antwort → leere Delivery. Ungetestete Gegenmaßnahme: Reasoning für den Job deaktivieren oder Modell wechseln.
-  - `BLOCKED: Command flagged as dangerous`: Terminal-Befehl mit Interpreter-Flag in Cron → Pre-Run-Script verwenden.
-- **`Upstream error ... Output data may contain inappropriate content`** (OpenRouter/Alibaba-Filter für deepseek-v4-flash): transient, Re-Run nach einigen Minuten. Kein Gateway-Problem, solange Gateway active und Delivery-Status `delivered`.
-- **Prompt-Änderungen** nur per Python-`json.dump(ensure_ascii=False)` in `jobs.json` schreiben (Umlaute, Anführungszeichen), dann Testlauf. Vor dem Schreiben Backup der `jobs.json` und den neuen Prompt im Speicher auf Länge > 0 prüfen: Ein fehlender Prompt-Datei-Pfad schreibt sonst einen leeren Prompt.
-- **Telegram-MarkdownV2 bricht bei `(` in Quellenklammern** (`Can't parse entities`). Der Gateway fällt dann auf Klartext zurück, die Zustellung klappt. Kosmetisch, kein Fehler im Job. Die Umstellung auf `— Quelle` ist NICHT verifiziert: der Fehler trat auch in Läufen mit Klammern auf, die Umstellung ist ungetestet. Bis zum Test nicht als Fix ausgeben.
-- **Abbruch mit Statusmeldung statt Briefing** (Antwort beginnt mit 'I stopped retrying…', `delivered` mit Länge ~0): Im Log stehen `read_file`-Fehler auf Verzeichnisse oder nicht existierende Dateien (`.profile.json`, `memories/…`, `cron/active.json`). Ursache ist ein Dateitool im Toolset, nicht das Script. Fix: Dateitools aus `enabled_toolsets` entfernen, Prompt-Verbot ergänzen, Testlauf im Hintergrund.
+**Recency filter — only items from the last 2 days.** Parse `<pubDate>` and drop everything
+older, without exceptions. Google News always carries current items; fewer fresh items beat
+stale ones.
 
 ## Quality Rules
 
-- **KEINE leeren Überschriften oder Sektionen.** Martin hat sich explizit darüber beschwert. Wenn eine Sektion wenig Meldungen hat: die 1-2 relevantesten trotzdem mit Inhalt nennen. Kein "Keine Meldungen" oder "Ruhiger Tag".
-- **Alle News mit Inhalt** — 1-2 Sätze pro Meldung, Kernfakt nennen
-- **Quellen immer angeben** — "laut Tagesschau/Reuters"
-- **Max 5 Items pro Sektion**
-- Übersetzte internationale Quellen (FT, WSJ, NYT, SVT, DR, YLE, Gazeta Wyborcza) auf Deutsch wiedergeben
-- Nüchtern, sachlich, Fakten pur — kein Marketing-Ton
+- **No empty headings or sections.** Martin complained explicitly. If a section is thin, give
+  its 1-2 most relevant items anyway — never "Keine Meldungen" or "Ruhiger Tag".
+- Every item gets 1-2 sentences of substance and names its source ("laut Tagesschau/Reuters");
+  translated sources (FT, WSJ, NYT, SVT, DR, YLE, Gazeta Wyborcza) are rendered in German.
+- Factual, dry, no marketing tone.
+- **Telegram length:** ~3000 characters per message, split into up to 5 messages
+  (Politik+Finanzen, IT/KI+Deutschland, Wetter/Wasser).
 
-### 🔴 PREISANGABEN — Datum prüfen & validieren
+### Price and market figures
 
-Martin hat sich explizit über veraltete Preisangaben beschwert ("Gold nahe Allzeithoch").
+1. **Check the article date.** Older than 2 days → context only, not a current price.
+2. **Validate every price with a current lookup** (Gold, Bitcoin, DAX, S&P 500, oil).
+3. Write "laut Artikel vom [Datum] bei X€ — aktuell Y€"; no unanchored superlatives.
+4. Forbidden: "Gold ist auf Allzeithoch", "Bitcoin explodiert".
+5. Finance blogs without a feed date ("Der Aktionär") are dropped rather than cited as current.
 
-**Pflicht-Regeln für ALLE Preis-/Kursangaben:**
+## Source Priority
 
-1. **RSS-Artikel-Datum prüfen:** Jeder RSS-Item hat ein `<pubDate>`-Element. Extrahiere es mit Python (cron) oder prüfe per regex. Ist der Artikel älter als 2 Tage? → NICHT für aktuelle Kurse verwenden, nur für Kontext
-
-2. **Aktuelle Kurse validieren:** Bei Preisangaben (Gold, Bitcoin, DAX, S&P 500, Öl) IMMER einen aktuellen Kurs per web_search abgleichen. Schema:
-   ```
-   Suche: "Goldpreis aktuell heute" oder "Bitcoin Kurs heute"
-   Ergebnis: Gold bei X€ (Datum: Y) — NICHT "nahe Allzeithoch" schreiben wenn der Artikel alt ist
-   ```
-
-3. **Formulierung:** Statt "Gold auf Allzeithoch" besser "Gold notierte laut Artikel vom [Datum] bei X€ — aktuell bei Y€". Bei Unsicherheit: "heute bei X€" statt Superlative.
-
-4. **Verboten:** Absolute Aussagen ohne zeitlichen Bezug ("Gold ist auf Allzeithoch", "Bitcoin explodiert"). Erlaubt: "Laut einem Artikel vom [Datum] lag Gold bei X€."
-
-5. **Keine veralteten Quellen priorisieren:** "Der Aktionär" und andere Finanzblogs haben oft allgemeine Marktkommentare ohne Datumsangabe. Wenn kein Datum im Feed → lieber weglassen als veraltet zu zitieren.
-
-## Subagent Delegation (When running manually)
-
-Wenn du das Briefing nicht selbst erstellst sondern an einen Subagenten delegierst:
-
-**DO: Strukturierte Rohdaten mitgeben**
-- Google News RSS-Ergebnisse als fertige Liste
-- Wetterdaten als fertige Zahlen
-- Explizite Anweisung: "Sende per Telegram via `source .env && curl -X POST`"
-- Den vollständigen Telegram-Befehl in den Context schreiben
-
-**DON'T: Subagent selbst recherchieren lassen**
-- Firecrawl-Credits sind oft leer → web_search/web_extract schlagen fehl
-- Subagent bekommt dann keine Daten und liefert leere Überschriften
-- Immer Rohdaten vorab sammeln und strukturiert übergeben
-
-## Source Priority by Section (Martins Konfiguration)
-
-| Section | Priority Sources |
-|---------|-----------------|
+| Section | Priority sources |
+|---------|------------------|
 | Politik & Internationales | Tagesschau, NZZ, Handelsblatt, Reuters, AP, DW, NDR, Ostsee-Zeitung, Welt, SVT, DR, YLE, Gazeta Wyborcza, FT, WSJ, NYT |
 | Finanzen & Wirtschaft | FT, WSJ, Handelsblatt, Manager Magazin, WirtschaftsWoche, Finanzen.net, tagesschau Marktbericht |
 | IT & KI | TechCrunch, The Verge, heise online, Golem, Table.Media |
-| Deutschland & Nordeuropa | NDR, Ostsee-Zeitung, Welt, Nordkurier, SVT (Schweden), DR (Dänemark), YLE (Finnland), Gazeta Wyborcza (Polen) |
-| Wetter & Wasser | Open-Meteo API (wetter), wassertemperatur.org / seatemperature.org (Browser) |
+| Deutschland & Nordeuropa | NDR, Ostsee-Zeitung, Welt, Nordkurier, SVT, DR, YLE, Gazeta Wyborcza |
+| Wetter & Wasser | Open-Meteo (air), wassertemperatur.org / seatemperature.org (water) |
 
-## Cron Job Constraints (Profil-eigener Scheduler)
+## Cron Constraints
 
-This job runs in the **hermes-news profile's own scheduler**, NOT the default Hermes scheduler.
-Delivery goes through the **profile's own Telegram bot** to the profile's TELEGRAM_HOME_CHANNEL.
+- `execute_code` is blocked in cron mode; terminal commands with an interpreter flag
+  (`python -c`, heredoc) are blocked too. Data comes from the pre-run script.
+- `web_search` / `web_extract` may fail (Firecrawl credits) — the RSS fallback must be ready.
+- No user interaction: decide autonomously. The final answer is auto-delivered — do not
+  `send_message` or curl Telegram from inside the job.
+- Prompt changes: write via Python `json.dump(ensure_ascii=False)`, back up `jobs.json`, and
+  assert the new prompt is non-empty before writing.
 
-Key constraints for the agent running this cron:
-- `execute_code` is **blocked** in cron mode — do not attempt it
-- `web_search` / `web_extract` may fail due to Firecrawl credits — always have RSS fallback ready
-- Terminal-Befehle mit Interpreter-Flag (`python -c`, heredoc) sind in Cron **blockiert**. Verifizierter Weg: Pre-Run-Script, nicht Agent-Fetch.
-- Dateitools (`read_file`, `search_files`) gehören ebenso nicht ins Toolset. Ohne sie hat der Agent keinen Anlass, im Dateisystem zu suchen. Ein Prompt-Verbot allein wirkt nicht zuverlässig, solange das Werkzeug verfügbar ist.
-- No user interaction possible — make autonomous decisions
-- Final response is auto-delivered by the profile's gateway — do NOT use `send_message` or `curl`-based Telegram API calls
-- **Delivery goes to the profile's TELEGRAM_HOME_CHANNEL** via the profile's bot
-- For verification after manual trigger: `source /root/.hermes/profiles/hermes-news/.env && curl -s https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage...`
-- **Profile gateway must be running** for the scheduler to tick. Check via `gateway_state.json`.
+## Cron Error Patterns
 
-### Timing Conflicts with cron_health.py
+- **`last_status: ok` does not mean content arrived.** Check `deliveries.db` →
+  `length(content)`; 0 or a bare skeleton = empty run. `errors.log` shows why.
+- `Reasoning-only clean stop` → the reasoning model ends without a visible answer → empty
+  delivery. Mitigation: disable reasoning for the job or change the model.
+- `BLOCKED: Command flagged as dangerous` → interpreter-flagged terminal command in cron;
+  use the pre-run script.
+- `Upstream error ... Output data may contain inappropriate content` (provider filter) →
+  transient; re-run after a few minutes. Not a gateway fault while the gateway is active and
+  delivery is `delivered`.
+- **Telegram MarkdownV2 breaks on `(` in source parentheses** (`Can't parse entities`) → the
+  gateway falls back to plain text and delivery still works; cosmetic only. Switching to
+  `— Quelle` is NOT verified — do not present it as a fix.
+- **Abort with a status message instead of a briefing** (`I stopped retrying…`, delivered
+  length ~0): the log shows `read_file` errors on directories or non-existent files. Cause is
+  a file tool in the toolset, not the script. Fix toolset and prompt, then re-run.
+- Cron-health false alarms (timing overlap, the `✅ ... DONE` marker format) are covered in
+  `hermes-profile-ops`.
 
-⚠️ **Der `cron_health.py` Check (Job `cron-health-daily`) kann false-positive ❌ melden**
-wenn er gleichzeitig mit einem anderen Cron-Job läuft.
+## Subagent Delegation (manual runs)
 
-**Mechanismus:** `cron_health.py` liest `cron.log` und sucht nach `=== DATUM === jobname START ===`-Markern.
-Für jeden gefundenen START prüft er, ob der Block ein `✅ ... abgeschlossen` oder `✅ ... DONE` enthält.
-Wenn der Job noch läuft (nur START, noch kein DONE im Log), wird er als `❌ crashed` gemeldet.
-
-**Bekannter Konflikt:** `strategy_optimizer` (Sonntag 08:00) und `cron-health-daily` (08:00)
-laufen parallel. Der Optimizer braucht ~2 Minuten → Health-Check findet nur START ohne DONE.
-
-**Fix:** Staggered Schedules — z.B. `cron-health-daily` auf `30 8 * * *` (08:30) verschieben.
-Der Optimizer ist dann längst durch.
-
-## Firecrawl Credit Exhaustion (Dauerzustand)
-
-Firecrawl-Credits werden monatlich zurückgesetzt (aktuell: 13.7.). Dazwischen sind `web_search` und `web_extract` **nicht verfügbar**.
-
-**Symptom:** `Firecrawl search failed: Payment Required: Insufficient credits`
-
-**Workaround-Reihenfolge:**
-1. **Exa Search** — semantische Websuche, kein Credit: `mcporter call 'exa.web_search_exa(query: "...", numResults: 5)'`
-2. **Jina Reader** — Webseiten lesen, kein Credit: `curl -s "https://r.jina.ai/URL"`
-3. Google News RSS per curl (funktioniert zuverlässig, keine Credits nötig)
-4. Open-Meteo API für Wetter (kein API-Key, keine Credits)
-5. Browser für Wassertemperaturen (wassertemperatur.org)
-6. Direkte curl-Aufrufe auf andere RSS-Feeds (tagesschau.de, heise.de, welt.de)
+Do: hand over structured raw data (finished RSS lists, finished weather numbers), the explicit
+instruction to deliver, and the full send command. Don't: let the subagent research on its own
+— Firecrawl credits are often empty and the result is empty headings.
