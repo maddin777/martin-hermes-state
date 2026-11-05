@@ -1,5 +1,5 @@
 {
-  "fetched_at": 1793757358.5470145,
+  "fetched_at": 1793843774.6705863,
   "curated": [
     [
       "anthropic/claude-fable-5.1",
@@ -224,14 +224,6 @@
     [
       "openrouter/pareto-code",
       ""
-    ],
-    [
-      "thinkingmachines/inkling:free",
-      "free"
-    ],
-    [
-      "thinkingmachines/inkling-small:free",
-      "free"
     ],
     [
       "nvidia/nemotron-3-ultra-550b-a55b:free",
