@@ -711,7 +711,7 @@ def main(dry_run=False):
         cutoff_3d = (datetime.now() - timedelta(days=3)).strftime("%Y-%m-%d")
         dropped_low_tech = 0 if dry_run else con.execute("""
             UPDATE watchlist SET status='dropped'
-            WHERE tech_score < 0.30
+            WHERE (tech_score < 0.30 OR tech_score IS NULL)
             AND last_seen < ?
             AND status='watching'
         """, (cutoff_3d,)).rowcount

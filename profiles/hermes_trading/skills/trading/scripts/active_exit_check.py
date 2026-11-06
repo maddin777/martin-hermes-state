@@ -120,6 +120,17 @@ def _close_position(con, pos, current_price, pnl_eur, pnl_pct_net, reason):
     """, (round(current_price, 2), datetime.now().isoformat(),
           reason, round(pnl_eur, 2), round(pnl_pct_net, 2), pos["id"]))
 
+    # Watchlist-Sync: 'bought' nur halten, solange eine offene Position existiert.
+    # Ohne diesen Schritt bleibt der Titel bis zum 24h-Reset (reactivate_closed_bought) als 'bought' stehen
+    # und das Export-Exposure überzählt. Ein Titel mit anderer offener Position bleibt 'bought'.
+    con.execute("""
+        UPDATE watchlist SET status='watching'
+        WHERE status='bought'
+          AND (ticker=? OR name=?)
+          AND NOT EXISTS (SELECT 1 FROM positions p WHERE p.status='open' AND p.id != ?
+                          AND (p.ticker=watchlist.ticker OR p.name=watchlist.name))
+    """, (pos["ticker"], pos["name"], pos["id"]))
+
     # Cash-Rückbuchung: ursprüngliche Positionsgröße + PnL
     portfolio = con.execute(
         "SELECT cash FROM portfolio WHERE id=1"
