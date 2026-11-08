@@ -1,6 +1,6 @@
 {
 "https://openrouter.ai/api/v1/models":{
-"ts":1794016612.3133705,
+"ts":1794103027.9039626,
 "caps":{
 "liquid/lfm-3-1.7b":{
 "supports_reasoning":true,
