@@ -1,9 +1,9 @@
 {
-  "last_report_path": "/root/.hermes/logs/curator/20261102-091937",
-  "last_run_at": "2026-11-02T09:19:37.406167+00:00",
-  "last_run_duration_seconds": 320.156488,
-  "last_run_summary": "auto: 5 archived; llm: ## Curator pass summary\n\n**Landscape reality check first:** the candidate list was 11 local, curator-managed skills — not the 40+ implied by the task template. Every other skill in the index (`obsidian`, `linear`, `spotify`, `plan`, the `fi…",
+  "last_report_path": "/root/.hermes/logs/curator/20261109-101949",
+  "last_run_at": "2026-11-09T10:19:49.081513+00:00",
+  "last_run_duration_seconds": 248.529033,
+  "last_run_summary": "auto: no changes; llm: ## Curator pass — summary\n\n**Landscape.** 11 curator-managed skills, and 10 of them are already class-level umbrellas (email, GitHub, profile-ops, vault, MLOps, research, news, idea-scout, cookbook, trading). The prefix clusters this mandat…\narchived 1 skill(s):\n  • name-normalization-dedup → trading-pipeline\nfull report: hermes curator status\nkeep an umbrella stable: hermes curator pin trading-pipeline",
   "last_run_summary_shown_at": "2026-10-26T09:14:00.802352+00:00",
   "paused": false,
-  "run_count": 26
+  "run_count": 27
 }

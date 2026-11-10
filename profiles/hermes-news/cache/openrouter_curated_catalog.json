@@ -1,9 +1,13 @@
 {
-  "fetched_at": 1794189443.1836483,
+  "fetched_at": 1794275858.8397954,
   "curated": [
     [
-      "anthropic/claude-fable-5.1",
+      "anthropic/claude-fable-5.2",
       "recommended"
+    ],
+    [
+      "anthropic/claude-fable-5.1",
+      ""
     ],
     [
       "anthropic/claude-fable-5",
