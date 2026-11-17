@@ -1,9 +1,9 @@
 {
-  "last_report_path": "/root/.hermes/logs/curator/20261109-101949",
-  "last_run_at": "2026-11-09T10:19:49.081513+00:00",
-  "last_run_duration_seconds": 248.529033,
-  "last_run_summary": "auto: no changes; llm: ## Curator pass — summary\n\n**Landscape.** 11 curator-managed skills, and 10 of them are already class-level umbrellas (email, GitHub, profile-ops, vault, MLOps, research, news, idea-scout, cookbook, trading). The prefix clusters this mandat…\narchived 1 skill(s):\n  • name-normalization-dedup → trading-pipeline\nfull report: hermes curator status\nkeep an umbrella stable: hermes curator pin trading-pipeline",
+  "last_report_path": "/root/.hermes/logs/curator/20261116-102628",
+  "last_run_at": "2026-11-16T10:26:28.835525+00:00",
+  "last_run_duration_seconds": 106.24994,
+  "last_run_summary": "auto: no changes; llm: ## Consolidation pass — 10 candidates reviewed\n\n**Finding: this collection is already at the class level.** The 10 candidates are the output of prior consolidation rounds — five of them literally describe themselves as umbrellas (\"Umbrella …",
   "last_run_summary_shown_at": "2026-10-26T09:14:00.802352+00:00",
   "paused": false,
-  "run_count": 27
+  "run_count": 28
 }

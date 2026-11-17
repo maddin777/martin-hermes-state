@@ -1,6 +1,6 @@
 ---
 name: hermes-profile-ops
-description: "Hermes profiles: cron, bot mode, vault, management."
+description: "Hermes profiles: cron, gateway, bot mode, Open WebUI."
 trigger:
   - "Hermes profile"
   - "Cron jobs not running"
@@ -9,7 +9,7 @@ trigger:
 
 # Hermes Profile Operations
 
-Unified skill for Hermes profile operations, cron troubleshooting, vault management, and bot mode.
+Unified skill for Hermes profile operations, cron troubleshooting, gateway/bot mode, and per-profile chat frontends.
 
 ## Scope
 
