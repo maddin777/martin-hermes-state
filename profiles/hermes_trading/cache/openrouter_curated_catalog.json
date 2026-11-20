@@ -1,5 +1,5 @@
 {
-  "fetched_at": 1795053636.1087058,
+  "fetched_at": 1795140054.0334167,
   "curated": [
     [
       "anthropic/claude-fable-5.2",
@@ -39,6 +39,22 @@
     ],
     [
       "anthropic/claude-haiku-4.5",
+      ""
+    ],
+    [
+      "openai/gpt-6.2-astra",
+      ""
+    ],
+    [
+      "openai/gpt-6.2-astra-pro",
+      ""
+    ],
+    [
+      "openai/gpt-6.2-sol",
+      ""
+    ],
+    [
+      "openai/gpt-6.2-sol-pro",
       ""
     ],
     [
