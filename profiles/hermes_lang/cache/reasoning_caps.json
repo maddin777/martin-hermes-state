@@ -1,6 +1,6 @@
 {
 "https://openrouter.ai/api/v1/models":{
-"ts":1795311690.3579261,
+"ts":1795398106.3031979,
 "caps":{
 "thinkingmachines/inkling-2-mini":{
 "supports_reasoning":true,
