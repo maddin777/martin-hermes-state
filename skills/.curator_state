@@ -1,9 +1,9 @@
 {
-  "last_report_path": "/root/.hermes/logs/curator/20261116-102628",
-  "last_run_at": "2026-11-16T10:26:28.835525+00:00",
-  "last_run_duration_seconds": 106.24994,
-  "last_run_summary": "auto: no changes; llm: ## Consolidation pass — 10 candidates reviewed\n\n**Finding: this collection is already at the class level.** The 10 candidates are the output of prior consolidation rounds — five of them literally describe themselves as umbrellas (\"Umbrella …",
+  "last_report_path": "/root/.hermes/logs/curator/20261123-112035",
+  "last_run_at": "2026-11-23T11:20:35.250393+00:00",
+  "last_run_duration_seconds": 55.443625,
+  "last_run_summary": "auto: no changes; llm: ## Consolidation pass — result\n\nI read all 10 curator-managed candidates in full (SKILL.md plus their support-file inventories) and looked for prefix clusters. **There are none.** The candidate set is not a sprawl of one-session micro-skill…",
   "last_run_summary_shown_at": "2026-10-26T09:14:00.802352+00:00",
   "paused": false,
-  "run_count": 28
+  "run_count": 29
 }

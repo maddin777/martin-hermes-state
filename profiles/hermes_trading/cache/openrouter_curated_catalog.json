@@ -1,5 +1,5 @@
 {
-  "fetched_at": 1795398106.545749,
+  "fetched_at": 1795484522.9609718,
   "curated": [
     [
       "anthropic/claude-fable-5.2",
@@ -106,6 +106,18 @@
       ""
     ],
     [
+      "google/gemini-4-neon",
+      ""
+    ],
+    [
+      "google/gemini-4-hydrogen",
+      ""
+    ],
+    [
+      "google/gemini-4-carbon",
+      ""
+    ],
+    [
       "google/gemini-4-argon",
       ""
     ],
@@ -191,10 +203,6 @@
     ],
     [
       "xiaomi/mimo-v2.6-pro-ultraspeed",
-      ""
-    ],
-    [
-      "xiaomi/mimo-v2.5-pro",
       ""
     ],
     [

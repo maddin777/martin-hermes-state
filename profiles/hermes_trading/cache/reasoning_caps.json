@@ -1,6 +1,6 @@
 {
 "https://openrouter.ai/api/v1/models":{
-"ts":1795398106.5404406,
+"ts":1795484522.9544537,
 "caps":{
 "thinkingmachines/inkling-2-mini":{
 "supports_reasoning":true,
@@ -1318,6 +1318,11 @@
 ],
 "mandatory":false
 },
+"dots-studio/dots-3-note-preview:free":{
+"supports_reasoning":true,
+"supported_efforts":null,
+"mandatory":false
+},
 "google/gemini-3.7-flash":{
 "supports_reasoning":true,
 "supported_efforts":[
@@ -2223,11 +2228,6 @@
 "high",
 "none"
 ],
-"mandatory":false
-},
-"xiaomi/mimo-v2.5-pro":{
-"supports_reasoning":true,
-"supported_efforts":null,
 "mandatory":false
 },
 "xiaomi/mimo-v2.5":{
