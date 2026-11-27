@@ -1,7 +1,12 @@
 {
 "https://openrouter.ai/api/v1/models":{
-"ts":1795657360.656071,
+"ts":1795743778.1547732,
 "caps":{
+"inclusionai/lingsante-3.1-air-vl":{
+"supports_reasoning":true,
+"supported_efforts":null,
+"mandatory":false
+},
 "upstage/solar-mini-4-5":{
 "supports_reasoning":true,
 "supported_efforts":[
@@ -2958,6 +2963,9 @@
 "qwen/qwen3-next-80b-a3b-instruct":{
 "supports_reasoning":false
 },
+"moonshotai/kimi-k2-0905":{
+"supports_reasoning":false
+},
 "nousresearch/hermes-4-405b":{
 "supports_reasoning":true,
 "supported_efforts":null,
@@ -3118,6 +3126,9 @@
 "mandatory":false
 },
 "qwen/qwen3-235b-a22b-2507":{
+"supports_reasoning":false
+},
+"moonshotai/kimi-k2":{
 "supports_reasoning":false
 },
 "cognitivecomputations/dolphin-mistral-24b-venice-edition":{
