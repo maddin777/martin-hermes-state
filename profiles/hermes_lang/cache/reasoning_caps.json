@@ -1,6 +1,6 @@
 {
 "https://openrouter.ai/api/v1/models":{
-"ts":1795743778.1890166,
+"ts":1795830196.220288,
 "caps":{
 "inclusionai/lingsante-3.1-air-vl":{
 "supports_reasoning":true,
@@ -186,7 +186,7 @@
 ],
 "mandatory":false
 },
-"inclusionai/ling-3.2-flash:free":{
+"inclusionai/ling-3.2-flash":{
 "supports_reasoning":true,
 "supported_efforts":null,
 "mandatory":false
@@ -214,9 +214,12 @@
 "baidu/ernie-5.5-flash-preview:free":{
 "supports_reasoning":true,
 "supported_efforts":[
-"high"
+"high",
+"medium",
+"low",
+"none"
 ],
-"mandatory":true
+"mandatory":false
 },
 "baidu/ernie-light-dt-1.0-intl":{
 "supports_reasoning":true,
@@ -3108,11 +3111,6 @@
 "supports_reasoning":true,
 "supported_efforts":null,
 "mandatory":false
-},
-"qwen/qwen3-235b-a22b-thinking-2507":{
-"supports_reasoning":true,
-"supported_efforts":null,
-"mandatory":true
 },
 "qwen/qwen3-coder":{
 "supports_reasoning":false
